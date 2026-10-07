@@ -9,7 +9,7 @@ listés passent, `README.md` et ce fichier sont à jour, et le commit est fait.
 | N° | Étape | Fait | Cas à faire passer |
 | --- | --- | --- | --- |
 | 0 | Mise en place du dépôt et du socle | [x] | — |
-| 1 | Modèle de domaine (68 tables, énumérations) | [ ] | — |
+| 1 | Modèle de domaine (68 tables, énumérations) | [x] | — |
 | 2 | Sécurité, entités, audit | [ ] | CR-70, CR-71 |
 | 3 | Référentiels et intégration | [ ] | CR-37, CR-38, CR-67, CR-68 |
 | 4 | Paramétrage des règles | [ ] | — |

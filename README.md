@@ -85,7 +85,7 @@ npx playwright test
 ```
 pom.xml                         projet Maven / Quarkus
 src/main/java/fr/alptis/remuneration/
-  domain/                       BaseEntity, DateTimeProvider
+  domain/                       modèle de domaine (68 entités, énumérations), BaseEntity, DateTimeProvider
   api/                          points d'accès REST (dont /api/test en dev)
 src/main/resources/             configuration (profils dev / test / cible PostgreSQL)
 src/main/webui/                 application Vue 3 (TypeScript, Vite, Router, Pinia)
