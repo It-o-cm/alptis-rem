@@ -26,6 +26,16 @@ const matrixFile = join(projectRoot, 'docs', 'E2E-MATRIX.md');
  */
 const REQUIREMENTS_BY_STEP = {
   0: { screens: [], reqs: [], crs: [], paths: [], roleActions: [] },
+  // Step 2 delivers the entity-parameters, role-mapping and audit screens. CR-71's interface
+  // replay is delivered with the rule-version approval screen at step 4 (see docs/DECISIONS.md);
+  // its mechanism is covered by a unit test at step 2.
+  2: {
+    screens: ['entities', 'role-mappings', 'audit'],
+    reqs: ['REF-01', 'ADM-05', 'ADM-04'],
+    crs: ['CR-70'],
+    paths: ['ADM-01'],
+    roleActions: [],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */

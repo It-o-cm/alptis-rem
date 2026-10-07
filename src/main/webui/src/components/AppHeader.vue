@@ -19,11 +19,12 @@ const sectionHeading = computed(() => {
 <template>
   <header class="header">
     <div class="header__scope" data-testid="header-scope">
-      {{ session.entityName }}<span v-if="sectionHeading"> · {{ sectionHeading }}</span>
+      {{ session.primaryEntityName }}<span v-if="sectionHeading"> · {{ sectionHeading }}</span>
     </div>
     <div class="header__right">
       <span class="tag mute">Données fictives</span>
-      <span data-testid="header-role">Rôle : {{ session.roleLabelText }}</span>
+      <span v-if="session.authenticated" data-testid="header-role">Rôle : {{ session.roleLabelText }}</span>
+      <span v-else data-testid="header-role">Non connecté</span>
     </div>
   </header>
 </template>

@@ -19,8 +19,17 @@ class TestSupportResourceTest {
      *
      * @return a ready-to-use resource and the provider it ultimately controls
      */
+    /** Records whether the reset was invoked. */
+    private static final boolean[] RESET_CALLED = {false};
+
     private static TestSupportResource newResource(DateTimeProvider provider) {
-        return new TestSupportResource(new TestSupportService(provider));
+        TestDatabaseReset fakeReset = new TestDatabaseReset(null, null) {
+            @Override
+            public void reset() {
+                RESET_CALLED[0] = true;
+            }
+        };
+        return new TestSupportResource(new TestSupportService(provider), fakeReset);
     }
 
     /**
@@ -54,4 +63,19 @@ class TestSupportResourceTest {
         Response resetResponse = resource.resetClock();
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), resetResponse.getStatus());
     }
+
+    /**
+     * Verifies that the reset endpoint delegates to the database reset and returns 204.
+     */
+    @Test
+    void reset_endpoint_delegates_and_returns_204() {
+        RESET_CALLED[0] = false;
+        TestSupportResource resource = newResource(new DateTimeProvider());
+
+        Response response = resource.reset();
+
+        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(RESET_CALLED[0]);
+    }
 }
+

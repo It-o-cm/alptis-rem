@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -28,14 +29,31 @@ public class TestSupportResource {
     /** Service backing the test shortcuts. */
     private final TestSupportService service;
 
+    /** Resets the database to its seeded baseline between tests. */
+    private final TestDatabaseReset databaseReset;
+
     /**
      * Creates the resource.
      *
-     * @param service the test-support service to delegate to
+     * @param service       the test-support service to delegate to
+     * @param databaseReset the database reset helper
      */
     @Inject
-    public TestSupportResource(TestSupportService service) {
+    public TestSupportResource(TestSupportService service, TestDatabaseReset databaseReset) {
         this.service = service;
+        this.databaseReset = databaseReset;
+    }
+
+    /**
+     * Resets the database to its seeded baseline.
+     *
+     * @return an empty {@code 204 No Content} response
+     */
+    @POST
+    @Path("/reset")
+    public Response reset() {
+        databaseReset.reset();
+        return Response.noContent().build();
     }
 
     /**

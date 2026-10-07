@@ -1,0 +1,51 @@
+package fr.alptis.remuneration.api;
+
+import fr.alptis.remuneration.security.SecurityBootstrap;
+import io.quarkus.arc.profile.UnlessBuildProfile;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.metamodel.EntityType;
+import jakarta.transaction.Transactional;
+
+/**
+ * Resets the database to its seeded baseline for the end-to-end suite: every table is emptied and
+ * the security referential is re-seeded. Available outside production only; the H2-specific
+ * referential-integrity switch is acceptable since dev and test run on H2.
+ */
+@ApplicationScoped
+@UnlessBuildProfile("prod")
+public class TestDatabaseReset {
+
+    /** Entity manager used for the native reset statements. */
+    private final EntityManager em;
+
+    /** Re-seeds the security referential after the wipe. */
+    private final SecurityBootstrap bootstrap;
+
+    /**
+     * Creates the reset helper.
+     *
+     * @param em        the entity manager
+     * @param bootstrap the security bootstrap used to re-seed
+     */
+    @Inject
+    public TestDatabaseReset(EntityManager em, SecurityBootstrap bootstrap) {
+        this.em = em;
+        this.bootstrap = bootstrap;
+    }
+
+    /**
+     * Empties every mapped table and re-seeds the baseline, in a single transaction. Foreign-key
+     * checks are turned off so the entities can be deleted in any order.
+     */
+    @Transactional
+    public void reset() {
+        em.createNativeQuery("SET REFERENTIAL_INTEGRITY FALSE").executeUpdate();
+        for (EntityType<?> entityType : em.getMetamodel().getEntities()) {
+            em.createQuery("delete from " + entityType.getName()).executeUpdate();
+        }
+        em.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
+        bootstrap.seed();
+    }
+}

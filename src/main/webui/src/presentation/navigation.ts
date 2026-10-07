@@ -61,6 +61,14 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     items: [{ name: 'cutoff', path: '/cutoff', label: 'État de cut-off' }],
   },
   {
+    heading: 'Administration',
+    items: [
+      { name: 'adminEntities', path: '/entites', label: 'Entités et paramètres' },
+      { name: 'adminRoleMappings', path: '/correspondances-roles', label: 'Groupes et rôles' },
+      { name: 'adminAudit', path: '/audit', label: "Piste d'audit" },
+    ],
+  },
+  {
     heading: 'Forces de vente',
     items: [
       { name: 'fdvPlan', path: '/fdv/plan', label: 'Plan de variable' },

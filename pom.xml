@@ -57,6 +57,13 @@
             <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
 
+        <!-- Security: the nine roles of section 3. Real SSO (OIDC) is simulated in the dev
+             profile by users declared in configuration (see application.properties). -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-security</artifactId>
+        </dependency>
+
         <!-- Persistence -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -82,6 +89,13 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Routes @QuarkusTest coverage (app classloader) into the same JaCoCo data file as
+             plain unit tests, so the 100% check sees it. -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jacoco</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

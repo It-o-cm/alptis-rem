@@ -9,13 +9,14 @@ describe('navigation', () => {
       'Règles',
       'Flux',
       'Comptabilité',
+      'Administration',
       'Forces de vente',
     ]);
   });
 
   it('exposes every entry, starting with the periods home page', () => {
     const items = allNavItems();
-    expect(items).toHaveLength(18);
+    expect(items).toHaveLength(21);
     expect(items[0]).toEqual({ name: 'periods', path: '/', label: 'Périodes' });
   });
 

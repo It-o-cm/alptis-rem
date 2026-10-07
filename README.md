@@ -30,6 +30,25 @@ mvn quarkus:dev
 
 En mode `quarkus:dev`, Quinoa gère le serveur de développement Vite.
 
+### Authentification en profil dev
+
+Le SSO réel est hors périmètre : en profil `dev`, les utilisateurs sont déclarés en
+configuration (`application.properties`) avec leurs groupes d'annuaire ; leurs rôles et
+entités visibles sont déduits de la table `role_mapping` (éditable à l'écran « Groupes et
+rôles »). L'authentification se fait en HTTP Basic (le navigateur la propose ou on la
+fournit). Quelques comptes (mot de passe = identifiant) :
+
+| Identifiant | Rôle(s) | Entité |
+| --- | --- | --- |
+| `admin-alptis` | administrateur métier, gestionnaire | Alptis Assurances |
+| `operator-alptis` | gestionnaire | Alptis Assurances |
+| `validator-alptis` | valideur métier | Alptis Assurances |
+| `finance-alptis` | contrôleur Finance | Alptis Assurances |
+| `viewer-alptis` | consultation | Alptis Assurances |
+| `operator-unep` | gestionnaire | UNEP |
+| `it-admin` | administrateur technique | toutes |
+| `auditor` | audit (lecture seule) | toutes |
+
 ### Lancer le paquet dev (ce que fait la suite E2E)
 
 ```bash

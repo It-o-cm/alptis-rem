@@ -26,8 +26,8 @@ class DomainPersistenceTest {
     @TestTransaction
     void persists_and_reads_a_legal_entity_with_json_column() {
         LegalEntity entity = new LegalEntity();
-        entity.code = "ALPTIS_ASSURANCES";
-        entity.name = "Alptis Assurances";
+        entity.code = "TEST_ENTITY_A";
+        entity.name = "Test Entity A";
         entity.debtorIban = "FR7630006000011234567890189";
         entity.minPaymentAmount = new BigDecimal("10.00");
         entity.advanceSettlementDays = 360;
@@ -35,9 +35,9 @@ class DomainPersistenceTest {
         entity.persist();
         assertNotNull(entity.getId());
 
-        LegalEntity found = LegalEntity.find("code", "ALPTIS_ASSURANCES").firstResult();
+        LegalEntity found = LegalEntity.find("code", "TEST_ENTITY_A").firstResult();
         assertNotNull(found);
-        assertEquals("Alptis Assurances", found.name);
+        assertEquals("Test Entity A", found.name);
         assertEquals("{\"businessDays\":7}", found.paymentCalendar);
         assertEquals(360, found.advanceSettlementDays);
     }
@@ -49,14 +49,14 @@ class DomainPersistenceTest {
     @TestTransaction
     void rejects_a_duplicate_entity_code() {
         LegalEntity first = new LegalEntity();
-        first.code = "UNEP";
-        first.name = "UNEP";
+        first.code = "TEST_DUP";
+        first.name = "Test Dup";
         first.persist();
 
         // With IDENTITY generation the insert happens on persist, so the duplicate fails there.
         LegalEntity duplicate = new LegalEntity();
-        duplicate.code = "UNEP";
-        duplicate.name = "UNEP bis";
+        duplicate.code = "TEST_DUP";
+        duplicate.name = "Test Dup bis";
         assertThrows(ConstraintViolationException.class, duplicate::persist);
     }
 }
