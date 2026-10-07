@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Convention d'escompte</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+dt{font-size:13px;color:#4A5868}dd{margin:2px 0 0;font-size:15px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html" class="on">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868"><a href="Distributeur.dc.html">Cabinet P13897</a> · Convention d'escompte 2026</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : administrateur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Convention d'escompte 2026</h1>
+<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: #4A5868"><span class="tag ok">VALID</span><span>Du 01/01/2026 au 31/12/2026 · paiement à la date d'effet (délai d'anticipation de 0 jour) · rupture au 2e impayé</span></div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px">
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Adhésions escomptées</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">3 / 100</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Total versé</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">1 280,00 €</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Total apuré</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">960,00 €</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Régularisations positives</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">0,00 €</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Régularisations négatives</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px; color: #8F1D16">−200,00 €</div></div>
+<div class="card" style="padding: 16px 18px; border-color: #0E5A8A"><div style="font-size: 13px; color: #4A5868">Créance restante</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">120,00 €</div></div>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Escomptes par adhésion</h2>
+<table>
+<thead><tr><th>Contrat</th><th>Effet</th><th class="num">Prime annualisée</th><th class="num">Versé</th><th class="num">Apuré</th><th class="num">Écart</th><th>Statut</th></tr></thead>
+<tbody>
+<tr><td>AD-004890 · Santé Select 30 + 10</td><td>01/01/2026</td><td class="num">1 200,00 €</td><td class="num">480,00 €</td><td class="num">360,00 €</td><td class="num">−120,00 €</td><td><span class="tag info">ACTIVE</span></td></tr>
+<tr><td>AD-004102 · Prévoyance Pro+ 30 + 10, prime annuelle</td><td>01/02/2026</td><td class="num">1 000,00 €</td><td class="num">400,00 €</td><td class="num">400,00 €</td><td class="num">0,00 €</td><td><span class="tag ok">SETTLED</span></td></tr>
+<tr><td>AD-004377 · Santé Select 30 + 10, résilié en août</td><td>01/02/2026</td><td class="num">1 000,00 €</td><td class="num">400,00 €</td><td class="num">200,00 €</td><td class="num">−200,00 €</td><td><span class="tag ko">CANCELLED</span></td></tr>
+</tbody>
+</table>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">AD-004890 · mois par mois</h2>
+<table>
+<thead><tr><th>Période</th><th>Mouvement</th><th class="num">Payé</th><th class="num">Cumul apuré</th><th class="num">Écart</th></tr></thead>
+<tbody>
+<tr><td>Janvier 2026</td><td>Escompte : 1 200 × 40 %, puis premier apurement</td><td class="num">480,00 €</td><td class="num">40,00 €</td><td class="num">−440,00 €</td></tr>
+<tr><td>Février à août</td><td>40 € acquis par encaissement, imputés</td><td class="num">0,00 €</td><td class="num">320,00 €</td><td class="num">−160,00 €</td></tr>
+<tr><td>Septembre 2026</td><td>40 € acquis, imputés</td><td class="num">0,00 €</td><td class="num">360,00 €</td><td class="num">−120,00 €</td></tr>
+<tr><td style="color: #4A5868">Décembre 2026 (prévu)</td><td style="color: #4A5868">12e apurement : escompte soldé</td><td class="num" style="color: #4A5868">0,00 €</td><td class="num" style="color: #4A5868">480,00 €</td><td class="num" style="color: #4A5868">0,00 €</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">Et si le contrat AD-004890 était résilié aujourd'hui ?</h2>
+<p style="margin: 0 0 14px; font-size: 14px; line-height: 1.45; color: #3D4A59">La garantie a moins de 365 jours. Deux reprises distinctes s'appliquent : l'escompte non apuré, puis l'apport déjà apuré.</p>
+<sc-if value="{{ hidden }}" hint-placeholder-val="{{ true }}">
+<button class="btn" onClick="{{ simulate }}">Simuler la résiliation</button>
+</sc-if>
+<sc-if value="{{ shown }}" hint-placeholder-val="{{ false }}">
+<div>
+<table>
+<tbody>
+<tr><td>Reprise d'escompte indu (écart, ligne ADVANCE_ADJUSTMENT) : l'escompte passe CANCELLED</td><td class="num" style="color: #8F1D16">−120,00 €</td></tr>
+<tr><td>Reprise d'apport à 100 % (9 × 30 €, ligne CLAWBACK)</td><td class="num" style="color: #8F1D16">−270,00 €</td></tr>
+<tr><td style="font-weight: 600">Total repris</td><td class="num" style="font-weight: 600; color: #8F1D16">−390,00 €</td></tr>
+<tr><td>Conservé par le distributeur (suivi, 9 × 10 €)</td><td class="num">90,00 €</td></tr>
+</tbody>
+</table>
+<div style="margin-top: 12px"><button class="btn sec" onClick="{{ reset }}">Fermer la simulation</button></div>
+</div>
+</sc-if>
+</section>
+</div>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">Paramètres de la convention</h2>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 18px">
+<div><dt>Produits couverts</dt><dd>Santé Select, Prévoyance Pro+</dd></div>
+<div><dt>Validité (12 mois au plus, sans reconduction tacite)</dt><dd>Du 01/01/2026 au 31/12/2026</dd></div>
+<div><dt>Délai d'anticipation</dt><dd>0 jour (paiement à la date d'effet)</dd></div>
+<div><dt>Versement fractionné</dt><dd>Non : versement unique</dd></div>
+<div><dt>Plafond d'adhésions</dt><dd>100</dd></div>
+<div><dt>Rang d'impayé de rupture</dt><dd>2 (par défaut ; 3 si la convention le prévoit)</dd></div>
+<div><dt>Délai de solde (paramètre de l'entité)</dt><dd>360 jours après la plus tardive des dates de paiement et d'effet</dd></div>
+<div><dt>Tolérance de solde (paramètre de l'entité, H-40)</dt><dd>1,00 €</dd></div>
+</dl>
+<div style="margin-top: 14px; font-size: 13px; line-height: 1.45; color: #4A5868">Délai d'anticipation : nombre de jours libre ; valeurs en usage 0, 120, 180, 240, 270, 300 et 360. L'escompte est payé dans la première période dont le mois atteint le mois de la date d'effet diminuée du délai. La convention peut fractionner le versement : une part à cette date, le solde un nombre de mois donné après la date d'effet.</div>
+<div style="margin-top: 8px; font-size: 13px; line-height: 1.45; color: #4A5868">Statuts : VALID ; SUSPENDED arrête les nouveaux escomptes sans toucher aux escomptes en cours ; CLOSED annule les escomptes non encore versés et rompt les escomptes en cours, avec régularisation immédiate. Une convention échue et sans escompte en cours est clôturée automatiquement.</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">Éligibilité d'une garantie · huit conditions cumulatives</h2>
+<ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.5; color: #3D4A59">
+<li>Le distributeur a une convention au statut VALID et n'est pas exclu de l'escompte.</li>
+<li>Le produit figure dans la convention et l'adhésion est individuelle.</li>
+<li>La date d'enregistrement de l'adhésion est comprise entre le début de la convention et sa fin plus 5 jours.</li>
+<li>La date d'effet de la garantie est comprise entre le début de la convention et sa fin plus le délai d'anticipation.</li>
+<li>La garantie n'est ni à prime unique ni une garantie de tiers payant, et n'a donné lieu à aucune commission dans une période antérieure.</li>
+<li>Le distributeur n'a pas changé depuis l'enregistrement.</li>
+<li>Le plafond d'adhésions de la convention n'est pas atteint (100 pour un distributeur nouveau ou sans portefeuille) ; les garanties candidates sont admises dans l'ordre de leur date d'enregistrement.</li>
+<li>Le distributeur a présenté la garantie à l'escompte (attribut « escompté » de son choix de rémunération).</li>
+</ol>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">Apurement, solde et rupture</h2>
+<p style="margin: 0 0 10px; font-size: 14px; line-height: 1.45; color: #3D4A59">Apurement : tant que l'escompte est en cours, chaque ligne acquise dont la période couverte débute avant le premier anniversaire de la date d'effet passe au statut OFFSET au lieu d'être payée. Une ligne dont la période couverte débute à partir de cet anniversaire est payée normalement.</p>
+<p style="margin: 0 0 10px; font-size: 14px; line-height: 1.45; color: #3D4A59">Solde : écart = cumul apuré − escompte versé. Dès que l'écart atteint zéro, l'escompte est SETTLED ; un écart positif est versé en complément (ligne ADVANCE_ADJUSTMENT). Un écart encore négatif 360 jours après la plus tardive des dates de paiement et d'effet est repris (escompte indu), sauf sous la tolérance de solde : aucune ligne, le reliquat passe en charge.</p>
+<div style="font-size: 13px; color: #4A5868; margin-bottom: 8px">Événements de rupture (escompte CANCELLED, régularisation immédiate)</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><span class="tag info">Résiliation</span><span class="tag info">Renonciation</span><span class="tag info">Sans suite</span><span class="tag info">Contentieux</span><span class="tag info">Impayé de rang 2 ou plus</span><span class="tag info">Ordre de remplacement</span><span class="tag info">Cession remboursée par le cédant</span><span class="tag info">Rachat anticipé d'un prêt</span><span class="tag info">Clôture de la convention</span></div>
+<div style="margin-top: 10px; font-size: 13px; line-height: 1.45; color: #4A5868">Le décès n'est pas un événement de rupture : l'escompte reste en cours et se solde au 360e jour. Cession de portefeuille avec créance transférée au repreneur (TAKEN_OVER) : l'escompte reste en cours, sans écriture à la cession.</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const on = !!(this.state && this.state.sim);
+return {
+hidden: !on, shown: on,
+simulate: () => this.setState({ sim: true }),
+reset: () => this.setState({ sim: false })
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Plan de variable</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #E6EAF0;vertical-align:middle}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+label{display:block;font-size:13px;font-weight:600;color:#3D4A59;margin-bottom:6px}
+input,select{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9AA7B5;border-radius:6px;font:400 14px 'IBM Plex Sans',sans-serif;color:#16202C;background:#fff}
+td input{min-width:120px}
+.chip{min-height:44px;padding:10px 16px;border-radius:22px;border:1px solid #9AA7B5;background:#fff;color:#16202C;font:500 14px 'IBM Plex Sans',sans-serif;cursor:pointer}
+.chip.on{background:#0E5A8A;border-color:#0E5A8A;color:#fff}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html" class="on">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Forces de vente · Courtage grossiste</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Montants de la grille 2026</span><span>Rôle : administrateur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Plan de variable 2026 · {{ postLabel }}</h1>
+<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: #4A5868"><span>Valide du 01/01/2026 au 31/12/2026</span></div>
+<div style="margin-top: 6px; font-size: 14px; color: #4A5868">Plans et objectifs gérés par l'administrateur métier, qui lance le calcul avec la période.</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn sec">Dupliquer pour 2027</button>
+<a class="btn sec" href="FdvValidation.dc.html">Validation du mois</a>
+</div>
+</div>
+
+<div role="tablist" aria-label="Poste" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<span style="font-size: 14px; color: #4A5868">Poste :</span>
+<sc-for list="{{ posts }}" as="p" hint-placeholder-count="5">
+<button role="tab" class="{{ p.cls }}" onClick="{{ p.pick }}">{{ p.code }}</button>
+</sc-for>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Enveloppes annuelles du poste</h2>
+<table>
+<thead><tr><th>Composante</th><th>Type d'objectif</th><th>Rythme</th><th class="num">Enveloppe annuelle</th><th>Condition de versement</th></tr></thead>
+<tbody>
+<tr><td>Quantitatif individuel<div style="font: 400 12px 'IBM Plex Mono', monospace; color: #4A5868; margin-top: 2px">MONTHLY_INDIVIDUAL</div></td><td><span class="tag mute">INDIVIDUAL_QUANTITATIVE</span></td><td>Mensuel, régularisé en janvier N+1</td><td class="num">{{ env.individual }}</td><td>Objectif du mois atteint : mensualité de {{ env.monthly }}. Régularisation : enveloppe × taux d'atteinte annuel, moins les mensualités versées</td></tr>
+<tr><td>Qualitatif<div style="font: 400 12px 'IBM Plex Mono', monospace; color: #4A5868; margin-top: 2px">QUARTERLY_QUALITATIVE</div></td><td><span class="tag mute">QUALITATIVE</span></td><td>Trimestriel</td><td class="num">{{ env.qualitative }}</td><td>Un montant par critère atteint</td></tr>
+<tr><td>Complément nouveaux producteurs<div style="font: 400 12px 'IBM Plex Mono', monospace; color: #4A5868; margin-top: 2px">QUARTERLY_QUALITATIVE</div></td><td><span class="tag mute">QUALITATIVE</span></td><td>Trimestriel</td><td class="num">{{ env.bonus }}</td><td>Objectif de développement dépassé d'au moins 2</td></tr>
+<tr><td>Quantitatif collectif<div style="font: 400 12px 'IBM Plex Mono', monospace; color: #4A5868; margin-top: 2px">ANNUAL_COLLECTIVE</div></td><td><span class="tag mute">COLLECTIVE_QUANTITATIVE</span></td><td>Annuel, janvier N+1, régularisé en juin</td><td class="num">{{ env.collective }}</td><td>Objectif annuel collectif atteint</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Règle de référence : 70 % de l'enveloppe annuelle répartis sur 12 mois, soit {{ env.reference }} pour ce poste. La mensualité est saisie par poste, non déduite de l'enveloppe : la grille 2026 ne suit pas cette règle pour tous les postes : 146 € et 458 € publiés contre 143 € et 449 € calculés (hypothèse H-21).</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Critères qualitatifs du trimestre</h2>
+<table>
+<thead><tr><th>Critère</th><th>Mesure (source CRM)</th><th>Montant par trimestre</th></tr></thead>
+<tbody>
+<tr><td>Productivité</td><td>Appels argumentés, rendez-vous</td><td><input aria-label="Montant du critère productivité" type="text" placeholder="[À DÉFINIR]"></td></tr>
+<tr><td>Efficacité</td><td>Devis</td><td><input aria-label="Montant du critère efficacité" type="text" placeholder="[À DÉFINIR]"></td></tr>
+<tr><td>Développement</td><td>Nouveaux distributeurs producteurs</td><td><input aria-label="Montant du critère développement" type="text" placeholder="[À DÉFINIR]"></td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Les sources ne donnent ni la répartition de l'enveloppe qualitative entre les critères, ni le rattachement des mesures d'activité à la productivité et à l'efficacité : à confirmer en atelier avec la direction commerciale.</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Pondération de la production par marché</h2>
+<table>
+<thead><tr><th>Marché</th><th>Coefficient</th></tr></thead>
+<tbody>
+<tr><td>Particulier</td><td><input aria-label="Coefficient particulier" type="text" defaultValue="0,7"></td></tr>
+<tr><td>Emprunteur</td><td><input aria-label="Coefficient emprunteur" type="text" defaultValue="1"></td></tr>
+<tr><td>Professionnel</td><td><input aria-label="Coefficient professionnel" type="text" defaultValue="1,3"></td></tr>
+<tr><td>Collectif</td><td><input aria-label="Coefficient collectif" type="text" defaultValue="0,65"></td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Exemple : 10 000 € en particulier et 5 000 € en professionnel comptent pour 13 500 € face à l'objectif.</div>
+</section>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Barèmes des animateurs, des responsables et de la vente directe</h2>
+<table>
+<thead><tr><th>Population</th><th>Critère</th><th>Seuils</th><th>Montant ou taux</th></tr></thead>
+<tbody>
+<tr><td>Animateurs et responsables</td><td>Croissance de la production</td><td>Paliers de 15 %, 25 % et 35 %</td><td><input aria-label="Montants des paliers de croissance" type="text" placeholder="[À DÉFINIR]"></td></tr>
+<tr><td>Animateurs et responsables</td><td>Nombre de critères qualitatifs atteints</td><td>3 critères, 5 critères</td><td><input aria-label="Montants selon le nombre de critères atteints" type="text" placeholder="[À DÉFINIR]"></td></tr>
+<tr><td>Vente directe</td><td>Marge brute des affaires nouvelles</td><td>Pourcentage, avec prime de dépassement</td><td><input aria-label="Pourcentage de la marge brute" type="text" placeholder="[À DÉFINIR]"></td></tr>
+<tr><td>Vente directe</td><td>Valeur du portefeuille</td><td>Barème</td><td><input aria-label="Barème sur la valeur du portefeuille" type="text" placeholder="[À DÉFINIR]"></td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Vente directe : versement de 70 % en janvier et régularisation en juin. Les sources masquent ces montants et ne rattachent pas ces barèmes aux postes de la grille : à préciser en atelier avec la direction commerciale.</div>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">Règles d'absence et de résiliation</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px">
+<div><label for="v1">Mensuel non versé à partir de (jours ouvrés d'absence dans le mois)</label><input id="v1" type="text" defaultValue="10"></div>
+<div><label for="v2">Trimestriel non versé à partir de (semaines d'absence dans le trimestre)</label><input id="v2" type="text" defaultValue="6"></div>
+<div><label for="v3">Collectif proratisé à partir de (mois d'absence)</label><input id="v3" type="text" defaultValue="1"></div>
+<div><label for="v4">Réduction si contrat résilié avant (mois)</label><input id="v4" type="text" placeholder="[À DÉFINIR]"></div>
+</div>
+<div style="margin-top: 14px; font-size: 13px; color: #4A5868">Les absences comptées excluent les congés et les RTT ; elles viennent du SI RH. Une mensualité non versée pour absence n'est pas rattrapée par la régularisation annuelle : l'enveloppe est réduite de la mensualité du poste par mois non versé.</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const post = (this.state && this.state.post) || 'CAC';
+const grid = {
+CAC: ['Chargé d\'affaires courtage', '2 450 €', '146 €', '2 000 €', '500 €', '550 €', '143 €'],
+RB: ['Poste RB', '2 450 €', '146 €', '2 000 €', '500 €', '550 €', '143 €'],
+DR: ['Poste DR', '7 700 €', '458 €', '3 000 €', '800 €', '2 500 €', '449 €'],
+RR: ['Poste RR', '12 000 €', '700 €', '5 000 €', '1 200 €', '4 800 €', '700 €'],
+DNV: ['Poste DNV', '16 000 €', '933 €', '6 000 €', '1 600 €', '6 000 €', '933 €']
+};
+// Last item of each entry: reference instalment, 70 % of the individual envelope over 12 months (H-21).
+const g = grid[post];
+return {
+postLabel: post,
+env: { individual: g[1], monthly: g[2], qualitative: g[3], bonus: g[4], collective: g[5], reference: g[6] },
+posts: Object.keys(grid).map((code) => ({ code: code, cls: 'chip' + (post === code ? ' on' : ''), pick: () => this.setState({ post: code }) }))
+};
+}
+}
+</script>
+</body>
+</html>

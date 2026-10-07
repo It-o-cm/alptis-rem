@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Mapping de fichier</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #E6EAF0;vertical-align:middle}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+label{display:block;font-size:13px;font-weight:600;color:#3D4A59;margin-bottom:6px}
+input,select{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9AA7B5;border-radius:6px;font:400 14px 'IBM Plex Sans',sans-serif;color:#16202C;background:#fff}
+td select,td input{min-width:170px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html" class="on">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · <a href="Imports.dc.html">Imports</a> · Mapping</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : administrateur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Mapping · UMR, production PER</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868; max-width: 80ch">Décrit comment chaque colonne du fichier d'un partenaire devient un champ du format pivot. Intégrer un nouveau fichier ne demande aucun développement. Flux IN-06 (assureurs et gestionnaires délégués) : un mapping par fichier.</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn" onClick="{{ test }}">{{ testLabel }}</button>
+<button class="btn sec">Enregistrer</button>
+</div>
+</div>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">1. Fichier attendu</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+<div><label for="m1">Format</label><select id="m1"><option>Excel (.xlsx)</option><option>CSV</option><option>XML</option><option>JSON</option></select></div>
+<div><label for="m2">Feuille</label><input id="m2" type="text" defaultValue="Production"></div>
+<div><label for="m3">Ligne d'en-tête</label><input id="m3" type="text" defaultValue="1"></div>
+<div><label for="m4">Objet pivot produit</label><select id="m4"><option>Événements</option><option>Garanties</option></select></div>
+<div><label for="m5">Fréquence attendue</label><select id="m5"><option>Mensuelle</option><option>Trimestrielle</option><option>Annuelle</option></select></div>
+<div><label for="m6">Fichier d'exemple</label><input id="m6" type="text" defaultValue="umr_prod_202609.xlsx"></div>
+</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">2. Correspondance des colonnes</h2>
+<table>
+<thead><tr><th>Colonne du fichier</th><th>Valeur d'exemple</th><th>Champ pivot</th><th>Transformation</th></tr></thead>
+<tbody>
+<tr><td class="mono">CODE_MOUVEMENT</td><td class="mono">MVT-2026-091455</td><td><select aria-label="Champ pivot pour CODE_MOUVEMENT"><option>source_key</option></select></td><td>Aucune</td></tr>
+<tr><td class="mono">NUMERO_CONTRAT</td><td class="mono">PER-0038817</td><td><select aria-label="Champ pivot pour NUMERO_CONTRAT"><option>contract_number</option></select></td><td>Aucune</td></tr>
+<tr><td class="mono">CODE_POINT_VENTE</td><td class="mono">300516_P75942-72717</td><td><select aria-label="Champ pivot pour CODE_POINT_VENTE"><option>beneficiary_code</option></select></td><td>Découpage : code partenaire P75942, code de production 72717 (valeur retenue)</td></tr>
+<tr><td class="mono">TYPE_MOUVEMENT</td><td class="mono">Versement programmé</td><td><select aria-label="Champ pivot pour TYPE_MOUVEMENT"><option>event_type</option></select></td><td>Table de transcodage ci-dessous</td></tr>
+<tr><td class="mono">DATE_MOUVEMENT</td><td class="mono">15/09/2026</td><td><select aria-label="Champ pivot pour DATE_MOUVEMENT"><option>event_date</option></select></td><td>Date au format jour/mois/année</td></tr>
+<tr><td class="mono">BASE_CALCUL</td><td class="mono">300,00</td><td><select aria-label="Champ pivot pour BASE_CALCUL"><option>precomputed_basis</option></select></td><td>Décimale à virgule</td></tr>
+<tr><td class="mono">TAUX_COMMISSION</td><td class="mono">10</td><td><select aria-label="Champ pivot pour TAUX_COMMISSION"><option>precomputed_rate</option></select></td><td>Diviser par 100</td></tr>
+<tr><td class="mono">MONTANT_COMMISSION</td><td class="mono">30,00</td><td><select aria-label="Champ pivot pour MONTANT_COMMISSION"><option>precomputed_amount</option></select></td><td>Décimale à virgule</td></tr>
+<tr><td class="mono">SUPPORT, PROFIL</td><td class="mono">Fonds euros, Libre</td><td><select aria-label="Champ pivot pour SUPPORT et PROFIL"><option>fund_code, management_profile</option></select></td><td>Aucune</td></tr>
+<tr><td class="mono">NOM_MUTUELLE</td><td class="mono">ALPTIS</td><td><span class="tag info">Filtre</span></td><td>Garder la ligne seulement si la valeur est ALPTIS</td></tr>
+<tr><td class="mono">DATE_EFFET_ARRET_PLAN</td><td class="mono">(vide)</td><td><span class="tag info">Événement</span></td><td>Si renseignée : événement PLAN_SUSPENDED à cette date</td></tr>
+<tr><td class="mono">IDC_RACHAT_ANTICIPATION, IDC_TRANSFERT_SORTANT</td><td class="mono">(vide)</td><td><span class="tag info">Événement</span></td><td>Si renseignés : événements SURRENDER et OUTBOUND_TRANSFER</td></tr>
+<tr><td class="mono">NUMERO_ADHERENT, NOM_ADHERENT, DATE_NAISSANCE, DATE_EFFET_ADHESION, STATUT_CONTRAT</td><td class="mono">12/03/1984</td><td><span class="tag mute">Ignorées ici</span></td><td>Garantie et souscripteur : portés par le mapping « Garanties » du même fichier</td></tr>
+<tr><td class="mono">ADH_PRECOMPTE, PRECOMPTE_ACTIF, DATE_SORTIE_PRECOMPTE</td><td class="mono">(vide)</td><td><span class="tag mute">Ignorées ici</span></td><td>Mapping « Garanties » : la première alimente advance_requested, les deux autres sont des critères de la garantie (escompte en cours, date de sortie)</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Valeurs par défaut ajoutées à chaque ligne : entity_code = ALPTIS_ASSURANCES, source_system = UMR. <span class="mono">BASE_CALCUL</span>, <span class="mono">TAUX_COMMISSION</span> et <span class="mono">MONTANT_COMMISSION</span> alimentent <span class="mono">precomputed_basis</span>, <span class="mono">precomputed_rate</span> et <span class="mono">precomputed_amount</span> de l'événement, ce qui produit une ligne <span class="mono">INSURER</span>.</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">3. Transcodage de TYPE_MOUVEMENT</h2>
+<table>
+<thead><tr><th>Valeur du fichier</th><th>Type d'événement pivot</th></tr></thead>
+<tbody>
+<tr><td>Versement initial</td><td class="mono">INITIAL_PAYMENT</td></tr>
+<tr><td>Versement libre</td><td class="mono">FREE_PAYMENT</td></tr>
+<tr><td>Versement programmé</td><td class="mono">SCHEDULED_PAYMENT</td></tr>
+<tr><td>Frais de gestion administrative</td><td class="mono">OUTSTANDING_FEE</td></tr>
+<tr><td>Toute autre valeur</td><td><span class="tag ko">Ligne rejetée : type inconnu</span></td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">4. Test sur le fichier d'exemple</h2>
+<sc-if value="{{ idle }}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; font-size: 14px; color: #4A5868; line-height: 1.45">Le test applique le mapping au fichier d'exemple sans rien intégrer, et montre les lignes pivot obtenues et les rejets.</p>
+</sc-if>
+<sc-if value="{{ tested }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px"><span class="tag mute">600 lignes lues</span><span class="tag ok">386 lignes conformes</span><span class="tag mute">214 lignes filtrées (part de l'assureur)</span><span class="tag ok">0 rejet</span></div>
+<table>
+<thead><tr><th>source_key</th><th>event_type</th><th class="num">Assiette</th><th class="num">Taux</th><th class="num">Montant</th></tr></thead>
+<tbody>
+<tr><td class="mono">MVT-2026-091455</td><td class="mono">SCHEDULED_PAYMENT</td><td class="num">300,00</td><td class="num">0,10</td><td class="num">30,00</td></tr>
+<tr><td class="mono">MVT-2026-091456</td><td class="mono">OUTSTANDING_FEE</td><td class="num">0,43</td><td class="num">—</td><td class="num">0,24</td></tr>
+</tbody>
+</table>
+<p style="margin: 12px 0 0; font-size: 13px; color: #4A5868; line-height: 1.45">Seconde ligne : sur 0,43 € de frais de gestion, seule la part de l'entité (0,24 €) est intégrée ; la part de l'assureur (0,19 €) est filtrée.</p>
+</div>
+</sc-if>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const tested = !!(this.state && this.state.tested);
+return {
+idle: !tested, tested: tested,
+testLabel: tested ? 'Fermer le test' : 'Tester sur le fichier d\'exemple',
+test: () => this.setState({ tested: !tested })
+};
+}
+}
+</script>
+</body>
+</html>

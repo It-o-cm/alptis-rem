@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Paramétrage d'une règle</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+label{display:block;font-size:13px;font-weight:600;color:#3D4A59;margin-bottom:6px}
+input,select{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9AA7B5;border-radius:6px;font:400 14px 'IBM Plex Sans',sans-serif;color:#16202C;background:#fff}
+.chip{min-height:44px;padding:10px 16px;border-radius:22px;border:1px solid #9AA7B5;background:#fff;color:#16202C;font:500 14px 'IBM Plex Mono',monospace;cursor:pointer}
+.chip.on{background:#0E5A8A;border-color:#0E5A8A;color:#fff}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html" class="on">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Plan 2027 · Barème du Guide · Règle</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : administrateur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Santé Select · précompté</h1>
+<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: #4A5868"><span class="{{ statusTag }}">{{ status }}</span><span style="font-family: 'IBM Plex Mono', monospace">SANTE_SELECT_UPFRONT · version 2</span><span>Auteur : vous · approbateur : aucun</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<a class="btn sec" href="Simulation.dc.html">Simuler cette version</a>
+<sc-if value="{{ isDraft }}" hint-placeholder-val="{{ true }}">
+<button class="btn" onClick="{{ tryApprove }}">Approuver</button>
+</sc-if>
+</div>
+</div>
+<sc-if value="{{ refused }}" hint-placeholder-val="{{ false }}">
+<div class="card" style="padding: 14px 18px; border-color: #8F1D16; color: #8F1D16; font-size: 14px">Approbation refusée : vous êtes l'auteur de cette version. Un second administrateur doit l'approuver.</div>
+</sc-if>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">Identité et arbitrage</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px">
+<div><label for="r-family">Famille de calcul</label><select id="r-family"><option>Précomptée (UPFRONT)</option><option>Linéaire (LINEAR)</option><option>Escompte (ADVANCE)</option><option>Barème sur cumul (TIERED)</option><option>Portefeuille sous conditions (PORTFOLIO)</option><option>Quote-part d'une autre commission (SHARE)</option><option>Encours (OUTSTANDING)</option><option>Montant fixe (FIXED)</option><option>Commission externe (EXTERNAL)</option></select></div>
+<div><label for="r-nature">Nature de ligne produite (output_nature)</label><input id="r-nature" type="text" defaultValue="ACQUISITION et SERVICING"><div style="margin-top: 6px; font-size: 13px; color: #4A5868">LINEAR → LINEAR ou ARBITRAGE ; TIERED → RCD ou COMPLEMENT ; FIXED → FEE ; EXTERNAL → EXTERNAL ou INSURER.</div></div>
+<div><label for="r-anchor">Version appliquée selon</label><select id="r-anchor"><option>La date d'effet de l'événement</option><option>La date d'effet de la garantie</option></select></div>
+<div><label for="r-basis">Assiette</label><select id="r-basis"><option>Prime encaissée hors taxes (COLLECTED_PREMIUM)</option></select></div>
+<div><label for="r-from">Valable du</label><input id="r-from" type="text" defaultValue="01/01/2027"></div>
+<div><label for="r-to">Au</label><input id="r-to" type="text" defaultValue="31/12/2027"></div>
+<div><label for="r-group">Groupe d'exclusion</label><input id="r-group" type="text" defaultValue="BASE"></div>
+<div><label for="r-prio">Priorité</label><input id="r-prio" type="text" defaultValue="10"></div>
+</div>
+<div style="margin-top: 14px; font-size: 13px; color: #4A5868">Dans un même groupe, seule la priorité la plus haute s'applique ; les groupes différents se cumulent. Le nom du groupe est libre, sauf BASE, réservé aux règles de base : un événement sans règle de base passe en attente (ON_HOLD, P8). Convention proposée, non imposée par le moteur : barème général 10, opération commerciale 20, accord dérogatoire 30. Deux versions du même groupe, de même priorité, dont les périmètres et les dates se recouvrent : l'approbation de la seconde est refusée.</div>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">Périmètre</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px">
+<div><label for="s-entity">Entité</label><input id="s-entity" type="text" defaultValue="Alptis Assurances"></div>
+<div><label for="s-range">Gamme</label><input id="s-range" type="text" placeholder="Toutes"></div>
+<div><label for="s-product">Produit</label><input id="s-product" type="text" defaultValue="Santé Select"></div>
+<div><label for="s-option">Option</label><input id="s-option" type="text" placeholder="Toutes"></div>
+<div><label for="s-tariff">Type de tarif</label><input id="s-tariff" type="text" placeholder="Tous"></div>
+<div><label for="s-staff">Collège</label><input id="s-staff" type="text" placeholder="Tous"></div>
+<div><label for="s-insurer">Assureur</label><input id="s-insurer" type="text" placeholder="Tous"></div>
+<div><label for="s-event">Types d'événement déclencheurs</label><input id="s-event" type="text" defaultValue="Prime encaissée, prime annulée"></div>
+<div><label for="s-mode">Mode de rémunération choisi</label><select id="s-mode"><option>Précompté</option><option>Linéaire</option></select></div>
+<div><label for="s-disttype">Type de distributeur</label><input id="s-disttype" type="text" placeholder="Tous"></div>
+<div><label for="s-dist">Distributeur ou groupement nommé</label><input id="s-dist" type="text" placeholder="Tous"></div>
+<div><label for="s-enroll">Inscription requise</label><select id="s-enroll"><option>Non</option><option>Oui</option></select></div>
+<div><label for="s-channel">Mode de vente</label><input id="s-channel" type="text" placeholder="Tous"></div>
+<div><label for="s-free">Critères libres de la garantie</label><input id="s-free" type="text" placeholder="Aucun"></div>
+<div><label for="s-age">Âge du souscripteur</label><input id="s-age" type="text" placeholder="Tous"></div>
+<div><label for="s-seniority">Ancienneté de la garantie</label><input id="s-seniority" type="text" placeholder="Toutes"></div>
+</div>
+<div style="margin-top: 14px; font-size: 13px; color: #4A5868">Un critère vide signifie « tous » ; un critère à plusieurs valeurs signifie « l'une d'elles ». Le périmètre est une conjonction : pour « produit A ou distributeur B », créer deux règles. Il n'exprime pas d'exclusion : lister les produits inclus.</div>
+</section>
+</div>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 6px; font-size: 16px; font-weight: 600">Couples apport + suivi autorisés</h2>
+<div style="font-size: 13px; color: #4A5868; margin-bottom: 14px">Une garantie dont le couple n'est pas dans la grille passe en attente (ON_HOLD) avec l'anomalie « taux hors grille ». L'apport est dû pendant les 365 premiers jours à partir de la date d'effet de la garantie ; une prime à cheval sur la limite est répartie au prorata des jours.</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px">
+<sc-for list="{{ couples }}" as="c" hint-placeholder-count="4">
+<button class="{{ c.cls }}" aria-pressed="{{ c.pressed }}" onClick="{{ c.toggle }}">{{ c.label }}</button>
+</sc-for>
+</div>
+<div style="margin-top: 12px; font-size: 14px">{{ gridSummary }}</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Politique de reprise · seuils d'ancienneté (AGE_STEPS)</h2>
+<table>
+<thead><tr><th>Ancienneté de la garantie</th><th class="num">Part reprise</th><th>Natures</th></tr></thead>
+<tbody>
+<tr><td>365 jours au plus</td><td class="num">100 %</td><td>Apport</td></tr>
+<tr><td>De 366 à 730 jours</td><td class="num">50 %</td><td>Apport</td></tr>
+<tr><td>Au-delà</td><td class="num">0 %</td><td>—</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Déclencheurs : résiliation (TERMINATION), renonciation (WITHDRAWAL). Bornes incluses ; ancienneté mesurée de la date d'effet de la garantie à la date d'effet de l'événement de fin. Le décès ne déclenche aucune reprise. L'adhésion sans suite (NOT_PURSUED) est une règle générale du moteur, hors politique : elle reprend 100 % des lignes LINEAR, ACQUISITION, SERVICING et FEE acquises sur l'adhésion, apurées comprises, quelle que soit la règle.</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Versions et conflits</h2>
+<table>
+<thead><tr><th>Version</th><th>Validité</th><th>Couples</th><th>Statut</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>01/01/2026 au 31/12/2026</td><td>30 + 10, 20 + 10</td><td><span class="tag ok">ACTIVE</span></td></tr>
+<tr><td>2</td><td>01/01/2027 au 31/12/2027</td><td>{{ gridShort }}</td><td><span class="{{ statusTag }}">{{ status }}</span></td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 14px"><span class="tag ok">Aucun conflit</span> <span style="color: #4A5868; font-size: 13px">Aucune autre version du groupe BASE, de priorité 10, ne recouvre ce périmètre en 2027. Une version APPROVED devient ACTIVE à sa date de début et RETIRED à sa date de fin.</span></div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const picked = st.picked || { '25 + 10': true, '20 + 10': true };
+// Rule version statuses are DRAFT, APPROVED, ACTIVE, RETIRED: there is no intermediate "submitted" status.
+const stage = st.stage || 'draft';
+const all = ['30 + 10', '25 + 10', '20 + 10', '20 + 15'];
+const couples = all.map((label) => ({
+label: label,
+cls: 'chip' + (picked[label] ? ' on' : ''),
+pressed: picked[label] ? 'true' : 'false',
+toggle: () => { const next = Object.assign({}, picked); next[label] = !next[label]; this.setState({ picked: next }); }
+}));
+const chosen = all.filter((l) => picked[l]);
+return {
+couples: couples,
+gridShort: chosen.length ? chosen.join(', ') : 'aucun',
+gridSummary: chosen.length ? chosen.length + ' couple(s) autorisé(s) en 2027 : ' + chosen.join(', ') + '.' : 'Aucun couple autorisé : la règle ne produira aucune ligne.',
+status: 'DRAFT',
+statusTag: 'tag mute',
+isDraft: true,
+refused: stage === 'refused',
+tryApprove: () => this.setState({ stage: 'refused' })
+};
+}
+}
+</script>
+</body>
+</html>

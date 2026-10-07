@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Contrôles et anomalies</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:11px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html" class="on">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Période de septembre 2026</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : opérateur</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Contrôles et anomalies</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868">{{ summary }}</div>
+</div>
+<a class="btn" href="Main.dc.html">Retour à la période</a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px">
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Contrôles exécutés</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">34</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Sans anomalie</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">31</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Avertissements ouverts</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">{{ openCount }}</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Bloquants ouverts</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">0</div></div>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Anomalies de la période</h2>
+<div style="min-width: 960px">
+<div class="row head" style="grid-template-columns: 1.3fr 1.1fr 2.2fr .9fr 1.6fr"><div>Contrôle</div><div>Objet</div><div>Constat</div><div>Gravité</div><div>Décision</div></div>
+<sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 1.3fr 1.1fr 2.2fr .9fr 1.6fr; align-items: center">
+<div>{{ it.control }}</div>
+<div><a href="Distributeur.dc.html">{{ it.subject }}</a></div>
+<div>{{ it.finding }}</div>
+<div><span class="{{ it.tagClass }}">{{ it.severity }}</span></div>
+<div>
+<sc-if value="{{ it.open }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<button class="btn sec" onClick="{{ it.fix }}">Corrigée</button>
+<button class="btn sec" onClick="{{ it.accept }}">Accepter</button>
+<button class="btn sec" onClick="{{ it.defer }}">Reporter</button>
+</div>
+</sc-if>
+<sc-if value="{{ it.closed }}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px"><span class="tag ok">{{ it.decision }}</span><div style="color: #4A5868; margin-top: 4px">{{ it.trace }}</div></div>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 16px 18px 6px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Liste de contrôle de la période</h2>
+<div style="font-size: 14px; color: #4A5868">{{ checkCount }}</div>
+</div>
+<div style="min-width: 560px">
+<sc-for list="{{ checks }}" as="c" hint-placeholder-count="6">
+<div class="row" style="grid-template-columns: 3fr .9fr 1fr; align-items: center">
+<div>{{ c.label }}</div>
+<div><span class="{{ c.tagClass }}">{{ c.state }}</span></div>
+<div><button class="btn sec" onClick="{{ c.toggle }}">{{ c.action }}</button></div>
+</div>
+</sc-for>
+</div>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Liste de contrôle du cycle mensuel (exigence CTL-03), cochée par l'opérateur avant la validation des montants.</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Catalogue des contrôles (extrait)</h2>
+<table>
+<thead><tr><th>Famille</th><th>Contrôle</th><th>Seuil</th><th>Gravité</th><th>Résultat</th></tr></thead>
+<tbody>
+<tr><td>Complétude</td><td>Tous les flux attendus sont reçus</td><td>—</td><td><span class="tag ko">Bloquant</span></td><td><span class="tag ok">Conforme</span></td></tr>
+<tr><td>Calcul</td><td>Variation par distributeur d'un mois sur l'autre</td><td>30 %</td><td><span class="tag warn">Avertissement</span></td><td>2 anomalies</td></tr>
+<tr><td>Reprises</td><td>Résiliation précoce sans reprise</td><td>—</td><td><span class="tag warn">Avertissement</span></td><td>1 anomalie</td></tr>
+<tr><td>Surcommissions</td><td>Versement sans accord signé</td><td>—</td><td><span class="tag ko">Bloquant</span></td><td><span class="tag ok">Conforme</span></td></tr>
+<tr><td>Paiement</td><td>Total du lot égal à la somme des bordereaux payés et à la somme des lignes rattachées à ses ordres, soldes antérieurs reportés compris</td><td>0,00 €</td><td><span class="tag ko">Bloquant (toujours)</span></td><td><span class="tag mute">À la préparation du paiement</span></td></tr>
+<tr><td>Flux externes</td><td>Commission externe différente de l'assiette multipliée par le taux</td><td>0,01 €</td><td><span class="tag warn">Avertissement</span></td><td><span class="tag ok">Conforme</span></td></tr>
+<tr><td>Escompte</td><td>Créance au-delà d'un plafond</td><td>50 000 €</td><td><span class="tag info">Information</span></td><td>1 signalement</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868; line-height: 1.45">Seuil, gravité, périmètre et activation de chaque contrôle sont paramétrables. Une information s'affiche ; un avertissement demande une décision tracée (corrigée, acceptée avec justification ou reportée) mais n'empêche rien ; un contrôle bloquant interdit la transition suivante tant que l'anomalie n'est ni corrigée ni acceptée avec justification.</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const done = (this.state && this.state.done) || {};
+const base = [
+{ id: 'a1', control: 'Variation par distributeur', subject: 'Cabinet P27310', finding: 'De 2 000 € en août à 3 100 € en septembre, soit +55 % (seuil 30 %). Douze adhésions nouvelles.', severity: 'Avertissement', sev: 'warn' },
+{ id: 'a2', control: 'Variation par distributeur', subject: 'Cabinet P20455', finding: 'De 4 800 € à 2 950 €, soit −39 % (seuil 30 %). Trois résiliations collectives.', severity: 'Avertissement', sev: 'warn' },
+{ id: 'a3', control: 'Résiliation précoce sans reprise', subject: 'Contrat AD-003865', finding: 'Résiliation au 140e jour, mode linéaire : aucune reprise attendue en linéaire, à confirmer.', severity: 'Avertissement', sev: 'warn' },
+{ id: 'a4', control: 'Créance au-delà d\'un plafond', subject: 'Cabinet P40218', finding: 'Créance de 52 300 € pour un plafond de contrôle de 50 000 €.', severity: 'Information', sev: 'info' }
+];
+const set = (id, label) => () => { const next = Object.assign({}, done); next[id] = label; this.setState({ done: next }); };
+const items = base.map((b) => ({
+control: b.control, subject: b.subject, finding: b.finding, severity: b.severity,
+tagClass: 'tag ' + b.sev,
+open: !done[b.id] && b.sev === 'warn',
+closed: !!done[b.id] || b.sev === 'info',
+decision: done[b.id] || 'Pour information',
+trace: done[b.id] ? (done[b.id] === 'Corrigée' ? 'Opérateur, 02/10/2026' : 'Opérateur, 02/10/2026, justification enregistrée') : 'Aucune décision requise',
+// ControlResult.decision: OPEN, FIXED, ACCEPTED, DEFERRED
+fix: set(b.id, 'Corrigée'),
+accept: set(b.id, 'Acceptée'),
+defer: set(b.id, 'Reportée')
+}));
+const openCount = items.filter((i) => i.open).length;
+// Period checklist (CTL-03): checkbox state held in component state.
+const checked = (this.state && this.state.checked) || {};
+const checkDefs = [
+['k1', 'Flux attendus reçus'], ['k2', 'Rejets d\'import traités'], ['k3', 'Anomalies bloquantes traitées'],
+['k4', 'Avertissements décidés'], ['k5', 'Ajustements approuvés'], ['k6', 'Totaux comparés au mois précédent']
+];
+const checks = checkDefs.map((c) => ({
+label: c[1], checked: !!checked[c[0]],
+state: checked[c[0]] ? 'Coché' : 'À faire',
+tagClass: 'tag ' + (checked[c[0]] ? 'ok' : 'mute'),
+action: checked[c[0]] ? 'Décocher' : 'Cocher',
+toggle: () => { const next = Object.assign({}, checked); next[c[0]] = !checked[c[0]]; this.setState({ checked: next }); }
+}));
+const checkedCount = checks.filter((c) => c.checked).length;
+return {
+items: items,
+checks: checks,
+checkCount: checkedCount + ' / ' + checks.length + ' cochés',
+openCount: String(openCount),
+summary: openCount === 0
+? 'Toutes les anomalies ont reçu une décision tracée (auteur, date, justification) : la période peut être validée.'
+: openCount + ' avertissement(s) attendent une décision. Aucun contrôle bloquant en échec.'
+};
+}
+}
+</script>
+</body>
+</html>

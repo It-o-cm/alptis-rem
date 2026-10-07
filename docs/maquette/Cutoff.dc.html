@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>État de cut-off</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:11px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.row.total{font-weight:600;background:#F3F5F8;border-bottom:0}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+label{display:block;font-size:13px;font-weight:600;color:#3D4A59;margin-bottom:6px}
+select{box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9AA7B5;border-radius:6px;font:400 14px 'IBM Plex Sans',sans-serif;color:#16202C;background:#fff}
+.chip{min-height:44px;padding:10px 16px;border-radius:22px;border:1px solid #9AA7B5;background:#fff;color:#16202C;font:500 14px 'IBM Plex Sans',sans-serif;cursor:pointer}
+.chip.on{background:#0E5A8A;border-color:#0E5A8A;color:#fff}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html" class="on">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Comptabilité · Pilotage</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : contrôleur Finance</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">État de cut-off</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868; max-width: 80ch">Ce qui était prévu, ce qui est acquis, ce qui a été payé et ce qui reste, à une date d'arrêté. Les deux dernières colonnes sont calculées.</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end">
+<div><label for="c-date">Date d'arrêté</label><select id="c-date"><option>30 septembre 2026</option><option>31 août 2026</option><option>30 juin 2026</option></select></div>
+<button class="btn sec">Exporter en tableur</button>
+</div>
+</div>
+
+<div role="tablist" aria-label="Maille de lecture" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<span style="font-size: 14px; color: #4A5868">Lire par :</span>
+<sc-for list="{{ views }}" as="v" hint-placeholder-count="4">
+<button role="tab" class="{{ v.cls }}" onClick="{{ v.pick }}">{{ v.label }}</button>
+</sc-for>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<div style="min-width: 1020px">
+<div class="row head" style="grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr 1fr 1fr"><div>{{ firstCol }}</div><div class="num">Prévisionnel</div><div class="num">Acquis cumulé</div><div class="num">Régularisations cumulées</div><div class="num">Payé cumulé</div><div class="num">Solde à payer</div><div class="num">Reste à acquérir</div></div>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr 1fr 1fr">
+<div><div>{{ r.label }}</div><div style="font-size: 12px; color: #4A5868; margin-top: 2px">{{ r.note }}</div></div>
+<div class="num">{{ r.forecast }}</div><div class="num">{{ r.earned }}</div><div class="num">{{ r.adjust }}</div><div class="num">{{ r.paid }}</div>
+<div class="num" style="{{ r.balanceStyle }}">{{ r.balance }}</div><div class="num">{{ r.remaining }}</div>
+</div>
+</sc-for>
+<div class="row total" style="grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr 1fr 1fr">
+<div>Total affiché</div>
+<div class="num">{{ total.forecast }}</div><div class="num">{{ total.earned }}</div><div class="num">{{ total.adjust }}</div><div class="num">{{ total.paid }}</div><div class="num">{{ total.balance }}</div><div class="num">{{ total.remaining }}</div>
+</div>
+</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Définition des colonnes</h2>
+<table>
+<tbody>
+<tr><td style="font-weight: 600; white-space: nowrap">Prévisionnel</td><td>Cumul des lignes prévisionnelles, régularisations comprises (résiliation, impayé, avenant).</td></tr>
+<tr><td style="font-weight: 600; white-space: nowrap">Acquis cumulé</td><td>Cumul des commissions acquises sur les primes encaissées.</td></tr>
+<tr><td style="font-weight: 600; white-space: nowrap">Régularisations cumulées</td><td>Cumul des reprises, des régularisations d'escompte et des ajustements.</td></tr>
+<tr><td style="font-weight: 600; white-space: nowrap">Payé cumulé</td><td>Cumul des paiements exécutés, avances d'escompte comprises.</td></tr>
+<tr><td style="font-weight: 600; white-space: nowrap">Solde à payer</td><td>Acquis cumulé + régularisations cumulées − payé cumulé. Un solde négatif est une créance sur le distributeur.</td></tr>
+<tr><td style="font-weight: 600; white-space: nowrap">Reste à acquérir</td><td>Prévisionnel − acquis cumulé.</td></tr>
+</tbody>
+</table>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const view = (this.state && this.state.view) || 'coverage';
+const fmt = (n) => {
+const neg = n < 0;
+const parts = Math.abs(n).toFixed(2).split('.');
+const int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+return (neg ? '−' : '') + int + ',' + parts[1] + ' €';
+};
+const data = {
+coverage: {
+first: 'Garantie',
+rows: [
+['AD-005010 · Santé Select, linéaire 15 %', '6 encaissements, 5 payés', 180, 90, 0, 75],
+['AD-004880 · Santé Select, linéaire 15 %', 'Résiliée au 6e mois, tout payé', 90, 90, 0, 90],
+['AD-002981 · Santé Select, 30 + 10', 'Résiliée au 200e jour : reprise d\'apport', 280, 280, -210, 280],
+['AD-004890 · Santé Select, 30 + 10, escomptée', 'Avance de 480 €, 360 € apurés', 480, 360, 0, 480]
+]
+},
+distributor: {
+first: 'Distributeur',
+rows: [
+['Cabinet P13897', 'Net payable de septembre', 12400, 9150, -210, 8830],
+['Cabinet P20455', 'Net payable de septembre', 31000, 24600, 0, 21650],
+['Groupement G012', 'Net payable de septembre', 205000, 160300, -1200, 140693.8],
+['Cabinet P31870', 'Compte débiteur après reprises', 9800, 7400, -2640, 6000]
+]
+},
+product: {
+first: 'Produit',
+rows: [
+['Santé Select', 'Individuel', 6420000, 4815000, -96200, 4520300],
+['Prévoyance Pro+', 'Individuel', 2150000, 1612500, -31400, 1498000],
+['PER individuel', 'Épargne retraite', 310000, 232000, -4100, 201900]
+]
+},
+entity: {
+first: 'Entité',
+rows: [
+['Alptis Assurances', 'Toutes gammes et tous produits', 28640000, 21480000, -412300, 18786719.75]
+]
+}
+};
+const d = data[view];
+const sum = [0, 0, 0, 0, 0, 0];
+const rows = d.rows.map((r) => {
+const balance = r[3] + r[4] - r[5];
+const remaining = r[2] - r[3];
+[r[2], r[3], r[4], r[5], balance, remaining].forEach((v, i) => { sum[i] += v; });
+return {
+label: r[0], note: r[1],
+forecast: fmt(r[2]), earned: fmt(r[3]), adjust: fmt(r[4]), paid: fmt(r[5]),
+balance: fmt(balance), remaining: fmt(remaining),
+balanceStyle: balance < 0 ? 'color: #8F1D16; font-weight: 600' : 'font-weight: 600'
+};
+});
+const defs = [['coverage', 'Garantie'], ['distributor', 'Distributeur'], ['product', 'Produit'], ['entity', 'Entité']];
+return {
+firstCol: d.first,
+rows: rows,
+total: { forecast: fmt(sum[0]), earned: fmt(sum[1]), adjust: fmt(sum[2]), paid: fmt(sum[3]), balance: fmt(sum[4]), remaining: fmt(sum[5]) },
+views: defs.map((v) => ({ label: v[1], cls: 'chip' + (view === v[0] ? ' on' : ''), pick: () => this.setState({ view: v[0] }) }))
+};
+}
+}
+</script>
+</body>
+</html>

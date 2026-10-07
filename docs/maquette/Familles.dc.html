@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Familles de calcul</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #E6EAF0;vertical-align:middle}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+label{display:block;font-size:13px;font-weight:600;color:#3D4A59;margin-bottom:6px}
+input,select{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9AA7B5;border-radius:6px;font:400 14px 'IBM Plex Sans',sans-serif;color:#16202C;background:#fff}
+td input,td select{min-width:110px}
+.chip{min-height:44px;padding:10px 16px;border-radius:22px;border:1px solid #9AA7B5;background:#fff;color:#16202C;font:500 14px 'IBM Plex Sans',sans-serif;cursor:pointer}
+.chip.on{background:#0E5A8A;border-color:#0E5A8A;color:#fff}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.out{margin-top:18px;padding:14px 16px;background:#EEF3F8;border-radius:6px;font-size:14px;line-height:1.5}
+.help{font-size:13px;color:#4A5868;margin:0 0 16px;line-height:1.45;max-width:80ch}
+h3{margin:22px 0 10px;font-size:14px;font-weight:600}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html" class="on">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Règles · Paramètres par famille</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : administrateur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Paramètres propres à chaque famille de calcul</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868; max-width: 90ch">L'identité, le périmètre, le groupe d'exclusion et la priorité sont communs à toutes les règles (<a href="Regle.dc.html">écran de paramétrage</a>, qui détaille une règle précomptée). Chaque version de règle porte aussi sa « Nature de ligne produite (output_nature) ». Seul le bloc ci-dessous change selon la famille choisie, parmi les neuf familles de calcul : linéaire, précomptée, escompte, barème sur cumul, portefeuille sous conditions, quote-part d'une autre commission, encours, montant fixe, commission externe.</div>
+</div>
+
+<div role="tablist" aria-label="Famille de calcul" style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="9">
+<button role="tab" class="{{ t.cls }}" onClick="{{ t.pick }}">{{ t.label }}</button>
+</sc-for>
+</div>
+
+<sc-if value="{{ isLinear }}" hint-placeholder-val="{{ true }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Linéaire · LINEAR</h2>
+<p class="help">Une ligne par prime encaissée, au taux choisi par le distributeur sur la garantie. Exemple : Santé Pro+, Prévoyance Pro+ (0 à 20 % par pas de 5).</p>
+<div class="form">
+<div><label for="l1">Grille des taux autorisés</label><select id="l1"><option>Intervalle avec pas</option><option>Liste de valeurs</option></select></div>
+<div><label for="l2">Taux minimal (%)</label><input id="l2" type="text" defaultValue="0"></div>
+<div><label for="l3">Taux maximal (%)</label><input id="l3" type="text" defaultValue="20"></div>
+<div><label for="l4">Pas (%)</label><input id="l4" type="text" defaultValue="5"></div>
+<div><label for="l5">Taux distinct par collège</label><select id="l5"><option>Non</option><option>Oui : cadres et non-cadres</option></select></div>
+<div><label for="l6">Assiette</label><select id="l6"><option>Prime encaissée hors taxes</option></select></div>
+<div><label for="l7">Politique de reprise</label><select id="l7"><option>Aucune (NONE)</option><option>Seuils d'ancienneté (AGE_STEPS)</option><option>Prorata temporis (PRO_RATA)</option></select></div>
+<div><label for="l8">Origine du taux (rateSource)</label><select id="l8"><option>COVERAGE : taux porté par la garantie, contrôlé contre la grille</option><option>RULE : taux fixé par la règle, sans contrôle de grille (1,20 % dès l'année 6 en épargne retraite, 0,30 % sur arbitrage, 2 % d'une opération de rentrée)</option></select></div>
+<div><label for="l9">Rang minimal dans l'année civile (minRankInCalendarYear)</label><input id="l9" type="text" placeholder="Vide (2 pour les arbitrages)"></div>
+</div>
+<div class="out"><strong>Ce que produit la règle.</strong> Encaissement de 100,00 € sur une garantie à 15 % : une ligne LINEAR de 15,00 €. Une garantie à 12 % n'est pas dans la grille (0, 5, 10, 15, 20) : l'événement attend (ON_HOLD) avec l'anomalie « taux hors grille ». Aucune reprise sur le linéaire (hypothèse H-05) ; l'adhésion sans suite est une règle générale du moteur, hors politique de reprise : 100 % des lignes LINEAR, ACQUISITION, SERVICING et FEE acquises sur l'adhésion, apurées comprises.</div>
+<div class="out"><strong>Épargne retraite et emprunteur.</strong> La famille linéaire porte aussi les versements d'un PER (initial, libre, programmé en mode linéaire) : le taux, porté par la garantie, est le taux de frais sur versement moins 0,5 point. Elle porte les versements programmés à partir de la 6e année d'un contrat PER escompté, à 1,20 % (périmètre sur l'ancienneté de la garantie, comptée à partir du premier versement programmé encaissé), et les arbitrages avec le paramètre « rang minimal dans l'année civile » = 2 : 0,30 % du montant arbitré (hypothèse H-17). Elle porte enfin les taux de l'emprunteur, avec le type de tarif et la durée du prêt comme critères de périmètre.</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isUpfront }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Précomptée · UPFRONT</h2>
+<p class="help">Deux lignes par prime encaissée pendant la première année de la garantie (apport et suivi), une seule ensuite (suivi). Exemple : Santé Select 30 + 10. L'<a href="Regle.dc.html">écran de paramétrage</a> en montre une version complète.</p>
+<div class="form">
+<div><label for="u1">Couples apport + suivi autorisés</label><input id="u1" type="text" defaultValue="30 + 10, 20 + 10"></div>
+<div><label for="u2">Première année (jours)</label><input id="u2" type="text" defaultValue="365"></div>
+<div><label for="u3">Taux distinct par collège</label><select id="u3"><option>Non</option><option>Oui : cadres et non-cadres</option></select></div>
+<div><label for="u4">Assiette</label><select id="u4"><option>Prime encaissée hors taxes</option></select></div>
+<div><label for="u5">Politique de reprise</label><select id="u5"><option>Seuils d'ancienneté (AGE_STEPS)</option><option>Prorata temporis (PRO_RATA)</option><option>Aucune (NONE)</option></select></div>
+<div><label for="u6">Natures reprises</label><select id="u6"><option>Apport seul</option><option>Apport et suivi</option><option>Toutes</option></select></div>
+<div><label for="u7">Événements déclencheurs de la reprise</label><input id="u7" type="text" defaultValue="Résiliation, renonciation"></div>
+</div>
+<h3>Seuils d'ancienneté de la reprise</h3>
+<div style="overflow-x: auto">
+<table>
+<thead><tr><th>Ancienneté de la garantie, jusqu'à (jours)</th><th>Part reprise (%)</th></tr></thead>
+<tbody>
+<tr><td><input aria-label="Seuil 1, jours" type="text" defaultValue="365"></td><td><input aria-label="Seuil 1, part reprise" type="text" defaultValue="100"></td></tr>
+<tr><td><input aria-label="Seuil 2, jours" type="text" defaultValue="730"></td><td><input aria-label="Seuil 2, part reprise" type="text" defaultValue="50"></td></tr>
+</tbody>
+</table>
+</div>
+<div class="out"><strong>Ce que produit la règle.</strong> Encaissement de 100,00 € sur une garantie 30 + 10 dans ses 365 premiers jours : une ligne ACQUISITION de 30,00 € et une ligne SERVICING de 10,00 € ; à partir de la 2e année, la seule ligne SERVICING de 10,00 €. Une prime à cheval sur la limite est répartie au prorata des jours. Résiliation à effet du 200e jour après 210 € d'apport net acquis : une ligne CLAWBACK de −210,00 €. Le décès ne déclenche aucune reprise ; l'adhésion sans suite est une règle générale du moteur, hors politique, comme le remboursement anticipé d'un prêt emprunteur (EARLY_REPAYMENT, dans les 36 mois, paramètre de la règle). Le sans-suite reprend 100 % des lignes LINEAR, ACQUISITION, SERVICING et FEE acquises sur l'adhésion, lignes apurées (OFFSET) comprises ; l'avance est régularisée par sa rupture et la RCD par la sortie de la base cumulée. Passage du linéaire au précompté après 365 jours : aucun apport (hypothèse H-52).</div>
+<div class="out"><strong>Emprunteur :</strong> précompté ouvert au-delà d'une durée de prêt (10 ans, ou 6 ans selon le produit), toujours escompté de droit ; 40 % = 30 + 10, 50 % = 35 + 15. Paramètres earlyRepaymentMonths (36) et recalculationRate (taux linéaire du recalcul).</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isAdvance }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Escompte · ADVANCE</h2>
+<p class="help">Verse d'avance les commissions des douze premiers mois, puis les récupère sur les commissions acquises. La règle s'ajoute à la règle de base de la garantie ; elle ne la remplace pas.</p>
+<div class="form">
+<div><label for="a1">Base de l'avance</label><select id="a1"><option>Prime annualisée hors taxes</option><option>Estimée sur les primes émises (base 360)</option></select></div>
+<div><label for="a2">Natures avancées</label><select id="a2"><option>Apport et suivi (précompté), ou linéaire</option></select></div>
+<div><label for="a3">Convention exigée</label><select id="a3"><option>Oui, au statut VALID</option><option>Non : sans convention (emprunteur de droit, épargne retraite)</option></select></div>
+<div><label for="a4">Délai de solde (jours, paramètre de l'entité)</label><input id="a4" type="text" defaultValue="360"></div>
+<div><label for="a5">Tolérance de solde (€, paramètre de l'entité)</label><input id="a5" type="text" defaultValue="1,00"></div>
+<div><label for="a6">Adhésions éligibles</label><select id="a6"><option>Individuelles, hors prime unique et hors tiers payant</option></select></div>
+<div><label for="a7">Taux propre (rate)</label><input id="a7" type="text" placeholder="Vide, ou 8 % en épargne retraite"></div>
+<div><label for="a8">Apurement (offsetting)</label><select id="a8"><option>Oui</option><option>Non (épargne retraite)</option></select></div>
+<div><label for="a9">Règle de solde (settlementRule)</label><select id="a9"><option>DAYS_360</option><option>FIFTH_ANNIVERSARY</option></select></div>
+<div><label for="a10">Rappel trimestriel et réajustement annuel (épargne retraite)</label><select id="a10"><option>Non</option><option>Oui</option></select></div>
+<div><label for="a11">Seuil de tolérance du rappel et du réajustement (€)</label><input id="a11" type="text" placeholder="Sans objet hors épargne retraite"></div>
+</div>
+<p class="help" style="margin-top: 14px">Portés par la convention du distributeur : validité (12 mois au plus), produits couverts, délai d'anticipation en jours (valeurs en usage : 0, 120, 180, 240, 270, 300, 360), versement fractionné éventuel, plafond d'adhésions, rang d'impayé de rupture.</p>
+<h3>Éligibilité d'une garantie · huit conditions cumulatives</h3>
+<ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.5; color: #3D4A59; max-width: 90ch">
+<li>Convention d'escompte au statut VALID, distributeur non exclu de l'escompte.</li>
+<li>Produit couvert par la convention et adhésion individuelle.</li>
+<li>Date d'enregistrement de l'adhésion entre le début de la convention et sa fin plus 5 jours.</li>
+<li>Date d'effet de la garantie entre le début de la convention et sa fin plus le délai d'anticipation.</li>
+<li>Garantie ni à prime unique ni de tiers payant, sans commission dans une période antérieure.</li>
+<li>Distributeur inchangé depuis l'enregistrement.</li>
+<li>Plafond d'adhésions de la convention non atteint (100 pour un distributeur nouveau ou sans portefeuille) ; les garanties candidates sont admises dans l'ordre de leur date d'enregistrement.</li>
+<li>Garantie présentée à l'escompte par le distributeur (attribut « escompté » de son choix de rémunération).</li>
+</ol>
+<h3>Événements de rupture</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><span class="tag info">Résiliation</span><span class="tag info">Renonciation</span><span class="tag info">Sans suite</span><span class="tag info">Contentieux</span><span class="tag info">Impayé au rang de la convention</span><span class="tag info">Ordre de remplacement</span><span class="tag info">Cession remboursée par le cédant</span><span class="tag info">Rachat anticipé d'un prêt</span><span class="tag info">Clôture de la convention</span></div>
+<p class="help" style="margin: 10px 0 0">Impayé : 2e par défaut, 3e si la convention le prévoit. Le décès n'est pas un événement de rupture : l'escompte reste en cours et se solde au 360e jour.</p>
+<div class="out"><strong>Ce que produit la règle.</strong> Prime annualisée de 1 200 €, couple 30 + 10 : deux lignes ADVANCE de 360,00 € et 120,00 €. Chaque commission acquise ensuite, dont la période couverte débute avant le premier anniversaire de la date d'effet, passe au statut OFFSET jusqu'à 480 € apurés ; au-delà de cet anniversaire, elle est payée normalement. Écart encore négatif 360 jours après la plus tardive des dates de paiement et d'effet : ligne ADVANCE_ADJUSTMENT de reprise, sauf sous la tolérance de solde (hypothèse H-40). Voir <a href="Escompte.dc.html">la convention d'escompte</a>.</div>
+<div class="out"><strong>Épargne retraite et emprunteur.</strong> La famille escompte porte aussi l'avance du PER : 8 % des versements programmés annualisés, sans convention, non compensée par les commissions acquises, soldée au 5e anniversaire du premier versement programmé encaissé, sans régularisation, avec rappel trimestriel et réajustement annuel. Les versements programmés des années 1 à 5 sont couverts par cette règle et marqués traités sans ligne (ils ne passent pas ON_HOLD). Le réajustement annuel a lieu à chaque anniversaire du premier versement programmé, pendant les cinq premières années : une hausse donne un « supplément d'escompte » (ligne ADVANCE), une baisse une ligne CLAWBACK. Elle porte l'avance de première année de l'emprunteur, de droit, sans convention. En versement fractionné, l'écart Δ est calculé sur le total de l'avance due ; une rupture annule la part non versée.</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isTiered }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Barème sur cumul · TIERED</h2>
+<p class="help">Rémunère un volume cumulé par paliers et verse chaque mois la différence avec le droit du mois précédent. Exemple : RCD santé 2026. Réservée aux distributeurs inscrits dont l'avenant est signé.</p>
+<div class="form">
+<div><label for="t1">Grandeur cumulée</label><select id="t1"><option>Primes annualisées des adhésions nouvelles</option><option>Nombre de contrats</option><option>NET_SCHEDULED_PAYMENTS : versement programmé annualisé × (1 − taux de frais)</option></select></div>
+<div><label for="t2">Cumul depuis</label><select id="t2"><option>Le 1er janvier</option></select></div>
+<div><label for="t3">Lecture du barème</label><select id="t3"><option>Par tranche (MARGINAL)</option><option>Taux du palier sur le tout (WHOLE)</option></select></div>
+<div><label for="t4">Fréquence de versement</label><select id="t4"><option>Mensuelle</option><option>Annuelle</option></select></div>
+<div><label for="t11">Fréquence de calcul (calculationFrequency)</label><select id="t11"><option>MONTHLY (RCD)</option><option>ANNUAL (complément retraite)</option></select></div>
+</div>
+<h3>Paliers</h3>
+<div style="overflow-x: auto">
+<table>
+<thead><tr><th>À partir de (€)</th><th>Jusqu'à (€)</th><th>Taux (%)</th><th>Dès le premier euro</th></tr></thead>
+<tbody>
+<tr><td><input aria-label="Palier 1, à partir de" type="text" defaultValue="20 000"></td><td><input aria-label="Palier 1, jusqu'à" type="text" defaultValue="45 000"></td><td><input aria-label="Palier 1, taux" type="text" defaultValue="3"></td><td>Non</td></tr>
+<tr><td><input aria-label="Palier 2, à partir de" type="text" defaultValue="45 001"></td><td><input aria-label="Palier 2, jusqu'à" type="text" defaultValue="75 000"></td><td><input aria-label="Palier 2, taux" type="text" defaultValue="4"></td><td>Non</td></tr>
+<tr><td><input aria-label="Palier 3, à partir de" type="text" defaultValue="75 001"></td><td><input aria-label="Palier 3, jusqu'à" type="text" defaultValue="100 000"></td><td><input aria-label="Palier 3, taux" type="text" defaultValue="5"></td><td>Non</td></tr>
+<tr><td><input aria-label="Palier 4, à partir de" type="text" defaultValue="100 001"></td><td><input aria-label="Palier 4, jusqu'à" type="text" placeholder="Sans limite"></td><td><input aria-label="Palier 4, taux" type="text" defaultValue="5"></td><td>Oui</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Conditions de versement et reprise</h3>
+<div class="form">
+<div><label for="t5">Taux d'impayés à la date du calcul inférieur à (%)</label><input id="t5" type="text" defaultValue="5"></div>
+<div><label for="t10">Premier palier atteint</label><select id="t10"><option>Exigé</option><option>Non exigé</option></select></div>
+<div><label for="t8">Condition d'octroi (alerte de contrôle, sans suspension) : taux de réclamations sur 12 mois glissants inférieur à (%)</label><input id="t8" type="text" defaultValue="5"></div>
+<div><label for="t9">Modes de vente éligibles</label><input id="t9" type="text" defaultValue="Papier, Alptis Connect ou Espace Pro, signature électronique déportée"></div>
+<div><label for="t6">Si la condition manque</label><select id="t6"><option>Mois perdu (FORFEIT)</option><option>Rattrapage le mois suivant (DEFER)</option></select></div>
+<div><label for="t7">Reprise par adhésion</label><select id="t7"><option>100 % sous 12 mois, 50 % jusqu'à 24</option><option>Prorata temporis</option><option>Aucune</option></select></div>
+</div>
+<div class="out"><strong>Ce que produit la règle.</strong> Cumul de 30 000 € fin février puis 60 000 € fin mars : droit de 300 € puis de 1 350 €, donc une ligne RCD de 300,00 € en février et de 1 050,00 € en mars, répartie entre les adhésions du mois au prorata de leur prime annualisée. Reprise sur résiliation, rachat ou mise en réduction ; le décès n'en déclenche aucune. Un taux de réclamations de 5 % ou plus ne suspend pas le calcul : il produit une alerte de contrôle (hypothèse H-56), comme les seuils de sans-suite (12 %), de radiation du portefeuille (20 %) et de radiation sur production nouvelle (12 %). Le taux d'impayés, lui, annule la ligne du mois.</div>
+<div class="out"><strong>Épargne retraite.</strong> La famille barème sur cumul porte aussi la rémunération complémentaire retraite, en lecture globale (WHOLE) : paliers de 10 / 12 / 15 / 20 / 25 % à partir de 0 / 10 000 / 14 000 / 20 000 / 50 000 €, borne basse incluse. Elle est calculée en fin d'année ; son rappel est la politique de reprise de la règle (hypothèse H-16).</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isPortfolio }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Portefeuille sous conditions · PORTFOLIO</h2>
+<p class="help">Surcommission annuelle sur les primes encaissées, en tout ou rien : toutes les conditions doivent être remplies. Exemple : RCP santé 2026.</p>
+<div class="form">
+<div><label for="p1">Assiette</label><select id="p1"><option>Primes encaissées de l'exercice hors taxes et hors part de l'association, tout le portefeuille</option><option>Primes des adhésions de l'année seulement</option></select></div>
+<div><label for="p2">Taux</label><select id="p2"><option>Fixe</option><option>Selon le nombre d'adhésions nouvelles</option></select></div>
+<div><label for="p3">Taux fixe (%)</label><input id="p3" type="text" defaultValue="4"></div>
+<div><label for="p4">Période de calcul</label><select id="p4"><option>Janvier N+1, calculée début février</option></select></div>
+<div><label for="p5">Versement</label><select id="p5"><option>Avant le 15 février N+1</option></select></div>
+<div><label for="p6">Politique de reprise</label><select id="p6"><option>Aucune</option></select></div>
+</div>
+<h3>Conditions cumulatives</h3>
+<div style="overflow-x: auto">
+<table>
+<thead><tr><th>Indicateur</th><th>Comparaison</th><th>Seuil</th><th>Origine</th></tr></thead>
+<tbody>
+<tr><td>Rapport prestations sur cotisations (P/C)</td><td>Inférieur ou égal à</td><td class="num">95 %</td><td>Reçu du CRM</td></tr>
+<tr><td>Taux de radiation</td><td>Inférieur ou égal à</td><td class="num">20 %</td><td>Calculé</td></tr>
+<tr><td>Portefeuille au 31 décembre</td><td>Supérieur à</td><td class="num">100 adhésions</td><td>Calculé</td></tr>
+<tr><td>Adhésions nouvelles de l'année</td><td>Supérieur à</td><td class="num">30</td><td>Calculé</td></tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top: 12px"><button class="btn sec">Ajouter une condition</button></div>
+<div class="out"><strong>Ce que produit la règle.</strong> 200 000 € encaissés, quatre conditions remplies : une ligne RCP de 8 000,00 €. Une seule condition manquée : une ligne à 0 € qui porte le détail des seuils et des valeurs constatées. Un indicateur non reçu bloque la validation de la période au lieu de valoir condition manquée (hypothèse H-48). Calcul distributeur par distributeur, même si le paiement va au groupement. Une RCP versée n'est jamais reprise.</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isShare }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Quote-part d'une autre commission · SHARE</h2>
+<p class="help">La commission est un pourcentage d'une commission déjà calculée ou reçue, pas d'une prime. Exemple : rétrocession à un mandataire de Promantis Conseil.</p>
+<div class="form">
+<div><label for="s1">Commission source</label><select id="s1"><option>Commission reçue de l'assureur (INSURER)</option><option>Commission versée au distributeur</option></select></div>
+<div><label for="s2">Bénéficiaire</label><select id="s2"><option>Mandataire affecté à la garantie</option><option>Groupement du distributeur</option></select></div>
+<div><label for="s3">Pourcentage variable selon l'année du contrat</label><select id="s3"><option>Oui</option><option>Non</option></select></div>
+</div>
+<h3>Pourcentage par année de vie du contrat</h3>
+<div style="overflow-x: auto">
+<table>
+<thead><tr><th>Année du contrat</th><th>Part de la commission source (%)</th></tr></thead>
+<tbody>
+<tr><td>Année 1 (affaire nouvelle)</td><td><input aria-label="Part en année 1" type="text" defaultValue="60"></td></tr>
+<tr><td>Années suivantes</td><td><input aria-label="Part des années suivantes" type="text" placeholder="[À DÉFINIR avec Promantis]"></td></tr>
+</tbody>
+</table>
+</div>
+<div class="out"><strong>Ce que produit la règle.</strong> L'assureur verse 100,00 € sur une affaire nouvelle : une ligne RETROCESSION de 60,00 € au mandataire. Sans commission reçue, aucune rétrocession.</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isOutstanding }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Encours · OUTSTANDING</h2>
+<p class="help">Commission sur l'épargne gérée : un taux annuel appliqué à l'encours moyen de la période, au prorata du nombre de mois. Exemple : PER en gestion libre.</p>
+<div class="form">
+<div><label for="o1">Mode de calcul</label><select id="o1"><option>Taux annuel sur l'encours moyen</option><option>Quote-part de la commission reçue</option></select></div>
+<div><label for="o2">Mode de commission du contrat</label><select id="o2"><option>Linéaire</option><option>Escompté</option></select></div>
+<div><label for="o3">Fréquence</label><select id="o3"><option>Celle du fichier de l'assureur</option></select></div>
+</div>
+<h3>Taux annuel par type de support · modes linéaire et escompté</h3>
+<div style="overflow-x: auto">
+<table>
+<thead><tr><th>Gestion</th><th>Support</th><th>Taux annuel, mode linéaire (%)</th><th>Taux annuel, mode escompté (%)</th></tr></thead>
+<tbody>
+<tr><td>Libre</td><td>Fonds en euros</td><td><input aria-label="Taux gestion libre, fonds en euros, mode linéaire" type="text" defaultValue="0,30"></td><td><input aria-label="Taux gestion libre, fonds en euros, mode escompté" type="text" defaultValue="0,05"></td></tr>
+<tr><td>Libre</td><td>SCPI</td><td><input aria-label="Taux gestion libre, SCPI, mode linéaire" type="text" defaultValue="0,50"></td><td><input aria-label="Taux gestion libre, SCPI, mode escompté" type="text" defaultValue="0,20"></td></tr>
+<tr><td>Libre</td><td>Unités de compte</td><td><span class="tag mute">Barème par support</span></td><td><span class="tag mute">Barème par support</span></td></tr>
+<tr><td>Profilée et horizon</td><td>Fonds en euros</td><td><input aria-label="Taux gestion profilée, fonds en euros, mode linéaire" type="text" defaultValue="0,46"></td><td><input aria-label="Taux gestion profilée, fonds en euros, mode escompté" type="text" defaultValue="0,10"></td></tr>
+<tr><td>Profilée et horizon</td><td>Unités de compte</td><td><input aria-label="Taux gestion profilée, unités de compte, mode linéaire" type="text" defaultValue="0,46"></td><td><input aria-label="Taux gestion profilée, unités de compte, mode escompté" type="text" defaultValue="0,20"></td></tr>
+</tbody>
+</table>
+</div>
+<div class="out"><strong>Ce que produit la règle.</strong> Encours moyen de 20 000 € sur le fonds en euros, gestion libre, contrat en mode linéaire, fichier trimestriel : 20 000 × 0,30 % × 3 / 12 = une ligne OUTSTANDING de 15,00 €. Le barème des rétrocessions par support en unités de compte est chargé au paramétrage, support par support (hypothèse H-54).</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isFixed }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Montant fixe · FIXED</h2>
+<p class="help">Un montant en euros, sans taux : frais de dossier, honoraires, prime forfaitaire. Exemple : frais de dossier emprunteur.</p>
+<div class="form">
+<div><label for="f1">Origine du montant</label><select id="f1"><option>Saisi à la souscription, porté par l'événement</option><option>Fixé dans la règle</option></select></div>
+<div><label for="f2">Montant minimal (€)</label><input id="f2" type="text" defaultValue="0"></div>
+<div><label for="f3">Montant maximal (€)</label><input id="f3" type="text" defaultValue="1 000"></div>
+<div><label for="f4">Événement déclencheur</label><select id="f4"><option>Encaissement des frais (FILE_FEE_COLLECTED)</option><option>Souscription</option></select></div>
+<div><label for="f5">Nature de la ligne</label><select id="f5"><option>FEE</option></select></div>
+<div><label for="f6">Politique de reprise</label><select id="f6"><option>Aucune</option></select></div>
+</div>
+<div class="out"><strong>Ce que produit la règle.</strong> La règle est déclenchée par l'événement FILE_FEE_COLLECTED, dont le montant est l'assiette. 300 € de frais saisis à la souscription et encaissés : une ligne FEE de 300,00 € reversée au distributeur. Frais de dossier emprunteur : de 0 à 1 000 €. Un montant hors bornes, par exemple 1 200 €, met l'événement en attente (ON_HOLD).</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isExternal }}" hint-placeholder-val="{{ false }}">
+<section class="card" style="padding: 20px 22px">
+<h2 style="margin: 0 0 6px; font-size: 18px; font-weight: 600">Commission déjà calculée · EXTERNAL</h2>
+<p class="help">Un tiers a calculé la commission ; l'application la reprend à l'identique, sans recalcul, après un contrôle de cohérence. Exemple : gestionnaire délégué de l'emprunteur.</p>
+<div class="form">
+<div><label for="e1">Contrôle à l'intégration</label><select id="e1"><option>Montant = assiette × taux</option></select></div>
+<div><label for="e2">Tolérance (€)</label><input id="e2" type="text" defaultValue="0,01"></div>
+<div><label for="e3">En cas d'écart</label><select id="e3"><option>Mise en attente, décision de l'opérateur</option></select></div>
+<div><label for="e4">Bénéficiaire</label><select id="e4"><option>Code fourni dans le fichier</option><option>Affectation de la garantie</option></select></div>
+<div><label for="e5">Sources admises</label><input id="e5" type="text" defaultValue="Gestionnaire délégué emprunteur"></div>
+</div>
+<div class="out"><strong>Ce que produit la règle.</strong> Ligne reçue : assiette 500,00 €, taux 3,5 %, montant 17,50 €. Le contrôle passe : une ligne EXTERNAL de 17,50 €. Avec 17,60 €, l'écart dépasse un centime : l'événement passe ON_HOLD et l'opérateur accepte le montant du tiers avec une justification ou demande un fichier corrigé (hypothèse H-49).</div>
+<div class="out"><strong>Commissions reçues de l'assureur.</strong> La famille porte aussi les commissions reçues de l'assureur : la ligne INSURER est chargée telle que reçue. Le montant attendu est calculé par des règles jumelles de sens INBOUND et conservé avec le résultat du contrôle « commission reçue différente de l'attendu », sans ligne ni écriture comptable.</div>
+</section>
+</sc-if>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const fam = (this.state && this.state.fam) || 'linear';
+const defs = [
+['linear', 'Linéaire'], ['upfront', 'Précomptée'], ['advance', 'Escompte'], ['tiered', 'Barème sur cumul'], ['portfolio', 'Portefeuille sous conditions'],
+['share', 'Quote-part'], ['outstanding', 'Encours'], ['fixed', 'Montant fixe'], ['external', 'Commission externe']
+];
+return {
+tabs: defs.map((d) => ({ label: d[1], cls: 'chip' + (fam === d[0] ? ' on' : ''), pick: () => this.setState({ fam: d[0] }) })),
+isLinear: fam === 'linear', isUpfront: fam === 'upfront', isAdvance: fam === 'advance', isTiered: fam === 'tiered', isPortfolio: fam === 'portfolio',
+isShare: fam === 'share', isOutstanding: fam === 'outstanding', isFixed: fam === 'fixed', isExternal: fam === 'external'
+};
+}
+}
+</script>
+</body>
+</html>

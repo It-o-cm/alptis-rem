@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Ajustements</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:11px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+label{display:block;font-size:13px;font-weight:600;color:#3D4A59;margin-bottom:6px}
+input,select,textarea{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9AA7B5;border-radius:6px;font:400 14px 'IBM Plex Sans',sans-serif;color:#16202C;background:#fff}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html" class="on">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Période d'octobre 2026</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : opérateur</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Ajustements</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868">Un ajustement ajoute une ligne ; il ne modifie jamais une ligne existante. Celui qui saisit n'approuve pas : tout ajustement est approuvé par un second utilisateur, opérateur ou administrateur métier ; au-delà du seuil paramétré de l'entité (5 000 € dans cette maquette), par le valideur métier.</div>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">À approuver et récents</h2>
+<div style="min-width: 980px">
+<div class="row head" style="grid-template-columns: 1.2fr 1.1fr 2fr .8fr .9fr 1fr 1.5fr"><div>Type</div><div>Bénéficiaire</div><div>Motif</div><div class="num">Montant</div><div>Saisi par</div><div>Statut</div><div>Action</div></div>
+<sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 1.2fr 1.1fr 2fr .8fr .9fr 1fr 1.5fr; align-items: center">
+<div>{{ it.type }}</div>
+<div><a href="Distributeur.dc.html">{{ it.payee }}</a></div>
+<div>{{ it.reason }}</div>
+<div class="num">{{ it.amount }}</div>
+<div>{{ it.author }}</div>
+<div><span class="{{ it.tagClass }}">{{ it.status }}</span></div>
+<div>
+<sc-if value="{{ it.canApprove }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 6px"><button class="btn" onClick="{{ it.approve }}">Approuver</button><button class="btn sec" onClick="{{ it.reject }}">Refuser</button></div>
+</sc-if>
+<sc-if value="{{ it.own }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #4A5868">Saisi par vous : un second utilisateur doit approuver</span>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">Nouvel ajustement</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+<div><label for="adj-type">Type</label><select id="adj-type"><option>Correction d'erreur</option><option>Avance exceptionnelle</option><option>Reprise manuelle</option><option>Commission exceptionnelle</option><option>Transfert entre comptes</option></select></div>
+<div><label for="adj-payee">Bénéficiaire</label><input id="adj-payee" type="text" defaultValue="Cabinet P13897 · code 61723"></div>
+<div><label for="adj-amount">Montant (€)</label><input id="adj-amount" type="text" defaultValue="9,00"></div>
+<div><label for="adj-line">Lignes corrigées</label><input id="adj-line" type="text" defaultValue="AD-003102 · linéaire 15 % · trois lignes de 15,00 €, avril à juin 2026"></div>
+<div><label for="adj-claim">Réclamation liée</label><input id="adj-claim" type="text" defaultValue="Réclamation du cabinet P13897 · taux de 15 % au lieu de 18 % · en cours"></div>
+<div><label for="adj-counter">Second compte (transfert entre comptes)</label><input id="adj-counter" type="text" placeholder="Sans objet pour ce type"></div>
+<div><label for="adj-schedule">Échéancier de remboursement (avance exceptionnelle)</label><input id="adj-schedule" type="text" placeholder="Sans objet pour ce type"></div>
+</div>
+<div style="margin-top: 16px"><label for="adj-reason">Motif (obligatoire)</label><textarea id="adj-reason" rows="2" defaultValue="Taux convenu de 18 % saisi à 15 % dans l'outil de gestion : écart de 3 € sur trois encaissements de 100 €."></textarea></div>
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 16px; font-size: 14px">
+<div style="display: flex; gap: 8px; align-items: center"><input id="adj-rev" type="checkbox" style="width: 20px; min-height: 20px; height: 20px"><label for="adj-rev" style="margin: 0; font-weight: 400">Contrepasser automatiquement le mois suivant</label></div>
+<span style="color: #4A5868">Pièce jointe : courriel_courtier.pdf</span>
+</div>
+<div style="margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<button class="btn" onClick="{{ submit }}">Soumettre à approbation</button>
+<button class="btn sec">Importer des ajustements en masse</button>
+<span style="font-size: 14px; color: #14603A">{{ submitMessage }}</span>
+</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const decided = st.decided || {};
+const base = [
+{ id: 'j1', type: 'Avance exceptionnelle', payee: 'Cabinet P20455', reason: 'Avance accordée par la direction commerciale, contrepassée en novembre', amount: '1 000,00 €', author: 'Autre opérateur', own: false },
+{ id: 'j2', type: 'Reprise manuelle', payee: 'Cabinet P31870', reason: 'Commission versée à tort sur un contrat sans suite antérieur à la bascule', amount: '−240,00 €', author: 'Autre opérateur', own: false }
+];
+if (st.submitted) base.unshift({ id: 'j0', type: 'Correction d\'erreur', payee: 'Cabinet P13897', reason: 'Taux convenu de 18 % saisi à 15 % : 3 € sur trois encaissements', amount: '9,00 €', author: 'Vous', own: true });
+const set = (id, v) => () => { const next = Object.assign({}, decided); next[id] = v; this.setState({ decided: next }); };
+const items = base.map((b) => {
+const d = decided[b.id];
+return {
+type: b.type, payee: b.payee, reason: b.reason, amount: b.amount, author: b.author,
+status: d === 'ok' ? 'Approuvé' : d === 'ko' ? 'Refusé' : 'À approuver',
+tagClass: 'tag ' + (d === 'ok' ? 'ok' : d === 'ko' ? 'ko' : 'warn'),
+canApprove: !d && !b.own,
+own: !d && b.own,
+approve: set(b.id, 'ok'), reject: set(b.id, 'ko')
+};
+});
+return {
+items: items,
+submit: () => this.setState({ submitted: true }),
+submitMessage: st.submitted ? 'Ajustement soumis : il apparaît dans la liste, en attente d\'un second utilisateur. Une fois approuvé, il donnera une ligne MANUAL sur le bordereau suivant, rubrique des ajustements.' : ''
+};
+}
+}
+</script>
+</body>
+</html>

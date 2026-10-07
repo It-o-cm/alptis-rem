@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Mon variable</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;min-width:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html" class="on">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Forces de vente · Espace personnel</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : commercial (CAC · Lyon 2)</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Mon variable 2026</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868">Poste CAC · enveloppe quantitative individuelle de 2 450 € · mensualité de 146 €</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px">
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Mensualités versées à fin août</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">1 022 €</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">7 mois sur 8</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Atteinte cumulée de l'année</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">99 %</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">116 400 € pondérés pour 117 000 € d'objectif, de janvier à août · sert à la régularisation de janvier</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Qualitatif du 2e trimestre</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">2 / 3</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">Critères atteints</div></div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 12px; font-size: 16px; font-weight: 600">Objectif de septembre</h2>
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span>Réalisé pondéré : 13 500 €</span><span>Objectif : 15 000 €</span></div>
+<div aria-hidden="true" style="margin-top: 8px; height: 12px; border-radius: 6px; background: #E6EAF0; overflow: hidden"><div style="width: 90%; height: 12px; background: #0E5A8A"></div></div>
+<div style="margin-top: 10px"><span class="tag warn">90 % · il manque 1 500 € pondérés</span></div>
+<table style="margin-top: 14px">
+<thead><tr><th>Marché</th><th class="num">Production</th><th class="num">Coefficient</th><th class="num">Compté</th></tr></thead>
+<tbody>
+<tr><td>Particulier</td><td class="num">10 000 €</td><td class="num">0,7</td><td class="num">7 000 €</td></tr>
+<tr><td>Professionnel</td><td class="num">5 000 €</td><td class="num">1,3</td><td class="num">6 500 €</td></tr>
+<tr><td style="font-weight: 600">Total</td><td class="num">15 000 €</td><td></td><td class="num" style="font-weight: 600">13 500 €</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 6px; font-size: 16px; font-weight: 600">Simulateur de fin d'année</h2>
+<p style="margin: 0 0 14px; font-size: 14px; color: #4A5868; line-height: 1.45">Hypothèse : neuf mensualités versées sur l'année. Faire varier le taux d'atteinte annuel pour voir la régularisation de janvier. Taux d'atteinte annuel = production pondérée cumulée / objectif cumulé, plafonné à 100 % ; le simulateur part de l'atteinte cumulée à fin août, 99 %.</p>
+<div style="display: flex; align-items: center; gap: 12px">
+<button class="btn sec" aria-label="Diminuer le taux d'atteinte de 5 points" onClick="{{ minus }}">−</button>
+<div style="font: 500 26px 'IBM Plex Mono', monospace; min-width: 96px; text-align: center">{{ rateLabel }}</div>
+<button class="btn sec" aria-label="Augmenter le taux d'atteinte de 5 points" onClick="{{ plus }}">+</button>
+</div>
+<table style="margin-top: 16px">
+<tbody>
+<tr><td>Droit annuel : 2 450 € × taux d'atteinte</td><td class="num">{{ entitlement }}</td></tr>
+<tr><td>Mensualités versées : 9 × 146 €</td><td class="num">1 314,00 €</td></tr>
+<tr><td style="font-weight: 600">Régularisation de janvier 2027</td><td class="num" style="{{ regulStyle }}">{{ regul }}</td></tr>
+</tbody>
+</table>
+<div style="margin-top: 10px; font-size: 13px; color: #4A5868">{{ regulNote }}</div>
+</section>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Les composantes de mon variable</h2>
+<table>
+<thead><tr><th>Composante</th><th>Rythme</th><th class="num">Enveloppe annuelle</th><th>Règle de versement</th><th>Règle d'absence</th></tr></thead>
+<tbody>
+<tr><td>Quantitatif individuel</td><td>Mensuel, régularisé en janvier N+1</td><td class="num">2 450 €</td><td>Mensualité de 146 € si l'objectif du mois est atteint</td><td>Non versé à partir de 10 jours ouvrés d'absence dans le mois</td></tr>
+<tr><td>Qualitatif</td><td>Trimestriel</td><td class="num">2 000 €</td><td>Un montant par critère atteint : productivité, efficacité, développement de nouveaux producteurs</td><td>Non versé à partir de 6 semaines d'absence dans le trimestre</td></tr>
+<tr><td>Complément nouveaux producteurs</td><td>Trimestriel</td><td class="num">500 €</td><td>Objectif de développement dépassé d'au moins 2</td><td>Non versé à partir de 6 semaines d'absence dans le trimestre</td></tr>
+<tr><td>Quantitatif collectif</td><td>Annuel, janvier N+1, régularisé en juin</td><td class="num">550 €</td><td>Versé si l'objectif annuel collectif est atteint</td><td>Proratisé à partir d'un mois d'absence</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Les absences comptées excluent les congés et les RTT. Une mensualité non versée pour absence n'est pas rattrapée par la régularisation annuelle : l'enveloppe est réduite de la mensualité du poste par mois non versé. Le montant de chaque critère qualitatif n'est pas donné par les sources.</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Historique 2026</h2>
+<table>
+<thead><tr><th>Mois</th><th class="num">Objectif</th><th class="num">Réalisé pondéré</th><th class="num">Atteinte</th><th class="num">Versé</th><th>Motif</th><th>Statut</th></tr></thead>
+<tbody>
+<tr><td>Août</td><td class="num">12 000 €</td><td class="num">12 400 €</td><td class="num">103 %</td><td class="num">146 €</td><td><span class="tag ok">Objectif atteint</span></td><td><span class="tag info">EXPORTED</span></td></tr>
+<tr><td>Juillet</td><td class="num">15 000 €</td><td class="num">15 900 €</td><td class="num">106 %</td><td class="num">146 €</td><td><span class="tag ok">Objectif atteint</span></td><td><span class="tag info">EXPORTED</span></td></tr>
+<tr><td>Juin</td><td class="num">15 000 €</td><td class="num">15 100 €</td><td class="num">101 %</td><td class="num">146 €</td><td><span class="tag ok">Objectif atteint</span></td><td><span class="tag info">EXPORTED</span></td></tr>
+<tr><td>Mai</td><td class="num">15 000 €</td><td class="num">11 700 €</td><td class="num">78 %</td><td class="num">0 €</td><td><span class="tag warn">Objectif manqué</span></td><td><span class="tag info">EXPORTED</span></td></tr>
+<tr><td>Janvier à avril</td><td class="num">60 000 €</td><td class="num">61 300 €</td><td class="num">102 %</td><td class="num">584 €</td><td><span class="tag ok">4 mensualités</span></td><td><span class="tag info">EXPORTED</span></td></tr>
+</tbody>
+</table>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+// Default: cumulative attainment shown in the history, 116 400 / 117 000 from January to August = 99 %.
+const rate = (this.state && this.state.rate) || 99;
+const fmt = (n) => {
+const neg = n < 0;
+const parts = Math.abs(n).toFixed(2).split('.');
+return (neg ? '−' : '') + parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + parts[1] + ' €';
+};
+const entitlement = 2450 * rate / 100;
+const regul = entitlement - 1314;
+return {
+rateLabel: rate + ' %',
+entitlement: fmt(entitlement),
+regul: fmt(regul),
+regulStyle: 'font-weight: 600' + (regul < 0 ? '; color: #8F1D16' : ''),
+regulNote: regul < 0
+? 'Les mensualités versées dépassent le droit annuel : l\'écart est calculé et soumis à la décision du responsable (hypothèse H-53).'
+: 'Montant versé en plus des mensualités, avec la paie de janvier.',
+minus: () => this.setState({ rate: Math.max(40, rate - 5) }),
+// Annual attainment rate is capped at 100 %.
+plus: () => this.setState({ rate: Math.min(100, rate + 5) })
+};
+}
+}
+</script>
+</body>
+</html>

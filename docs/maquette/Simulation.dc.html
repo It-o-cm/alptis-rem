@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Simulation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+label{display:block;font-size:13px;font-weight:600;color:#3D4A59;margin-bottom:6px}
+select{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #9AA7B5;border-radius:6px;font:400 14px 'IBM Plex Sans',sans-serif;color:#16202C;background:#fff}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html" class="on">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Règles · Simulation</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : administrateur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Simulation d'une version de règle</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868">Rejoue une période passée avec une version en projet et compare au réel. Aucun effet sur les comptes, les bordereaux ni la comptabilité.</div>
+</div>
+
+<section class="card" style="padding: 18px 20px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; align-items: end">
+<div><label for="sim-version">Version à simuler</label><select id="sim-version"><option>Santé Select précompté · v2 (25 + 10 à la place de 30 + 10)</option></select></div>
+<div><label for="sim-period">Période rejouée</label><select id="sim-period"><option>Septembre 2026</option></select></div>
+<div><label for="sim-scope">Périmètre</label><select id="sim-scope"><option>Tous les distributeurs</option><option>Un distributeur</option></select></div>
+<div><button class="btn" onClick="{{ run }}">{{ runLabel }}</button></div>
+</div>
+<div style="margin-top: 14px; font-size: 14px; line-height: 1.45; color: #4A5868; max-width: 90ch"><strong style="color: #16202C">Table de substitution :</strong> <span style="font-family: 'IBM Plex Mono', monospace; color: #16202C">30 + 10 → 25 + 10</span>. Quand la version simulée retire de sa grille un taux porté par des garanties, la simulation applique cette substitution ; sans elle, ces événements sortent en attente, comptés à part, comme le ferait le calcul réel (P9).</div>
+<div style="margin-top: 8px; font-size: 14px; line-height: 1.45; color: #4A5868; max-width: 90ch">La version simulée est prise quels que soient son statut et ses dates ; elle remplace la v1 pour ce calcul, écrit dans un espace séparé.</div>
+</section>
+
+<sc-if value="{{ idle }}" hint-placeholder-val="{{ true }}">
+<div class="card" style="padding: 28px 20px; font-size: 14px; color: #4A5868">Aucune simulation lancée. Choisir une version et une période, puis lancer.</div>
+</sc-if>
+
+<sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px">
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Réel de la période rejouée</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">1 912 480,10 €</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Simulé</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">1 898 430,10 €</div></div>
+<div class="card" style="padding: 16px 18px; border-color: #0E5A8A"><div style="font-size: 13px; color: #4A5868">Écart</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px; color: #8F1D16">−14 050,00 €</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">−0,73 % des commissions acquises</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Lignes modifiées</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">2 810</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">sur 61 240 lignes rejouées</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">Événements en attente (taux hors grille) : 0</div></div>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Écart par nature</h2>
+<table>
+<thead><tr><th>Nature</th><th class="num">Réel</th><th class="num">Simulé</th><th class="num">Écart</th><th>Lecture</th></tr></thead>
+<tbody>
+<tr><td>Apport · Santé Select</td><td class="num">84 300,00 €</td><td class="num">70 250,00 €</td><td class="num" style="color: #8F1D16">−14 050,00 €</td><td>Taux d'apport de 30 % ramené à 25 %</td></tr>
+<tr><td>Suivi · Santé Select</td><td class="num">28 100,00 €</td><td class="num">28 100,00 €</td><td class="num">0,00 €</td><td>Suivi inchangé à 10 %</td></tr>
+<tr><td>Toutes les autres règles</td><td class="num">1 800 080,10 €</td><td class="num">1 800 080,10 €</td><td class="num">0,00 €</td><td>Hors périmètre de la version</td></tr>
+<tr><td style="font-weight: 600">Total</td><td class="num" style="font-weight: 600">1 912 480,10 €</td><td class="num" style="font-weight: 600">1 898 430,10 €</td><td class="num" style="font-weight: 600; color: #8F1D16">−14 050,00 €</td><td></td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Distributeurs les plus touchés</h2>
+<table>
+<thead><tr><th>Distributeur</th><th class="num">Apport réel</th><th class="num">Apport simulé</th><th class="num">Écart</th></tr></thead>
+<tbody>
+<tr><td>Groupement G012</td><td class="num">2 400,00 €</td><td class="num">2 000,00 €</td><td class="num" style="color: #8F1D16">−400,00 €</td></tr>
+<tr><td>Cabinet P20455</td><td class="num">540,00 €</td><td class="num">450,00 €</td><td class="num" style="color: #8F1D16">−90,00 €</td></tr>
+<tr><td><a href="Distributeur.dc.html">Cabinet P13897</a></td><td class="num">30,00 €</td><td class="num">25,00 €</td><td class="num" style="color: #8F1D16">−5,00 €</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<a class="btn sec" href="Regle.dc.html">Revenir à la version</a>
+<span style="font-size: 13px; color: #4A5868">L'écart se limite au taux modifié : la version peut être approuvée par un second administrateur.</span>
+</div>
+</section>
+</div>
+</sc-if>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const ran = !!(this.state && this.state.ran);
+return {
+idle: !ran,
+done: ran,
+runLabel: ran ? 'Effacer le résultat' : 'Lancer la simulation',
+run: () => this.setState({ ran: !ran })
+};
+}
+}
+</script>
+</body>
+</html>

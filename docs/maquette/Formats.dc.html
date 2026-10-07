@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Formats d'échange</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:13px;overflow-wrap:anywhere}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:9px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+.chip{min-height:44px;padding:10px 16px;border-radius:22px;border:1px solid #9AA7B5;background:#fff;color:#16202C;font:500 14px 'IBM Plex Sans',sans-serif;cursor:pointer}
+.chip.on{background:#0E5A8A;border-color:#0E5A8A;color:#fff}
+dt{font-size:13px;color:#4A5868}dd{margin:2px 0 0;font-size:14px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html" class="on">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Flux · Formats</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Exemples fictifs</span><span>Rôle : administrateur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Formats d'échange</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868; max-width: 85ch">La définition de chaque fichier reçu ou émis : structure, champs, conventions et un exemple. C'est la référence à remettre aux équipes des systèmes voisins.</div>
+</div>
+<a class="btn sec" href="Flux.dc.html">Retour au catalogue</a>
+</div>
+
+<div role="tablist" aria-label="Format" style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="7">
+<button role="tab" class="{{ t.cls }}" onClick="{{ t.pick }}">{{ t.label }}</button>
+</sc-for>
+</div>
+
+<section class="card" style="padding: 20px 22px">
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<h2 style="margin: 0; font-size: 18px; font-weight: 600">{{ f.title }}</h2>
+<span class="{{ f.dirClass }}">{{ f.dir }}</span>
+<span class="tag mute">{{ f.flows }}</span>
+</div>
+<p style="margin: 10px 0 16px; font-size: 14px; line-height: 1.5; color: #3D4A59; max-width: 90ch">{{ f.desc }}</p>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 18px">
+<sc-for list="{{ f.meta }}" as="m" hint-placeholder-count="4">
+<div><dt>{{ m.k }}</dt><dd>{{ m.v }}</dd></div>
+</sc-for>
+</dl>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">{{ f.fieldsTitle }}</h2>
+<div style="min-width: 860px">
+<div class="row head" style="grid-template-columns: 1.6fr .9fr .7fr 3fr"><div>{{ f.c1 }}</div><div>{{ f.c2 }}</div><div>{{ f.c3 }}</div><div>Contenu</div></div>
+<sc-for list="{{ f.fields }}" as="x" hint-placeholder-count="10">
+<div class="row" style="grid-template-columns: 1.6fr .9fr .7fr 3fr">
+<div class="mono">{{ x.a }}</div><div>{{ x.b }}</div><div>{{ x.c }}</div><div>{{ x.d }}</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">Exemple</h2>
+<pre style="margin: 0; padding: 14px 16px; background: #14202E; color: #E6EDF5; border-radius: 6px; font: 400 13px/1.55 'IBM Plex Mono', monospace; white-space: pre; overflow-x: auto">{{ f.example }}</pre>
+<p style="margin: 12px 0 0; font-size: 13px; line-height: 1.45; color: #4A5868; max-width: 90ch">{{ f.note }}</p>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const cur = (this.state && this.state.cur) || 'cov';
+// Short reminder of the common CSV conventions (spec 9.9), shown on every CSV tab.
+const csvMeta = [['Structure', 'CSV ; première ligne d\'en-tête obligatoire, noms de champs en minuscules, ordre des colonnes libre'], ['Encodage', 'UTF-8, sans marque d\'ordre d\'octets'], ['Séparateur', 'Point-virgule'], ['Nombres', 'Point décimal ; montants à 2 décimales ; taux en fraction (0.15)'], ['Dates', 'AAAA-MM-JJ ; mois AAAA-MM']];
+const F = {
+conv: {
+label: 'Conventions', title: 'Vue d\'ensemble et conventions des fichiers CSV', dir: 'Entrant et sortant', flows: 'IN-01 à IN-09, OUT-01 à OUT-06',
+desc: 'Pour chaque flux, le fichier échangé, sa structure et son nom. Les conventions ci-dessous valent pour tous les fichiers CSV, planifiés ou exportés à la demande. Le flux OUT-07 (supervision) n\'est pas un fichier et n\'y figure pas.',
+meta: [
+['Encodage', 'UTF-8, sans marque d\'ordre d\'octets'],
+['Séparateur', 'Point-virgule ; un champ qui en contient un est entouré de guillemets doubles'],
+['En-tête', 'Première ligne obligatoire, noms de champs en minuscules ; l\'ordre des colonnes est libre'],
+['Nombres', 'Point décimal, sans séparateur de milliers ; montants à 2 décimales'],
+['Taux', 'En fraction, jusqu\'à 6 décimales : 15 % s\'écrit 0.15'],
+['Dates', 'AAAA-MM-JJ ; horodatages AAAA-MM-JJTHH:MM:SS, heure de Paris'],
+['Mois', 'AAAA-MM dans un champ ; AAAAMM dans un nom de fichier ou un identifiant de lot'],
+['Booléens', 'true ou false'],
+['Listes', 'Éléments séparés par une barre verticale ; une liste de couples s\'écrit clé=valeur|clé=valeur'],
+['Valeur absente', 'Champ vide ; jamais NULL ni zéro'],
+['Dans les noms de fichier', '<date> = AAAAMMJJ, <mois> = AAAAMM, <entité> = code de l\'entité, <objet> = nom de fichier donné en sections 9.10 et 9.11'],
+['Dépôt', 'Chaque système source dépose dans son propre répertoire ; un fichier reçu est identifié par son flux, son système source et son nom'],
+['Système source', 'Donné par le répertoire de dépôt ; pour un téléversement à l\'écran ou un dépôt par API, par un paramètre obligatoire'],
+['Motifs de rejet', 'STRUCTURE, TYPE, MISSING_FIELD, AMOUNT, FUTURE_DATE, DUPLICATE ; une ligne négative n\'est pas rejetée'],
+['Fichier vide', 'Un fichier attendu sans donnée est envoyé avec sa seule ligne d\'en-tête, pour ne pas être signalé manquant'],
+['Empreinte', 'Calculée sur le nom et le contenu du fichier : deux fichiers vides de dates différentes ne sont pas des doublons'],
+['Pivot en JSON', 'Par l\'API d\'import, le pivot s\'envoie aussi en JSON avec les mêmes noms de champs. Excel et XML ne sont acceptés qu\'à travers un mapping']
+],
+cols: ['Nom du fichier', 'Flux', 'Structure'], fieldsTitle: 'Fichiers par flux',
+fields: [
+['<entité>_distributors_<date>.csv et suivants', 'IN-01, IN-02', 'CSV pivot ou JSON par API', 'Distributeurs, groupements, codes de production, accords, indicateurs, cessions de portefeuille, ordres de remplacement'],
+['<entité>_coverages_<date>.csv', 'IN-03 à IN-06', 'CSV pivot, ou fichier libre avec mapping', 'Garanties'],
+['<entité>_events_<date>.csv', 'IN-03 à IN-06', 'CSV pivot, ou fichier libre avec mapping', 'Événements'],
+['<entité>_bank_accounts_<date>.csv', 'IN-03, IN-04, IN-05', 'CSV pivot', 'Coordonnées bancaires'],
+['<entité>_products_<date>.csv et suivants', 'IN-07', 'CSV pivot', 'Gammes, produits, options et assureurs'],
+['<entité>_payment_results_<date>.csv', 'IN-08', 'CSV', 'Résultat des virements'],
+['<entité>_employees_<date>.csv et suivant', 'IN-09', 'CSV', 'Collaborateurs et mesures'],
+['<entité>_SEPA_<mois>_L<lot>.xml, <entité>_CHQ_<mois>.csv', 'OUT-01', 'XML pain.001.001.03 ; CSV', 'Ordres de virement ; liste des chèques'],
+['<entité>_ECR_<mois>.csv', 'OUT-02', 'CSV', 'Écritures comptables'],
+['<entité>_<type>_<numéro>_v<version>.pdf', 'OUT-03', 'PDF, tableur, JSON de métadonnées', 'Bordereaux, attestations et autres documents'],
+['—', 'OUT-04', 'JSON par API', 'Comptes, lignes, bordereaux, conventions d\'escompte'],
+['<entité>_DATA_<objet>_<date>.csv', 'OUT-05', 'CSV incrémentaux', 'Données pour la plateforme Data'],
+['<entité>_VAR_<mois>.csv', 'OUT-06', 'CSV, ou tableur de mêmes colonnes', 'Variables à payer']
+],
+example: 'entity_code;batch_reference;end_to_end_id;status;settled_at;rejection_reason\nALPTIS_ASSURANCES;202609-L001;2026-09-004512;SETTLED;2026-10-07;\nALPTIS_ASSURANCES;202609-L001;2026-09-004520;REJECTED;;Compte clôturé',
+note: 'Fichier reçu : dépôt par UseItFlow, téléversement à l\'écran ou appel d\'API ; refus si son empreinte est déjà connue ; contrôle ligne par ligne ; inscription au journal d\'import sous un code de flux égal au nom d\'objet du fichier (coverages, events, distributors, etc.), avec cinq compteurs : lignes lues, filtrées par le mapping, intégrées, rejetées, en attente (lues = filtrées + intégrées + rejetées + en attente). Fichier émis : inscrit au journal des exports avec son nombre de lignes et son total ; jamais régénéré, une correction donne un nouveau fichier. Ces conventions ne viennent pas des sources : elles sont proposées, à confirmer avec la DSSI.'
+},
+cov: {
+label: 'Pivot · garanties', title: 'Format pivot des garanties', dir: 'Entrant', flows: 'IN-03 à IN-06',
+desc: 'Une ligne par garantie. L\'envoi d\'une garantie déjà connue met à jour ses attributs ; l\'ancien état est tracé au journal d\'audit, et les critères, le choix de rémunération et l\'affectation sont historisés à la date updated_at.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_coverages_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code', 'Texte', 'Oui', 'Entité'], ['source_system', 'Texte', 'Oui', 'Système émetteur'], ['contract_number', 'Texte', 'Oui', 'Numéro de l\'adhésion dans le système source'],
+['coverage_code', 'Texte', 'Oui', 'Identifiant de la garantie dans l\'adhésion'], ['product_code, option_code', 'Texte', 'Produit : oui', 'Produit et option'],
+['policyholder_id, policyholder_name, policyholder_birth_date', 'Texte, date', 'Identifiant : oui', 'Souscripteur ; le nom porte le nom ou la raison sociale'],
+['policyholder_first_name, policyholder_person_type', 'Texte, code', 'Non', 'Prénom ; personne physique ou morale (NATURAL, LEGAL)'], ['collective_contract_number', 'Texte', 'Non', 'Contrat collectif parent'],
+['signature_date, registration_date, effect_date, end_date', 'Date', 'Enregistrement et effet', 'Dates de vie'], ['status, end_reason', 'Code', 'Statut : oui', 'Statut et motif de fin'],
+['periodicity, sales_channel', 'Code', 'Non', 'Périodicité de paiement, mode de vente'], ['annual_premium', 'Décimal', 'Non', 'Prime annualisée hors taxes'],
+['tariff_type, staff_category', 'Code', 'Non', 'Type de tarif, collège'], ['remuneration_mode', 'Code', 'Oui', 'LINEAR ou UPFRONT'],
+['linear_rate, acquisition_rate, servicing_rate', 'Décimal', 'Non', 'Taux choisis, en fraction, cohérents avec le mode'], ['advance_requested', 'Booléen', 'Non', 'Garantie présentée à l\'escompte'],
+['new_business, single_premium, commissionable', 'Booléen', 'Non', 'Adhésion nouvelle (faux pour un remplacement ou une modification) ; prime unique ; faux pour une garantie non rémunérée'], ['production_code', 'Texte', 'Oui', 'Code de production de l\'apporteur principal'],
+['co_brokers', 'Liste', 'Non', 'Codes de production et parts des co-courtiers'], ['criteria', 'Liste clé = valeur', 'Non', 'Durée du prêt, capital, taux de frais, protocole, etc.'], ['updated_at', 'Horodatage', 'Oui', 'Date de la dernière modification dans la source']
+],
+example: 'entity_code;source_system;contract_number;coverage_code;product_code;effect_date;status;annual_premium;remuneration_mode;acquisition_rate;servicing_rate;production_code;updated_at\nALPTIS_ASSURANCES;CLEVA;AD-004512;G01;SANTE_SELECT;2026-03-01;IN_FORCE;1200.00;UPFRONT;0.30;0.10;61723;2026-03-02T08:15:00',
+note: 'Seules les colonnes utiles à l\'exemple sont montrées. Les dates, le statut et le motif de fin sont ceux de la garantie ; ceux de l\'adhésion en sont déduits. Les conventions de fichier (encodage, séparateur, nommage) sont une proposition à confirmer avec la DSSI.'
+},
+evt: {
+label: 'Pivot · événements', title: 'Format pivot des événements', dir: 'Entrant', flows: 'IN-03 à IN-06',
+desc: 'Une ligne par événement métier : prime émise ou encaissée, annulation, résiliation, versement, commission déjà calculée. La clé source garantit qu\'un événement n\'est intégré qu\'une fois. Trois règles d\'intégration : les cotisations associatives et les droits d\'entrée sont portés par fee_amount ; une ligne négative sans clé d\'annulation est rapprochée de l\'événement de même contrat, de même type et de montant opposé, à défaut elle est mise en attente (elle n\'est pas rejetée) ; event_date décide de la version de règle, la date de réception décide de la période.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_events_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code, source_system, source_key', 'Texte', 'Oui', 'La clé source est unique par système ; elle garantit l\'idempotence'], ['event_type', 'Code', 'Oui', 'PREMIUM_COLLECTED, TERMINATION, SCHEDULED_PAYMENT, etc. ; en emprunteur, FILE_FEE_COLLECTED (frais de dossier encaissés, montant porté par gross_amount)'],
+['contract_number, coverage_code', 'Texte', 'Contrat : oui', 'Rattachement'], ['event_date', 'Date', 'Oui', 'Date d\'effet de l\'événement'],
+['period_from, period_to', 'Date', 'Non', 'Période de cotisation couverte'], ['gross_amount, tax_amount, fee_amount, basis_amount', 'Décimal', 'Non', 'Montant TTC, taxes et contributions, frais, assiette hors taxes'],
+['fund_code, management_profile', 'Texte', 'Non', 'Support et profil de gestion'], ['unpaid_rank', 'Entier', 'Non', 'Rang de l\'impayé'],
+['recovered_after_litigation', 'Booléen', 'Non', 'Prime recouvrée après une procédure précontentieuse ou contentieuse : exclue de l\'assiette'], ['reverses_source_key', 'Texte', 'Non', 'Clé de l\'événement annulé'],
+['precomputed_basis, precomputed_rate, precomputed_amount', 'Décimal', 'Non', 'Renseignés pour une commission déjà calculée'], ['beneficiary_code', 'Texte', 'Non', 'Code de production ou distributeur visé, pour une commission déjà calculée'], ['label', 'Texte', 'Non', 'Libellé libre repris sur le bordereau']
+],
+example: 'source_key;event_type;contract_number;event_date;period_from;period_to;gross_amount;tax_amount;reverses_source_key\nENC-000123;PREMIUM_COLLECTED;AD-004512;2026-03-05;2026-03-01;2026-03-31;113.27;13.27;\nANN-000045;PREMIUM_CANCELLED;AD-004512;2026-04-12;2026-03-01;2026-03-31;113.27;13.27;ENC-000123',
+note: 'Seules les colonnes utiles à l\'exemple sont montrées. Sans assiette explicite, l\'assiette vaut le montant TTC moins les taxes et les frais : ici 100,00 €. La seconde ligne annule la première en la désignant par sa clé.'
+},
+dist: {
+label: 'Pivot · distributeurs', title: 'Fichier des distributeurs', dir: 'Entrant', flows: 'IN-01, IN-02',
+desc: 'Une ligne par distributeur et par entité. Le code de distributeur est celui du CRM de l\'entité émettrice. La préférence de déclinaison du bordereau n\'est pas reçue : elle se saisit dans l\'application.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_distributors_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code, source_system', 'Texte', 'Oui', 'Entité et CRM émetteur'],
+['partner_code', 'Texte', 'Oui', 'Code du distributeur dans le CRM émetteur ; un distributeur commun à plusieurs entités est rapproché par la table de correspondance des codes'],
+['legal_name, legal_form, siren', 'Texte', 'Raison sociale : oui', 'Raison sociale, forme juridique, SIREN'],
+['distributor_type', 'Code', 'Oui', 'INDEPENDENT (indépendant), GROUP_MEMBER (membre de groupement), REMOTE_SALES (vente à distance), AGENT (mandataire)'],
+['status, valid_from, valid_to', 'Code, date', 'Statut et début : oui', 'Statut dans l\'entité (CANDIDATE, ACTIVE, SUSPENDED, TERMINATED) et sa période d\'effet'],
+['orias_number, orias_status', 'Texte, code', 'Non', 'Immatriculation ORIAS et son état (REGISTERED, STRUCK_OFF)'],
+['group_code', 'Texte', 'Non', 'Groupement de rattachement'], ['sales_delegation', 'Texte', 'Non', 'Délégation commerciale'],
+['commissionable, advance_excluded', 'Booléen', 'Non', 'Distributeur rémunéré ; exclu de l\'escompte'],
+['address_line1, address_line2, postal_code, city', 'Texte', 'Non', 'Adresse postale, reprise sur le bordereau et sur la liste des chèques'],
+['updated_at', 'Horodatage', 'Oui', 'Dernière modification dans la source']
+],
+example: 'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from;orias_status;commissionable;advance_excluded;updated_at\nALPTIS_ASSURANCES;SESAME;P13897;CABINET P13897;INDEPENDENT;ACTIVE;2019-01-01;REGISTERED;true;false;2026-09-14T10:30:00',
+note: 'Seules les colonnes utiles à l\'exemple sont montrées. Les sources ne donnent pas cette structure : elle est dérivée du modèle de données et reste à valider avec le CRM.'
+},
+grp: {
+label: 'Pivot · groupements', title: 'Fichier des groupements', dir: 'Entrant', flows: 'IN-01, IN-02',
+desc: 'Une ligne par groupement de distributeurs.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_distributor_groups_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['group_code, label', 'Texte', 'Oui', 'Code et libellé du groupement'], ['head_partner_code', 'Texte', 'Non', 'Distributeur tête de groupement']
+],
+example: 'group_code;label;head_partner_code\n[CODE GROUPEMENT];[LIBELLÉ];[CODE DISTRIBUTEUR]',
+note: 'Structure dérivée du modèle de données, à valider avec le CRM.'
+},
+pc: {
+label: 'Pivot · codes de production', title: 'Fichier des codes de production', dir: 'Entrant', flows: 'IN-01, IN-02',
+desc: 'Une ligne par code de production. Un code de production désigne un seul distributeur dans une entité. Quand le fichier n\'a pas de champ de système source, le CRM se déduit du code de l\'entité.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_production_codes_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code, production_code', 'Texte', 'Oui', 'Entité et code'], ['partner_code', 'Texte', 'Oui', 'Distributeur porteur du code'],
+['label', 'Texte', 'Non', 'Libellé, par exemple l\'agence'], ['status', 'Code', 'Oui', 'Mêmes valeurs que pour un distributeur : CANDIDATE, ACTIVE, SUSPENDED, TERMINATED']
+],
+example: 'entity_code;production_code;partner_code;label;status\nALPTIS_ASSURANCES;61723;P13897;[AGENCE];ACTIVE',
+note: 'Structure dérivée du modèle de données, à valider avec le CRM.'
+},
+bank: {
+label: 'Pivot · coordonnées bancaires', title: 'Fichier des coordonnées bancaires', dir: 'Entrant', flows: 'IN-03, IN-04, IN-05',
+desc: 'Fournies par l\'outil de gestion de chaque entité. La structure de l\'IBAN est contrôlée à l\'import ; un bénéficiaire sans coordonnées bancaires est payé par chèque.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_bank_accounts_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code', 'Texte', 'Oui', 'Entité'], ['holder_type, holder_code', 'Code, texte', 'Oui', 'Niveau du titulaire (PRODUCTION_CODE, DISTRIBUTOR, GROUP) et son code'],
+['iban, bic', 'Texte', 'IBAN : oui', 'Structure de l\'IBAN contrôlée à l\'import'], ['holder_name', 'Texte', 'Oui', 'Titulaire du compte, repris dans le virement'],
+['valid_from, valid_to', 'Date', 'Début : oui', 'Validité']
+],
+example: 'entity_code;holder_type;holder_code;iban;bic;holder_name;valid_from;valid_to\nALPTIS_ASSURANCES;DISTRIBUTOR;P13897;FR76...4471;;CABINET P13897;2024-01-01;',
+note: 'IBAN abrégé pour l\'exemple. Structure dérivée du modèle de données, à valider avec les outils de gestion.'
+},
+prod: {
+label: 'Pivot · produits', title: 'Fichiers des gammes, produits, options et assureurs', dir: 'Entrant', flows: 'IN-07',
+desc: 'Quatre fichiers du référentiel produits : product_ranges, products, product_options et insurers. Chaque champ est précédé du nom de son fichier.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_products_<AAAAMMJJ>.csv et suivants (product_ranges, product_options, insurers)']]),
+cols: ['Fichier · champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['product_ranges · range_code, label, target', 'Texte', 'Code et libellé : oui', 'Gamme et clientèle visée : INDIVIDUAL (particulier), PROFESSIONAL (professionnel), COMPANY (entreprise)'],
+['products · entity_code, product_code, label', 'Texte', 'Oui', 'Entité, produit, libellé'],
+['products · range_code, insurer_code', 'Texte', 'Gamme : oui', 'Gamme et assureur porteur du risque'],
+['products · management_mode, forecast_basis', 'Code', 'Non', 'Mode de gestion (DIRECT, DELEGATED) ; base du prévisionnel (ISSUED_PREMIUMS, ANNUALISED_AT_SUBSCRIPTION, NONE)'],
+['products · reference_lag_months', 'Entier', 'Non', 'Décalage du mois de référence : 0, 1 ou 2 mois'],
+['products · commissionable', 'Booléen', 'Non', 'Produit ouvrant droit à commission'],
+['products · marketed_from, marketed_to', 'Date', 'Début : oui', 'Période de commercialisation'],
+['product_options · product_code, option_code, label, option_type', 'Texte, code', 'Sauf le type', 'Option d\'un produit ; type BASE, RIDER, PACK ou FUND'],
+['insurers · insurer_code, name, role', 'Texte, code', 'Oui', 'Assureur ou gestionnaire délégué : RISK_CARRIER, DELEGATED_MANAGER']
+],
+example: 'entity_code;product_code;label;range_code;insurer_code;management_mode;forecast_basis;reference_lag_months;commissionable;marketed_from;marketed_to\nALPTIS_ASSURANCES;SANTE_SELECT;Santé Select;[GAMME];[ASSUREUR];DIRECT;ISSUED_PREMIUMS;0;true;2020-01-01;',
+note: 'Exemple : une ligne du fichier products. Structure dérivée du modèle de données, à valider avec le référentiel produits.'
+},
+qi: {
+label: 'Pivot · indicateurs de qualité', title: 'Fichier des indicateurs de qualité', dir: 'Entrant', flows: 'IN-01, IN-02',
+desc: 'Une ligne par distributeur, indicateur et période de mesure. Ces indicateurs conditionnent les rémunérations complémentaires. Quand le fichier n\'a pas de champ de système source, le CRM se déduit du code de l\'entité.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_quality_indicators_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code, partner_code', 'Texte', 'Oui', 'Entité et distributeur'],
+['indicator_type', 'Code', 'Oui', 'COMPLAINT_RATE, NOT_PURSUED_RATE, NEW_BUSINESS_LAPSE_RATE, PORTFOLIO_LAPSE_RATE, UNPAID_RATE, LOSS_RATIO, SOLVENCY_SCORE'],
+['range_code', 'Texte', 'Non', 'Gamme mesurée (santé, prévoyance) ; vide si l\'indicateur est global'],
+['period_from, period_to', 'Date', 'Oui', 'Période de mesure'], ['value', 'Décimal', 'Oui', 'Valeur en fraction : 82 % s\'écrit 0.82'],
+['source', 'Texte', 'Non', 'Service ou système qui a produit la mesure']
+],
+example: 'entity_code;partner_code;indicator_type;range_code;period_from;period_to;value;source\nALPTIS_ASSURANCES;P13897;LOSS_RATIO;[GAMME];2025-01-01;2025-12-31;0.82;[SERVICE]',
+note: 'Structure dérivée du modèle de données, à valider avec le CRM.'
+},
+agr: {
+label: 'Pivot · accords', title: 'Fichier des accords et signatures', dir: 'Entrant', flows: 'IN-01, IN-02',
+desc: 'Conventions de partenariat, avenants RCD ou RCP, protocoles assureur et mandats, avec leur état de signature. Les conventions d\'escompte ne passent pas par ce fichier : elles sont saisies à l\'écran avec leurs paramètres. Quand le fichier n\'a pas de champ de système source, le CRM se déduit du code de l\'entité.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_agreements_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code, agreement_type, reference', 'Texte, code', 'Oui', 'Type : PARTNERSHIP, RCD_AMENDMENT, RCP_AMENDMENT, INSURER_PROTOCOL, MANDATE'],
+['partner_code, group_code, insurer_code', 'Texte', 'Non', 'Partie signataire : distributeur, groupement ou assureur'],
+['valid_from, valid_to', 'Date', 'Début : oui', 'Validité'],
+['signature_status, signed_at', 'Code, date', 'Statut : oui', 'SIGNED ou NOT_SIGNED, et date de signature'],
+['document_ref', 'Texte', 'Non', 'Référence du document en GED']
+],
+example: 'entity_code;agreement_type;reference;partner_code;group_code;insurer_code;valid_from;valid_to;signature_status;signed_at;document_ref\nALPTIS_ASSURANCES;RCD_AMENDMENT;[RÉFÉRENCE];P13897;;;2026-01-01;2026-12-31;SIGNED;2025-12-15;[RÉFÉRENCE GED]',
+note: 'Structure dérivée du modèle de données, à valider avec le CRM.'
+},
+tr: {
+label: 'Pivot · cessions et remplacements', title: 'Fichiers des cessions de portefeuille et des ordres de remplacement', dir: 'Entrant', flows: 'IN-01, IN-02',
+desc: 'Deux fichiers reçus du CRM : portfolio_transfers et replacement_orders. Chaque champ est précédé du nom de son fichier. Quand le fichier n\'a pas de champ de système source, le CRM se déduit du code de l\'entité.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_portfolio_transfers_<AAAAMMJJ>.csv, <entité>_replacement_orders_<AAAAMMJJ>.csv']]),
+cols: ['Fichier · champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['portfolio_transfers · entity_code, from_partner_code, to_partner_code', 'Texte', 'Oui', 'Entité, cédant, repreneur'],
+['portfolio_transfers · effect_date, scope', 'Date, liste', 'Date : oui', 'Date d\'effet ; périmètre cédé : liste de codes de production, vide pour tout le portefeuille'],
+['portfolio_transfers · advance_debt_handling', 'Code', 'Oui', 'Sort de la créance d\'escompte : REPAID_BY_TRANSFEROR ou TAKEN_OVER'],
+['replacement_orders · entity_code, source_system, contract_number', 'Texte', 'Oui', 'Contrat visé'],
+['replacement_orders · from_production_code, to_production_code', 'Texte', 'Oui', 'Ancien et nouveau code de production'],
+['replacement_orders · received_date, effect_date', 'Date', 'Oui', 'Réception et effet']
+],
+example: 'entity_code;from_partner_code;to_partner_code;effect_date;scope;advance_debt_handling\nALPTIS_ASSURANCES;P13897;[REPRENEUR];2026-07-01;61723|[AUTRE CODE];TAKEN_OVER',
+note: 'Exemple : une ligne du fichier portfolio_transfers ; les codes de production du périmètre sont séparés par une barre verticale. Structure dérivée du modèle de données, à valider avec le CRM.'
+},
+payres: {
+label: 'Résultat des virements', title: 'Fichier du résultat des virements', dir: 'Entrant', flows: 'IN-08',
+desc: 'Renvoyé par le SI Finance après chaque lot : pour chaque ordre, exécuté ou rejeté. Un rejet recrédite le compte du distributeur et ouvre une anomalie.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_payment_results_<AAAAMMJJ>.csv']]),
+cols: ['Champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['entity_code, batch_reference', 'Texte', 'Oui', 'Entité et référence du lot'], ['end_to_end_id', 'Texte', 'Oui', 'Identifiant de l\'ordre'],
+['status', 'Code', 'Oui', 'SETTLED ou REJECTED'], ['settled_at', 'Date', 'Non', 'Date d\'exécution constatée'],
+['rejection_reason', 'Texte', 'Non', 'Motif bancaire du rejet']
+],
+example: 'entity_code;batch_reference;end_to_end_id;status;settled_at;rejection_reason\nALPTIS_ASSURANCES;202609-L001;2026-09-004512;SETTLED;2026-10-07;\nALPTIS_ASSURANCES;202609-L001;2026-09-004520;REJECTED;;Compte clôturé',
+note: 'La seconde ligne recrédite le compte du distributeur et ouvre une anomalie. Structure proposée, à valider avec le SI Finance.'
+},
+emp: {
+label: 'Collaborateurs et mesures', title: 'Fichiers des collaborateurs et de leurs mesures', dir: 'Entrant', flows: 'IN-09',
+desc: 'Deux fichiers pour le module forces de vente : employees et employee_measures. Chaque champ est précédé du nom de son fichier.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_employees_<AAAAMMJJ>.csv, <entité>_employee_measures_<AAAAMMJJ>.csv']]),
+cols: ['Fichier · champ', 'Type', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['employees · entity_code, external_id', 'Texte', 'Oui', 'Entité et matricule du SI RH'],
+['employees · last_name, first_name', 'Texte', 'Oui', 'Identité'],
+['employees · job_code, team, region, manager_external_id', 'Texte', 'Poste : oui', 'Poste (CAC, RB, DR, RR, DNV), équipe, région, responsable'],
+['employees · valid_from, valid_to', 'Date', 'Début : oui', 'Période d\'affectation au poste'],
+['employee_measures · external_id, measure_type, dimension', 'Texte, code', 'Sauf la dimension', 'Collaborateur et nature de la mesure : ABSENCE, PRODUCTION, ACTIVITY, MARGIN, SPECIFICATIONS_RECEIVED ; la dimension précise le marché (gamme) ou le type d\'activité (appel, rendez-vous, devis, nouveau producteur)'],
+['employee_measures · period_from, period_to, value', 'Date, décimal', 'Oui', 'Période et valeur']
+],
+example: 'entity_code;external_id;last_name;first_name;job_code;team;region;manager_external_id;valid_from;valid_to\nALPTIS_ASSURANCES;[MATRICULE];[NOM];[PRÉNOM];CAC;[ÉQUIPE];[RÉGION];[MATRICULE DU RESPONSABLE];2026-01-01;',
+note: 'Exemple : une ligne du fichier employees. Structure proposée, à valider avec le SI RH et le CRM.'
+},
+bulk: {
+label: 'Imports en masse', title: 'Imports en masse déposés par les utilisateurs', dir: 'Entrant', flows: 'Téléversement à l\'écran',
+desc: 'Quatre fichiers se téléversent à l\'écran, aux mêmes conventions. L\'entité est celle de la session de l\'utilisateur qui téléverse ; le code du bénéficiaire est celui qui figure sur son bordereau (code de partenaire, de groupement ou de production).',
+meta: csvMeta.concat([['Fichiers', 'adjustments, enrollments, données complémentaires, reprise de l\'historique']]),
+cols: ['Fichier · champ', 'Exigence', 'Obligatoire'], fieldsTitle: 'Champs',
+fields: [
+['adjustments · adjustment_type, payee_code, amount, reason', 'REG-04', 'Oui', 'Type d\'ajustement (EXCEPTIONAL_ADVANCE, MANUAL_CLAWBACK, CORRECTION, EXCEPTIONAL_COMMISSION, ACCOUNT_TRANSFER), bénéficiaire, montant, motif'],
+['adjustments · source_system, contract_number, coverage_code', 'REG-04', 'Non', 'Garantie visée'],
+['adjustments · counterpart_payee_code', 'REG-04', 'Non', 'Second compte d\'un transfert'],
+['adjustments · auto_reverse', 'REG-04', 'Non', 'Contrepassation automatique'],
+['enrollments · plan_code, rule_code', 'PAR-10', 'Oui', 'Plan et règle réservée'],
+['enrollments · partner_code ou group_code', 'PAR-10', 'L\'un des deux', 'Distributeur ou groupement inscrit'],
+['enrollments · valid_from, valid_to', 'PAR-10', 'Début : oui', 'Validité de l\'inscription'],
+['enrollments · agreement_reference', 'PAR-10', 'Non', 'Référence de l\'accord'],
+['Données complémentaires', 'ING-08', '—', 'Format pivot des garanties ou des événements'],
+['opening_lines, opening_advances, opening_balances, opening_counters', 'ING-11', '—', 'Reprise de l\'historique : lignes acquises des 24 derniers mois (pour l\'épargne retraite, 5 ans de versements programmés encaissés, repris comme événements), escomptes en cours, soldes des comptes, cumuls annuels des surcommissions ; structure à arrêter avec l\'équipe du système repris, lot par lot']
+],
+example: 'adjustment_type;payee_code;amount;reason;source_system;contract_number;coverage_code;counterpart_payee_code;auto_reverse\nCORRECTION;P13897;[MONTANT];[MOTIF];CLEVA;AD-004512;G01;;false',
+note: 'Exemple : une ligne du fichier adjustments. Les sources ne donnent pas ces structures : elles sont proposées.'
+},
+sepa: {
+label: 'Virements SEPA', title: 'Fichier de virements', dir: 'Sortant', flows: 'OUT-01',
+desc: 'Un fichier par lot de paiement, déposé pour la trésorerie ; l\'épargne retraite part dans un lot distinct de la même période, daté du 20 au 25. Un bloc de paiement par lot, débité du compte de l\'entité à la date d\'exécution demandée ; une transaction par ordre.',
+meta: [['Structure', 'XML ISO 20022 pain.001.001.03'], ['Encodage', 'UTF-8'], ['Devise', 'EUR'], ['Nom du fichier', '<entité>_SEPA_<AAAAMM>_L<lot>.xml']],
+cols: ['Élément', 'Niveau', 'Occurrences'], fieldsTitle: 'Éléments renseignés',
+fields: [
+['GrpHdr/MsgId, CreDtTm', 'En-tête', '1', 'Référence du lot et horodatage de création'], ['GrpHdr/NbOfTxs, CtrlSum', 'En-tête', '1', 'Nombre d\'ordres et total du lot'],
+['PmtInf/PmtMtd', 'Bloc', '1', 'TRF'], ['PmtInf/ReqdExctnDt', 'Bloc', '1', 'Date d\'exécution demandée'],
+['PmtInf/Dbtr, DbtrAcct, DbtrAgt', 'Bloc', '1', 'Nom, IBAN et BIC du compte de l\'entité'],
+['CdtTrfTxInf/PmtId/EndToEndId', 'Transaction', '1 par ordre', 'Numéro du bordereau ; puis -E et le rang de l\'entité pour un bordereau multi-entités ; puis -R et le rang de réémission après un rejet. Exemple : 2026-09-004512-E2-R1. Toujours 35 caractères au plus'],
+['CdtTrfTxInf/Amt/InstdAmt', 'Transaction', '1 par ordre', 'Net payé, en euros'],
+['CdtTrfTxInf/Cdtr/Nm, CdtrAcct', 'Transaction', '1 par ordre', 'Titulaire et IBAN du bénéficiaire'], ['CdtTrfTxInf/RmtInf/Ustrd', 'Transaction', '1 par ordre', '« COM », code de l\'entité, mois, numéro de bordereau']
+],
+example: '<CdtTrfTxInf>\n  <PmtId><EndToEndId>2026-09-004512</EndToEndId></PmtId>\n  <Amt><InstdAmt Ccy="EUR">110.00</InstdAmt></Amt>\n  <Cdtr><Nm>CABINET P13897</Nm></Cdtr>\n  <CdtrAcct><Id><IBAN>FR76...4471</IBAN></Id></CdtrAcct>\n  <RmtInf>\n    <Ustrd>COM ALPTIS_ASSURANCES 2026-09 2026-09-004512</Ustrd>\n  </RmtInf>\n</CdtTrfTxInf>',
+note: 'Extrait : une transaction du lot 202609-L001, exécuté le 7 octobre 2026. Le libellé permet au distributeur de rapprocher le virement de son bordereau.'
+},
+chq: {
+label: 'Liste des chèques', title: 'Liste des chèques', dir: 'Sortant', flows: 'OUT-01',
+desc: 'Un fichier par trimestre, nommé du dernier mois du trimestre, pour les bénéficiaires sans coordonnées bancaires, et un second pour l\'épargne retraite, de même nom suivi de _PER. Même destinataire que le fichier de virements. Un chèque n\'a pas de retour bancaire : le contrôleur Finance enregistre son émission, ce qui solde l\'ordre.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_CHQ_<AAAAMM>.csv ; pour l\'épargne retraite, <entité>_CHQ_<AAAAMM>_PER.csv']]),
+cols: ['Colonne', 'Type', 'Obligatoire'], fieldsTitle: 'Colonnes',
+fields: [
+['entity_code', 'Texte', 'Oui', 'Entité'], ['payee_code', 'Texte', 'Oui', 'Code du bénéficiaire'], ['creditor_name', 'Texte', 'Oui', 'Nom du bénéficiaire du chèque'],
+['address_line1, address_line2', 'Texte', 'Ligne 1 : oui', 'Adresse du distributeur titulaire du compte ; pour un groupement ou un code de production, celle du distributeur porteur de ses coordonnées de paiement'], ['postal_code, city', 'Texte', 'Oui', 'Code postal et ville'],
+['amount', 'Décimal', 'Oui', 'Montant du chèque'], ['statement_number', 'Texte', 'Oui', 'Numéro du bordereau']
+],
+example: 'entity_code;payee_code;creditor_name;address_line1;address_line2;postal_code;city;amount;statement_number\nALPTIS_ASSURANCES;[CODE];[NOM];[ADRESSE];;[CODE POSTAL];[VILLE];[MONTANT];[NUMÉRO DE BORDEREAU]',
+note: 'Pour le troisième trimestre 2026, le fichier se nomme ALPTIS_ASSURANCES_CHQ_202609.csv. Les sources ne décrivent pas ce fichier : les colonnes sont une proposition à valider avec le SI Finance.'
+},
+acc: {
+label: 'Extraction comptable', title: 'Extraction des écritures', dir: 'Sortant', flows: 'OUT-02',
+desc: 'Un fichier par entité et par mois, produit à la clôture de la période. Le niveau de détail est paramétrable : une écriture par ligne de commission, ou un cumul par bénéficiaire, produit et événement comptable.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_ECR_<AAAAMM>.csv']]),
+cols: ['Colonne', 'Type', 'Obligatoire'], fieldsTitle: 'Colonnes',
+fields: [
+['entity_code', 'Texte', 'Oui', 'Entité'], ['fiscal_year, accounting_month', 'Entier, mois', 'Oui', 'Exercice et mois comptable'], ['journal, entry_date', 'Texte, date', 'Oui', 'Journal et date d\'écriture'],
+['accounting_event', 'Code', 'Oui', 'Événement comptable : EARNING, PAYABLE_RECOGNITION, PAYMENT, CLAWBACK, etc.'],
+['debit_account, credit_account', 'Texte', 'Oui', 'Comptes, selon le schéma de l\'entité'], ['amount', 'Décimal', 'Oui', 'Montant, toujours positif'],
+['range_code, product_code, insurer_code', 'Texte', 'Non', 'Axes analytiques : gamme, produit, assureur'], ['payee_code, origin_partner_code', 'Texte', 'Non', 'Bénéficiaire et distributeur d\'origine ; vides pour une commission reçue d\'un assureur'],
+['statement_number, batch_reference', 'Texte', 'Non', 'Bordereau et lot de paiement'], ['premium_fiscal_year', 'Entier', 'Non', 'Exercice de rattachement de la prime'],
+['line_id, end_to_end_id, advance_reference', 'Texte', 'Détail le plus fin', 'Origine de l\'écriture : ligne de commission, ordre de paiement, ou position d\'escompte d\'un reliquat passé en charge (système source, numéro de contrat et code de garantie)']
+],
+example: 'accounting_month;accounting_event;debit_account;credit_account;amount;payee_code\n2026-09;EARNING;[PROVISION];[ACQUIS];30.00;P13897\n2026-09;PAYABLE_RECOGNITION;[ACQUIS];[DISTRIBUTEUR];30.00;P13897',
+note: 'Extrait limité à six colonnes. Les comptes entre crochets attendent le plan de comptes de la direction financière. Les noms de colonnes sont une proposition.'
+},
+ged: {
+label: 'Documents GED', title: 'Documents pour la GED', dir: 'Sortant', flows: 'OUT-03',
+desc: 'Chaque PDF publié est accompagné d\'un fichier JSON de métadonnées d\'indexation. Le champ document_type donne aussi le <type> du nom de fichier. Pour une éditique externe, le même JSON est enrichi des lignes du corps du bordereau.',
+meta: [['Structure', 'PDF, tableur, JSON de métadonnées'], ['Encodage', 'UTF-8'], ['Nom du fichier', '<entité>_<type>_<numéro>_v<version>.pdf'], ['Numéro', 'Bordereau : mois de la période (AAAA-MM) et numéro d\'ordre à six chiffres, écrit tel quel dans le nom de fichier. Attestation fiscale ou synthèse des escomptes : code du bénéficiaire suivi de l\'année']],
+cols: ['Champ', 'Type', 'Exemple'], fieldsTitle: 'Métadonnées JSON',
+fields: [
+['document_type', 'Code', 'STATEMENT', 'STATEMENT (bordereau), CORRECTED_STATEMENT (rectificatif), MEMBER_STATEMENT (relevé informatif d\'un membre de groupement), TAX_CERTIFICATE (attestation fiscale), ADVANCE_SUMMARY (synthèse des escomptes)'],
+['statement_number', 'Texte', '2026-09-004512', 'Numéro du bordereau'], ['version', 'Entier', '1', 'Version du document'],
+['entity_code', 'Texte', 'ALPTIS_ASSURANCES', 'Entité ; MULTI pour un bordereau couvrant plusieurs entités'], ['payee_code', 'Texte', 'P13897', 'Code du bénéficiaire'],
+['period', 'Mois', '2026-09', 'Période'], ['net_amount', 'Décimal', '110.00', 'Net payé'],
+['published_at', 'Horodatage', '2026-10-08T09:00:00', 'Date de publication'], ['sha256', 'Texte', '—', 'Empreinte du PDF']
+],
+example: '{\n  "document_type": "STATEMENT",\n  "statement_number": "2026-09-004512",\n  "version": 1,\n  "entity_code": "ALPTIS_ASSURANCES",\n  "payee_code": "P13897",\n  "period": "2026-09",\n  "net_amount": 110.00,\n  "published_at": "2026-10-08T09:00:00",\n  "sha256": "<empreinte du PDF>"\n}',
+note: 'Métadonnées du bordereau 2026-09-004512, publié le 8 octobre 2026, lendemain du paiement ; son PDF se nomme ALPTIS_ASSURANCES_STATEMENT_2026-09-004512_v1.pdf. Les sources ne décrivent pas ces métadonnées : elles sont une proposition à valider avec la GED.'
+},
+data: {
+label: 'Export Data', title: 'Export vers la plateforme Data', dir: 'Sortant', flows: 'OUT-05',
+desc: 'Chaque nuit, un fichier par objet, contenant les lignes créées ou modifiées depuis l\'export précédent. Chaque ligne porte updated_at ; la plateforme Data reconstitue l\'état complet en appliquant les fichiers dans l\'ordre. Les écritures comptables ne partent pas par ce flux : elles suivent l\'extraction OUT-02.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_DATA_<objet>_<AAAAMMJJ>.csv']]),
+cols: ['Fichier', 'Table d\'origine', 'Clé'], fieldsTitle: 'Fichiers de l\'export',
+fields: [
+['commission_lines', 'commission_line', 'Identifiant de ligne', 'Nature, statut, assiette, taux, montant, bénéficiaire, règle et version, événement, bordereau'],
+['business_events', 'business_event', 'Système et clé source', 'Type, dates, montants, statut de traitement'],
+['account_entries', 'account_entry', 'Identifiant du mouvement', 'Mouvements de compte hors commissions : type (paiement, rejet, solde d\'ouverture), date, montant, ordre de paiement'],
+['payment_orders', 'payment_order, payment_batch', 'Identifiant d\'ordre', 'Référence du lot, bénéficiaire, montant, date d\'exécution, statut'],
+['rule_versions', 'rule_version', 'Règle et numéro de version', 'Famille (reprise de la table rule), validité, périmètre, paramètres, statut']
+],
+example: 'line_id;period;nature;status;basis_amount;rate;amount;payee_code;rule_code;rule_version;source_key;statement_number;updated_at\n48211937;2026-09;ACQUISITION;PAYABLE;100.00;0.30;30.00;P13897;SANTE_SELECT_UPFRONT;1;ENC-000734;2026-09-004512;2026-10-05T17:04:11',
+note: 'Exemple : extrait d\'une ligne du fichier commission_lines, colonnes principales. Les colonnes de chaque fichier sont celles de sa table d\'origine, les identifiants internes étant remplacés par les codes métier. Une ligne de commission réapparaît dans l\'export chaque fois que son statut change ; son montant, lui, ne change jamais.'
+},
+pay: {
+label: 'Export paie', title: 'Synthèse des variables à payer', dir: 'Sortant', flows: 'OUT-06',
+desc: 'Un fichier par mois, lancé par le contrôleur Finance une fois tous les résultats du mois au statut VALIDATED : ce que la paie doit verser à chaque collaborateur, composante par composante. Un tableur de mêmes colonnes peut le remplacer.',
+meta: csvMeta.concat([['Nom du fichier', '<entité>_VAR_<AAAAMM>.csv ; le mois du nom est la période calculée']]),
+cols: ['Colonne', 'Type', 'Obligatoire'], fieldsTitle: 'Colonnes',
+fields: [
+['external_id', 'Texte', 'Oui', 'Matricule du SI RH'], ['job_code', 'Code', 'Oui', 'Poste : CAC, RB, DR, RR, DNV'], ['pay_period', 'Mois', 'Oui', 'Mois de paie visé : le mois qui suit la période calculée'],
+['component', 'Code', 'Oui', 'Mensuel individuel, qualitatif, collectif, régularisation, ajustement : MONTHLY_INDIVIDUAL, QUARTERLY_QUALITATIVE, ANNUAL_COLLECTIVE, ANNUAL_ADJUSTMENT, MANUAL_ADJUSTMENT'], ['amount', 'Décimal', 'Oui', 'Montant brut à verser'],
+['adjustment_reason', 'Texte', 'Non', 'Motif d\'un ajustement accordé par le responsable'], ['validated_by, validated_at', 'Texte, horodatage', 'Oui', 'Trace de la validation']
+],
+example: 'external_id;job_code;pay_period;component;amount;adjustment_reason;validated_by;validated_at\n[MATRICULE];CAC;2026-10;MONTHLY_INDIVIDUAL;146.00;;[RESPONSABLE];2026-10-02T10:12:00\n[MATRICULE];DR;2026-10;MONTHLY_INDIVIDUAL;458.00;;[RESPONSABLE];2026-10-02T10:12:00',
+note: 'Exemple : fichier ALPTIS_ASSURANCES_VAR_202609.csv, période calculée de septembre 2026, pay_period 2026-10 (paie du mois suivant). L\'export est lancé par le contrôleur Finance une fois tous les résultats du mois au statut VALIDATED. Les sources demandent ce fichier sans en donner la structure : les colonnes sont une proposition à valider avec la paie.'
+},
+api: {
+label: 'API de lecture', title: 'API (section 9.8) : lecture pour les extranets et le CRM, dépôt d\'imports', dir: 'Sortant', flows: 'OUT-04',
+desc: 'Les extranets des distributeurs et le CRM lisent les comptes, les lignes et les bordereaux à la demande. Aucune écriture de données métier par cette API, hors dépôt d\'imports.',
+meta: [['Structure', 'REST, JSON, décrite en OpenAPI'], ['Version', 'Dans le chemin : /api/v1'], ['Authentification', 'Jeton OAuth 2, derrière la passerelle d\'API'], ['Cloisonnement', 'Paramètre entity ; à défaut, entités visibles de l\'appelant']],
+cols: ['Ressource', 'Méthode', 'Appelant'], fieldsTitle: 'Ressources',
+fields: [
+['/distributors/{code}/accounts', 'GET', 'Extranets, CRM', 'Soldes et statut de paiement'], ['/distributors/{code}/commission-lines', 'GET', 'Extranets, CRM', 'Lignes de commission, filtrables par période, nature, statut'],
+['/distributors/{code}/statements', 'GET', 'Extranets, CRM', 'Liste et téléchargement des bordereaux'], ['/distributors/{code}/advance-agreements', 'GET', 'Extranets', 'Conventions d\'escompte et créances'],
+['/imports/{flow}', 'POST', 'Outils de gestion', 'Dépôt d\'un fichier ou d\'un lot d\'événements au format pivot'], ['/imports/{id}', 'GET', 'Outils de gestion', 'Résultat d\'un import : cinq compteurs (lignes lues, filtrées par le mapping, intégrées, rejetées, en attente ; lues = filtrées + intégrées + rejetées + en attente) et rejets'], ['/periods', 'GET', 'Tous', 'État des périodes']
+],
+example: 'GET /api/v1/distributors/P13897/commission-lines?period=2026-09&status=PAYABLE\n\n{\n  "items": [\n    { "nature": "ACQUISITION", "contract": "AD-004512", "basis": 100.00, "rate": 0.30, "amount": 30.00, "status": "PAYABLE", "statement": "2026-09-004512" },\n    { "nature": "SERVICING",   "contract": "AD-004512", "basis": 100.00, "rate": 0.10, "amount": 10.00, "status": "PAYABLE", "statement": "2026-09-004512" }\n  ],\n  "total": 5\n}',
+note: 'Les ressources viennent de la spécification ; la forme exacte de la réponse JSON est une proposition.'
+}
+};
+const order = ['conv', 'cov', 'evt', 'dist', 'grp', 'pc', 'bank', 'prod', 'qi', 'agr', 'tr', 'payres', 'emp', 'bulk', 'sepa', 'chq', 'acc', 'ged', 'data', 'pay', 'api'];
+const d = F[cur];
+return {
+tabs: order.map((k) => ({ label: F[k].label, cls: 'chip' + (cur === k ? ' on' : ''), pick: () => this.setState({ cur: k }) })),
+f: {
+title: d.title, dir: d.dir, dirClass: 'tag ' + (d.dir === 'Entrant' ? 'info' : d.dir === 'Sortant' ? 'ok' : 'mute'), flows: d.flows, desc: d.desc,
+meta: d.meta.map((m) => ({ k: m[0], v: m[1] })),
+fieldsTitle: d.fieldsTitle, c1: d.cols[0], c2: d.cols[1], c3: d.cols[2],
+fields: d.fields.map((x) => ({ a: x[0], b: x[1], c: x[2], d: x[3] })),
+example: d.example, note: d.note
+}
+};
+}
+}
+</script>
+</body>
+</html>

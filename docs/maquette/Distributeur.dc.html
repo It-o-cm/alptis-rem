@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fiche distributeur et compte</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+.tab{padding:12px 16px;min-height:44px;border:0;border-bottom:3px solid transparent;background:none;font:500 14px 'IBM Plex Sans',sans-serif;color:#3D4A59;cursor:pointer}
+.tab.on{border-bottom-color:#0E5A8A;color:#0E5A8A;font-weight:600}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html" class="on">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Distributeurs</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : lecteur</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Cabinet P13897</h1>
+<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: #4A5868"><span class="tag ok">Actif</span><span class="tag ok">ORIAS inscrit</span><span>Membre du groupement G012 · codes de production 61723 (Lyon) et 66117 (Grenoble)</span></div>
+</div>
+<a class="btn sec" href="Escompte.dc.html">Convention d'escompte</a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px">
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Solde du compte</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">110,00 €</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">Payable le 7 octobre</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Créance d'escompte</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">120,00 €</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">480 versés, 360 apurés</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Production RCD santé 2026</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">30 000 €</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">Palier 1 atteint (3 %)</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Taux d'impayés</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">2,1 %</div><div style="font-size: 13px; color: #4A5868; margin-top: 4px">Seuil RCD : 5 %</div></div>
+</div>
+
+<section class="card">
+<div role="tablist" aria-label="Sections de la fiche" style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #D5DBE3; padding: 0 8px">
+<button role="tab" class="{{ tabAccount }}" onClick="{{ showAccount }}">Compte · septembre 2026</button>
+<button role="tab" class="{{ tabHistory }}" onClick="{{ showHistory }}">Historique des bordereaux</button>
+<button role="tab" class="{{ tabAgreements }}" onClick="{{ showAgreements }}">Accords et inscriptions</button>
+</div>
+
+<sc-if value="{{ isAccount }}" hint-placeholder-val="{{ true }}">
+<div style="overflow-x: auto">
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Vue du distributeur : un seul compte chez Alptis Assurances, celui du cabinet P13897 (bénéficiaire de type distributeur), qui reçoit les commissions des codes de production 61723 et 66117. Aucun blocage sur le compte ni sur ses lignes. Le solde additionne les lignes hors prévisionnel et hors lignes imputées sur un escompte, plus le solde d'ouverture, moins les paiements.</div>
+<table>
+<thead><tr><th>Contrat</th><th>Nature</th><th class="num">Assiette</th><th class="num">Taux</th><th class="num">Montant</th><th>Statut</th><th>Détail</th></tr></thead>
+<tbody>
+<tr><td>AD-004512 · Santé Select</td><td>Apport</td><td class="num">100,00 €</td><td class="num">30 %</td><td class="num">30,00 €</td><td><span class="tag info">PAYABLE</span></td><td><a href="Ligne.dc.html">Expliquer</a></td></tr>
+<tr><td>AD-004512 · Santé Select</td><td>Suivi</td><td class="num">100,00 €</td><td class="num">10 %</td><td class="num">10,00 €</td><td><span class="tag info">PAYABLE</span></td><td><a href="Ligne.dc.html">Expliquer</a></td></tr>
+<tr><td>AD-003377 · Prévoyance Pro+</td><td>Linéaire</td><td class="num">200,00 €</td><td class="num">15 %</td><td class="num">30,00 €</td><td><span class="tag info">PAYABLE</span></td><td><a href="Ligne.dc.html">Expliquer</a></td></tr>
+<tr><td>AD-002981 · Santé Select</td><td>Reprise d'apport, résiliation au 200e jour</td><td class="num">210,00 €</td><td class="num">100 %</td><td class="num" style="color: #8F1D16">−210,00 €</td><td><span class="tag info">PAYABLE</span></td><td><a href="Ligne.dc.html">Expliquer</a></td></tr>
+<tr><td>—</td><td>RCD santé, septembre</td><td class="num">—</td><td class="num">—</td><td class="num">300,00 €</td><td><span class="tag info">PAYABLE</span></td><td><a href="Ligne.dc.html">Expliquer</a></td></tr>
+<tr><td>AD-004890 · Santé Select</td><td>Apport, imputé sur l'escompte</td><td class="num">100,00 €</td><td class="num">30 %</td><td class="num">30,00 €</td><td><span class="tag mute">OFFSET</span></td><td><a href="Escompte.dc.html">Escompte</a></td></tr>
+<tr><td>AD-004890 · Santé Select</td><td>Suivi, imputé sur l'escompte</td><td class="num">100,00 €</td><td class="num">10 %</td><td class="num">10,00 €</td><td><span class="tag mute">OFFSET</span></td><td><a href="Escompte.dc.html">Escompte</a></td></tr>
+<tr><td colSpan="4" style="font-weight: 600">Total de la période (hors lignes imputées)</td><td class="num" style="font-weight: 600">160,00 €</td><td colSpan="2"></td></tr>
+<tr><td colSpan="4">Solde antérieur reporté</td><td class="num" style="color: #8F1D16">−50,00 €</td><td colSpan="2"></td></tr>
+<tr><td colSpan="4" style="font-weight: 600">Net payé · bordereau 2026-09-004512</td><td class="num" style="font-weight: 600">110,00 €</td><td colSpan="2"></td></tr>
+<tr><td colSpan="7" style="font-size: 13px; color: #4A5868">Pour information, hors paiement : apurements d'escompte du mois 40,00 € ; créance d'escompte restante 120,00 €.</td></tr>
+</tbody>
+</table>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+<div style="overflow-x: auto">
+<table>
+<thead><tr><th>Période</th><th>Bordereau</th><th class="num">Total période</th><th class="num">Solde reporté</th><th class="num">Net payé</th><th>Paiement</th></tr></thead>
+<tbody>
+<tr><td>Septembre 2026</td><td>2026-09-004512 · v1 · provisoire</td><td class="num">160,00 €</td><td class="num">−50,00 €</td><td class="num">110,00 €</td><td><span class="tag info">Ordre à valider · lot 202609-L001</span></td></tr>
+<tr><td>Août 2026</td><td>2026-08-004377 · v1 · publié</td><td class="num">−50,00 €</td><td class="num">0,00 €</td><td class="num">0,00 €</td><td><span class="tag mute">Aucun : solde débiteur</span></td></tr>
+<tr><td>Juillet 2026</td><td>2026-07-004251 · v1 · publié</td><td class="num">1 950,00 €</td><td class="num">0,00 €</td><td class="num">1 950,00 €</td><td><span class="tag ok">Réglé le 07/08</span></td></tr>
+</tbody>
+</table>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAgreements }}" hint-placeholder-val="{{ false }}">
+<div style="overflow-x: auto">
+<table>
+<thead><tr><th>Accord</th><th>Validité</th><th>Signature</th><th>Effet</th></tr></thead>
+<tbody>
+<tr><td>Convention de partenariat</td><td>Depuis le 01/03/2019</td><td><span class="tag ok">Signée</span></td><td>Barème du Guide 2026</td></tr>
+<tr><td><a href="Escompte.dc.html">Convention d'escompte 2026</a></td><td>01/01/2026 au 31/12/2026</td><td><span class="tag ok">Signée</span></td><td>Avance à la date d'effet</td></tr>
+<tr><td>Avenant RCD santé 2026</td><td>Année 2026</td><td><span class="tag ok">Signé</span></td><td>Inscription active</td></tr>
+<tr><td>Avenant RCP santé 2026</td><td>Année 2026</td><td><span class="tag warn">Non signé</span></td><td>Aucun versement tant que l'accord n'est pas signé</td></tr>
+</tbody>
+</table>
+</div>
+</sc-if>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const tab = (this.state && this.state.tab) || 'account';
+const cls = (t) => 'tab' + (tab === t ? ' on' : '');
+return {
+isAccount: tab === 'account', isHistory: tab === 'history', isAgreements: tab === 'agreements',
+tabAccount: cls('account'), tabHistory: cls('history'), tabAgreements: cls('agreements'),
+showAccount: () => this.setState({ tab: 'account' }),
+showHistory: () => this.setState({ tab: 'history' }),
+showAgreements: () => this.setState({ tab: 'agreements' })
+};
+}
+}
+</script>
+</body>
+</html>

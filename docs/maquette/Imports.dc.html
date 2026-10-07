@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Imports et rejets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:11px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html" class="on">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Période de septembre 2026</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : opérateur</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Imports et rejets</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868">Chaque fichier est contrôlé ligne par ligne : une ligne fausse est rejetée, une ligne juste mais que l'application ne peut pas encore traiter est intégrée en attente. Un fichier déjà intégré est refusé.</div>
+</div>
+<button class="btn sec">Déposer un fichier</button>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Journal des imports</h2>
+<div style="min-width: 920px">
+<div class="row head" style="grid-template-columns: 1.3fr 1.9fr .8fr .9fr .5fr .6fr .6fr .6fr .6fr 1.2fr"><div>Flux</div><div>Fichier et empreinte</div><div>Reçu le</div><div>Auteur</div><div class="num">Lues</div><div class="num">Filtrées</div><div class="num">Intégrées</div><div class="num">Rejetées</div><div class="num">En attente</div><div>État</div></div>
+<sc-for list="{{ batches }}" as="b" hint-placeholder-count="5">
+<div class="row" style="grid-template-columns: 1.3fr 1.9fr .8fr .9fr .5fr .6fr .6fr .6fr .6fr 1.2fr">
+<div>{{ b.flow }}</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; overflow-wrap: anywhere">{{ b.file }}<div style="font-size: 12px; color: #4A5868; margin-top: 2px">{{ b.hash }}</div></div><div>{{ b.date }}</div><div>{{ b.author }}</div>
+<div class="num">{{ b.read }}</div><div class="num">{{ b.filtered }}</div><div class="num">{{ b.ok }}</div><div class="num">{{ b.rejected }}</div><div class="num">{{ b.hold }}</div>
+<div><span class="{{ b.tagClass }}">{{ b.state }}</span></div>
+</div>
+</sc-for>
+</div>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868; line-height: 1.45">Lues = filtrées + intégrées + rejetées + en attente. Une ligne filtrée est écartée par le mapping du fichier (UMR : 600 lignes lues, 214 filtrées, 386 intégrées). CLEVA et RSI envoient un fichier de même nom : chaque système source dépose dans son propre répertoire, et un fichier reçu est identifié par son flux, son système source et son nom. Le système source vient du répertoire de dépôt, ou d'un paramètre obligatoire pour un téléversement à l'écran ou un dépôt par API.</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 16px 18px 6px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Lignes à traiter · événements CLEVA du 30/09 (extrait)</h2>
+<div style="font-size: 14px; color: #4A5868">{{ remaining }}</div>
+</div>
+<div style="min-width: 920px">
+<div class="row head" style="grid-template-columns: .5fr 1fr 1fr 2fr 1.1fr 1.6fr"><div class="num">Ligne</div><div>Clé source</div><div>Contrat</div><div>Motif</div><div>Situation</div><div>Action</div></div>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+<div class="row" style="grid-template-columns: .5fr 1fr 1fr 2fr 1.1fr 1.6fr; align-items: center">
+<div class="num">{{ r.line }}</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">{{ r.key }}</div>
+<div>{{ r.contract }}</div>
+<div>{{ r.reason }}<sc-if value="{{ r.hasCode }}" hint-placeholder-val="{{ true }}"> <span class="tag mute">{{ r.code }}</span></sc-if></div>
+<div><span class="{{ r.tagClass }}">{{ r.status }}</span></div>
+<div>
+<sc-if value="{{ r.fixable }}" hint-placeholder-val="{{ true }}">
+<button class="btn sec" onClick="{{ r.fix }}">Corriger et relancer</button>
+</sc-if>
+<sc-if value="{{ r.discardable }}" hint-placeholder-val="{{ false }}">
+<button class="btn sec" onClick="{{ r.discard }}">Écarter</button>
+</sc-if>
+<sc-if value="{{ r.waiting }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #4A5868">Repart seule à l'arrivée de la donnée manquante</span>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868; line-height: 1.45">Rejet (ligne fausse en elle-même, à corriger à l'écran ou par réimport, elle repart alors automatiquement) : erreur de structure (STRUCTURE), de type (TYPE) ou de champ obligatoire (MISSING_FIELD), montant absent, non numérique ou nul (AMOUNT), date dans le futur (FUTURE_DATE), doublon (DUPLICATE). Une ligne négative n'est pas rejetée : elle est rapprochée de l'événement qu'elle annule, sinon mise en attente. Attente (événement intégré ON_HOLD, relancé automatiquement) : code inconnu des référentiels (UNKNOWN_REFERENCE), règle absente, ligne négative sans événement à annuler. L'écart entre une commission externe et son assiette multipliée par son taux n'est pas un rejet : l'événement passe ON_HOLD avec une anomalie, traitée dans les <a href="Controles.dc.html">contrôles</a> (hypothèse H-49). Les événements ON_HOLD ne bloquent pas la période.</div>
+</section>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Flux attendus sur la période</h2>
+<table>
+<thead><tr><th>N°</th><th>Flux</th><th>Fréquence</th><th>Dernière réception</th><th>Situation</th></tr></thead>
+<tbody>
+<tr><td>IN-03</td><td>CLEVA · garanties et événements</td><td>Quotidienne</td><td>30/09/2026</td><td><span class="tag ok">Reçu</span></td></tr>
+<tr><td>IN-04</td><td>RSI · garanties et événements</td><td>Quotidienne</td><td>30/09/2026</td><td><span class="tag ok">Reçu</span></td></tr>
+<tr><td>IN-01</td><td>Sésame · distributeurs</td><td>Quotidienne</td><td>30/09/2026</td><td><span class="tag ok">Reçu</span></td></tr>
+<tr><td>IN-06</td><td>UMR · production PER (mapping)</td><td>Mensuelle</td><td>28/09/2026</td><td><span class="tag ok">Reçu</span></td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Situations possibles : reçu, en retard, manquant. Un fichier attendu sans donnée est envoyé avec sa seule ligne d'en-tête, pour ne pas être signalé manquant.</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const fixed = (this.state && this.state.fixed) || {};
+const base = [
+{ line: 118, key: 'ENC-000871', contract: 'AD-004977', reason: 'Prime nulle', code: 'AMOUNT', kind: 'rejet' },
+{ line: 342, key: 'ENC-000902', contract: 'AD-003120', reason: 'Date dans le futur (05/11/2026)', code: 'FUTURE_DATE', kind: 'rejet' },
+{ line: 610, key: 'ENC-000123', contract: 'AD-004512', reason: 'Doublon : clé déjà intégrée', code: 'DUPLICATE', kind: 'rejet', duplicate: true },
+{ line: 733, key: 'ENC-000951', contract: 'AD-005204', reason: 'Code de production 70418 inconnu', code: 'UNKNOWN_REFERENCE', kind: 'attente' },
+{ line: 921, key: 'ENC-000988', contract: 'AD-005231', reason: 'Code de production 70418 inconnu', code: 'UNKNOWN_REFERENCE', kind: 'attente' }
+];
+const rows = base.map((r) => {
+// ImportRejection.reason_code: STRUCTURE, TYPE, MISSING_FIELD, AMOUNT, FUTURE_DATE, DUPLICATE (rejected lines only).
+// ImportRejection.status: OPEN, CORRECTED, DISCARDED ; a held line is an event with processingStatus ON_HOLD.
+// A held line may carry a hold reason code (UNKNOWN_REFERENCE), shown with the same tag as a reject code.
+const outcome = fixed[r.key];
+const done = !!outcome;
+const mark = (value) => () => { const next = Object.assign({}, fixed); next[r.key] = value; this.setState({ fixed: next }); };
+return {
+line: r.line, key: r.key, contract: r.contract, reason: r.reason,
+code: r.code || '', hasCode: !!r.code,
+status: outcome === 'DISCARDED' ? 'Écartée · DISCARDED' : done ? 'Corrigée · CORRECTED' : r.kind === 'rejet' ? 'Rejetée · OPEN' : 'En attente · ON_HOLD',
+tagClass: 'tag ' + (outcome === 'DISCARDED' ? 'mute' : done ? 'ok' : r.kind === 'rejet' ? 'ko' : 'info'),
+openReject: !done && r.kind === 'rejet',
+fixable: !done && r.kind === 'rejet' && !r.duplicate,
+discardable: !done && r.kind === 'rejet' && !!r.duplicate,
+waiting: !done && r.kind === 'attente',
+fix: mark('CORRECTED'),
+discard: mark('DISCARDED')
+};
+});
+const left = rows.filter((r) => r.openReject).length;
+return {
+rows: rows,
+remaining: left + ' rejet(s) affiché(s) à traiter · 2 ligne(s) en attente',
+// Counters: read = filtered + ok + rejected + held (ING-05).
+batches: [
+{ flow: 'IN-03 · CLEVA · events', file: 'ALPTIS_ASSURANCES_events_20260930.csv', hash: 'Empreinte 3f9a…c21e', author: 'UseItFlow', date: '30/09 23:10', read: '1 000', filtered: '0', ok: '990', rejected: '6', hold: '4', state: 'PARTIALLY_LOADED', tagClass: 'tag warn' },
+{ flow: 'IN-03 · CLEVA · coverages', file: 'ALPTIS_ASSURANCES_coverages_20260930.csv', hash: 'Empreinte 81d4…07be', author: 'UseItFlow', date: '30/09 23:12', read: '212', filtered: '0', ok: '212', rejected: '0', hold: '0', state: 'LOADED', tagClass: 'tag ok' },
+{ flow: 'IN-04 · RSI · events', file: 'ALPTIS_ASSURANCES_events_20260930.csv', hash: 'Empreinte a6e0…5d93', author: 'UseItFlow', date: '30/09 23:40', read: '18 450', filtered: '0', ok: '18 440', rejected: '0', hold: '10', state: 'LOADED', tagClass: 'tag ok' },
+{ flow: 'IN-06 · UMR · events (mapping)', file: 'umr_prod_202609.xlsx', hash: 'Empreinte c7b2…e410', author: 'Opérateur (téléversement)', date: '28/09 10:02', read: '600', filtered: '214', ok: '386', rejected: '0', hold: '0', state: 'LOADED', tagClass: 'tag ok' },
+{ flow: 'IN-03 · CLEVA · events', file: 'ALPTIS_ASSURANCES_events_20260930.csv', hash: 'Empreinte 3f9a…c21e', author: 'UseItFlow', date: '01/10 08:15', read: '—', filtered: '—', ok: '—', rejected: '—', hold: '—', state: 'REFUSED · déjà intégré', tagClass: 'tag ko' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

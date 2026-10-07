@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Exports</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:13px;overflow-wrap:anywhere}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:11px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html" class="on">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Flux · Exports de septembre 2026</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : contrôleur Finance</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Exports de la période</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868; max-width: 85ch">Chaque fichier émis est inscrit au journal des exports avec son empreinte, son nombre de lignes et son total : on sait toujours ce qui est parti, quand, vers qui et avec quel contenu.</div>
+</div>
+<a class="btn sec" href="Formats.dc.html">Voir les formats</a>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<div style="min-width: 1320px">
+<div class="row head" style="grid-template-columns: .6fr 1fr 2fr 1.3fr 1fr .6fr .9fr .8fr 1.2fr 1.5fr"><div>Flux</div><div>Destinataire</div><div>Fichier et empreinte</div><div>Contenu</div><div>Auteur</div><div class="num">Lignes</div><div class="num">Total</div><div>Émis le</div><div>État</div><div>Action</div></div>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+<div class="row" style="grid-template-columns: .6fr 1fr 2fr 1.3fr 1fr .6fr .9fr .8fr 1.2fr 1.5fr; align-items: center">
+<div class="mono">{{ r.id }}</div>
+<div>{{ r.to }}</div>
+<div><div class="mono">{{ r.file }}</div><div style="font-size: 12px; color: #4A5868; margin-top: 2px">{{ r.format }}</div><div class="mono" style="font-size: 12px; color: #4A5868; margin-top: 2px">{{ r.hash }}</div></div>
+<div>{{ r.content }}</div>
+<div>{{ r.author }}</div>
+<div class="num">{{ r.lines }}</div>
+<div class="num">{{ r.total }}</div>
+<div>{{ r.date }}</div>
+<div><span class="{{ r.stateClass }}">{{ r.state }}</span></div>
+<div>
+<sc-if value="{{ r.ready }}" hint-placeholder-val="{{ true }}">
+<button class="btn sec">Télécharger</button>
+</sc-if>
+<sc-if value="{{ r.pending }}" hint-placeholder-val="{{ false }}">
+<button class="btn" onClick="{{ r.produce }}">{{ r.produceLabel }}</button>
+</sc-if>
+<sc-if value="{{ r.locked }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #4A5868">{{ r.lockReason }}</span>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px">
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Export à la demande</h2>
+<table>
+<thead><tr><th>Export</th><th>Format</th><th>Maille</th></tr></thead>
+<tbody>
+<tr><td>Toute liste affichée, avec ses filtres</td><td>CSV ou tableur</td><td>Une ligne par élément de la liste</td></tr>
+<tr><td>Lignes de commission d'une période</td><td>CSV ou tableur</td><td>Une ligne par commission</td></tr>
+<tr><td>Comptes et soldes des distributeurs</td><td>CSV ou tableur</td><td>Un compte par ligne</td></tr>
+<tr><td>Anomalies et décisions</td><td>CSV ou tableur</td><td>Une anomalie par ligne</td></tr>
+<tr><td>Données des contrôles de niveau 2 et 3</td><td>CSV</td><td>Selon le contrôle</td></tr>
+<tr><td>État de cut-off</td><td>Tableur</td><td>Par garantie, distributeur, produit ou entité</td></tr>
+<tr><td>Paramétrage des règles</td><td>JSON</td><td>Plan complet, pour la promotion entre environnements et la réversibilité</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Tout utilisateur exporte ce qu'il voit, dans la limite de ses droits et du cloisonnement par entité. Un export à la demande suit les conventions communes des fichiers CSV et, comme tout fichier émis, il est inscrit au journal des exports avec son auteur.</div>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">Ce qui est garanti</h2>
+<ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.45">
+<li>Le total du fichier de virements est égal à la somme des bordereaux et à la somme des lignes payables.</li>
+<li>Une écriture n'est transmise qu'une fois : l'extraction qui la contient est mémorisée sur l'écriture.</li>
+<li>Un bordereau publié est un fichier figé ; une correction donne un bordereau rectificatif.</li>
+<li>Un fichier émis n'est pas régénéré : il se retélécharge à l'identique, avec la même empreinte.</li>
+<li>L'export de paie (OUT-06) est lancé par le contrôleur Finance une fois tous les résultats du mois au statut <span class="mono">VALIDATED</span>. Le mois du nom de fichier est la période calculée (<span class="mono">202609</span>) ; <span class="mono">pay_period</span> est le mois de paie suivant (<span class="mono">2026-10</span>).</li>
+</ul>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const made = (this.state && this.state.made) || {};
+const base = [
+{ id: 'OUT-01', to: 'Trésorerie', file: 'ALPTIS_ASSURANCES_SEPA_202609_L001.xml', format: 'XML pain.001.001.03 · lot 202609-L001', content: '1 180 virements · 2 231 904,35 €', date: '—', kind: 'locked', state: 'À valider', lock: 'Lot 202609-L001 à valider par le contrôleur Finance' },
+{ id: 'OUT-01c', to: 'Trésorerie', file: 'ALPTIS_ASSURANCES_SEPA_202609_L002.xml', format: 'XML pain.001.001.03 · lot 202609-L002', content: '37 virements · 18 250,40 €', date: '—', kind: 'locked', state: 'À venir', lock: 'Lot épargne retraite, exécution du 20 au 25/10' },
+{ id: 'OUT-01b', to: 'Trésorerie', file: 'ALPTIS_ASSURANCES_CHQ_202609.csv', format: 'CSV · liste des chèques du 3e trimestre · une seconde liste de même nom suivi de _PER existe pour l\'épargne retraite (avant le 25)', content: '9 bénéficiaires sans coordonnées bancaires', date: '—', kind: 'locked', state: 'À valider', lock: 'Lot 202609-L003 à valider ; liste à émettre avant le 15/10' },
+{ id: 'OUT-05', to: 'Plateforme Data', file: 'ALPTIS_ASSURANCES_DATA_<objet>_20261006.csv', format: '5 fichiers CSV incrémentaux, un par objet', content: 'Lignes créées ou modifiées depuis l\'export précédent', date: '06/10 02:00', kind: 'ready', state: 'Déposé · DELIVERED', hash: 'Empreinte 7c1e…a90b et 4 autres, une par fichier', author: 'Traitement planifié', lines: '2 418' },
+{ id: 'OUT-02', to: 'Comptabilité', file: 'ALPTIS_ASSURANCES_ECR_202609.csv', format: 'CSV', content: 'Écritures de septembre', date: '—', kind: 'locked', state: 'À la clôture', lock: 'Produit à la clôture de la période, le 30/10' },
+{ id: 'OUT-03', to: 'GED, éditique', file: 'ALPTIS_ASSURANCES_STATEMENT_2026-09-004512_v1.pdf et suivants', format: '1 250 bordereaux en PDF et en tableur, chacun avec son JSON de métadonnées', content: 'Bordereaux de septembre', date: '—', kind: 'locked', state: 'Après le paiement', lock: 'Publiés le 08/10, lendemain de l\'exécution des virements du 07/10' },
+{ id: 'OUT-06', to: 'Paie', file: 'ALPTIS_ASSURANCES_VAR_202609.csv', format: 'CSV, ou tableur de mêmes colonnes · mois du nom = période calculée', content: 'Variables des commerciaux de septembre · pay_period 2026-10', date: '—', kind: 'pending', state: 'À produire', label: 'Produire le fichier', madeHash: 'Empreinte 5b0d…e3f7', madeAuthor: 'Contrôleur Finance', madeLines: '3', madeTotal: '750,00 €' }
+];
+// ExportBatch.status: GENERATED, DELIVERED, FAILED.
+const rows = base.map((b) => {
+const done = !!made[b.id];
+return {
+id: b.id.replace(/[bc]$/, ''), to: b.to, file: b.file, format: b.format, content: b.content,
+date: done ? '06/10 17:02' : b.date,
+state: done ? 'Généré · GENERATED' : b.state,
+// Journal columns: fingerprint, author, line count and total exist only once the file is generated.
+hash: (done ? b.madeHash : b.hash) || '—',
+author: (done ? b.madeAuthor : b.author) || '—',
+lines: (done ? b.madeLines : b.lines) || '—',
+total: (done ? b.madeTotal : b.total) || '—',
+stateClass: 'tag ' + (done || b.kind === 'ready' ? 'ok' : b.kind === 'pending' ? 'warn' : b.kind === 'locked' ? 'mute' : 'info'),
+ready: b.kind === 'ready' || done,
+pending: b.kind === 'pending' && !done,
+locked: b.kind === 'locked',
+lockReason: b.lock || '',
+produceLabel: b.label || '',
+produce: () => { const next = Object.assign({}, made); next[b.id] = true; this.setState({ made: next }); }
+};
+});
+return { rows: rows };
+}
+}
+</script>
+</body>
+</html>

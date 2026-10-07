@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Périodes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html" class="on">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Cycle mensuel</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : valideur métier</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Période de septembre 2026</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868">Données gelées au 30 septembre · paiement attendu entre le 5 et le 10 octobre · lot épargne retraite entre le 20 et le 25 octobre</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-if value="{{ canValidate }}" hint-placeholder-val="{{ true }}">
+<button class="btn" onClick="{{ validate }}">Valider les montants</button>
+</sc-if>
+<sc-if value="{{ validated }}" hint-placeholder-val="{{ false }}">
+<a class="btn" href="Paiement.dc.html">Voir le lot de paiement</a>
+</sc-if>
+<a class="btn sec" href="Controles.dc.html">Revoir les anomalies</a>
+</div>
+</div>
+
+<div class="card" style="padding: 18px 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 6px 4px">
+<sc-for list="{{ steps }}" as="s" hint-placeholder-count="9">
+<div style="flex: 1 1 96px; min-width: 96px">
+<div style="{{ s.bar }}"></div>
+<div style="{{ s.text }}">{{ s.label }}</div>
+<div style="font-size: 12px; color: #4A5868; margin-top: 2px">{{ s.who }}</div>
+<div style="font-size: 12px; color: #4A5868; margin-top: 2px">{{ s.when }}</div>
+</div>
+</sc-for>
+</div>
+<div style="margin-top: 14px; font-size: 14px">{{ stateMessage }}</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px">
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Commissions acquises</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">1 912 480,10 €</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Escomptes versés</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">402 150,00 €</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">RCD du mois</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">96 400,00 €</div></div>
+<div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4A5868">Reprises</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px; color: #8F1D16">−148 300,25 €</div></div>
+<div class="card" style="padding: 16px 18px; border-color: #0E5A8A"><div style="font-size: 13px; color: #4A5868">Net de la période, hors lot épargne retraite (18 250,40 €)</div><div style="font: 500 22px 'IBM Plex Mono', monospace; margin-top: 6px">2 262 729,85 €</div></div>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Lots de paiement de la période</h2>
+<table>
+<thead><tr><th>Lot</th><th>Type</th><th>Date d'exécution</th><th>Bordereaux</th><th>Statut</th></tr></thead>
+<tbody>
+<tr><td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">202609-L001</td><td>Cycle</td><td>7 octobre 2026 (fenêtre du 5 au 10)</td><td>Bordereaux de la période</td><td><span class="{{ batchTagClass }}">{{ batchState }}</span></td></tr>
+<tr><td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">202609-L002</td><td>Cycle épargne retraite</td><td>Entre le 20 et le 25 octobre 2026</td><td>Bordereau propre à l'épargne retraite</td><td><span class="{{ batchTagClass }}">{{ batchState }}</span></td></tr>
+<tr><td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">202609-L003</td><td>Chèques</td><td>Avant le 15 octobre 2026 (le 25 pour l'épargne retraite)</td><td>Bordereaux de la période</td><td><span class="{{ batchTagClass }}">{{ batchState }}</span></td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">La période atteint FINANCE_VALIDATED à la validation du lot de cycle et y reste jusqu'au règlement du dernier lot ; elle passe alors à PAID. Chaque lot est validé séparément par le contrôleur Finance ; ses bordereaux sont publiés le lendemain de son exécution.</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px">
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">À traiter avant validation</h2>
+<table>
+<tbody>
+<tr><td><a href="Controles.dc.html">Anomalies de contrôle ouvertes</a></td><td class="num">3</td><td><span class="tag warn">Avertissement</span></td></tr>
+<tr><td><a href="Imports.dc.html">Événements en attente (ON_HOLD)</a></td><td class="num">14</td><td><span class="tag info">Reportés</span></td></tr>
+<tr><td><a href="Ajustements.dc.html">Ajustements à approuver (période d'octobre)</a></td><td class="num">2</td><td><span class="tag mute">Sans effet sur septembre</span></td></tr>
+<tr><td><a href="Imports.dc.html">Flux attendus non reçus</a></td><td class="num">0</td><td><span class="tag ok">Complet</span></td></tr>
+</tbody>
+</table>
+</section>
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Toutes les périodes ouvertes</h2>
+<table>
+<thead><tr><th>Entité</th><th>Période</th><th>État</th></tr></thead>
+<tbody>
+<tr><td>Alptis Assurances</td><td>Septembre 2026</td><td><span class="tag info">{{ stateCode }}</span></td></tr>
+<tr><td>Alptis Assurances</td><td>Octobre 2026</td><td><span class="tag mute">OPEN</span></td></tr>
+<tr><td>UNEP</td><td>Septembre 2026</td><td><span class="tag info">CALCULATED</span></td></tr>
+<tr><td>UNEP</td><td>Octobre 2026</td><td><span class="tag mute">OPEN</span></td></tr>
+<tr><td>Promantis Conseil</td><td>Septembre 2026</td><td><span class="tag mute">LOADED</span></td></tr>
+<tr><td>Promantis Conseil</td><td>Octobre 2026</td><td><span class="tag mute">OPEN</span></td></tr>
+</tbody>
+</table>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+const current = (this.state && this.state.step) || 3;
+const defs = [
+['OPEN', 'Automatique', '1er sept.'], ['LOADED', 'Opérateur', '1er oct.'], ['CALCULATED', 'Admin métier', '1er oct.'], ['CONTROLLED', 'Opérateur', '2 oct.'],
+['BUSINESS_VALIDATED', 'Valideur métier', '5 oct.'], ['PAYMENT_PREPARED', 'Automatique', '5 oct.'], ['FINANCE_VALIDATED', 'Finance', '6 oct.'],
+['PAID', 'Finance', '7-9 oct., puis 20-25 oct.'], ['CLOSED', 'Finance', '30 oct.']
+];
+const steps = defs.map((d, i) => ({
+label: d[0], who: d[1], when: d[2],
+bar: 'height: 6px; border-radius: 3px; background: ' + (i < current ? '#1B7F4B' : i === current ? '#0E5A8A' : '#D5DBE3'),
+text: 'margin-top: 8px; font: ' + (i === current ? '600' : '500') + " 12px 'IBM Plex Mono', monospace; color: " + (i <= current ? '#16202C' : '#4A5868')
+}));
+const validated = current >= 5;
+return {
+steps: steps,
+stateCode: defs[current][0],
+canValidate: !validated,
+validated: validated,
+// Payment batches only exist once the period reaches PAYMENT_PREPARED (PaymentBatch.status DRAFT).
+batchState: validated ? 'DRAFT' : 'À constituer',
+batchTagClass: 'tag ' + (validated ? 'info' : 'mute'),
+stateMessage: validated
+? 'Montants validés. Les lots de paiement (cycle, épargne retraite et chèques) et les bordereaux provisoires sont constitués ; la Finance peut contrôler.'
+: 'Contrôles exécutés. La période attend la validation des montants par le valideur métier.',
+validate: () => this.setState({ step: 5 })
+};
+}
+}
+</script>
+</body>
+</html>

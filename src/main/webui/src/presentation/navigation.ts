@@ -1,0 +1,76 @@
+// Side-navigation layout, reproducing the sections and entries of the mock-up
+// (docs/maquette/Main.dc.html). Later steps add one entry per list of the
+// section 4 inventory; this is the common frame delivered at step 0.
+
+/** A single navigation entry leading to a page. */
+export interface NavItem {
+  /** Route name, unique across the application. */
+  readonly name: string;
+  /** Route path. */
+  readonly path: string;
+  /** French label shown in the navigation and used as the page title. */
+  readonly label: string;
+}
+
+/** A labelled group of navigation entries. */
+export interface NavSection {
+  /** French section heading, as in the mock-up. */
+  readonly heading: string;
+  /** Entries of the section. */
+  readonly items: readonly NavItem[];
+}
+
+/** The navigation sections, in the order of the mock-up. */
+export const NAV_SECTIONS: readonly NavSection[] = [
+  {
+    heading: 'Cycle mensuel',
+    items: [
+      { name: 'periods', path: '/', label: 'Périodes' },
+      { name: 'imports', path: '/imports', label: 'Imports' },
+      { name: 'controls', path: '/controles', label: 'Contrôles' },
+      { name: 'adjustments', path: '/ajustements', label: 'Ajustements' },
+      { name: 'payment', path: '/paiement', label: 'Paiement' },
+    ],
+  },
+  {
+    heading: 'Distributeurs',
+    items: [
+      { name: 'distributor', path: '/distributeur', label: 'Fiche et compte' },
+      { name: 'advance', path: '/escompte', label: 'Escompte' },
+    ],
+  },
+  {
+    heading: 'Règles',
+    items: [
+      { name: 'rules', path: '/regles', label: 'Paramétrage' },
+      { name: 'simulation', path: '/simulation', label: 'Simulation' },
+      { name: 'families', path: '/familles', label: 'Familles de calcul' },
+    ],
+  },
+  {
+    heading: 'Flux',
+    items: [
+      { name: 'flows', path: '/flux', label: 'Catalogue des flux' },
+      { name: 'exports', path: '/exports', label: 'Exports' },
+      { name: 'formats', path: '/formats', label: "Formats d'échange" },
+      { name: 'mapping', path: '/mapping', label: 'Mapping de fichier' },
+    ],
+  },
+  {
+    heading: 'Comptabilité',
+    items: [{ name: 'cutoff', path: '/cutoff', label: 'État de cut-off' }],
+  },
+  {
+    heading: 'Forces de vente',
+    items: [
+      { name: 'fdvPlan', path: '/fdv/plan', label: 'Plan de variable' },
+      { name: 'fdvValidation', path: '/fdv/validation', label: 'Validation mensuelle' },
+      { name: 'fdvCommercial', path: '/fdv/commercial', label: 'Mon variable' },
+    ],
+  },
+];
+
+/** Flattens all navigation entries across sections, preserving order. */
+export function allNavItems(): NavItem[] {
+  return NAV_SECTIONS.flatMap((section) => [...section.items]);
+}

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Détail d'une ligne de commission</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:1px solid #D5DBE3;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #E6EAF0;vertical-align:top}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+dt{font-size:13px;color:#4A5868}dd{margin:2px 0 0;font-size:15px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html" class="on">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868"><a href="Distributeur.dc.html">Cabinet P13897</a> · Compte de septembre 2026 · Ligne</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : opérateur</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Commission d'apport · 30,00 €</h1>
+<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: #4A5868"><span class="tag info">PAYABLE</span><span>Contrat AD-004512 · Santé Select · bordereau 2026-09-004512</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<a class="btn sec" href="Ajustements.dc.html">Saisir un ajustement</a>
+<a class="btn sec" href="Distributeur.dc.html">Retour au compte</a>
+</div>
+</div>
+
+<section class="card" style="padding: 20px 22px; border-color: #0E5A8A">
+<h2 style="margin: 0 0 8px; font-size: 16px; font-weight: 600">Pourquoi ce montant</h2>
+<p style="margin: 0; font-size: 17px; line-height: 1.5; max-width: 70ch">30 € d'apport, soit 30 % de l'encaissement de 100 € hors taxes du 5 septembre 2026. La garantie a pris effet le 1er mars 2026 : elle est dans sa première année, l'apport est donc dû en plus du suivi.</p>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px">
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">Les étapes du calcul</h2>
+<ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.45">
+<li><strong>Événement.</strong> Prime encaissée ENC-000734, datée du 05/09/2026, reçue de CLEVA le 06/09. Montant TTC 113,27 €, taxes 13,27 €, assiette 100,00 €.</li>
+<li><strong>Règle retenue.</strong> <a href="Regle.dc.html">SANTE_SELECT_UPFRONT, version 1</a>, groupe BASE, priorité 10. Aucune règle concurrente.</li>
+<li><strong>Taux.</strong> Couple 30 + 10 porté par la garantie, présent dans la grille autorisée.</li>
+<li><strong>Première année.</strong> Ancienneté de 188 jours à la date de l'événement : inférieure à 365.</li>
+<li><strong>Calcul.</strong> 100,00 × 30 % = 30,00 €, arrondi au centime.</li>
+<li><strong>Bénéficiaire.</strong> Partenaire P13897 (code de production d'origine : 61723), part de 100 %.</li>
+</ol>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 600">Identité de la ligne</h2>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px">
+<div><dt>Nature</dt><dd>ACQUISITION</dd></div>
+<div><dt>Sens</dt><dd>OUTBOUND · versée au distributeur</dd></div>
+<div><dt>Assiette</dt><dd class="num" style="text-align: left">100,00 €</dd></div>
+<div><dt>Taux</dt><dd class="num" style="text-align: left">30 %</dd></div>
+<div><dt>Période de calcul</dt><dd>Septembre 2026</dd></div>
+<div><dt>Période de cotisation</dt><dd>01/09 au 30/09/2026</dd></div>
+<div><dt>Ligne liée</dt><dd>Suivi de 10,00 € sur le même événement</dd></div>
+<div><dt>Exécution</dt><dd>Calcul réel du 01/10/2026</dd></div>
+<div><dt>Mois de rattachement · exercice de la prime</dt><dd>Septembre 2026 · 2026</dd></div>
+<div><dt>Bordereau et ordre de paiement</dt><dd>2026-09-004512 · lot 202609-L001</dd></div>
+</dl>
+</section>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px; font-weight: 600">Parcours et écritures</h2>
+<table>
+<thead><tr><th>Date</th><th>Statut</th><th>Événement comptable</th><th>Mois comptable</th><th>Débit</th><th>Crédit</th><th class="num">Montant</th></tr></thead>
+<tbody>
+<tr><td>01/10/2026</td><td><span class="tag mute">EARNED</span></td><td>EARNING</td><td>Septembre 2026</td><td>Provision pour commissions à payer</td><td>Commissions acquises</td><td class="num">30,00 €</td></tr>
+<tr><td>05/10/2026</td><td><span class="tag info">PAYABLE</span></td><td>PAYABLE_RECOGNITION</td><td>Septembre 2026</td><td>Commissions acquises</td><td>Distributeur, commissions à payer</td><td class="num">30,00 €</td></tr>
+<tr><td>Prévu le 07/10/2026</td><td><span class="tag mute">PAID</span></td><td>PAYMENT · écriture de l'ordre 2026-09-004512 (110,00 €)</td><td>Octobre 2026</td><td>Distributeur, commissions à payer</td><td>Banque</td><td class="num">30,00 €</td></tr>
+</tbody>
+</table>
+<div style="padding: 12px 18px; font-size: 13px; color: #4A5868">Le montant, l'assiette, le taux et la règle de cette ligne ne changeront plus. Une correction passe par une ligne nouvelle, liée à celle-ci. Les écritures d'acquisition et de validation portent le mois comptable de la période, septembre (date d'écriture : 30/09/2026) ; l'écriture de paiement porte le mois de la date d'exécution du virement (hypothèse H-43) et appartient à l'ordre de paiement, dont cette ligne représente 30,00 €. Variante du schéma : STANDARD.</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

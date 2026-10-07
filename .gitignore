@@ -1,0 +1,42 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
+dependency-reduced-pom.xml
+
+# Quarkus
+.quarkus/
+*.log
+
+# Node / Vite / Vue (web UI)
+node_modules/
+src/main/webui/node_modules/
+src/main/webui/dist/
+src/main/webui/.vite/
+src/main/webui/coverage/
+npm-debug.log*
+yarn-error.log*
+
+# Playwright (end-to-end tests)
+src/test/e2e/node_modules/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# Editors / IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# Claude Code local settings and stray output folder
+.claude/settings.local.json
+Claude outputs/

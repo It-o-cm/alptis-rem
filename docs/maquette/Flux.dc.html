@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Catalogue des flux</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:11px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+.chip{min-height:44px;padding:10px 16px;border-radius:22px;border:1px solid #9AA7B5;background:#fff;color:#16202C;font:500 14px 'IBM Plex Sans',sans-serif;cursor:pointer}
+.chip.on{background:#0E5A8A;border-color:#0E5A8A;color:#fff}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html" class="on">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Flux · Catalogue</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : opérateur</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Catalogue des flux</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868; max-width: 85ch">Tout ce que l'application reçoit et tout ce qu'elle émet : système, contenu, format, transport, fréquence et dernier échange. {{ summary }}</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<a class="btn sec" href="Imports.dc.html">Journal des imports</a>
+<a class="btn sec" href="Exports.dc.html">Journal des exports</a>
+</div>
+</div>
+
+<div role="tablist" aria-label="Sens du flux" style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+<button role="tab" class="{{ f.cls }}" onClick="{{ f.pick }}">{{ f.label }}</button>
+</sc-for>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<div style="min-width: 1060px">
+<div class="row head" style="grid-template-columns: .6fr .7fr 1.3fr 2.2fr 1.5fr 1fr 1fr 1.1fr"><div>N°</div><div>Sens</div><div>Système</div><div>Contenu</div><div>Format et transport</div><div>Fréquence</div><div>Dernier échange</div><div>État</div></div>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+<div class="row" style="grid-template-columns: .6fr .7fr 1.3fr 2.2fr 1.5fr 1fr 1fr 1.1fr">
+<div class="mono">{{ r.id }}</div>
+<div><span class="{{ r.dirClass }}">{{ r.dir }}</span></div>
+<div>{{ r.system }}</div>
+<div>{{ r.content }}</div>
+<div>{{ r.format }}</div>
+<div>{{ r.freq }}</div>
+<div>{{ r.last }}</div>
+<div><span class="{{ r.stateClass }}">{{ r.state }}</span></div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px">
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 8px; font-size: 16px; font-weight: 600">Entrées</h2>
+<p style="margin: 0 0 12px; font-size: 14px; line-height: 1.45; color: #3D4A59">Toute source est ramenée au format pivot. Un fichier qui n'est pas au pivot passe par un mapping paramétrable.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><a class="btn sec" href="Formats.dc.html">Format pivot</a><a class="btn sec" href="Mapping.dc.html">Mapping d'un fichier</a></div>
+</section>
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 8px; font-size: 16px; font-weight: 600">Sorties</h2>
+<p style="margin: 0 0 12px; font-size: 14px; line-height: 1.45; color: #3D4A59">Virements, écritures, bordereaux et données : chaque sortie a un format fixe, un nom de fichier et un journal d'émission.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><a class="btn sec" href="Formats.dc.html">Formats de sortie</a><a class="btn sec" href="Exports.dc.html">Exports de la période</a></div>
+</section>
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 8px; font-size: 16px; font-weight: 600">Règles communes</h2>
+<ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.5; color: #3D4A59">
+<li>Un fichier déjà intégré est refusé : aucun doublon.</li>
+<li>Un flux attendu et non reçu est signalé avant le gel de la période.</li>
+<li>Une sortie émise n'est jamais régénérée : une correction donne un nouveau fichier.</li>
+</ul>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const dir = (this.state && this.state.dir) || 'all';
+const base = [
+['IN-01', 'in', 'Sésame (Alptis Assurances)', 'Distributeurs, groupements, codes de production, statuts, accords, indicateurs de qualité, cessions de portefeuille, ordres de remplacement', 'JSON par API REST, ou fichier pivot CSV', 'Quotidienne', '05/10 22:00', 'ok', 'Reçu'],
+['IN-02', 'in', 'Salesforce (UNEP)', 'Idem', 'JSON par API REST, ou fichier pivot CSV', 'Quotidienne', '—', 'mute', 'Autre entité'],
+['IN-03', 'in', 'CLEVA', 'Contrats, garanties, choix de rémunération, émissions, encaissements, annulations, événements de vie, coordonnées bancaires', 'Fichiers pivot CSV déposés par UseItFlow', 'Quotidienne', '05/10 23:12', 'warn', '6 rejets à traiter'],
+['IN-04', 'in', 'RSI', 'Idem, périmètre individuel, jusqu\'à son décommissionnement', 'Fichiers pivot CSV déposés par UseItFlow', 'Quotidienne', '05/10 23:40', 'ok', 'Reçu'],
+['IN-05', 'in', 'Kelia (UNEP)', 'Contrats, versements, encours, coordonnées bancaires', 'Fichiers pivot CSV', 'Mensuelle', '—', 'mute', 'Autre entité'],
+['IN-06', 'in', 'Assureurs et gestionnaires délégués', 'Fichiers de production, d\'encaissement, de commissions ; un mapping par fichier', 'Excel ou CSV, dépôt ou téléversement', 'Mensuelle, trimestrielle ou annuelle selon le fichier', '28/09 10:02', 'ok', 'Reçu'],
+['IN-07', 'in', 'Référentiel produits', 'Gammes, produits, options, assureurs', 'Fichier pivot CSV', 'À chaque évolution', '12/09 14:20', 'ok', 'À jour'],
+['IN-08', 'in', 'SI Finance', 'Résultat d\'exécution des virements, rejets', 'Fichier CSV ou saisie', 'À chaque lot', '09/09 08:10', 'mute', 'Attendu après le lot'],
+['IN-09', 'in', 'SI RH, CRM', 'Collaborateurs, absences, production, activité commerciale, marge, cahiers des charges reçus (module forces de vente)', 'Fichiers CSV', 'Mensuelle', '02/10 07:45', 'ok', 'Reçu'],
+['OUT-01', 'out', 'SI Finance, trésorerie', 'Ordres de virement ; liste des chèques', 'XML SEPA pain.001.001.03 ; liste des chèques en CSV ; dépôt de fichier', 'À chaque lot', '—', 'mute', 'À valider'],
+['OUT-02', 'out', 'SI Finance, comptabilité', 'Extraction des écritures après cut-off', 'CSV, dépôt de fichier', 'Mensuelle', '30/09 18:00', 'mute', 'Prévu le 30/10'],
+['OUT-03', 'out', 'GED, éditique', 'Bordereaux et attestations, avec métadonnées d\'indexation', 'PDF, tableur, JSON de métadonnées', 'À chaque publication', '08/09 09:00', 'mute', 'Après le paiement'],
+['OUT-04', 'out', 'Alptis Connect, K4U, CRM', 'Comptes, lignes de commission, bordereaux, conventions d\'escompte', 'JSON par API REST en lecture', 'À la demande', 'En continu', 'ok', 'Disponible'],
+['OUT-05', 'out', 'Plateforme Data', 'Lignes, événements commissionnés, écritures de compte, paiements, règles', 'Fichiers CSV incrémentaux', 'Quotidienne', '06/10 02:00', 'ok', 'Déposé'],
+['OUT-06', 'out', 'Paie', 'Variables à payer par collaborateur (module forces de vente)', 'CSV, ou tableur de mêmes colonnes', 'Mensuelle', '03/09 11:15', 'mute', 'À produire'],
+['OUT-07', 'out', 'Supervision', 'État de santé et métriques des traitements', 'HTTP', 'Continue', 'En continu', 'ok', 'Disponible']
+];
+const shown = base.filter((b) => dir === 'all' || b[1] === dir);
+const defs = [['all', 'Tous les flux'], ['in', 'Entrants'], ['out', 'Sortants']];
+return {
+rows: shown.map((b) => ({
+id: b[0], dir: b[1] === 'in' ? 'Entrant' : 'Sortant', dirClass: 'tag ' + (b[1] === 'in' ? 'info' : 'mute'),
+system: b[2], content: b[3], format: b[4], freq: b[5], last: b[6], stateClass: 'tag ' + b[7], state: b[8]
+})),
+summary: shown.length + ' flux affichés.',
+filters: defs.map((d) => ({ label: d[1], cls: 'chip' + (dir === d[0] ? ' on' : ''), pick: () => this.setState({ dir: d[0] }) }))
+};
+}
+}
+</script>
+</body>
+</html>

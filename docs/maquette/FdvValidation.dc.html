@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Validation mensuelle du variable</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#0E5A8A}a:hover{color:#093E60}
+.nav a{display:block;padding:11px 14px;border-radius:6px;color:#C9D3DF;text-decoration:none;font-size:14px}
+.nav a:hover{background:#22344A;color:#fff}
+.nav a.on{background:#0E5A8A;color:#fff;font-weight:600}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{background:#DDF1E4;color:#14603A}.warn{background:#FBE8CC;color:#8A4B06}.ko{background:#F8DAD7;color:#8F1D16}.info{background:#DCE9F5;color:#0B4A73}.mute{background:#E6EAF0;color:#3D4A59}
+.row{display:grid;gap:12px;padding:11px 14px;border-bottom:1px solid #E6EAF0;font-size:14px}
+.row.head{font-weight:600;color:#4A5868;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom-color:#D5DBE3}
+.row.total{font-weight:600;background:#F3F5F8;border-bottom:0}
+.card{background:#fff;border:1px solid #D5DBE3;border-radius:8px}
+.btn{display:inline-block;padding:11px 16px;border-radius:6px;font:600 14px 'IBM Plex Sans',sans-serif;text-decoration:none;border:1px solid #0E5A8A;background:#0E5A8A;color:#fff;cursor:pointer;min-height:44px;box-sizing:border-box}
+.btn.sec{background:#fff;color:#0E5A8A}
+a.btn{color:#fff}a.btn.sec{color:#0E5A8A}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F3F5F8; color: #16202C; font-family: 'IBM Plex Sans', sans-serif">
+<nav class="nav" aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 260px; background: #14202E; padding: 20px 12px; box-sizing: border-box">
+<div style="color: #fff; font-weight: 600; font-size: 16px; padding: 4px 14px 18px">SI Rémunération</div>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 14px 4px">Cycle mensuel</div>
+<a href="Main.dc.html">Périodes</a>
+<a href="Imports.dc.html">Imports</a>
+<a href="Controles.dc.html">Contrôles</a>
+<a href="Ajustements.dc.html">Ajustements</a>
+<a href="Paiement.dc.html">Paiement</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Distributeurs</div>
+<a href="Distributeur.dc.html">Fiche et compte</a>
+<a href="Escompte.dc.html">Escompte</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Règles</div>
+<a href="Regle.dc.html">Paramétrage</a>
+<a href="Simulation.dc.html">Simulation</a>
+<a href="Familles.dc.html">Familles de calcul</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Flux</div>
+<a href="Flux.dc.html">Catalogue des flux</a>
+<a href="Exports.dc.html">Exports</a>
+<a href="Formats.dc.html">Formats d'échange</a>
+<a href="Mapping.dc.html">Mapping de fichier</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Comptabilité</div>
+<a href="Cutoff.dc.html">État de cut-off</a>
+<div style="color: #8FA0B3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 16px 14px 4px">Forces de vente</div>
+<a href="FdvPlan.dc.html">Plan de variable</a>
+<a href="FdvValidation.dc.html" class="on">Validation mensuelle</a>
+<a href="FdvCommercial.dc.html">Mon variable</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0">
+<header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 28px; background: #fff; border-bottom: 1px solid #D5DBE3">
+<div style="font-size: 13px; color: #4A5868">Alptis Assurances · Forces de vente · Région Rhône-Alpes</div>
+<div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="tag mute">Données fictives</span><span>Rôle : responsable régional</span></div>
+</header>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600">Variable mensuel · septembre 2026</h1>
+<div style="margin-top: 4px; font-size: 14px; color: #4A5868">{{ summary }}</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<sc-if value="{{ canExport }}" hint-placeholder-val="{{ false }}">
+<a class="btn sec" href="Exports.dc.html">Export paie : lancé par le contrôleur Finance</a>
+</sc-if>
+<sc-if value="{{ exported }}" hint-placeholder-val="{{ false }}">
+<span class="tag ok" style="font-size: 14px; padding: 8px 14px">Fichier de synthèse transmis à la paie</span>
+</sc-if>
+<a class="btn sec" href="FdvPlan.dc.html">Voir le plan</a>
+</div>
+</div>
+
+<section class="card" style="overflow-x: auto">
+<div style="min-width: 1180px">
+<div class="row head" style="grid-template-columns: 1.4fr .9fr .9fr .7fr .7fr 1.5fr .8fr .9fr 2.1fr"><div>Collaborateur</div><div class="num">Objectif</div><div class="num">Réalisé pondéré</div><div class="num">Atteinte</div><div class="num">Absence (j ouvrés)</div><div>Calcul</div><div class="num">Montant</div><div>Statut</div><div>Décision</div></div>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+<div class="row" style="grid-template-columns: 1.4fr .9fr .9fr .7fr .7fr 1.5fr .8fr .9fr 2.1fr; align-items: center">
+<div><a href="FdvCommercial.dc.html">{{ r.who }}</a></div>
+<div class="num">{{ r.target }}</div><div class="num">{{ r.done }}</div><div class="num">{{ r.rate }}</div><div class="num">{{ r.absence }}</div>
+<div><span class="{{ r.tagClass }}">{{ r.reason }}</span></div>
+<div class="num" style="font-weight: 600">{{ r.amount }}</div>
+<div><span class="{{ r.statusClass }}">{{ r.status }}</span></div>
+<div>
+<sc-if value="{{ r.open }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<button class="btn" onClick="{{ r.validate }}">Valider</button>
+<sc-if value="{{ r.canGrant }}" hint-placeholder-val="{{ false }}">
+<button class="btn sec" onClick="{{ r.grant }}">Accorder quand même</button>
+</sc-if>
+</div>
+<sc-if value="{{ r.canGrant }}" hint-placeholder-val="{{ false }}">
+<input aria-label="Motif de l'ajustement, obligatoire pour accorder" type="text" defaultValue="{{ r.grantReason }}" placeholder="Motif de l'ajustement (obligatoire)" style="margin-top: 6px; width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #9AA7B5; border-radius: 6px; font: 400 14px 'IBM Plex Sans', sans-serif; color: #16202C; background: #fff">
+</sc-if>
+</sc-if>
+<sc-if value="{{ r.closed }}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px"><span class="tag ok">{{ r.decision }}</span><div style="color: #4A5868; margin-top: 4px">{{ r.trace }}</div></div>
+</sc-if>
+</div>
+</div>
+</sc-for>
+<div class="row total" style="grid-template-columns: 1.4fr .9fr .9fr .7fr .7fr 1.5fr .8fr .9fr 2.1fr">
+<div>Total à payer</div><div></div><div></div><div></div><div></div><div></div><div class="num">{{ total }}</div><div></div><div></div>
+</div>
+</div>
+</section>
+
+<section class="card" style="padding: 18px 20px">
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">Comment lire ce tableau</h2>
+<ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.45; max-width: 90ch">
+<li>La mensualité du poste est versée si la production du mois, pondérée par marché, atteint l'objectif et si l'absence, hors congés et RTT, reste sous 10 jours ouvrés dans le mois.</li>
+<li>Le responsable peut accorder la mensualité malgré un objectif manqué : la décision donne un résultat de composante <code>MANUAL_ADJUSTMENT</code> qui porte son motif (<code>adjustment_reason</code>), tracé à son nom et à sa date (<code>validated_by</code>, <code>validated_at</code>).</li>
+<li>Chaque ligne passe par trois statuts : <code>CALCULATED</code> à l'issue du calcul, <code>VALIDATED</code> après la décision du responsable, <code>EXPORTED</code> une fois transmise à la paie.</li>
+<li>Un mois non versé n'est pas perdu : la régularisation de janvier compare l'enveloppe annuelle, multipliée par le taux d'atteinte de l'année, aux mensualités déjà versées.</li>
+<li>Si les mensualités versées dépassent ce droit annuel, la régularisation est négative : l'écart est calculé et soumis à la décision du responsable (hypothèse H-53).</li>
+<li>L'export vers la paie est lancé une fois par mois par le contrôleur Finance, quand tous les résultats du mois sont validés. Colonnes : <code>external_id</code>, <code>job_code</code>, <code>pay_period</code>, <code>component</code>, <code>amount</code>, <code>adjustment_reason</code>, <code>validated_by</code>, <code>validated_at</code> (structure proposée, hypothèse H-51).</li>
+</ul>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const decided = st.decided || {};
+const money = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' €';
+const base = [
+{ id: 'c1', who: 'CAC · Lyon 1', target: 15000, done: 16200, absence: 0, monthly: 146 },
+{ id: 'c2', who: 'CAC · Lyon 2', target: 15000, done: 13500, absence: 0, monthly: 146 },
+{ id: 'c3', who: 'CAC · Grenoble', target: 12000, done: 12600, absence: 12, monthly: 146 },
+{ id: 'c4', who: 'RB · Lyon', target: 15000, done: 15300, absence: 2, monthly: 146 },
+{ id: 'c5', who: 'DR · Rhône-Alpes', target: 60000, done: 63000, absence: 0, monthly: 458 }
+];
+// A granted instalment is a result of component MANUAL_ADJUSTMENT carrying its reason.
+// Sample adjustment_reason, required when the manager grants an instalment despite a missed objective.
+const reasonText = 'affaire signée le 1er octobre, comptée en octobre';
+let total = 0;
+let openCount = 0;
+const set = (id, v) => () => { const next = Object.assign({}, decided); next[id] = v; this.setState({ decided: next }); };
+const rows = base.map((b) => {
+const reached = b.done >= b.target;
+// CR-88: no instalment from 10 working days of absence in the month.
+const absent = b.absence >= 10;
+const d = decided[b.id];
+const due = reached && !absent;
+const amount = (due || d === 'grant') ? b.monthly : 0;
+total += amount;
+if (!d) openCount += 1;
+return {
+who: b.who, target: money(b.target), done: money(b.done),
+rate: Math.round(b.done / b.target * 100) + ' %',
+absence: String(b.absence),
+reason: d === 'grant' ? 'Accordé · MANUAL_ADJUSTMENT' : due ? 'Objectif atteint' : absent ? 'Absence de 10 jours ouvrés ou plus' : 'Objectif manqué',
+tagClass: 'tag ' + (d === 'grant' ? 'info' : due ? 'ok' : 'warn'),
+amount: money(amount),
+open: !d, closed: !!d,
+// VariableResult.status: CALCULATED, then VALIDATED, then EXPORTED.
+status: st.exported ? 'EXPORTED' : d ? 'VALIDATED' : 'CALCULATED',
+statusClass: 'tag ' + (st.exported ? 'info' : d ? 'ok' : 'mute'),
+grantReason: reasonText,
+canGrant: !due && !absent,
+decision: d === 'grant' ? 'Ajustement validé' : 'Validé',
+trace: d === 'grant' ? 'Composante MANUAL_ADJUSTMENT · motif : ' + reasonText + ' · responsable régional, 05/10/2026 à 10:42' : 'Responsable régional, 05/10/2026 à 10:42',
+validate: set(b.id, 'ok'), grant: set(b.id, 'grant')
+};
+});
+const allDone = openCount === 0;
+return {
+rows: rows,
+total: money(total),
+canExport: allDone && !st.exported,
+exported: !!st.exported,
+doExport: () => this.setState({ exported: true }),
+summary: allDone ? 'Toutes les lignes sont validées : la synthèse peut partir à la paie.' : openCount + ' ligne(s) à valider avant l\'export vers la paie.'
+};
+}
+}
+</script>
+</body>
+</html>
