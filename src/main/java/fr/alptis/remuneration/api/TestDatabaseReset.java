@@ -1,5 +1,7 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.rules.BaremeInitialService;
 import fr.alptis.remuneration.security.SecurityBootstrap;
 import io.quarkus.arc.profile.UnlessBuildProfile;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,21 +25,27 @@ public class TestDatabaseReset {
     /** Re-seeds the security referential after the wipe. */
     private final SecurityBootstrap bootstrap;
 
+    /** Re-seeds the initial barème after the wipe. */
+    private final BaremeInitialService bareme;
+
     /**
      * Creates the reset helper.
      *
      * @param em        the entity manager
      * @param bootstrap the security bootstrap used to re-seed
+     * @param bareme    the initial-barème service used to re-seed
      */
     @Inject
-    public TestDatabaseReset(EntityManager em, SecurityBootstrap bootstrap) {
+    public TestDatabaseReset(EntityManager em, SecurityBootstrap bootstrap, BaremeInitialService bareme) {
         this.em = em;
         this.bootstrap = bootstrap;
+        this.bareme = bareme;
     }
 
     /**
-     * Empties every mapped table and re-seeds the baseline, in a single transaction. Foreign-key
-     * checks are turned off so the entities can be deleted in any order.
+     * Empties every mapped table and re-seeds the baseline (security referential and the Alptis
+     * initial barème), in a single transaction. Foreign-key checks are turned off so the entities
+     * can be deleted in any order.
      */
     @Transactional
     public void reset() {
@@ -47,5 +55,6 @@ public class TestDatabaseReset {
         }
         em.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
         bootstrap.seed();
+        bareme.seed(LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult());
     }
 }

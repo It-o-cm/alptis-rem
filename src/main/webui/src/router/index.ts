@@ -14,6 +14,10 @@ import TransfersView from '../views/TransfersView.vue';
 import ManualEventView from '../views/ManualEventView.vue';
 import PayeeRulesView from '../views/PayeeRulesView.vue';
 import ExternalCodesView from '../views/ExternalCodesView.vue';
+import RulesView from '../views/RulesView.vue';
+import FamiliesView from '../views/FamiliesView.vue';
+import AdvanceAgreementsView from '../views/AdvanceAgreementsView.vue';
+import EnrollmentsView from '../views/EnrollmentsView.vue';
 import { allNavItems } from '../presentation/navigation';
 
 // Screens delivered so far use a real component; the others are empty titled placeholders.
@@ -29,6 +33,10 @@ const REAL_VIEWS: Record<string, unknown> = {
   manualEvent: ManualEventView,
   payeeRules: PayeeRulesView,
   externalCodes: ExternalCodesView,
+  rules: RulesView,
+  families: FamiliesView,
+  advance: AdvanceAgreementsView,
+  enrollments: EnrollmentsView,
   adminEntities: EntityParamsView,
   adminRoleMappings: RoleMappingsView,
   adminAudit: AuditView,

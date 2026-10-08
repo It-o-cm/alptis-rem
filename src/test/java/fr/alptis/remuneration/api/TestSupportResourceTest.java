@@ -23,7 +23,7 @@ class TestSupportResourceTest {
     private static final boolean[] RESET_CALLED = {false};
 
     private static TestSupportResource newResource(DateTimeProvider provider) {
-        TestDatabaseReset fakeReset = new TestDatabaseReset(null, null) {
+        TestDatabaseReset fakeReset = new TestDatabaseReset(null, null, null) {
             @Override
             public void reset() {
                 RESET_CALLED[0] = true;

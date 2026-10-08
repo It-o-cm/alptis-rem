@@ -56,6 +56,12 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
+        <!-- JSON Schema validation of family parameters (section 5.6 / PAR-02). -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>1.5.9</version>
+        </dependency>
 
         <!-- Security: the nine roles of section 3. Real SSO (OIDC) is simulated in the dev
              profile by users declared in configuration (see application.properties). -->

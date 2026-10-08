@@ -47,6 +47,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     heading: 'Règles',
     items: [
       { name: 'rules', path: '/regles', label: 'Paramétrage' },
+      { name: 'enrollments', path: '/inscriptions', label: 'Accords et inscriptions' },
       { name: 'simulation', path: '/simulation', label: 'Simulation' },
       { name: 'families', path: '/familles', label: 'Familles de calcul' },
     ],

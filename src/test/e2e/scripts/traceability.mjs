@@ -53,6 +53,15 @@ const REQUIREMENTS_BY_STEP = {
     paths: ['INT-11', 'INT-13'],
     roleActions: [],
   },
+  // Step 4 delivers the rule-configuration screens: plans/rules/versions and their approval cycle,
+  // the calculation-family forms, the discount conventions and the enrollments to reserved rules.
+  4: {
+    screens: ['rules', 'families', 'enrollments', 'advance'],
+    reqs: ['PAR-01', 'PAR-02', 'PAR-03', 'PAR-04', 'PAR-05', 'PAR-09', 'PAR-10', 'PAR-12'],
+    crs: [],
+    paths: ['PAR-01'],
+    roleActions: [],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */
