@@ -2,7 +2,7 @@
 
 Généré par `src/test/e2e/scripts/traceability.mjs` (ne pas éditer à la main).
 
-Étapes cochées dans `PLAN.md` : 0, 1, 2, 3, 4
+Étapes cochées dans `PLAN.md` : 0, 1, 2, 3, 4, 5
 
 | Dimension | Couverts |
 | --- | --- |

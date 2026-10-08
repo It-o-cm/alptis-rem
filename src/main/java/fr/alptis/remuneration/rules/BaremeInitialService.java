@@ -82,7 +82,7 @@ public class BaremeInitialService {
         plan.entity = entity;
         plan.code = PLAN_CODE;
         plan.label = "Guide 2026 — barème de base";
-        plan.direction = Direction.INBOUND;
+        plan.direction = Direction.OUTBOUND;
         plan.vintage = VINTAGE;
         plan.setCreatedAt(clock.now());
         plan.setCreatedBy("bareme-initial");
