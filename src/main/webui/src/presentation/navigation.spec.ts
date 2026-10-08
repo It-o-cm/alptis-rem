@@ -8,6 +8,7 @@ describe('navigation', () => {
       'Distributeurs',
       'Règles',
       'Flux',
+      'Référentiels',
       'Comptabilité',
       'Administration',
       'Forces de vente',
@@ -16,7 +17,7 @@ describe('navigation', () => {
 
   it('exposes every entry, starting with the periods home page', () => {
     const items = allNavItems();
-    expect(items).toHaveLength(21);
+    expect(items).toHaveLength(30);
     expect(items[0]).toEqual({ name: 'periods', path: '/', label: 'Périodes' });
   });
 

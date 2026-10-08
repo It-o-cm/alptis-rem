@@ -8,6 +8,17 @@ const SCREEN_ACCESS: Record<string, readonly Role[]> = {
   adminEntities: ['BUSINESS_ADMIN', 'OPERATOR', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'AUDITOR'],
   adminRoleMappings: ['IT_ADMIN', 'AUDITOR'],
   adminAudit: ['AUDITOR', 'IT_ADMIN', 'BUSINESS_ADMIN', 'OPERATOR', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER'],
+  imports: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'AUDITOR'],
+  mapping: ['BUSINESS_ADMIN', 'OPERATOR', 'AUDITOR'],
+  distributorSearch: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'VIEWER', 'AUDITOR'],
+  contractSearch: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'VIEWER', 'AUDITOR'],
+  products: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'VIEWER', 'AUDITOR'],
+  qualityIndicators: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'AUDITOR'],
+  bankAccounts: ['OPERATOR', 'BUSINESS_ADMIN', 'FINANCE_CONTROLLER', 'AUDITOR'],
+  transfers: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'AUDITOR'],
+  manualEvent: ['OPERATOR', 'BUSINESS_ADMIN'],
+  payeeRules: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'AUDITOR'],
+  externalCodes: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER', 'AUDITOR', 'IT_ADMIN'],
 };
 
 /**
@@ -34,4 +45,18 @@ export function canEditEntityParameters(roles: readonly string[]): boolean {
  */
 export function canManageRoleMappings(roles: readonly string[]): boolean {
   return roles.includes('IT_ADMIN');
+}
+
+/**
+ * Tells whether a user holding the given roles may upload files and resolve rejections.
+ */
+export function canOperateImports(roles: readonly string[]): boolean {
+  return roles.includes('OPERATOR') || roles.includes('BUSINESS_ADMIN');
+}
+
+/**
+ * Tells whether a user holding the given roles may save a file mapping (business administrator).
+ */
+export function canEditMapping(roles: readonly string[]): boolean {
+  return roles.includes('BUSINESS_ADMIN');
 }

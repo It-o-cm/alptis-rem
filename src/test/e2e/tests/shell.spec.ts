@@ -50,7 +50,7 @@ test.describe('Cadre applicatif', () => {
     await page.goto('/');
     await page.getByRole('link', { name: 'Imports' }).click();
     await expect(page).toHaveURL(/\/imports$/);
-    await expect(page.getByTestId('page-title')).toHaveText('Imports');
+    await expect(page.getByTestId('page-title')).toHaveText('Imports et rejets');
 
     await page.getByRole('link', { name: 'Familles de calcul' }).click();
     await expect(page).toHaveURL(/\/familles$/);

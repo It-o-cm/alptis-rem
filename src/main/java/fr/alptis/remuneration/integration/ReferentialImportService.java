@@ -1,0 +1,276 @@
+package fr.alptis.remuneration.integration;
+
+import fr.alptis.remuneration.domain.DateTimeProvider;
+import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.DistributorEntity;
+import fr.alptis.remuneration.domain.DistributorGroup;
+import fr.alptis.remuneration.domain.DistributorType;
+import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.PartnerStatus;
+import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.domain.RejectionReasonCode;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+
+import java.time.LocalDate;
+import java.util.Map;
+
+/**
+ * Imports the distributor hierarchy referentials (section 9.10): distributors with their per-entity
+ * status, distributor groups and production codes. Each file is journalled with the five counters
+ * and idempotent by fingerprint.
+ */
+@ApplicationScoped
+public class ReferentialImportService {
+
+    /** The date/time provider. */
+    private final DateTimeProvider clock;
+
+    /**
+     * Creates the service.
+     *
+     * @param clock the application date/time provider
+     */
+    @Inject
+    public ReferentialImportService(DateTimeProvider clock) {
+        this.clock = clock;
+    }
+
+    /**
+     * Imports a distributors file.
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param content      the raw content
+     * @return the journalled batch
+     */
+    @Transactional
+    public ImportBatch importDistributors(String entityCode, String sourceSystem, String fileName, String content) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        return ImportJournal.run(clock, entityCode, FlowCodes.DISTRIBUTORS, sourceSystem, fileName, content,
+                row -> {
+                    if (value(row, "partner_code").isEmpty() || value(row, "legal_name").isEmpty()
+                            || value(row, "status").isEmpty() || value(row, "distributor_type").isEmpty()
+                            || value(row, "valid_from").isEmpty()) {
+                        return RejectionReasonCode.MISSING_FIELD;
+                    }
+                    if (parseType(value(row, "distributor_type")) == null
+                            || parseStatus(value(row, "status")) == null
+                            || parseDate(value(row, "valid_from")) == null) {
+                        return RejectionReasonCode.TYPE;
+                    }
+                    return null;
+                },
+                row -> {
+                    upsertDistributor(entity, row);
+                    return ImportJournal.LineResult.LOADED;
+                });
+    }
+
+    /**
+     * Imports a distributor-groups file.
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param content      the raw content
+     * @return the journalled batch
+     */
+    @Transactional
+    public ImportBatch importGroups(String entityCode, String sourceSystem, String fileName, String content) {
+        return ImportJournal.run(clock, entityCode, FlowCodes.DISTRIBUTOR_GROUPS, sourceSystem, fileName, content,
+                row -> (value(row, "group_code").isEmpty() || value(row, "label").isEmpty())
+                        ? RejectionReasonCode.MISSING_FIELD : null,
+                row -> {
+                    upsertGroup(row);
+                    return ImportJournal.LineResult.LOADED;
+                });
+    }
+
+    /**
+     * Imports a production-codes file.
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param content      the raw content
+     * @return the journalled batch
+     */
+    @Transactional
+    public ImportBatch importProductionCodes(String entityCode, String sourceSystem, String fileName, String content) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        return ImportJournal.run(clock, entityCode, FlowCodes.PRODUCTION_CODES, sourceSystem, fileName, content,
+                row -> {
+                    if (value(row, "production_code").isEmpty() || value(row, "partner_code").isEmpty()
+                            || value(row, "status").isEmpty()) {
+                        return RejectionReasonCode.MISSING_FIELD;
+                    }
+                    return parseStatus(value(row, "status")) == null ? RejectionReasonCode.TYPE : null;
+                },
+                row -> {
+                    upsertProductionCode(entity, row);
+                    return ImportJournal.LineResult.LOADED;
+                });
+    }
+
+    /**
+     * Creates or updates a distributor (shared referential) and its status within the entity.
+     *
+     * @param entity the importing entity
+     * @param row    the parsed line
+     */
+    private static void upsertDistributor(LegalEntity entity, Map<String, String> row) {
+        String partnerCode = value(row, "partner_code");
+        Distributor distributor = Distributor.find("partnerCode", partnerCode).firstResult();
+        if (distributor == null) {
+            distributor = new Distributor();
+            distributor.partnerCode = partnerCode;
+            distributor.persist();
+        }
+        distributor.legalName = value(row, "legal_name");
+        distributor.distributorType = parseType(value(row, "distributor_type"));
+        distributor.group = groupByCode(value(row, "group_code"));
+        distributor.commissionable = !"false".equals(value(row, "commissionable"));
+        distributor.advanceExcluded = "true".equals(value(row, "advance_excluded"));
+
+        LocalDate validFrom = parseDate(value(row, "valid_from"));
+        DistributorEntity link = DistributorEntity.find(
+                "distributor = ?1 and entity = ?2 and validFrom = ?3", distributor, entity, validFrom).firstResult();
+        if (link == null) {
+            link = new DistributorEntity();
+            link.distributor = distributor;
+            link.entity = entity;
+            link.validFrom = validFrom;
+            link.persist();
+        }
+        link.status = parseStatus(value(row, "status"));
+        link.validTo = parseDate(value(row, "valid_to"));
+    }
+
+    /**
+     * Creates or updates a distributor group.
+     *
+     * @param row the parsed line
+     */
+    private static void upsertGroup(Map<String, String> row) {
+        String code = value(row, "group_code");
+        DistributorGroup group = DistributorGroup.find("code", code).firstResult();
+        if (group == null) {
+            group = new DistributorGroup();
+            group.code = code;
+            group.persist();
+        }
+        group.label = value(row, "label");
+        group.headDistributor = distributorByCode(value(row, "head_partner_code"));
+    }
+
+    /**
+     * Creates or updates a production code within the entity.
+     *
+     * @param entity the entity
+     * @param row    the parsed line
+     */
+    private static void upsertProductionCode(LegalEntity entity, Map<String, String> row) {
+        String code = value(row, "production_code");
+        ProductionCode pc = ProductionCode.find("entity = ?1 and code = ?2", entity, code).firstResult();
+        if (pc == null) {
+            pc = new ProductionCode();
+            pc.entity = entity;
+            pc.code = code;
+            pc.persist();
+        }
+        pc.distributor = distributorByCode(value(row, "partner_code"));
+        pc.label = emptyToNull(value(row, "label"));
+        pc.status = parseStatus(value(row, "status"));
+    }
+
+    /**
+     * Finds a distributor by partner code, or {@code null} when the code is empty or unknown.
+     *
+     * @param partnerCode the partner code, possibly empty
+     * @return the distributor, or {@code null}
+     */
+    private static Distributor distributorByCode(String partnerCode) {
+        return partnerCode.isEmpty() ? null : Distributor.find("partnerCode", partnerCode).firstResult();
+    }
+
+    /**
+     * Finds a distributor group by code, or {@code null} when the code is empty or unknown.
+     *
+     * @param code the group code, possibly empty
+     * @return the group, or {@code null}
+     */
+    private static DistributorGroup groupByCode(String code) {
+        return code.isEmpty() ? null : DistributorGroup.find("code", code).firstResult();
+    }
+
+    /**
+     * Parses a distributor type, returning {@code null} when unrecognised.
+     *
+     * @param raw the raw value
+     * @return the type, or {@code null}
+     */
+    private static DistributorType parseType(String raw) {
+        try {
+            return DistributorType.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses a partner status, returning {@code null} when unrecognised.
+     *
+     * @param raw the raw value
+     * @return the status, or {@code null}
+     */
+    private static PartnerStatus parseStatus(String raw) {
+        try {
+            return PartnerStatus.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses an ISO date, returning {@code null} on empty or invalid input.
+     *
+     * @param raw the raw value
+     * @return the date, or {@code null}
+     */
+    private static LocalDate parseDate(String raw) {
+        if (raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(raw);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns the value of a column, or an empty string when absent.
+     *
+     * @param row    the parsed row
+     * @param column the column name
+     * @return the value, never null
+     */
+    private static String value(Map<String, String> row, String column) {
+        String raw = row.get(column);
+        return raw == null ? "" : raw;
+    }
+
+    /**
+     * Returns {@code null} for an empty string, the value otherwise.
+     *
+     * @param value the value
+     * @return {@code null} if empty, else the value
+     */
+    private static String emptyToNull(String value) {
+        return value.isEmpty() ? null : value;
+    }
+}

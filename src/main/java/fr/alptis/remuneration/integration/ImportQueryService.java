@@ -1,0 +1,211 @@
+package fr.alptis.remuneration.integration;
+
+import fr.alptis.remuneration.domain.BusinessEvent;
+import fr.alptis.remuneration.domain.DateTimeProvider;
+import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.ImportRejection;
+import fr.alptis.remuneration.domain.ImportRejectionStatus;
+import fr.alptis.remuneration.domain.PageResult;
+import fr.alptis.remuneration.domain.ProcessingStatus;
+import fr.alptis.remuneration.domain.ResourceNotFoundException;
+import fr.alptis.remuneration.security.AuditService;
+import fr.alptis.remuneration.security.CurrentUser;
+import fr.alptis.remuneration.security.EntityScope;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.panache.common.Page;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/**
+ * Reads the import journal (ING-05) and resolves rejected lines (ING-04), partitioned by entity.
+ * A rejected line is corrected or discarded; the manual decision is recorded in the audit trail.
+ */
+@ApplicationScoped
+public class ImportQueryService {
+
+    private final EntityScope scope;
+    private final CurrentUser currentUser;
+    private final AuditService audit;
+    private final DateTimeProvider clock;
+
+    /**
+     * Creates the service.
+     *
+     * @param scope       the entity partition
+     * @param currentUser the current user, audit author
+     * @param audit       the audit trail
+     * @param clock       the application date/time provider
+     */
+    @Inject
+    public ImportQueryService(EntityScope scope, CurrentUser currentUser, AuditService audit, DateTimeProvider clock) {
+        this.scope = scope;
+        this.currentUser = currentUser;
+        this.audit = audit;
+        this.clock = clock;
+    }
+
+    /**
+     * Lists import batches, most recent first, within the user's entity partition.
+     *
+     * @param page the zero-based page index
+     * @param size the page size
+     * @return a page of batch views
+     */
+    @Transactional
+    public PageResult<BatchView> list(int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? 20 : Math.min(size, 200);
+        PanacheQuery<ImportBatch> query = scope.unrestricted()
+                ? ImportBatch.find("order by receivedAt desc")
+                : ImportBatch.find("entity.code in ?1 order by receivedAt desc", scope.visibleCodes());
+        long total = query.count();
+        List<BatchView> items = query.page(Page.of(safePage, safeSize)).<ImportBatch>list().stream()
+                .map(ImportQueryService::toView).toList();
+        return new PageResult<>(items, safePage, safeSize, total);
+    }
+
+    /**
+     * Returns the rejected lines of a batch.
+     *
+     * @param batchId the batch id
+     * @return the rejection views
+     */
+    @Transactional
+    public List<RejectionView> rejections(long batchId) {
+        ImportBatch batch = requireBatch(batchId);
+        return ImportRejection.<ImportRejection>list("importBatch", batch).stream()
+                .map(r -> new RejectionView(r.getId(), r.lineNumber, r.rawLine, r.reasonCode.name(), r.status.name()))
+                .toList();
+    }
+
+    /**
+     * Returns the on-hold events of a batch, with their hold reason.
+     *
+     * @param batchId the batch id
+     * @return the held-event views
+     */
+    @Transactional
+    public List<HeldEventView> heldEvents(long batchId) {
+        ImportBatch batch = requireBatch(batchId);
+        return BusinessEvent.<BusinessEvent>list("importBatch = ?1 and processingStatus = ?2",
+                        batch, ProcessingStatus.ON_HOLD).stream()
+                .map(e -> new HeldEventView(e.sourceKey,
+                        e.contract == null ? null : e.contract.contractNumber,
+                        e.holdReason == null ? null : e.holdReason.name()))
+                .toList();
+    }
+
+    /**
+     * Marks a rejected line as corrected (it is re-submitted by a later re-import).
+     *
+     * @param rejectionId the rejection id
+     */
+    @Transactional
+    public void correct(long rejectionId) {
+        resolve(rejectionId, ImportRejectionStatus.CORRECTED, "CORRECT_REJECTION");
+    }
+
+    /**
+     * Marks a rejected line as discarded (e.g. an accepted duplicate).
+     *
+     * @param rejectionId the rejection id
+     */
+    @Transactional
+    public void discard(long rejectionId) {
+        resolve(rejectionId, ImportRejectionStatus.DISCARDED, "DISCARD_REJECTION");
+    }
+
+    /**
+     * Resolves a rejection to the given status and records the decision.
+     *
+     * @param rejectionId the rejection id
+     * @param status      the new status
+     * @param action      the audit action code
+     */
+    private void resolve(long rejectionId, ImportRejectionStatus status, String action) {
+        ImportRejection rejection = ImportRejection.findById(rejectionId);
+        if (rejection == null || !scope.canSee(rejection.importBatch.entity.code)) {
+            throw new ResourceNotFoundException("Rejet introuvable.");
+        }
+        String before = "\"" + rejection.status.name() + "\"";
+        rejection.status = status;
+        rejection.resolvedAt = clock.now();
+        rejection.resolvedBy = currentUser.username();
+        audit.record(currentUser.username(), rejection.importBatch.entity, action, "ImportRejection",
+                rejection.getId(), before, "\"" + status.name() + "\"");
+    }
+
+    /**
+     * Loads a batch, enforcing the entity partition.
+     *
+     * @param batchId the batch id
+     * @return the batch
+     */
+    private ImportBatch requireBatch(long batchId) {
+        ImportBatch batch = ImportBatch.findById(batchId);
+        if (batch == null || !scope.canSee(batch.entity.code)) {
+            throw new ResourceNotFoundException("Import introuvable.");
+        }
+        return batch;
+    }
+
+    /**
+     * Builds the view of a batch.
+     *
+     * @param batch the batch
+     * @return its view
+     */
+    private static BatchView toView(ImportBatch batch) {
+        return new BatchView(batch.getId(), batch.flowCode, batch.sourceSystem, batch.fileName, batch.fileHash,
+                batch.receivedAt, batch.importedBy, batch.linesRead, batch.linesFiltered, batch.linesLoaded,
+                batch.linesRejected, batch.linesOnHold, batch.status.name());
+    }
+
+    /**
+     * Exchange view of an import batch and its five counters.
+     *
+     * @param id            the batch id
+     * @param flowCode      the flow code
+     * @param sourceSystem  the source system
+     * @param fileName      the file name
+     * @param fileHash      the file fingerprint
+     * @param receivedAt    the reception time
+     * @param importedBy    the importer
+     * @param linesRead     lines read
+     * @param linesFiltered lines filtered by the mapping
+     * @param linesLoaded   lines integrated
+     * @param linesRejected lines rejected
+     * @param linesOnHold   lines put on hold
+     * @param status        the batch status
+     */
+    public record BatchView(long id, String flowCode, String sourceSystem, String fileName, String fileHash,
+                            OffsetDateTime receivedAt, String importedBy, Integer linesRead, Integer linesFiltered,
+                            Integer linesLoaded, Integer linesRejected, Integer linesOnHold, String status) {
+    }
+
+    /**
+     * Exchange view of a rejected line.
+     *
+     * @param id         the rejection id
+     * @param lineNumber the line number
+     * @param rawLine    the raw line
+     * @param reasonCode the reason code
+     * @param status     the rejection status
+     */
+    public record RejectionView(long id, Integer lineNumber, String rawLine, String reasonCode, String status) {
+    }
+
+    /**
+     * Exchange view of a held event.
+     *
+     * @param sourceKey      the source key
+     * @param contractNumber the contract number, if known
+     * @param holdReason     the hold reason
+     */
+    public record HeldEventView(String sourceKey, String contractNumber, String holdReason) {
+    }
+}

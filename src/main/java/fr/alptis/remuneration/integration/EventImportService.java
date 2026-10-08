@@ -1,0 +1,444 @@
+package fr.alptis.remuneration.integration;
+
+import fr.alptis.remuneration.domain.BusinessEvent;
+import fr.alptis.remuneration.domain.ConflictException;
+import fr.alptis.remuneration.domain.Contract;
+import fr.alptis.remuneration.domain.Coverage;
+import fr.alptis.remuneration.domain.DateTimeProvider;
+import fr.alptis.remuneration.domain.EventType;
+import fr.alptis.remuneration.domain.HoldReason;
+import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.ImportBatchStatus;
+import fr.alptis.remuneration.domain.ImportRejection;
+import fr.alptis.remuneration.domain.ImportRejectionStatus;
+import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.ProcessingStatus;
+import fr.alptis.remuneration.domain.RejectionReasonCode;
+import io.quarkus.runtime.util.HashUtil;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Imports a business-events pivot file (section 9.3). Each line is controlled and either loaded,
+ * rejected with a reason code (section 8.2) or put on hold when a referenced object is not yet
+ * known (ING-04, ING-06). The batch is journalled with its five counters (ING-05), idempotent by
+ * file fingerprint and by source key (section 9.9, CR-68).
+ */
+@ApplicationScoped
+public class EventImportService {
+
+    /** Source of "today", for the future-date control. */
+    private final DateTimeProvider clock;
+
+    /**
+     * Creates the service.
+     *
+     * @param clock the application date/time provider
+     */
+    @Inject
+    public EventImportService(DateTimeProvider clock) {
+        this.clock = clock;
+    }
+
+    /**
+     * Imports an events file for an entity and source system.
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param content      the raw file content
+     * @return the journalled import batch
+     * @throws ConflictException if a file with the same fingerprint was already imported
+     */
+    @Transactional
+    public ImportBatch importEvents(String entityCode, String sourceSystem, String fileName, String content) {
+        List<List<Map<String, String>>> groups = CsvFile.parse(content).rows().stream()
+                .map(row -> java.util.List.of(row))
+                .collect(java.util.stream.Collectors.toList());
+        return importGroups(entityCode, sourceSystem, fileName, fileName + "\n" + content, groups, 0);
+    }
+
+    /**
+     * Imports pre-mapped event groups: one group per kept source line, each with a primary row and
+     * any derived rows (section 9.4). The derived rows are persisted with the primary but counted
+     * once, so {@code lines_read = filtered + loaded + rejected + on_hold} stays at the source grain.
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param hashSource   the text whose SHA-256 is the idempotency fingerprint (the original file)
+     * @param groups       the pivot-row groups, one per kept source line
+     * @param filtered     the number of source lines dropped by the mapping filter
+     * @return the journalled batch
+     * @throws ConflictException if the entity is unknown or the file was already imported
+     */
+    @Transactional
+    public ImportBatch importGroups(String entityCode, String sourceSystem, String fileName, String hashSource,
+                                    List<List<Map<String, String>>> groups, int filtered) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        if (entity == null) {
+            throw new ConflictException("Entité inconnue : " + entityCode);
+        }
+        String fileHash = HashUtil.sha256(hashSource);
+        long already = ImportBatch.count("entity = ?1 and sourceSystem = ?2 and fileHash = ?3",
+                entity, sourceSystem, fileHash);
+        if (already > 0) {
+            throw new ConflictException("Fichier déjà intégré : " + fileName);
+        }
+
+        ImportBatch batch = new ImportBatch();
+        batch.entity = entity;
+        batch.flowCode = FlowCodes.EVENTS;
+        batch.sourceSystem = sourceSystem;
+        batch.fileName = fileName;
+        batch.fileHash = fileHash;
+        batch.receivedAt = clock.now();
+        batch.importedBy = "import";
+        batch.linesFiltered = filtered;
+        batch.persist();
+
+        LocalDate today = clock.today();
+        int loaded = 0;
+        int rejected = 0;
+        int onHold = 0;
+        int lineNumber = 1;
+        for (List<Map<String, String>> group : groups) {
+            lineNumber++;
+            Map<String, String> primary = group.get(0);
+            Outcome outcome = classify(entity, sourceSystem, primary, today);
+            if (outcome.rejection != null) {
+                reject(batch, lineNumber, primary.toString(), outcome.rejection);
+                rejected++;
+                continue;
+            }
+            persistEvent(batch, entity, sourceSystem, primary, outcome);
+            for (int i = 1; i < group.size(); i++) {
+                Map<String, String> derived = group.get(i);
+                Outcome derivedOutcome = classify(entity, sourceSystem, derived, today);
+                if (derivedOutcome.rejection == null) {
+                    persistEvent(batch, entity, sourceSystem, derived, derivedOutcome);
+                }
+            }
+            if (outcome.holdReason != null) {
+                onHold++;
+            } else {
+                loaded++;
+            }
+        }
+
+        batch.linesRead = groups.size() + filtered;
+        batch.linesLoaded = loaded;
+        batch.linesRejected = rejected;
+        batch.linesOnHold = onHold;
+        batch.status = rejected == 0 ? ImportBatchStatus.LOADED : ImportBatchStatus.PARTIALLY_LOADED;
+        return batch;
+    }
+
+    /**
+     * Controls one line and decides its outcome.
+     *
+     * @param entity       the importing entity
+     * @param sourceSystem the source system
+     * @param row          the parsed line
+     * @param today        the current day
+     * @return the line outcome
+     */
+    private Outcome classify(LegalEntity entity, String sourceSystem, Map<String, String> row, LocalDate today) {
+        String sourceKey = value(row, "source_key");
+        String contractNumber = value(row, "contract_number");
+        String eventTypeRaw = value(row, "event_type");
+        if (sourceKey.isEmpty() || contractNumber.isEmpty() || eventTypeRaw.isEmpty()) {
+            return Outcome.rejected(RejectionReasonCode.MISSING_FIELD);
+        }
+        EventType eventType = parseEventType(eventTypeRaw);
+        if (eventType == null) {
+            return Outcome.rejected(RejectionReasonCode.TYPE);
+        }
+        LocalDate eventDate = parseDate(value(row, "event_date"));
+        if (eventDate == null) {
+            return Outcome.rejected(RejectionReasonCode.TYPE);
+        }
+        if (eventDate.isAfter(today)) {
+            return Outcome.rejected(RejectionReasonCode.FUTURE_DATE);
+        }
+        BigDecimal gross = parseDecimal(value(row, "gross_amount"));
+        if (isPremium(eventType) && (gross == null || gross.signum() == 0)) {
+            return Outcome.rejected(RejectionReasonCode.AMOUNT);
+        }
+        boolean duplicate = BusinessEvent.count("entity = ?1 and sourceSystem = ?2 and sourceKey = ?3",
+                entity, sourceSystem, sourceKey) > 0;
+        if (duplicate) {
+            return Outcome.rejected(RejectionReasonCode.DUPLICATE);
+        }
+        Contract contract = Contract.find("entity = ?1 and sourceSystem = ?2 and contractNumber = ?3",
+                entity, sourceSystem, contractNumber).firstResult();
+        if (contract == null) {
+            return Outcome.onHold(HoldReason.UNKNOWN_REFERENCE, eventType, eventDate, gross, null);
+        }
+        Coverage coverage = resolveCoverage(contract, value(row, "coverage_code"));
+        if (coverage == null && !value(row, "coverage_code").isEmpty()) {
+            return Outcome.onHold(HoldReason.UNKNOWN_REFERENCE, eventType, eventDate, gross, contract);
+        }
+        return Outcome.loaded(eventType, eventDate, gross, contract, coverage);
+    }
+
+    /**
+     * Resolves a coverage within a contract by its code.
+     *
+     * @param contract     the contract
+     * @param coverageCode the coverage code, possibly empty
+     * @return the coverage, or {@code null} if absent or not found
+     */
+    private static Coverage resolveCoverage(Contract contract, String coverageCode) {
+        if (coverageCode.isEmpty()) {
+            return null;
+        }
+        return Coverage.find("contract = ?1 and coverageCode = ?2", contract, coverageCode).firstResult();
+    }
+
+    /**
+     * Persists a loaded or held event.
+     *
+     * @param batch        the import batch
+     * @param entity       the entity
+     * @param sourceSystem the source system
+     * @param row          the parsed line
+     * @param outcome      the decided outcome
+     */
+    private void persistEvent(ImportBatch batch, LegalEntity entity, String sourceSystem,
+                              Map<String, String> row, Outcome outcome) {
+        BusinessEvent event = new BusinessEvent();
+        event.entity = entity;
+        event.sourceSystem = sourceSystem;
+        event.sourceKey = value(row, "source_key");
+        event.eventType = outcome.eventType;
+        event.contract = outcome.contract;
+        event.coverage = outcome.coverage;
+        event.eventDate = outcome.eventDate;
+        event.receivedDate = clock.today();
+        event.periodFrom = parseDate(value(row, "period_from"));
+        event.periodTo = parseDate(value(row, "period_to"));
+        event.grossAmount = outcome.gross;
+        event.taxAmount = parseDecimal(value(row, "tax_amount"));
+        event.feeAmount = parseDecimal(value(row, "fee_amount"));
+        event.basisAmount = basis(row, outcome.gross);
+        event.fundCode = emptyToNull(value(row, "fund_code"));
+        event.managementProfile = emptyToNull(value(row, "management_profile"));
+        event.precomputedBasis = parseDecimal(value(row, "precomputed_basis"));
+        event.precomputedRate = parseDecimal(value(row, "precomputed_rate"));
+        event.precomputedAmount = parseDecimal(value(row, "precomputed_amount"));
+        event.beneficiaryCode = emptyToNull(value(row, "beneficiary_code"));
+        event.label = emptyToNull(value(row, "label"));
+        event.processingStatus = outcome.holdReason == null ? ProcessingStatus.PENDING : ProcessingStatus.ON_HOLD;
+        event.holdReason = outcome.holdReason;
+        event.importBatch = batch;
+        event.persist();
+    }
+
+    /**
+     * Computes the basis amount: explicit value, else gross minus tax minus fee.
+     *
+     * @param row   the parsed line
+     * @param gross the gross amount
+     * @return the basis amount, or {@code null}
+     */
+    private static BigDecimal basis(Map<String, String> row, BigDecimal gross) {
+        BigDecimal explicit = parseDecimal(value(row, "basis_amount"));
+        if (explicit != null) {
+            return explicit;
+        }
+        if (gross == null) {
+            return null;
+        }
+        BigDecimal tax = orZero(parseDecimal(value(row, "tax_amount")));
+        BigDecimal fee = orZero(parseDecimal(value(row, "fee_amount")));
+        return gross.subtract(tax).subtract(fee);
+    }
+
+    /**
+     * Records a rejected line.
+     *
+     * @param batch      the import batch
+     * @param lineNumber the line number
+     * @param raw        the raw line content
+     * @param reason     the reason code
+     */
+    private static void reject(ImportBatch batch, int lineNumber, String raw, RejectionReasonCode reason) {
+        ImportRejection rejection = new ImportRejection();
+        rejection.importBatch = batch;
+        rejection.lineNumber = lineNumber;
+        rejection.rawLine = raw;
+        rejection.reasonCode = reason;
+        rejection.status = ImportRejectionStatus.OPEN;
+        rejection.persist();
+    }
+
+    /**
+     * Tells whether an event type carries a commissionable premium amount.
+     *
+     * @param type the event type
+     * @return {@code true} for a premium collected or issued
+     */
+    private static boolean isPremium(EventType type) {
+        return type == EventType.PREMIUM_COLLECTED || type == EventType.PREMIUM_ISSUED;
+    }
+
+    /**
+     * Parses an event type, returning {@code null} when unknown.
+     *
+     * @param raw the raw value
+     * @return the event type or {@code null}
+     */
+    private static EventType parseEventType(String raw) {
+        try {
+            return EventType.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses an ISO date, returning {@code null} on empty or invalid input.
+     *
+     * @param raw the raw value
+     * @return the date or {@code null}
+     */
+    private static LocalDate parseDate(String raw) {
+        if (raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(raw);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses a decimal, returning {@code null} on empty or invalid input.
+     *
+     * @param raw the raw value
+     * @return the decimal or {@code null}
+     */
+    private static BigDecimal parseDecimal(String raw) {
+        if (raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(raw);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns the value of a column, or an empty string when absent.
+     *
+     * @param row    the row
+     * @param column the column name
+     * @return the trimmed value, never null
+     */
+    private static String value(Map<String, String> row, String column) {
+        String raw = row.get(column);
+        return raw == null ? "" : raw;
+    }
+
+    /**
+     * Returns the given amount, or zero when null.
+     *
+     * @param amount the amount, possibly null
+     * @return the amount or zero
+     */
+    private static BigDecimal orZero(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO : amount;
+    }
+
+    /**
+     * Returns null for an empty string, the value otherwise.
+     *
+     * @param value the value
+     * @return null if empty, else the value
+     */
+    private static String emptyToNull(String value) {
+        return value.isEmpty() ? null : value;
+    }
+
+    /** The decided outcome of a line: a rejection, or a (possibly held) event to persist. */
+    private static final class Outcome {
+        private final RejectionReasonCode rejection;
+        private final HoldReason holdReason;
+        private final EventType eventType;
+        private final LocalDate eventDate;
+        private final BigDecimal gross;
+        private final Contract contract;
+        private final Coverage coverage;
+
+        /**
+         * Creates an outcome.
+         *
+         * @param rejection  the reject reason, or {@code null}
+         * @param holdReason the hold reason, or {@code null}
+         * @param eventType  the event type, or {@code null}
+         * @param eventDate  the event date, or {@code null}
+         * @param gross      the gross amount, or {@code null}
+         * @param contract   the resolved contract, or {@code null}
+         * @param coverage   the resolved coverage, or {@code null}
+         */
+        private Outcome(RejectionReasonCode rejection, HoldReason holdReason, EventType eventType,
+                        LocalDate eventDate, BigDecimal gross, Contract contract, Coverage coverage) {
+            this.rejection = rejection;
+            this.holdReason = holdReason;
+            this.eventType = eventType;
+            this.eventDate = eventDate;
+            this.gross = gross;
+            this.contract = contract;
+            this.coverage = coverage;
+        }
+
+        /**
+         * Builds a rejected outcome.
+         *
+         * @param reason the reject reason
+         * @return the outcome
+         */
+        private static Outcome rejected(RejectionReasonCode reason) {
+            return new Outcome(reason, null, null, null, null, null, null);
+        }
+
+        /**
+         * Builds a held outcome (event kept pending a missing reference).
+         *
+         * @param reason   the hold reason
+         * @param type     the event type
+         * @param date     the event date
+         * @param gross    the gross amount
+         * @param contract the resolved contract, or {@code null}
+         * @return the outcome
+         */
+        private static Outcome onHold(HoldReason reason, EventType type, LocalDate date, BigDecimal gross,
+                                      Contract contract) {
+            return new Outcome(null, reason, type, date, gross, contract, null);
+        }
+
+        /**
+         * Builds a loaded outcome (event ready to persist).
+         *
+         * @param type     the event type
+         * @param date     the event date
+         * @param gross    the gross amount
+         * @param contract the resolved contract
+         * @param coverage the resolved coverage, or {@code null}
+         * @return the outcome
+         */
+        private static Outcome loaded(EventType type, LocalDate date, BigDecimal gross, Contract contract,
+                                      Coverage coverage) {
+            return new Outcome(null, null, type, date, gross, contract, coverage);
+        }
+    }
+}

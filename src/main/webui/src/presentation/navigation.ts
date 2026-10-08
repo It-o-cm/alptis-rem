@@ -27,6 +27,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     items: [
       { name: 'periods', path: '/', label: 'Périodes' },
       { name: 'imports', path: '/imports', label: 'Imports' },
+      { name: 'manualEvent', path: '/saisie-evenement', label: 'Saisie d’un événement' },
       { name: 'controls', path: '/controles', label: 'Contrôles' },
       { name: 'adjustments', path: '/ajustements', label: 'Ajustements' },
       { name: 'payment', path: '/paiement', label: 'Paiement' },
@@ -35,6 +36,9 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   {
     heading: 'Distributeurs',
     items: [
+      { name: 'distributorSearch', path: '/distributeurs', label: 'Recherche distributeurs' },
+      { name: 'contractSearch', path: '/contrats', label: 'Recherche contrats' },
+      { name: 'transfers', path: '/cessions', label: 'Cessions et ordres' },
       { name: 'distributor', path: '/distributeur', label: 'Fiche et compte' },
       { name: 'advance', path: '/escompte', label: 'Escompte' },
     ],
@@ -54,6 +58,16 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'exports', path: '/exports', label: 'Exports' },
       { name: 'formats', path: '/formats', label: "Formats d'échange" },
       { name: 'mapping', path: '/mapping', label: 'Mapping de fichier' },
+    ],
+  },
+  {
+    heading: 'Référentiels',
+    items: [
+      { name: 'products', path: '/produits', label: 'Produits' },
+      { name: 'qualityIndicators', path: '/indicateurs', label: 'Indicateurs qualité' },
+      { name: 'bankAccounts', path: '/coordonnees-bancaires', label: 'Coordonnées bancaires' },
+      { name: 'payeeRules', path: '/regles-versement', label: 'Règles de versement' },
+      { name: 'externalCodes', path: '/codes-externes', label: 'Codes externes' },
     ],
   },
   {

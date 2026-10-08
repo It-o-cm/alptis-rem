@@ -36,6 +36,23 @@ const REQUIREMENTS_BY_STEP = {
     paths: ['ADM-01'],
     roleActions: [],
   },
+  // Step 3 delivers the integration and referential screens. The commission-engine recette cases
+  // (CR-37/38/67) are verified by server unit tests until the engine screens arrive; CR-68
+  // (reimport refused) is observable at the imports screen.
+  3: {
+    screens: [
+      'imports', 'manualEvent', 'mapping', 'distributor-search', 'production-hierarchy',
+      'contract-search', 'products', 'quality-indicators', 'bank-accounts', 'transfers',
+      'payee-rules', 'external-codes',
+    ],
+    reqs: [
+      'ING-01', 'ING-02', 'ING-05', 'ING-07', 'REF-01', 'REF-02', 'REF-03', 'REF-04', 'REF-05',
+      'REF-06', 'REF-07', 'REF-09',
+    ],
+    crs: ['CR-68'],
+    paths: ['INT-11', 'INT-13'],
+    roleActions: [],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */
