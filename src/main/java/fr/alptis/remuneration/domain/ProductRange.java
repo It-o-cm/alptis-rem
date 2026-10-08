@@ -15,19 +15,28 @@ import java.time.OffsetDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** A product range or market (section 5.1). */
+/**
+ * A product range or market (section 5.1).
+ *
+ * <p>Persistent entity backed by table {@code product_range}; it inherits the common bookkeeping columns
+ * and the optimistic-lock version from {@link BaseEntity}. Fields are public (Panache active record);
+ * foreign keys are {@code @ManyToOne} associations.</p>
+ */
 @Entity
 @Table(name = "product_range", uniqueConstraints = {
         @UniqueConstraint(name = "uq_product_range_code", columnNames = {"code"})
 })
 public class ProductRange extends BaseEntity {
 
+    /** The business code, unique within its scope. */
     @Column(name = "code")
     public String code;
 
+    /** The human-readable label. */
     @Column(name = "label")
     public String label;
 
+    /** The target clientele (individual, professional, company). */
     @Enumerated(EnumType.STRING)
     @Column(name = "target", length = 30)
     public ProductTarget target;

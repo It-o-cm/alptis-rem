@@ -15,36 +15,50 @@ import java.time.OffsetDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** A variable-pay plan per job code (section 5.7). */
+/**
+ * A variable-pay plan per job code (section 5.7).
+ *
+ * <p>Persistent entity backed by table {@code variable_plan}; it inherits the common bookkeeping columns
+ * and the optimistic-lock version from {@link BaseEntity}. Fields are public (Panache active record);
+ * foreign keys are {@code @ManyToOne} associations.</p>
+ */
 @Entity
 @Table(name = "variable_plan")
 public class VariablePlan extends BaseEntity {
 
+    /** The legal entity this row belongs to, for data partitioning (section 12.2). */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "entity_id")
     public LegalEntity entity;
 
+    /** The sales-force job code (2026 grid). */
     @Enumerated(EnumType.STRING)
     @Column(name = "job_code", length = 30)
     public JobCode jobCode;
 
+    /** The variable-pay component the plan sets. */
     @Enumerated(EnumType.STRING)
     @Column(name = "component", length = 30)
     public VariableComponent component;
 
+    /** The annual envelope amount. */
     @Column(name = "envelope_amount", precision = 14, scale = 2)
     public BigDecimal envelopeAmount;
 
+    /** The monthly instalment amount. */
     @Column(name = "instalment_amount", precision = 14, scale = 2)
     public BigDecimal instalmentAmount;
 
+    /** The plan parameters, scales and absence rules (JSON). */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "parameters")
     public String parameters;
 
+    /** Start of the validity period. */
     @Column(name = "valid_from")
     public LocalDate validFrom;
 
+    /** End of the validity period; null while in force. */
     @Column(name = "valid_to")
     public LocalDate validTo;
 }

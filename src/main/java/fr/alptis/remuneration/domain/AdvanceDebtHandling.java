@@ -1,7 +1,11 @@
 package fr.alptis.remuneration.domain;
 
-/** Fate of the advance receivable on a portfolio transfer (section 5.6). */
+/**
+ * What happens to the outstanding discount receivable when a portfolio is transferred (section 5.2, CR-80).
+ */
 public enum AdvanceDebtHandling {
+    /** The transferor repays the receivable; the discount is cancelled and adjusted on its account. */
     REPAID_BY_TRANSFEROR,
+    /** The transferee takes over the receivable; the discount stays active and offsets against its commissions. */
     TAKEN_OVER
 }
