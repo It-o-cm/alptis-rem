@@ -23,4 +23,4 @@ listés passent, `README.md` et ce fichier sont à jour, et le commit est fait.
 | 12 | Simulation et volume | [x] | CR-69, CR-72 |
 | 13 | Interface : restitutions, administration, finition | [x] | — |
 | 14 | Forces de vente | [x] | CR-87, CR-88 |
-| 15 | Jeu de démonstration | [ ] | Parcours complet, de l'import à la clôture |
+| 15 | Jeu de démonstration | [x] | Parcours complet, de l'import à la clôture |
