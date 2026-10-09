@@ -12,10 +12,26 @@ import fr.alptis.remuneration.domain.ControlDefinition;
 import fr.alptis.remuneration.domain.ControlFamily;
 import fr.alptis.remuneration.domain.ControlResult;
 import fr.alptis.remuneration.domain.ControlSeverity;
+import fr.alptis.remuneration.domain.Agreement;
+import fr.alptis.remuneration.domain.ConditionOperator;
+import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
+import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.DateTimeProvider;
+import fr.alptis.remuneration.domain.Enrollment;
+import fr.alptis.remuneration.domain.EnrollmentStatus;
+import fr.alptis.remuneration.domain.PayeeRule;
+import fr.alptis.remuneration.domain.PayeeRuleShare;
+import fr.alptis.remuneration.domain.PayeeType;
+import fr.alptis.remuneration.domain.ProductionCounter;
+import fr.alptis.remuneration.domain.QualityIndicator;
+import fr.alptis.remuneration.domain.QualityIndicatorType;
+import fr.alptis.remuneration.domain.RuleCondition;
+import fr.alptis.remuneration.domain.SignatureStatus;
+import fr.alptis.remuneration.domain.SurcommissionAllocation;
 import fr.alptis.remuneration.domain.EventType;
 import fr.alptis.remuneration.domain.HoldReason;
 import fr.alptis.remuneration.domain.LegalEntity;
@@ -102,19 +118,9 @@ public class CalculationEngine {
     @Transactional
     public CalculationRun runReal(String entityCode, LocalDate periodMonth) {
         LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
-        Period period = Period.find("entity = ?1 and periodMonth = ?2", entity, periodMonth).firstResult();
-        if (period == null) {
-            period = new Period();
-            period.entity = entity;
-            period.periodMonth = periodMonth;
-            period.state = PeriodState.OPEN;
-            period.setCreatedAt(clock.now());
-            period.persist();
-        }
+        Period period = findOrCreatePeriod(entity, periodMonth);
 
-        List<RuleVersion> versions = RuleVersion.list(
-                "status = ?1 and rule.plan.entity = ?2",
-                fr.alptis.remuneration.domain.VersionStatus.ACTIVE, entity);
+        List<RuleVersion> versions = activeVersions(entity);
 
         CalculationRun run = new CalculationRun();
         run.period = period;
@@ -237,6 +243,7 @@ public class CalculationEngine {
             } else if (isTerminal(event.eventType)) {
                 count += rupture(period, run, event, coverage, advance);
                 count += clawback(period, run, event, coverage);
+                count += rcdReprise(period, run, event, coverage);
             } else {
                 List<CommissionLine> written = processPremium(period, run, event, coverage, versions);
                 count += written.size();
@@ -268,7 +275,7 @@ public class CalculationEngine {
         Map<String, String> attributes = attributes(event, coverage, choice);
         List<RuleVersion> candidates = new ArrayList<>();
         for (RuleVersion version : versions) {
-            if (eventDriven(version.rule.family) && families.containsKey(version.rule.family)
+            if (eventDriven(version.rule.family)
                     && activeAt(version, event.eventDate) && scopeMatcher.matches(version.scope, attributes)) {
                 candidates.add(version);
             }
@@ -298,7 +305,7 @@ public class CalculationEngine {
             ComputingFamily family = families.get(version.rule.family);
             CalculationInput input = input(event, coverage, choice, version);
             for (ProposedLine proposed : family.propose(input)) {
-                written.add(writeLine(period, run, event, coverage, version, proposed));
+                written.addAll(writeLine(period, run, event, coverage, version, proposed));
             }
         }
         event.processingStatus = ProcessingStatus.PROCESSED;
@@ -314,7 +321,7 @@ public class CalculationEngine {
      * @return {@code true} for an event-driven family
      */
     private static boolean eventDriven(RuleFamily family) {
-        return family != RuleFamily.ADVANCE && family != RuleFamily.TIERED;
+        return family != RuleFamily.ADVANCE && family != RuleFamily.TIERED && family != RuleFamily.PORTFOLIO;
     }
 
     /**
@@ -386,6 +393,7 @@ public class CalculationEngine {
                 inverse.originLine = source;
                 inverse.originProductionCode = source.originProductionCode;
                 inverse.originDistributor = source.originDistributor;
+                inverse.account = source.account;
                 inverse.explanation = "{\"reversalOf\":" + source.getId() + "}";
                 inverse.persist();
                 count++;
@@ -457,16 +465,10 @@ public class CalculationEngine {
         if (amount.signum() == 0) {
             return 0;
         }
-        CommissionLine clawback = baseLine(period, run, event, coverage, version);
-        clawback.nature = LineNature.CLAWBACK;
-        clawback.amount = amount.negate();
-        ProductionCode origin = mainProductionCode(coverage);
-        clawback.originProductionCode = origin;
-        clawback.originDistributor = origin == null ? null : origin.distributor;
-        clawback.explanation = "{\"family\":\"CLAWBACK\",\"base\":" + base.toPlainString()
+        String explanation = "{\"family\":\"CLAWBACK\",\"base\":" + base.toPlainString()
                 + ",\"rate\":" + rate.toPlainString() + ",\"amount\":" + amount.negate().toPlainString() + "}";
-        clawback.persist();
-        return 1;
+        return writeShared(period, run, event, coverage, version, null, version.rule.plan.direction,
+                LineNature.CLAWBACK, null, null, amount.negate(), explanation).size();
     }
 
     /**
@@ -631,28 +633,11 @@ public class CalculationEngine {
         state.position = position;
         state.advanced = BigDecimal.ZERO;
         state.offset = BigDecimal.ZERO;
-        fr.alptis.remuneration.domain.ProductionCode pc = origin;
         for (ProposedLine proposed : advanceLines) {
-            CommissionLine line = new CommissionLine();
-            line.entity = period.entity;
-            line.period = period;
-            line.run = run;
-            line.direction = Direction.OUTBOUND;
-            line.status = LineStatus.EARNED;
-            line.contract = coverage.contract;
-            line.coverage = coverage;
-            line.ruleVersion = null;
-            line.nature = LineNature.ADVANCE;
-            line.amount = proposed.amount();
-            line.explanation = proposed.explanation();
-            line.advancePosition = position;
-            line.originProductionCode = pc;
-            line.originDistributor = pc.distributor;
-            line.attachmentMonth = period.periodMonth;
-            line.setCreatedAt(clock.now());
-            line.persist();
+            List<CommissionLine> lines = writeShared(period, run, null, coverage, null, position, Direction.OUTBOUND,
+                    LineNature.ADVANCE, null, null, proposed.amount(), proposed.explanation());
             state.advanced = state.advanced.add(proposed.amount());
-            state.versementLines++;
+            state.versementLines += lines.size();
         }
         position.advancedAcquisition = state.advanced;
         return state;
@@ -826,25 +811,9 @@ public class CalculationEngine {
      */
     private int writeAdjustment(Period period, CalculationRun run, Coverage coverage, AdvanceState advance,
                                 BigDecimal amount) {
-        ProductionCode origin = mainProductionCode(coverage);
-        CommissionLine line = new CommissionLine();
-        line.entity = period.entity;
-        line.period = period;
-        line.run = run;
-        line.direction = Direction.OUTBOUND;
-        line.status = LineStatus.EARNED;
-        line.contract = coverage.contract;
-        line.coverage = coverage;
-        line.nature = LineNature.ADVANCE_ADJUSTMENT;
-        line.amount = amount;
-        line.advancePosition = advance.position;
-        line.originProductionCode = origin;
-        line.originDistributor = origin.distributor;
-        line.attachmentMonth = period.periodMonth;
-        line.explanation = "{\"family\":\"ADVANCE_ADJUSTMENT\",\"delta\":" + amount.toPlainString() + "}";
-        line.setCreatedAt(clock.now());
-        line.persist();
-        return 1;
+        String explanation = "{\"family\":\"ADVANCE_ADJUSTMENT\",\"delta\":" + amount.toPlainString() + "}";
+        return writeShared(period, run, null, coverage, null, advance.position, Direction.OUTBOUND,
+                LineNature.ADVANCE_ADJUSTMENT, null, null, amount, explanation).size();
     }
 
     /**
@@ -1297,24 +1266,8 @@ public class CalculationEngine {
      */
     private void writeSavingsLine(Period period, CalculationRun run, Coverage coverage, LineNature nature,
                                   BigDecimal amount, AdvancePosition position, String explanation) {
-        ProductionCode origin = mainProductionCode(coverage);
-        CommissionLine line = new CommissionLine();
-        line.entity = period.entity;
-        line.period = period;
-        line.run = run;
-        line.direction = Direction.OUTBOUND;
-        line.status = LineStatus.EARNED;
-        line.contract = coverage.contract;
-        line.coverage = coverage;
-        line.nature = nature;
-        line.amount = amount;
-        line.advancePosition = position;
-        line.originProductionCode = origin;
-        line.originDistributor = origin == null ? null : origin.distributor;
-        line.attachmentMonth = period.periodMonth;
-        line.explanation = explanation;
-        line.setCreatedAt(clock.now());
-        line.persist();
+        writeShared(period, run, null, coverage, null, position, Direction.OUTBOUND, nature, null, null, amount,
+                explanation);
     }
 
     /**
@@ -1355,13 +1308,26 @@ public class CalculationEngine {
      * @return the control definition
      */
     private ControlDefinition expectedControl(LegalEntity entity) {
-        ControlDefinition control = ControlDefinition.find("entity = ?1 and code = ?2", entity, "CAL-13").firstResult();
+        return control(entity, "CAL-13", "Commission reçue différente de l'attendu", ControlFamily.CALCULATION);
+    }
+
+    /**
+     * Returns an entity's control definition by code, creating it when absent (dev profile).
+     *
+     * @param entity the entity
+     * @param code   the control code
+     * @param label  the control label
+     * @param family the control family
+     * @return the control definition
+     */
+    private ControlDefinition control(LegalEntity entity, String code, String label, ControlFamily family) {
+        ControlDefinition control = ControlDefinition.find("entity = ?1 and code = ?2", entity, code).firstResult();
         if (control == null) {
             control = new ControlDefinition();
             control.entity = entity;
-            control.code = "CAL-13";
-            control.label = "Commission reçue différente de l'attendu";
-            control.family = ControlFamily.CALCULATION;
+            control.code = code;
+            control.label = label;
+            control.family = family;
             control.severity = ControlSeverity.WARNING;
             control.active = Boolean.TRUE;
             control.setCreatedAt(clock.now());
@@ -1383,27 +1349,9 @@ public class CalculationEngine {
     @Transactional
     public CalculationRun runAnnualClose(String entityCode, LocalDate periodMonth, int year) {
         LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
-        Period period = Period.find("entity = ?1 and periodMonth = ?2", entity, periodMonth).firstResult();
-        if (period == null) {
-            period = new Period();
-            period.entity = entity;
-            period.periodMonth = periodMonth;
-            period.state = PeriodState.OPEN;
-            period.setCreatedAt(clock.now());
-            period.persist();
-        }
-        List<RuleVersion> versions = RuleVersion.list(
-                "status = ?1 and rule.plan.entity = ?2",
-                fr.alptis.remuneration.domain.VersionStatus.ACTIVE, entity);
-        CalculationRun run = new CalculationRun();
-        run.period = period;
-        run.runType = RunType.ACTUAL;
-        run.status = RunStatus.RUNNING;
-        run.startedAt = clock.now();
-        run.launchedBy = "annual-close";
-        run.configHash = HashUtil.sha256(String.valueOf(year));
-        run.setCreatedAt(clock.now());
-        run.persist();
+        Period period = findOrCreatePeriod(entity, periodMonth);
+        List<RuleVersion> versions = activeVersions(entity);
+        CalculationRun run = enrollmentRun(period, "annual-close", year);
 
         LocalDate from = LocalDate.of(year, 1, 1);
         LocalDate to = LocalDate.of(year, 12, 31);
@@ -1553,7 +1501,14 @@ public class CalculationEngine {
                     json.append(",");
                 }
                 json.append("{\"lowerBound\":").append(tier.lowerBound.toPlainString())
-                        .append(",\"rate\":").append(tier.rate.toPlainString()).append("}");
+                        .append(",\"rate\":").append(tier.rate.toPlainString());
+                if (tier.upperBound != null) {
+                    json.append(",\"upperBound\":").append(tier.upperBound.toPlainString());
+                }
+                if (Boolean.TRUE.equals(tier.fromFirstUnit)) {
+                    json.append(",\"fromFirstUnit\":true");
+                }
+                json.append("}");
                 first = false;
             }
         }
@@ -1595,6 +1550,647 @@ public class CalculationEngine {
      */
     private static boolean offsettable(LineNature nature) {
         return nature == LineNature.LINEAR || nature == LineNature.ACQUISITION || nature == LineNature.SERVICING;
+    }
+
+    /**
+     * Finds the entity's period for a month, creating it open when absent.
+     *
+     * @param entity      the entity
+     * @param periodMonth the first day of the month
+     * @return the period
+     */
+    private Period findOrCreatePeriod(LegalEntity entity, LocalDate periodMonth) {
+        Period period = Period.find("entity = ?1 and periodMonth = ?2", entity, periodMonth).firstResult();
+        if (period == null) {
+            period = new Period();
+            period.entity = entity;
+            period.periodMonth = periodMonth;
+            period.state = PeriodState.OPEN;
+            period.setCreatedAt(clock.now());
+            period.persist();
+        }
+        return period;
+    }
+
+    /**
+     * Runs the monthly development remuneration (RCD, section 6.7): for each enrolled distributor with
+     * a signed amendment, the cumulative annualised production of the year's new business feeds the
+     * scale, and the line is the gain of entitlement over the previous month. A failed payment
+     * condition (the unpaid rate) forfeits the month's line; the entitlement counter still advances.
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the first day of the processing month
+     * @param year        the production year
+     * @return the recorded calculation run
+     */
+    @Transactional
+    public CalculationRun runDevelopment(String entityCode, LocalDate periodMonth, int year) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        Period period = findOrCreatePeriod(entity, periodMonth);
+        CalculationRun run = enrollmentRun(period, "development", year);
+        // D13: a rerun first removes the non-validated development lines and their allocations.
+        SurcommissionAllocation.delete(
+                "commissionLine.period = ?1 and commissionLine.status in ?2 and commissionLine.nature = ?3",
+                period, List.of(LineStatus.EARNED, LineStatus.FORECAST), LineNature.RCD);
+        CommissionLine.delete("period = ?1 and status in ?2 and nature = ?3", period,
+                List.of(LineStatus.EARNED, LineStatus.FORECAST), LineNature.RCD);
+        int month = periodMonth.getMonthValue();
+        int lines = 0;
+        for (RuleVersion version : activeVersions(entity)) {
+            if (version.rule.family == RuleFamily.TIERED && version.outputNature == LineNature.RCD
+                    && "MONTHLY".equals(paramText(mapper, version.parameters, "calculationFrequency"))) {
+                for (Enrollment enrollment : Enrollment.<Enrollment>list("rule = ?1 and status = ?2",
+                        version.rule, EnrollmentStatus.ACTIVE)) {
+                    lines += developmentForEnrollment(period, run, version, enrollment, year, month);
+                }
+            }
+        }
+        run.status = RunStatus.COMPLETED;
+        run.finishedAt = clock.now();
+        run.counters = "{\"lines\":" + lines + "}";
+        return run;
+    }
+
+    /**
+     * Computes one enrolled distributor's development remuneration for a month (section 6.7).
+     *
+     * @param period     the period
+     * @param run        the run
+     * @param version    the development rule
+     * @param enrollment the distributor's enrolment
+     * @param year       the production year
+     * @param month      the month number
+     * @return the number of lines written
+     */
+    private int developmentForEnrollment(Period period, CalculationRun run, RuleVersion version,
+                                         Enrollment enrollment, int year, int month) {
+        if (!signedAmendment(enrollment)) {
+            controlAlert(period, "ENROLLMENT", enrollment.getId(), "Avenant non signé");
+            return 0;
+        }
+        Distributor distributor = enrollment.distributor;
+        PayeeType payeeType = enrollmentPayeeType(enrollment);
+        Long payeeId = enrollmentPayeeId(enrollment);
+        LocalDate from = LocalDate.of(year, 1, 1);
+        LocalDate monthEnd = LocalDate.of(year, month, 1).plusMonths(1).minusDays(1);
+        BigDecimal production = newBusinessAnnualised(version.scope, distributor, from, monthEnd);
+        BigDecimal entitlement = marginalEntitlement(mapper, tiersJson(version), production);
+        ProductionCounter previous = ProductionCounter.find(
+                "rule = ?1 and payeeType = ?2 and payeeId = ?3 and counterYear = ?4 and counterMonth = ?5",
+                version.rule, payeeType, payeeId, (short) year, (short) (month - 1)).firstResult();
+        BigDecimal entitledBefore = previous == null ? BigDecimal.ZERO : previous.cumulativeEntitlement;
+        BigDecimal monthly = entitlement.subtract(entitledBefore).setScale(2, RoundingMode.HALF_UP);
+        storeCounter(version.rule, payeeType, payeeId, enrollment, year, month, production, entitlement);
+        if (!paymentConditionsHold(version, distributor, year)) {
+            writeEnrollmentLine(period, run, LineNature.RCD, BigDecimal.ZERO, payeeType, payeeId, distributor,
+                    "{\"family\":\"TIERED\",\"rcd\":true,\"forfeited\":true}");
+            return 1;
+        }
+        if (monthly.signum() == 0) {
+            return 0;
+        }
+        String explanation = "{\"family\":\"TIERED\",\"rcd\":true,\"cumulative\":" + production.toPlainString()
+                + ",\"entitlement\":" + entitlement.toPlainString() + ",\"amount\":" + monthly.toPlainString() + "}";
+        CommissionLine line = writeEnrollmentLine(period, run, LineNature.RCD, monthly, payeeType, payeeId,
+                distributor, explanation);
+        allocateDevelopment(line, version.scope, distributor, monthly, firstOfMonth(monthEnd), monthEnd);
+        return 1;
+    }
+
+    /**
+     * Allocates a month's development remuneration among that month's new adhésions, pro rata of their
+     * annualised premium, so the reprise can later target each (section 6.7).
+     *
+     * @param line        the development line
+     * @param scope       the rule scope
+     * @param distributor the distributor
+     * @param amount      the month's amount
+     * @param from        the first day of the month
+     * @param to          the last day of the month
+     */
+    private void allocateDevelopment(CommissionLine line, String scope, Distributor distributor, BigDecimal amount,
+                                     LocalDate from, LocalDate to) {
+        List<Coverage> coverages = newBusinessCoverages(scope, distributor, from, to);
+        BigDecimal total = BigDecimal.ZERO;
+        for (Coverage coverage : coverages) {
+            total = total.add(annualPremium(coverage));
+        }
+        if (total.signum() == 0) {
+            return;
+        }
+        BigDecimal allocated = BigDecimal.ZERO;
+        for (int i = 0; i < coverages.size(); i++) {
+            Coverage coverage = coverages.get(i);
+            BigDecimal premium = annualPremium(coverage);
+            BigDecimal part = i == coverages.size() - 1 ? amount.subtract(allocated)
+                    : amount.multiply(premium).divide(total, 2, RoundingMode.HALF_UP);
+            allocated = allocated.add(part);
+            SurcommissionAllocation allocation = new SurcommissionAllocation();
+            allocation.commissionLine = line;
+            allocation.contract = coverage.contract;
+            allocation.annualisedPremium = premium;
+            allocation.allocatedAmount = part;
+            allocation.setCreatedAt(clock.now());
+            allocation.persist();
+        }
+    }
+
+    /**
+     * Claws back the development remuneration of an adhésion ended within its first two years
+     * (section 6.7): the whole of its allocated share in the first twelve months, half from the
+     * thirteenth to the twenty-fourth, nothing afterwards; a death triggers no reprise.
+     *
+     * @param period   the period
+     * @param run      the run
+     * @param event    the terminating event
+     * @param coverage the coverage
+     * @return the number of reprise lines written
+     */
+    private int rcdReprise(Period period, CalculationRun run, BusinessEvent event, Coverage coverage) {
+        if (event.eventType == EventType.DEATH) {
+            return 0;
+        }
+        List<SurcommissionAllocation> allocations = SurcommissionAllocation.list(
+                "contract = ?1 and commissionLine.nature = ?2", coverage.contract, LineNature.RCD);
+        if (allocations.isEmpty()) {
+            return 0;
+        }
+        long months = ChronoUnit.MONTHS.between(coverage.effectDate, event.eventDate);
+        BigDecimal rate = months <= 12 ? BigDecimal.ONE : months <= 24 ? new BigDecimal("0.5") : BigDecimal.ZERO;
+        if (rate.signum() == 0) {
+            return 0;
+        }
+        int count = 0;
+        for (SurcommissionAllocation allocation : allocations) {
+            BigDecimal amount = allocation.allocatedAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP).negate();
+            CommissionLine source = allocation.commissionLine;
+            String explanation = "{\"family\":\"CLAWBACK\",\"rcdReprise\":true,\"months\":" + months
+                    + ",\"amount\":" + amount.toPlainString() + "}";
+            CommissionLine line = new CommissionLine();
+            line.entity = period.entity;
+            line.period = period;
+            line.run = run;
+            line.direction = Direction.OUTBOUND;
+            line.status = LineStatus.EARNED;
+            line.contract = coverage.contract;
+            line.coverage = coverage;
+            line.nature = LineNature.CLAWBACK;
+            line.amount = amount;
+            line.account = source.account;
+            line.originProductionCode = source.originProductionCode;
+            line.originDistributor = source.originDistributor;
+            line.attachmentMonth = period.periodMonth;
+            line.explanation = explanation;
+            line.setCreatedAt(clock.now());
+            line.persist();
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Runs the annual portfolio remuneration (RCP, section 6.8): for each enrolled distributor with a
+     * signed amendment whose quality and volume conditions all hold, a single line at the rate (flat
+     * or chosen from a count scale) applied to the year's collected premiums; a failed condition makes
+     * it nil and records the detail.
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the first day of the close month
+     * @param year        the production year
+     * @return the recorded calculation run
+     */
+    @Transactional
+    public CalculationRun runPortfolio(String entityCode, LocalDate periodMonth, int year) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        Period period = findOrCreatePeriod(entity, periodMonth);
+        CalculationRun run = enrollmentRun(period, "portfolio", year);
+        CommissionLine.delete("period = ?1 and status in ?2 and nature = ?3", period,
+                List.of(LineStatus.EARNED, LineStatus.FORECAST), LineNature.RCP);
+        int lines = 0;
+        for (RuleVersion version : activeVersions(entity)) {
+            if (version.rule.family == RuleFamily.PORTFOLIO) {
+                for (Enrollment enrollment : Enrollment.<Enrollment>list("rule = ?1 and status = ?2",
+                        version.rule, EnrollmentStatus.ACTIVE)) {
+                    lines += portfolioForEnrollment(period, run, version, enrollment, year);
+                }
+            }
+        }
+        run.status = RunStatus.COMPLETED;
+        run.finishedAt = clock.now();
+        run.counters = "{\"lines\":" + lines + "}";
+        return run;
+    }
+
+    /**
+     * Computes one enrolled distributor's portfolio remuneration (section 6.8).
+     *
+     * @param period     the period
+     * @param run        the run
+     * @param version    the portfolio rule
+     * @param enrollment the distributor's enrolment
+     * @param year       the production year
+     * @return the number of lines written
+     */
+    private int portfolioForEnrollment(Period period, CalculationRun run, RuleVersion version, Enrollment enrollment,
+                                       int year) {
+        if (!signedAmendment(enrollment)) {
+            controlAlert(period, "ENROLLMENT", enrollment.getId(), "Avenant non signé");
+            return 0;
+        }
+        Distributor distributor = enrollment.distributor;
+        PayeeType payeeType = enrollmentPayeeType(enrollment);
+        Long payeeId = enrollmentPayeeId(enrollment);
+        LocalDate from = LocalDate.of(year, 1, 1);
+        LocalDate to = LocalDate.of(year, 12, 31);
+        BigDecimal basis = collectedPremiums(version.scope, distributor, from, to);
+        StringBuilder detail = new StringBuilder();
+        boolean hold = conditionsHold(version, distributor, year, detail);
+        BigDecimal rate = portfolioRate(version, distributor, from, to);
+        BigDecimal effectiveRate = hold ? rate : BigDecimal.ZERO;
+        CalculationInput input = new CalculationInput(EventType.PREMIUM_COLLECTED, basis, effectiveRate, null, null,
+                null, null, from, to, null, null, null, null, LineNature.RCP, version.parameters, null);
+        ProposedLine proposed = families.get(RuleFamily.PORTFOLIO).propose(input).get(0);
+        String explanation = "{\"family\":\"PORTFOLIO\",\"rcp\":true,\"basis\":" + basis.toPlainString()
+                + ",\"rate\":" + effectiveRate.toPlainString() + ",\"conditions\":\"" + detail + "\",\"amount\":"
+                + proposed.amount().toPlainString() + "}";
+        writeEnrollmentLine(period, run, LineNature.RCP, proposed.amount(), payeeType, payeeId, distributor,
+                explanation);
+        return 1;
+    }
+
+    /**
+     * Returns the portfolio rate: the rate chosen from a new-business-count scale when the rule has
+     * one, otherwise the flat rate parameter (section 6.8).
+     *
+     * @param version     the portfolio rule
+     * @param distributor the distributor
+     * @param from        the first day of the year
+     * @param to          the last day of the year
+     * @return the rate
+     */
+    private BigDecimal portfolioRate(RuleVersion version, Distributor distributor, LocalDate from, LocalDate to) {
+        String tiers = tiersJson(version);
+        if ("[]".equals(tiers)) {
+            return paramDecimalOrZero(mapper, version.parameters, "rate");
+        }
+        long count = newBusinessCoverages(version.scope, distributor, from, to).size();
+        return fr.alptis.remuneration.engine.families.TieredFamily.rateFor(BigDecimal.valueOf(count), tiers);
+    }
+
+    /**
+     * Tells whether all of a rule's conditions hold for a distributor in a year, appending each
+     * condition's verdict and observed value to the detail (section 6.8).
+     *
+     * @param version     the rule
+     * @param distributor the distributor
+     * @param year        the year
+     * @param detail      the detail accumulator
+     * @return {@code true} when every condition holds
+     */
+    private boolean conditionsHold(RuleVersion version, Distributor distributor, int year, StringBuilder detail) {
+        boolean all = true;
+        for (RuleCondition condition : RuleCondition.<RuleCondition>list("ruleVersion = ?1", version)) {
+            BigDecimal observed = indicatorValue(condition, distributor, year);
+            boolean ok = observed != null && compare(observed, condition.operator, condition.threshold);
+            detail.append(condition.indicatorType).append('=').append(observed).append(ok ? "(ok) " : "(ko) ");
+            if (!ok) {
+                all = false;
+            }
+        }
+        return all;
+    }
+
+    /**
+     * Tells whether a rule's payment conditions — those on the unpaid rate — hold for a distributor
+     * in a year (section 6.7).
+     *
+     * @param version     the rule
+     * @param distributor the distributor
+     * @param year        the year
+     * @return {@code true} when the unpaid-rate conditions hold
+     */
+    private boolean paymentConditionsHold(RuleVersion version, Distributor distributor, int year) {
+        for (RuleCondition condition : RuleCondition.<RuleCondition>list("ruleVersion = ?1", version)) {
+            if (condition.indicatorType == QualityIndicatorType.UNPAID_RATE) {
+                BigDecimal observed = indicatorValue(condition, distributor, year);
+                if (observed == null || !compare(observed, condition.operator, condition.threshold)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns the quality-indicator value a condition reads for a distributor in a year, or null when
+     * absent.
+     *
+     * @param condition   the condition
+     * @param distributor the distributor
+     * @param year        the year
+     * @return the observed value, or null
+     */
+    private static BigDecimal indicatorValue(RuleCondition condition, Distributor distributor, int year) {
+        QualityIndicator indicator = QualityIndicator.find(
+                "distributor = ?1 and indicatorType = ?2 and periodFrom >= ?3 and periodFrom <= ?4",
+                distributor, condition.indicatorType, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31))
+                .firstResult();
+        return indicator == null ? null : indicator.value;
+    }
+
+    /**
+     * Compares an observed value to a threshold with an operator.
+     *
+     * @param observed  the observed value
+     * @param operator  the operator
+     * @param threshold the threshold
+     * @return the comparison result
+     */
+    static boolean compare(BigDecimal observed, ConditionOperator operator, BigDecimal threshold) {
+        int cmp = observed.compareTo(threshold);
+        return switch (operator) {
+            case LT -> cmp < 0;
+            case LE -> cmp <= 0;
+            case GT -> cmp > 0;
+            case GE -> cmp >= 0;
+            case EQ -> cmp == 0;
+        };
+    }
+
+    /**
+     * Sums the annualised premiums of the distributor's new-business adhésions matching a scope within
+     * a date range (section 6.7).
+     *
+     * @param scope       the rule scope
+     * @param distributor the distributor
+     * @param from        the range start
+     * @param to          the range end
+     * @return the summed annualised premiums
+     */
+    private BigDecimal newBusinessAnnualised(String scope, Distributor distributor, LocalDate from, LocalDate to) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (Coverage coverage : newBusinessCoverages(scope, distributor, from, to)) {
+            sum = sum.add(annualPremium(coverage));
+        }
+        return sum;
+    }
+
+    /**
+     * Returns the distributor's new-business coverages (those with a subscription event in the range)
+     * matching a scope, deduplicated and ordered for a stable rerun (D8).
+     *
+     * @param scope       the rule scope
+     * @param distributor the distributor
+     * @param from        the range start
+     * @param to          the range end
+     * @return the matching coverages
+     */
+    private List<Coverage> newBusinessCoverages(String scope, Distributor distributor, LocalDate from, LocalDate to) {
+        List<Coverage> coverages = new ArrayList<>();
+        for (BusinessEvent event : BusinessEvent.<BusinessEvent>list(
+                "eventType = ?1 and eventDate >= ?2 and eventDate <= ?3 order by coverage.id",
+                EventType.SUBSCRIPTION, from, to)) {
+            Coverage coverage = event.coverage;
+            if (coverage == null || coverages.contains(coverage)) {
+                continue;
+            }
+            ProductionCode origin = mainProductionCode(coverage);
+            if (origin != null && origin.distributor == distributor
+                    && scopeMatcher.matches(scope, coverageAttributes(coverage))) {
+                coverages.add(coverage);
+            }
+        }
+        return coverages;
+    }
+
+    /**
+     * Sums the distributor's collected premiums matching a scope within a date range (section 6.8).
+     *
+     * @param scope       the rule scope
+     * @param distributor the distributor
+     * @param from        the range start
+     * @param to          the range end
+     * @return the summed collected premiums
+     */
+    private BigDecimal collectedPremiums(String scope, Distributor distributor, LocalDate from, LocalDate to) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (BusinessEvent event : BusinessEvent.<BusinessEvent>list(
+                "eventType = ?1 and eventDate >= ?2 and eventDate <= ?3 order by coverage.id, id",
+                EventType.PREMIUM_COLLECTED, from, to)) {
+            Coverage coverage = event.coverage;
+            if (coverage == null) {
+                continue;
+            }
+            ProductionCode origin = mainProductionCode(coverage);
+            if (origin != null && origin.distributor == distributor
+                    && scopeMatcher.matches(scope, coverageAttributes(coverage))) {
+                sum = sum.add(basisOf(event));
+            }
+        }
+        return sum;
+    }
+
+    /**
+     * Returns a coverage's annualised premium, or zero when absent.
+     *
+     * @param coverage the coverage
+     * @return the annualised premium, or zero
+     */
+    private static BigDecimal annualPremium(Coverage coverage) {
+        return coverage.annualPremium == null ? BigDecimal.ZERO : coverage.annualPremium;
+    }
+
+    /**
+     * Computes the entitlement of a marginal scale at a measure (section 6.7): each tier's rate on its
+     * own slice, unless a reached {@code fromFirstUnit} tier applies its rate to the whole measure.
+     *
+     * @param tiers   the tiers JSON array
+     * @param measure the measure
+     * @return the entitlement
+     */
+    static BigDecimal marginalEntitlement(ObjectMapper mapper, String tiers, BigDecimal measure) {
+        JsonNode array = readObject(mapper, tiers);
+        if (array == null || !array.isArray()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal wholeRate = null;
+        BigDecimal wholeLower = null;
+        for (JsonNode tier : array) {
+            if (tier.path("fromFirstUnit").asBoolean(false)) {
+                BigDecimal lower = tier.path("lowerBound").decimalValue();
+                if (measure.compareTo(lower) >= 0 && (wholeLower == null || lower.compareTo(wholeLower) > 0)) {
+                    wholeLower = lower;
+                    wholeRate = tier.path("rate").decimalValue();
+                }
+            }
+        }
+        if (wholeRate != null) {
+            return measure.multiply(wholeRate).setScale(2, RoundingMode.HALF_UP);
+        }
+        BigDecimal sum = BigDecimal.ZERO;
+        for (JsonNode tier : array) {
+            BigDecimal lower = tier.path("lowerBound").decimalValue();
+            if (measure.compareTo(lower) > 0) {
+                BigDecimal upper = tier.has("upperBound") ? tier.path("upperBound").decimalValue() : measure;
+                BigDecimal top = measure.min(upper);
+                sum = sum.add(top.subtract(lower).multiply(tier.path("rate").decimalValue()));
+            }
+        }
+        return sum.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Tells whether an enrolment's amendment is signed (section 6.7).
+     *
+     * @param enrollment the enrolment
+     * @return {@code true} when the amendment is signed
+     */
+    private static boolean signedAmendment(Enrollment enrollment) {
+        Agreement agreement = enrollment.agreement;
+        return agreement != null && agreement.signatureStatus == SignatureStatus.SIGNED;
+    }
+
+    /**
+     * Returns the payee type of an enrolment: the group when enrolled as a group, else the distributor.
+     *
+     * @param enrollment the enrolment
+     * @return the payee type
+     */
+    private static PayeeType enrollmentPayeeType(Enrollment enrollment) {
+        return enrollment.group != null ? PayeeType.GROUP : PayeeType.DISTRIBUTOR;
+    }
+
+    /**
+     * Returns the payee id of an enrolment: the group id when enrolled as a group, else the
+     * distributor id.
+     *
+     * @param enrollment the enrolment
+     * @return the payee id
+     */
+    private static Long enrollmentPayeeId(Enrollment enrollment) {
+        return enrollment.group != null ? enrollment.group.getId() : enrollment.distributor.getId();
+    }
+
+    /**
+     * Stores or updates the development entitlement counter of a month (section 6.7).
+     *
+     * @param rule        the rule
+     * @param payeeType   the payee type
+     * @param payeeId     the payee id
+     * @param enrollment  the enrolment
+     * @param year        the year
+     * @param month       the month
+     * @param production  the cumulative production
+     * @param entitlement the cumulative entitlement
+     */
+    private void storeCounter(fr.alptis.remuneration.domain.Rule rule, PayeeType payeeType, Long payeeId,
+                              Enrollment enrollment, int year, int month, BigDecimal production,
+                              BigDecimal entitlement) {
+        ProductionCounter counter = ProductionCounter.find(
+                "rule = ?1 and payeeType = ?2 and payeeId = ?3 and counterYear = ?4 and counterMonth = ?5",
+                rule, payeeType, payeeId, (short) year, (short) month).firstResult();
+        if (counter == null) {
+            counter = new ProductionCounter();
+            counter.entity = rule.plan.entity;
+            counter.rule = rule;
+            counter.payeeType = payeeType;
+            counter.payeeId = payeeId;
+            counter.enrollment = enrollment;
+            counter.counterYear = (short) year;
+            counter.counterMonth = (short) month;
+            counter.setCreatedAt(clock.now());
+        }
+        counter.cumulativeBasis = production;
+        counter.cumulativeEntitlement = entitlement;
+        counter.persist();
+    }
+
+    /**
+     * Writes an enrolment-level commission line (RCD or RCP) to a distributor or group, with no single
+     * coverage (section 6.7, 6.8).
+     *
+     * @param period      the period
+     * @param run         the run
+     * @param nature      the nature
+     * @param amount      the amount
+     * @param payeeType   the payee type
+     * @param payeeId     the payee id
+     * @param distributor the member distributor (kept for restitution), possibly null
+     * @param explanation the explanation
+     * @return the written line
+     */
+    private CommissionLine writeEnrollmentLine(Period period, CalculationRun run, LineNature nature, BigDecimal amount,
+                                               PayeeType payeeType, Long payeeId, Distributor distributor,
+                                               String explanation) {
+        CommissionLine line = new CommissionLine();
+        line.entity = period.entity;
+        line.period = period;
+        line.run = run;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = nature;
+        line.amount = amount;
+        line.originDistributor = distributor;
+        line.account = accountForId(period.entity, payeeType, payeeId);
+        line.attachmentMonth = period.periodMonth;
+        line.explanation = explanation;
+        line.setCreatedAt(clock.now());
+        line.persist();
+        return line;
+    }
+
+    /**
+     * Starts an enrolment-driven calculation run on a period.
+     *
+     * @param period     the period
+     * @param launchedBy the launcher label
+     * @param year       the production year
+     * @return the persisted run
+     */
+    private CalculationRun enrollmentRun(Period period, String launchedBy, int year) {
+        CalculationRun run = new CalculationRun();
+        run.period = period;
+        run.runType = RunType.ACTUAL;
+        run.status = RunStatus.RUNNING;
+        run.startedAt = clock.now();
+        run.launchedBy = launchedBy;
+        run.configHash = HashUtil.sha256(launchedBy + year);
+        run.setCreatedAt(clock.now());
+        run.persist();
+        return run;
+    }
+
+    /**
+     * Returns the entity's active rule versions.
+     *
+     * @param entity the entity
+     * @return the active versions
+     */
+    private static List<RuleVersion> activeVersions(LegalEntity entity) {
+        return RuleVersion.list("status = ?1 and rule.plan.entity = ?2",
+                fr.alptis.remuneration.domain.VersionStatus.ACTIVE, entity);
+    }
+
+    /**
+     * Records a control anomaly on an object of the period (section 6.7, 6.8).
+     *
+     * @param period     the period
+     * @param objectType the object type
+     * @param objectId   the object id
+     * @param detail     the anomaly detail
+     */
+    private void controlAlert(Period period, String objectType, Long objectId, String detail) {
+        ControlResult result = new ControlResult();
+        result.period = period;
+        result.control = control(period.entity, "ENR-01", "Inscription sans avenant signé",
+                ControlFamily.SUPPLEMENT);
+        result.objectType = objectType;
+        result.objectId = objectId;
+        result.severity = ControlSeverity.WARNING;
+        result.decision = ControlDecision.OPEN;
+        result.justification = detail;
+        result.setCreatedAt(clock.now());
+        result.persist();
     }
 
     /**
@@ -1640,19 +2236,202 @@ public class CalculationEngine {
      * @param proposed the proposed line
      * @return the written line
      */
-    private CommissionLine writeLine(Period period, CalculationRun run, BusinessEvent event, Coverage coverage,
-                                     RuleVersion version, ProposedLine proposed) {
-        CommissionLine line = baseLine(period, run, event, coverage, version);
-        line.nature = proposed.nature();
-        line.basisAmount = proposed.basisAmount();
-        line.rate = proposed.rate();
-        line.amount = proposed.amount();
-        line.explanation = proposed.explanation();
-        ProductionCode origin = mainProductionCode(coverage);
-        line.originProductionCode = origin;
-        line.originDistributor = origin == null ? null : origin.distributor;
+    private List<CommissionLine> writeLine(Period period, CalculationRun run, BusinessEvent event, Coverage coverage,
+                                           RuleVersion version, ProposedLine proposed) {
+        return writeShared(period, run, event, coverage, version, null, version.rule.plan.direction,
+                proposed.nature(), proposed.basisAmount(), proposed.rate(), proposed.amount(), proposed.explanation());
+    }
+
+    /**
+     * Writes the lines of one proposal shared among the beneficiaries (section 6.9): the amount is
+     * first split between the co-brokers assigned to the garantie at the event date, then each
+     * co-broker's part is split by its payment rule between itself and its group. Each final part is a
+     * line of its own, keeping the originating production code (so restitutions show each member its
+     * own amount) and carrying the payee account. Rounding leaves the last part the remainder (P13). A
+     * garantie with no assignment yields a single line with no origin.
+     *
+     * @param period      the period
+     * @param run         the run
+     * @param event       the source event, or null
+     * @param coverage    the coverage
+     * @param version     the rule version, or null
+     * @param position    the discount position, or null
+     * @param direction   the line direction
+     * @param nature      the line nature
+     * @param basis       the basis amount, or null
+     * @param rate        the rate, or null
+     * @param amount      the total amount to share
+     * @param explanation the line explanation
+     * @return the written lines
+     */
+    private List<CommissionLine> writeShared(Period period, CalculationRun run, BusinessEvent event, Coverage coverage,
+                                             RuleVersion version, AdvancePosition position, Direction direction,
+                                             LineNature nature, BigDecimal basis, BigDecimal rate, BigDecimal amount,
+                                             String explanation) {
+        LocalDate date = event != null ? event.eventDate : coverage.effectDate;
+        List<CoverageAssignment> assignments = CoverageAssignment.list(
+                "coverage = ?1 and (validFrom is null or validFrom <= ?2) and (validTo is null or validTo >= ?2) "
+                        + "order by role, id", coverage, date);
+        List<CommissionLine> out = new ArrayList<>();
+        if (assignments.isEmpty()) {
+            out.add(persistLine(period, run, event, coverage, version, position, direction, nature, basis, rate,
+                    amount, null, null, explanation));
+            return out;
+        }
+        List<BigDecimal> coShares = allocate(amount, assignments.stream().map(a -> share(a.share)).toList());
+        for (int i = 0; i < assignments.size(); i++) {
+            ProductionCode pc = assignments.get(i).productionCode;
+            BigDecimal coAmount = coShares.get(i);
+            List<PayeeRuleShare> shares = payeeShares(pc, date);
+            if (shares.isEmpty()) {
+                out.add(persistLine(period, run, event, coverage, version, position, direction, nature, basis, rate,
+                        coAmount, pc, null, explanation));
+            } else {
+                List<BigDecimal> parts = allocate(coAmount, shares.stream().map(s -> share(s.share)).toList());
+                for (int j = 0; j < shares.size(); j++) {
+                    DistributorAccount account = accountFor(period.entity, shares.get(j));
+                    out.add(persistLine(period, run, event, coverage, version, position, direction, nature, basis,
+                            rate, parts.get(j), pc, account, explanation));
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Persists one commission line with its beneficiary and payee account.
+     *
+     * @param period      the period
+     * @param run         the run
+     * @param event       the source event, or null
+     * @param coverage    the coverage
+     * @param version     the rule version, or null
+     * @param position    the discount position, or null
+     * @param direction   the direction
+     * @param nature      the nature
+     * @param basis       the basis, or null
+     * @param rate        the rate, or null
+     * @param amount      the amount
+     * @param pc          the originating production code, or null
+     * @param account     the payee account, or null
+     * @param explanation the explanation
+     * @return the written line
+     */
+    private CommissionLine persistLine(Period period, CalculationRun run, BusinessEvent event, Coverage coverage,
+                                       RuleVersion version, AdvancePosition position, Direction direction,
+                                       LineNature nature, BigDecimal basis, BigDecimal rate, BigDecimal amount,
+                                       ProductionCode pc, DistributorAccount account, String explanation) {
+        CommissionLine line = new CommissionLine();
+        line.entity = period.entity;
+        line.period = period;
+        line.run = run;
+        line.direction = direction;
+        line.status = LineStatus.EARNED;
+        line.contract = coverage.contract;
+        line.coverage = coverage;
+        line.event = event;
+        line.ruleVersion = version;
+        line.advancePosition = position;
+        line.nature = nature;
+        line.basisAmount = basis;
+        line.rate = rate;
+        line.amount = amount;
+        line.originProductionCode = pc;
+        line.originDistributor = pc == null ? null : pc.distributor;
+        line.account = account;
+        line.attachmentMonth = period.periodMonth;
+        line.explanation = explanation;
+        line.setCreatedAt(clock.now());
         line.persist();
         return line;
+    }
+
+    /**
+     * Allocates a total across fractional shares, rounding each to the cent and leaving the last share
+     * the remainder so the sum stays exact (P13).
+     *
+     * @param total     the total amount
+     * @param fractions the fractional shares, in order
+     * @return the allocated amounts, in order
+     */
+    private static List<BigDecimal> allocate(BigDecimal total, List<BigDecimal> fractions) {
+        List<BigDecimal> out = new ArrayList<>();
+        BigDecimal allocated = BigDecimal.ZERO;
+        for (int i = 0; i < fractions.size() - 1; i++) {
+            BigDecimal part = total.multiply(fractions.get(i)).setScale(2, RoundingMode.HALF_UP);
+            out.add(part);
+            allocated = allocated.add(part);
+        }
+        out.add(total.subtract(allocated).setScale(2, RoundingMode.HALF_UP));
+        return out;
+    }
+
+    /**
+     * Returns a share, treating a null as zero.
+     *
+     * @param share the share, possibly null
+     * @return the share, or zero
+     */
+    private static BigDecimal share(BigDecimal share) {
+        return share == null ? BigDecimal.ZERO : share;
+    }
+
+    /**
+     * Returns the payment-rule shares in force for a production code at a date (section 6.9): the rule
+     * on the production code if any, otherwise the one on its distributor; an empty list when no rule
+     * applies, so the whole part stays on the production code.
+     *
+     * @param pc   the production code, possibly null
+     * @param date the date
+     * @return the payee shares, or an empty list
+     */
+    private static List<PayeeRuleShare> payeeShares(ProductionCode pc, LocalDate date) {
+        if (pc == null) {
+            return List.of();
+        }
+        PayeeRule rule = PayeeRule.find(
+                "productionCode = ?1 and (validFrom is null or validFrom <= ?2) and (validTo is null or validTo >= ?2)",
+                pc, date).firstResult();
+        if (rule == null && pc.distributor != null) {
+            rule = PayeeRule.find(
+                    "productionCode is null and distributor = ?1 and (validFrom is null or validFrom <= ?2) "
+                            + "and (validTo is null or validTo >= ?2)", pc.distributor, date).firstResult();
+        }
+        return rule == null ? List.of() : PayeeRuleShare.list("payeeRule = ?1 order by id", rule);
+    }
+
+    /**
+     * Returns the payee account of a share, creating it when absent (dev profile).
+     *
+     * @param entity the entity
+     * @param share  the payee share
+     * @return the payee account
+     */
+    private DistributorAccount accountFor(LegalEntity entity, PayeeRuleShare share) {
+        return accountForId(entity, share.payeeType, share.payeeId);
+    }
+
+    /**
+     * Returns the payee account for an entity, type and payee id, creating it when absent (dev
+     * profile).
+     *
+     * @param entity  the entity
+     * @param type    the payee type
+     * @param payeeId the payee id
+     * @return the payee account
+     */
+    private DistributorAccount accountForId(LegalEntity entity, PayeeType type, Long payeeId) {
+        DistributorAccount account = DistributorAccount.find(
+                "entity = ?1 and payeeType = ?2 and payeeId = ?3", entity, type, payeeId).firstResult();
+        if (account == null) {
+            account = new DistributorAccount();
+            account.entity = entity;
+            account.payeeType = type;
+            account.payeeId = payeeId;
+            account.setCreatedAt(clock.now());
+            account.persist();
+        }
+        return account;
     }
 
     /**

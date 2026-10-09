@@ -16,7 +16,7 @@ listés passent, `README.md` et ce fichier sont à jour, et le commit est fait.
 | 5 | Moteur : cœur | [x] | CR-01, CR-09 à CR-12, CR-51, CR-73 à CR-75, CR-77 |
 | 6 | Précompté, reprises, escompte, emprunteur | [x] | CR-02 à CR-08, CR-20 à CR-28, CR-78 à CR-81 |
 | 7 | Épargne retraite | [x] | CR-30 à CR-36, CR-82 à CR-84 |
-| 8 | Surcommissions et partage | [ ] | CR-40 à CR-50, CR-76 |
+| 8 | Surcommissions et partage | [x] | CR-40 à CR-50, CR-76 |
 | 9 | Cycle, contrôles, ajustements, comptes | [ ] | CR-60, CR-61, CR-63 |
 | 10 | Paiement et documents | [ ] | CR-62, CR-64, CR-85, CR-86 |
 | 11 | Comptabilité et restitutions | [ ] | CR-65, CR-66 |

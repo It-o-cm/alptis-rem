@@ -483,8 +483,8 @@ class CalculationEngineTest {
     }
 
     /**
-     * A non-matching perimeter and a non-computing family are both excluded; only the matching
-     * computing rule produces a line.
+     * A non-matching perimeter and a family handled apart from the per-event loop (tiered) are both
+     * excluded; only the matching event-driven rule produces a line.
      */
     @Test
     @TestTransaction
@@ -499,7 +499,7 @@ class CalculationEngineTest {
         version("PLAN", "R_TIERED", RuleFamily.TIERED, LineNature.RCD,
                 "{\"product\":[\"SANTE_SELECT\"]}", "{\"counterCode\":\"X\"}", "OTHER", 10, MONTH, null);
         version("PLAN", "R_PORTFOLIO", RuleFamily.PORTFOLIO, LineNature.RCP,
-                "{\"product\":[\"SANTE_SELECT\"]}", "{}", "PORTFOLIO", 10, MONTH, null);
+                "{\"product\":[\"SANTE_SELECT\"]}", "{\"rate\":0.04}", "OTHER2", 10, MONTH, null);
         premium(c, "E1", LocalDate.of(2026, 1, 5), "100.00");
 
         engine.runReal("UNEP", MONTH);

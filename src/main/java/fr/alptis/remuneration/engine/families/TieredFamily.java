@@ -83,7 +83,7 @@ public class TieredFamily implements ComputingFamily {
      * @param tiers   the tiers JSON array string, or null
      * @return the applicable whole-measure rate
      */
-    static BigDecimal rateFor(BigDecimal measure, String tiers) {
+    public static BigDecimal rateFor(BigDecimal measure, String tiers) {
         if (tiers == null || tiers.isBlank()) {
             return BigDecimal.ZERO;
         }
