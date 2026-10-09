@@ -19,3 +19,14 @@ export async function resetDb(request: APIRequestContext): Promise<void> {
   const response = await request.post('/api/test/reset');
   expect(response.ok()).toBeTruthy();
 }
+
+/** The month of the seeded cycle scene. */
+export const DEMO_MONTH = '2026-09-01';
+
+/** Plants the deterministic cycle scene (period, distributor, accounts) for the cycle screens. */
+export async function seedCycle(request: APIRequestContext): Promise<void> {
+  const response = await request.post(
+    `/api/test/cycle-demo?entity=ALPTIS_ASSURANCES&month=${DEMO_MONTH}`,
+  );
+  expect(response.ok()).toBeTruthy();
+}

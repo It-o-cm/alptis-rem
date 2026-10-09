@@ -28,7 +28,7 @@ test.describe('Cadre applicatif', () => {
   }) => {
     await page.goto('/');
 
-    await expect(page.getByTestId('page-title')).toHaveText('Périodes');
+    await expect(page.getByTestId('page-title')).toHaveText('Avancement des périodes');
     await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible();
     await expect(page.getByTestId('header-scope')).toContainText('Alptis Assurances');
     await expect(page.getByTestId('header-role')).toContainText('administrateur métier');

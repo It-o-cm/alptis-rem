@@ -62,6 +62,23 @@ const REQUIREMENTS_BY_STEP = {
     paths: ['PAR-01'],
     roleActions: [],
   },
+  // Step 9 delivers the cycle screens: period advancement and transitions, controls and anomalies
+  // with their catalogue, adjustments with the two-signature approval, and the distributor account
+  // with compensation and block. CR-60/61/63 (account arithmetic) are covered by server unit tests
+  // (AccountServiceTest), as noted in docs/DECISIONS.md.
+  9: {
+    screens: ['periods', 'controls', 'adjustments', 'distributor-account'],
+    reqs: [
+      'WKF-01', 'WKF-04', 'CTL-01', 'CTL-02', 'CTL-05',
+      'REG-01', 'REG-03', 'CPT-02', 'CPT-04', 'CPT-05', 'CPT-06', 'CPT-07',
+    ],
+    crs: [],
+    paths: [],
+    roleActions: [
+      'OPERATOR-advance-period', 'OPERATOR-decide-anomaly', 'OPERATOR-submit-adjustment',
+      'BUSINESS_ADMIN-approve-adjustment', 'OPERATOR-compensate-accounts', 'OPERATOR-block-account',
+    ],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */

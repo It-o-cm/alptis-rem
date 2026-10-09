@@ -16,7 +16,7 @@ describe('access', () => {
   });
 
   it('opens screens with no explicit rule to everyone', () => {
-    expect(canAccess('periods', ['SALES_REP'])).toBe(true);
+    expect(canAccess('simulation', ['SALES_REP'])).toBe(true);
   });
 
   it('restricts entity parameter editing to the business administrator', () => {

@@ -22,14 +22,23 @@ class TestSupportResourceTest {
     /** Records whether the reset was invoked. */
     private static final boolean[] RESET_CALLED = {false};
 
+    /** Records the cycle-demo seed arguments. */
+    private static final String[] DEMO_ARGS = {null};
+
     private static TestSupportResource newResource(DateTimeProvider provider) {
-        TestDatabaseReset fakeReset = new TestDatabaseReset(null, null, null) {
+        TestDatabaseReset fakeReset = new TestDatabaseReset(null, null, null, null) {
             @Override
             public void reset() {
                 RESET_CALLED[0] = true;
             }
         };
-        return new TestSupportResource(new TestSupportService(provider), fakeReset);
+        CycleDemoSeeder fakeSeeder = new CycleDemoSeeder(provider) {
+            @Override
+            public void seed(String entity, java.time.LocalDate month) {
+                DEMO_ARGS[0] = entity + "/" + month;
+            }
+        };
+        return new TestSupportResource(new TestSupportService(provider), fakeReset, fakeSeeder);
     }
 
     /**
@@ -76,6 +85,20 @@ class TestSupportResourceTest {
 
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
         org.junit.jupiter.api.Assertions.assertTrue(RESET_CALLED[0]);
+    }
+
+    /**
+     * Verifies that the cycle-demo endpoint delegates to the seeder and returns 204.
+     */
+    @Test
+    void cycle_demo_endpoint_delegates_and_returns_204() {
+        DEMO_ARGS[0] = null;
+        TestSupportResource resource = newResource(new DateTimeProvider());
+
+        Response response = resource.cycleDemo("ALPTIS_ASSURANCES", "2026-09-01");
+
+        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
+        assertEquals("ALPTIS_ASSURANCES/2026-09-01", DEMO_ARGS[0]);
     }
 }
 

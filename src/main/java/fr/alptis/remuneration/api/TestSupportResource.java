@@ -32,16 +32,36 @@ public class TestSupportResource {
     /** Resets the database to its seeded baseline between tests. */
     private final TestDatabaseReset databaseReset;
 
+    /** Seeds a deterministic cycle scene for the end-to-end suite. */
+    private final CycleDemoSeeder cycleDemo;
+
     /**
      * Creates the resource.
      *
      * @param service       the test-support service to delegate to
      * @param databaseReset the database reset helper
+     * @param cycleDemo     the cycle-scene seeder
      */
     @Inject
-    public TestSupportResource(TestSupportService service, TestDatabaseReset databaseReset) {
+    public TestSupportResource(TestSupportService service, TestDatabaseReset databaseReset, CycleDemoSeeder cycleDemo) {
         this.service = service;
         this.databaseReset = databaseReset;
+        this.cycleDemo = cycleDemo;
+    }
+
+    /**
+     * Seeds a deterministic cycle scene for an entity's month.
+     *
+     * @param entity the entity code
+     * @param month  the period month (ISO date)
+     * @return an empty {@code 204 No Content} response
+     */
+    @POST
+    @Path("/cycle-demo")
+    public Response cycleDemo(@jakarta.ws.rs.QueryParam("entity") String entity,
+                             @jakarta.ws.rs.QueryParam("month") String month) {
+        cycleDemo.seed(entity, java.time.LocalDate.parse(month));
+        return Response.noContent().build();
     }
 
     /**

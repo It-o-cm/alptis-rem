@@ -1,9 +1,11 @@
 package fr.alptis.remuneration.security;
 
+import fr.alptis.remuneration.domain.Role;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -45,6 +47,23 @@ public class CurrentUser {
      */
     public Set<String> roles() {
         return identity.getRoles();
+    }
+
+    /**
+     * Returns the user's roles as domain roles, ignoring any name that is not a known role.
+     *
+     * @return the domain roles held by the user
+     */
+    public Set<Role> appRoles() {
+        Set<Role> result = EnumSet.noneOf(Role.class);
+        for (String name : identity.getRoles()) {
+            for (Role role : Role.values()) {
+                if (role.name().equals(name)) {
+                    result.add(role);
+                }
+            }
+        }
+        return result;
     }
 
     /**

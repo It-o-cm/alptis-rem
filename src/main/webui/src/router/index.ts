@@ -18,10 +18,18 @@ import RulesView from '../views/RulesView.vue';
 import FamiliesView from '../views/FamiliesView.vue';
 import AdvanceAgreementsView from '../views/AdvanceAgreementsView.vue';
 import EnrollmentsView from '../views/EnrollmentsView.vue';
+import PeriodsView from '../views/PeriodsView.vue';
+import ControlsView from '../views/ControlsView.vue';
+import AdjustmentsView from '../views/AdjustmentsView.vue';
+import DistributorAccountView from '../views/DistributorAccountView.vue';
 import { allNavItems } from '../presentation/navigation';
 
 // Screens delivered so far use a real component; the others are empty titled placeholders.
 const REAL_VIEWS: Record<string, unknown> = {
+  periods: PeriodsView,
+  controls: ControlsView,
+  adjustments: AdjustmentsView,
+  distributor: DistributorAccountView,
   imports: ImportsView,
   mapping: MappingView,
   distributorSearch: DistributorsView,

@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.cycle.ControlCatalogService;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.rules.BaremeInitialService;
 import fr.alptis.remuneration.security.SecurityBootstrap;
@@ -28,18 +29,24 @@ public class TestDatabaseReset {
     /** Re-seeds the initial barème after the wipe. */
     private final BaremeInitialService bareme;
 
+    /** Re-seeds the control catalogue after the wipe. */
+    private final ControlCatalogService catalog;
+
     /**
      * Creates the reset helper.
      *
      * @param em        the entity manager
      * @param bootstrap the security bootstrap used to re-seed
      * @param bareme    the initial-barème service used to re-seed
+     * @param catalog   the control-catalogue service used to re-seed
      */
     @Inject
-    public TestDatabaseReset(EntityManager em, SecurityBootstrap bootstrap, BaremeInitialService bareme) {
+    public TestDatabaseReset(EntityManager em, SecurityBootstrap bootstrap, BaremeInitialService bareme,
+                             ControlCatalogService catalog) {
         this.em = em;
         this.bootstrap = bootstrap;
         this.bareme = bareme;
+        this.catalog = catalog;
     }
 
     /**
@@ -55,6 +62,9 @@ public class TestDatabaseReset {
         }
         em.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
         bootstrap.seed();
+        for (LegalEntity entity : LegalEntity.<LegalEntity>listAll()) {
+            catalog.seed(entity);
+        }
         bareme.seed(LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult());
     }
 }
