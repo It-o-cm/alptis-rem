@@ -1,5 +1,7 @@
 package fr.alptis.remuneration.engine.families;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.RuleFamily;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,6 +16,9 @@ import java.util.List;
  */
 @ApplicationScoped
 public class LinearFamily implements ComputingFamily {
+
+    /** Jackson mapper used to read an operation's fixed rate. */
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** JSON Schema of the linear parameters: the grid of allowed rates. */
     private static final String SCHEMA = """
@@ -63,10 +68,31 @@ public class LinearFamily implements ComputingFamily {
     @Override
     public List<ProposedLine> propose(CalculationInput input) {
         BigDecimal basis = input.basis() == null ? BigDecimal.ZERO : input.basis();
-        BigDecimal rate = input.linearRate() == null ? BigDecimal.ZERO : input.linearRate();
+        BigDecimal fixedRate = fixedRate(input.parameters());
+        BigDecimal rate = fixedRate != null ? fixedRate
+                : (input.linearRate() == null ? BigDecimal.ZERO : input.linearRate());
         BigDecimal amount = basis.multiply(rate).setScale(2, RoundingMode.HALF_UP);
         String explanation = "{\"family\":\"LINEAR\",\"basis\":" + basis.toPlainString()
                 + ",\"rate\":" + rate.toPlainString() + ",\"amount\":" + amount.toPlainString() + "}";
         return List.of(new ProposedLine(LineNature.LINEAR, basis, rate, amount, explanation));
+    }
+
+    /**
+     * Reads an operation's own fixed rate from the parameters (section 6.11); null when absent, so
+     * the family uses the rate the garantie carries (P9).
+     *
+     * @param parameters the parameters JSON
+     * @return the fixed rate, or null
+     */
+    public static BigDecimal fixedRate(String parameters) {
+        if (parameters == null || parameters.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode node = MAPPER.readTree(parameters).get("fixedRate");
+            return node == null ? null : node.decimalValue();
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return null;
+        }
     }
 }

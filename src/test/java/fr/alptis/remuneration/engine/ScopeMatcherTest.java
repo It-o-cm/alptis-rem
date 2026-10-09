@@ -63,4 +63,13 @@ class ScopeMatcherTest {
         assertTrue(CalculationEngine.readArray(MAPPER, "{\"allowedRates\":5}", "allowedRates").isEmpty());
         assertTrue(CalculationEngine.readArray(MAPPER, "{bad", "allowedRates").isEmpty());
     }
+
+    /** The object reader returns the tree, or null for a null, blank or malformed string. */
+    @Test
+    void reads_json_objects() {
+        assertTrue(CalculationEngine.readObject(MAPPER, "{\"a\":1}").has("a"));
+        org.junit.jupiter.api.Assertions.assertNull(CalculationEngine.readObject(MAPPER, null));
+        org.junit.jupiter.api.Assertions.assertNull(CalculationEngine.readObject(MAPPER, "   "));
+        org.junit.jupiter.api.Assertions.assertNull(CalculationEngine.readObject(MAPPER, "{bad"));
+    }
 }

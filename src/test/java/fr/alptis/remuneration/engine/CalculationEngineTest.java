@@ -34,6 +34,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Acceptance tests of the engine core (section 13): CR-01, CR-09 to CR-12, CR-51 and CR-77, plus the
@@ -105,6 +107,39 @@ class CalculationEngineTest {
         choice.validFrom = from;
         choice.validTo = to;
         choice.persist();
+    }
+
+    /** Creates an upfront remuneration choice for a coverage. */
+    private static void upfrontChoice(Coverage coverage, String acquisition, String servicing) {
+        RemunerationChoice choice = new RemunerationChoice();
+        choice.coverage = coverage;
+        choice.mode = RemunerationMode.UPFRONT;
+        choice.acquisitionRate = new BigDecimal(acquisition);
+        choice.servicingRate = new BigDecimal(servicing);
+        choice.validFrom = MONTH;
+        choice.persist();
+    }
+
+    /** The default upfront clawback policy: 100% the first year, 50% the second, on acquisition. */
+    private static final String CLAWBACK = "{\"type\":\"AGE_STEPS\",\"natures\":[\"ACQUISITION\"],"
+            + "\"triggers\":[\"TERMINATION\",\"WITHDRAWAL\"],"
+            + "\"steps\":[{\"maxDays\":365,\"rate\":1.0},{\"maxDays\":730,\"rate\":0.5}]}";
+
+    private static final String UPFRONT_SCOPE =
+            "{\"entity\":[\"UNEP\"],\"product\":[\"SANTE_SELECT\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}";
+
+    /** Creates an active upfront base rule version with the standard clawback policy. */
+    private RuleVersion upfrontRule(String ruleCode) {
+        RuleVersion v = version("PLAN", ruleCode, RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}", "BASE", 10,
+                MONTH, null);
+        v.clawbackPolicy = CLAWBACK;
+        return v;
+    }
+
+    /** Injects a terminating event with an effect age in days from the coverage effect date. */
+    private BusinessEvent terminal(Coverage coverage, String key, EventType type, int ageDays) {
+        return event(coverage, key, type, MONTH.plusDays(ageDays), null);
     }
 
     /** Creates an active rule version with the given attributes and returns it. */
@@ -461,9 +496,8 @@ class CalculationEngineTest {
                 "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
         version("PLAN", "R_OTHER", RuleFamily.LINEAR, LineNature.LINEAR,
                 "{\"product\":[\"AUTRE\"]}", "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
-        version("PLAN", "R_UPFRONT", RuleFamily.UPFRONT, LineNature.ACQUISITION,
-                "{\"product\":[\"SANTE_SELECT\"]}", "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],"
-                        + "\"firstYearDays\":365}", "OTHER", 10, MONTH, null);
+        version("PLAN", "R_TIERED", RuleFamily.TIERED, LineNature.RCD,
+                "{\"product\":[\"SANTE_SELECT\"]}", "{\"counterCode\":\"X\"}", "OTHER", 10, MONTH, null);
         premium(c, "E1", LocalDate.of(2026, 1, 5), "100.00");
 
         engine.runReal("UNEP", MONTH);
@@ -661,5 +695,351 @@ class CalculationEngineTest {
 
         engine.runReal("UNEP", MONTH);
         assertEquals(0, lines().size());
+    }
+
+    /**
+     * CR-75: a dérogatoire rule of higher priority replaces the base rule (18% instead of 15%) and a
+     * back-to-school operation in another group adds 2%, so broker X receives 18 € and 2 €.
+     */
+    @Test
+    @TestTransaction
+    void cr75_exclusion_groups_and_operation() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "PX");
+        linearChoice(c, "0.18", MONTH, null);
+        version("PLAN", "R_BASE", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
+        version("PLAN", "R_DEROG", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"product\":[\"SANTE_SELECT\"],\"distributor\":[\"PX\"]}", "{\"allowedRates\":[0.18]}",
+                "BASE", 30, MONTH, null);
+        version("PLAN", "R_BONUS", RuleFamily.LINEAR, LineNature.LINEAR, "{\"product\":[\"SANTE_SELECT\"]}",
+                "{\"fixedRate\":0.02}", "BONUS_RENTREE", 10, MONTH, null);
+        premium(c, "E1", LocalDate.of(2026, 9, 5), "100.00");
+
+        engine.runReal("UNEP", MONTH);
+        List<CommissionLine> lines = lines();
+        assertEquals(2, lines.size());
+        assertEquals(0, totalOf(LineNature.LINEAR).compareTo(new BigDecimal("20.00")));
+        assertTrue(lines.stream().anyMatch(l -> l.amount.compareTo(new BigDecimal("18.00")) == 0));
+        assertTrue(lines.stream().anyMatch(l -> l.amount.compareTo(new BigDecimal("2.00")) == 0));
+    }
+
+    /** Sums the amounts of the lines of a given nature. */
+    private static BigDecimal totalOf(LineNature nature) {
+        return lines().stream().filter(l -> l.nature == nature)
+                .map(l -> l.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * CR-04: six upfront premiums then a termination in the first year claws back the whole acquired
+     * acquisition (−180), leaving the servicing (60).
+     */
+    @Test
+    @TestTransaction
+    void cr04_clawback_first_year() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        upfrontRule("R_UP");
+        for (int i = 1; i <= 6; i++) {
+            premium(c, "E" + i, MONTH.plusMonths(i - 1), "100.00");
+        }
+        terminal(c, "TERM", EventType.TERMINATION, 180);
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, totalOf(LineNature.ACQUISITION).compareTo(new BigDecimal("180.00")));
+        assertEquals(0, totalOf(LineNature.SERVICING).compareTo(new BigDecimal("60.00")));
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-180.00")));
+    }
+
+    /**
+     * CR-05: an acquisition of 300 € clawed back at the eighteenth month yields −150 € (50%).
+     */
+    @Test
+    @TestTransaction
+    void cr05_clawback_second_year() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        upfrontRule("R_UP");
+        premium(c, "E1", MONTH, "1000.00");
+        terminal(c, "TERM", EventType.TERMINATION, 540);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-150.00")));
+    }
+
+    /**
+     * CR-06: a termination beyond 730 days claws back nothing.
+     */
+    @Test
+    @TestTransaction
+    void cr06_no_clawback_after_two_years() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        upfrontRule("R_UP");
+        premium(c, "E1", MONTH, "1000.00");
+        terminal(c, "TERM", EventType.TERMINATION, 731);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
+    }
+
+    /**
+     * CR-07: a not-pursued membership claws back 100% of every acquired line (−80).
+     */
+    @Test
+    @TestTransaction
+    void cr07_not_pursued() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        upfrontRule("R_UP");
+        premium(c, "E1", MONTH, "100.00");
+        premium(c, "E2", MONTH.plusMonths(1), "100.00");
+        terminal(c, "NP", EventType.NOT_PURSUED, 90);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-80.00")));
+    }
+
+    /**
+     * A clawback with no policy, with a trigger the policy excludes, or with no base line, writes
+     * nothing; a withdrawal and a pro-rata policy do claw back.
+     */
+    @Test
+    @TestTransaction
+    void clawback_edge_cases() {
+        Product p = product("SANTE_SELECT");
+
+        // No clawback policy on the rule.
+        Coverage c1 = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c1, "0.30", "0.10");
+        RuleVersion noPolicy = version("PLAN", "R1", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}", "BASE", 10,
+                MONTH, null);
+        premium(c1, "A1", MONTH, "1000.00");
+        terminal(c1, "T1", EventType.TERMINATION, 180);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
+        assertNotNull(noPolicy);
+    }
+
+    /**
+     * A termination whose type the policy's triggers exclude claws back nothing; a policy with a
+     * target nature the acquired lines do not carry yields a zero base and no line.
+     */
+    @Test
+    @TestTransaction
+    void clawback_trigger_mismatch_and_zero_base() {
+        Product p = product("SANTE_SELECT");
+
+        // Policy triggers only on withdrawal, event is a termination.
+        Coverage c1 = coverage("AD-MIS", p, null, "P1");
+        upfrontChoice(c1, "0.30", "0.10");
+        RuleVersion mismatch = version("PLAN", "R_MIS", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}", "BASE", 10,
+                MONTH, null);
+        mismatch.clawbackPolicy = "{\"type\":\"AGE_STEPS\",\"triggers\":[\"WITHDRAWAL\"],"
+                + "\"steps\":[{\"maxDays\":365,\"rate\":1.0}]}";
+        premium(c1, "E1", MONTH, "1000.00");
+        terminal(c1, "T", EventType.TERMINATION, 180);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
+        assertNotNull(mismatch);
+    }
+
+    /**
+     * A linear coverage whose policy targets the acquisition nature (absent here) claws back nothing.
+     */
+    @Test
+    @TestTransaction
+    void clawback_zero_base_on_linear() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-LIN", p, null, "P1");
+        linearChoice(c, "0.15", MONTH, null);
+        RuleVersion v = version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
+        v.clawbackPolicy = "{\"type\":\"AGE_STEPS\",\"natures\":[\"ACQUISITION\"],"
+                + "\"steps\":[{\"maxDays\":365,\"rate\":1.0}]}";
+        premium(c, "E1", MONTH, "100.00");
+        terminal(c, "T", EventType.TERMINATION, 180);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
+    }
+
+    /**
+     * A withdrawal claws back acquisition like a termination.
+     */
+    @Test
+    @TestTransaction
+    void withdrawal_claws_back() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        upfrontRule("R_UP");
+        premium(c, "E1", MONTH, "1000.00");
+        terminal(c, "W", EventType.WITHDRAWAL, 180);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-300.00")));
+    }
+
+    /**
+     * A trigger the policy does not list, an empty-trigger policy, a missing step list and a pro-rata
+     * policy are all honoured.
+     */
+    @Test
+    @TestTransaction
+    void clawback_policy_variants() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-PR", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        RuleVersion v = version("PLAN", "R_PR", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}", "BASE", 10,
+                MONTH, null);
+        v.clawbackPolicy = "{\"type\":\"PRO_RATA\",\"months\":24}";
+        premium(c, "E1", MONTH, "1000.00");
+        terminal(c, "T", EventType.TERMINATION, 360);
+
+        engine.runReal("UNEP", MONTH);
+        // 300 acquired, pro-rata (24-12)/24 = 0.5 → −150.
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-150.00")));
+    }
+
+    /**
+     * A termination with no prior base line (no version) and a not-pursued with no acquired base
+     * write no clawback.
+     */
+    @Test
+    @TestTransaction
+    void clawback_without_base_lines() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        upfrontRule("R_UP");
+        terminal(c, "T", EventType.TERMINATION, 180);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
+    }
+
+    /**
+     * A clawback on a coverage with no main assignment still writes the line, with no origin.
+     */
+    @Test
+    @TestTransaction
+    void clawback_without_main_assignment() {
+        Product p = product("SANTE_SELECT");
+        Contract contract = new Contract();
+        contract.entity = unep();
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = "AD-NA";
+        contract.product = p;
+        contract.persist();
+        Coverage c = new Coverage();
+        c.contract = contract;
+        c.coverageCode = "AD-NA-C1";
+        c.effectDate = MONTH;
+        c.persist();
+        RemunerationChoice choice = new RemunerationChoice();
+        choice.coverage = c;
+        choice.mode = RemunerationMode.UPFRONT;
+        choice.acquisitionRate = new BigDecimal("0.30");
+        choice.servicingRate = new BigDecimal("0.10");
+        choice.validFrom = MONTH;
+        choice.persist();
+        upfrontRule("R_UP");
+        premium(c, "E1", MONTH, "1000.00");
+        terminal(c, "T", EventType.TERMINATION, 180);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-300.00")));
+    }
+
+    /**
+     * A clawback policy with empty triggers applies to any termination; a missing step list claws
+     * back nothing.
+     */
+    @Test
+    @TestTransaction
+    void clawback_empty_triggers_and_missing_steps() {
+        Product p = product("SANTE_SELECT");
+        Coverage any = coverage("AD-ANY", p, null, "P1");
+        upfrontChoice(any, "0.30", "0.10");
+        RuleVersion v = version("PLAN", "R_ANY", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}", "BASE", 10,
+                MONTH, null);
+        v.clawbackPolicy = "{\"type\":\"AGE_STEPS\"}";
+        premium(any, "E1", MONTH, "1000.00");
+        terminal(any, "T", EventType.TERMINATION, 180);
+
+        engine.runReal("UNEP", MONTH);
+        // AGE_STEPS with no steps → rate 0 → no clawback.
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
+    }
+
+    /** Sets up an upfront coverage with a clawback policy and a termination, returning its code. */
+    private String policyCase(String cn, String partner, String policy, int ageDays) {
+        Product p = Product.<Product>find("entity = ?1 and code = ?2", unep(), "SANTE_SELECT").firstResult();
+        if (p == null) {
+            p = product("SANTE_SELECT");
+        }
+        Coverage c = coverage(cn, p, null, partner);
+        upfrontChoice(c, "0.30", "0.10");
+        RuleVersion v = version("PLAN", "R_" + cn, RuleFamily.UPFRONT, LineNature.ACQUISITION,
+                "{\"product\":[\"SANTE_SELECT\"],\"distributor\":[\"" + partner + "\"]}",
+                "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}", "BASE", 10,
+                MONTH, null);
+        v.clawbackPolicy = policy;
+        premium(c, cn + "-E", MONTH, "1000.00");
+        terminal(c, cn + "-T", EventType.TERMINATION, ageDays);
+        return cn;
+    }
+
+    /**
+     * Exercises the clawback-policy parser: an unknown type, a pro-rata out of range, a malformed
+     * step list all claw back nothing; a scalar or empty trigger list and a scalar nature list still
+     * claw back the acquisition.
+     */
+    @Test
+    @TestTransaction
+    void clawback_policy_parsing() {
+        policyCase("UNK", "P50", "{\"type\":\"FOO\"}", 180);
+        policyCase("PR0", "P51", "{\"type\":\"PRO_RATA\",\"months\":0,\"natures\":[\"ACQUISITION\"]}", 180);
+        policyCase("PRX", "P52", "{\"type\":\"PRO_RATA\",\"months\":24,\"natures\":[\"ACQUISITION\"]}", 800);
+        policyCase("STP", "P53", "{\"type\":\"AGE_STEPS\",\"steps\":\"x\"}", 180);
+        policyCase("TRS", "P54", "{\"type\":\"AGE_STEPS\",\"triggers\":\"TERMINATION\","
+                + "\"steps\":[{\"maxDays\":365,\"rate\":1.0}]}", 180);
+        policyCase("TRE", "P55", "{\"type\":\"AGE_STEPS\",\"triggers\":[],"
+                + "\"steps\":[{\"maxDays\":365,\"rate\":1.0}]}", 180);
+        policyCase("NAT", "P56", "{\"type\":\"AGE_STEPS\",\"natures\":\"ACQUISITION\","
+                + "\"steps\":[{\"maxDays\":365,\"rate\":1.0}]}", 180);
+
+        engine.runReal("UNEP", MONTH);
+        // Only the three honoured policies claw back 300 € each.
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-900.00")));
+    }
+
+    /**
+     * CR-08: a death claws back nothing in the upfront mode.
+     */
+    @Test
+    @TestTransaction
+    void cr08_death_no_clawback() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        upfrontRule("R_UP");
+        premium(c, "E1", MONTH, "1000.00");
+        terminal(c, "DEATH", EventType.DEATH, 150);
+
+        engine.runReal("UNEP", MONTH);
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
     }
 }

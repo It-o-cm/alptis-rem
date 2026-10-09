@@ -24,12 +24,13 @@ import java.time.LocalDate;
  * @param precomputedBasis   the externally computed basis, or null
  * @param precomputedRate    the externally computed rate, or null
  * @param precomputedAmount  the externally computed amount, or null
+ * @param annualisedPremium  the annualised premium (section 6.4), or null
  * @param outputNature       the line nature the rule version declares it produces
  * @param parameters         the rule-version parameters, as a JSON object string
  */
 public record CalculationInput(EventType eventType, BigDecimal basis, BigDecimal linearRate, BigDecimal acquisitionRate,
                                BigDecimal servicingRate, LocalDate coverageEffectDate, LocalDate eventDate,
                                LocalDate periodFrom, LocalDate periodTo, BigDecimal precomputedBasis,
-                               BigDecimal precomputedRate, BigDecimal precomputedAmount, LineNature outputNature,
-                               String parameters) {
+                               BigDecimal precomputedRate, BigDecimal precomputedAmount, BigDecimal annualisedPremium,
+                               LineNature outputNature, String parameters) {
 }

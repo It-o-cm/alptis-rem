@@ -23,7 +23,7 @@ class FamilyProposeTest {
     private static CalculationInput input(BigDecimal basis, BigDecimal linearRate, LineNature nature,
                                           String parameters, BigDecimal pBasis, BigDecimal pRate, BigDecimal pAmount) {
         return new CalculationInput(EventType.PREMIUM_COLLECTED, basis, linearRate, null, null, null, null, null, null,
-                pBasis, pRate, pAmount, nature, parameters);
+                pBasis, pRate, pAmount, null, nature, parameters);
     }
 
     /**
@@ -73,6 +73,21 @@ class FamilyProposeTest {
                 .compareTo(BigDecimal.ZERO));
         assertEquals(0, fixed.propose(input(null, null, LineNature.FEE, "   ", null, null, null)).get(0).amount()
                 .compareTo(BigDecimal.ZERO));
+    }
+
+    /**
+     * A linear operation applies its own fixed rate (section 6.11) instead of the garantie's; the
+     * reader tolerates a null, blank or malformed parameter string.
+     */
+    @Test
+    void linear_fixed_rate_operation() {
+        List<ProposedLine> lines = linear.propose(
+                input(new BigDecimal("100.00"), new BigDecimal("0.18"), null, "{\"fixedRate\":0.02}", null, null, null));
+        assertEquals(0, lines.get(0).amount().compareTo(new BigDecimal("2.00")));
+        assertEquals(null, fr.alptis.remuneration.engine.families.LinearFamily.fixedRate(null));
+        assertEquals(null, fr.alptis.remuneration.engine.families.LinearFamily.fixedRate("   "));
+        assertEquals(null, fr.alptis.remuneration.engine.families.LinearFamily.fixedRate("{bad"));
+        assertEquals(null, fr.alptis.remuneration.engine.families.LinearFamily.fixedRate("{}"));
     }
 
     /**
