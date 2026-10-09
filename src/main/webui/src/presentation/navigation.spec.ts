@@ -17,7 +17,7 @@ describe('navigation', () => {
 
   it('exposes every entry, starting with the periods home page', () => {
     const items = allNavItems();
-    expect(items).toHaveLength(33);
+    expect(items).toHaveLength(35);
     expect(items[0]).toEqual({ name: 'periods', path: '/', label: 'Périodes' });
   });
 

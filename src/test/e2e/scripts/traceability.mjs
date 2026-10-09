@@ -106,6 +106,17 @@ const REQUIREMENTS_BY_STEP = {
     paths: [],
     roleActions: ['OPERATOR-extract-accounting', 'OPERATOR-produce-export'],
   },
+  // Step 12 delivers the simulation (PAR-13), the parameter export/import (PAR-15) and the history
+  // reprise (ING-11). The simulation arithmetic and reproducibility (CR-69), the volume case (CR-72),
+  // and the partial recalc (CAL-12) are covered by server unit tests (SimulationServiceTest,
+  // Cr72VolumeTest, PartialRecalcTest), as noted in docs/DECISIONS.md.
+  12: {
+    screens: ['simulation', 'paramTransfer', 'reprise'],
+    reqs: ['PAR-13', 'PAR-15', 'ING-11'],
+    crs: [],
+    paths: [],
+    roleActions: ['OPERATOR-run-simulation', 'BUSINESS_ADMIN-import-plan', 'OPERATOR-import-opening-balance'],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */

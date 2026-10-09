@@ -51,6 +51,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'enrollments', path: '/inscriptions', label: 'Accords et inscriptions' },
       { name: 'simulation', path: '/simulation', label: 'Simulation' },
       { name: 'families', path: '/familles', label: 'Familles de calcul' },
+      { name: 'paramTransfer', path: '/parametrage-transfert', label: 'Export / import du paramétrage' },
     ],
   },
   {
@@ -60,6 +61,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'exports', path: '/exports', label: 'Exports' },
       { name: 'formats', path: '/formats', label: "Formats d'échange" },
       { name: 'mapping', path: '/mapping', label: 'Mapping de fichier' },
+      { name: 'reprise', path: '/reprise', label: "Reprise d'historique" },
     ],
   },
   {

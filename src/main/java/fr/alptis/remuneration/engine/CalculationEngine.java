@@ -172,6 +172,84 @@ public class CalculationEngine {
     }
 
     /**
+     * Runs a partial recalculation before validation (CAL-12, decision D13): re-processes the
+     * garanties designated by a distributor, a product or a rule, dropping their non-validated lines
+     * and replaying the premium path, without touching the rest of the period. The cumuls and account
+     * steps (times 2 and 3) are replayed by the next full run or at validation.
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the processing month
+     * @param scopeType   the scope kind: {@code DISTRIBUTOR}, {@code PRODUCT} or {@code RULE}
+     * @param scopeValue  the scoped code
+     * @return the recorded calculation run
+     */
+    @Transactional
+    public CalculationRun runPartial(String entityCode, LocalDate periodMonth, String scopeType,
+                                     String scopeValue) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        if (entity == null) {
+            throw new fr.alptis.remuneration.domain.ResourceNotFoundException("Entité inconnue : " + entityCode);
+        }
+        Period period = findOrCreatePeriod(entity, periodMonth);
+        List<RuleVersion> versions = activeVersions(entity);
+        CalculationRun run = new CalculationRun();
+        run.period = period;
+        run.runType = RunType.ACTUAL;
+        run.status = RunStatus.RUNNING;
+        run.startedAt = clock.now();
+        run.launchedBy = "engine-partial";
+        run.configHash = HashUtil.sha256(versions.stream().map(v -> String.valueOf(v.getId())).sorted().toList()
+                .toString());
+        run.parameters = "{\"partial\":{\"type\":\"" + scopeType + "\",\"value\":\"" + scopeValue + "\"}}";
+        run.setCreatedAt(clock.now());
+        run.persist();
+
+        List<Coverage> coverages = scopedCoverages(entity, period, scopeType, scopeValue);
+        int lineCount = 0;
+        for (Coverage coverage : coverages) {
+            // D13: drop this coverage's non-validated lines, then replay its events in order.
+            CommissionLine.delete("period = ?1 and coverage = ?2 and status in ?3", period, coverage,
+                    List.of(LineStatus.EARNED, LineStatus.FORECAST));
+            List<BusinessEvent> events = BusinessEvent.list(
+                    "entity = ?1 and coverage = ?2 order by eventDate, receivedDate, sourceKey", entity, coverage);
+            for (BusinessEvent event : events) {
+                event.processingStatus = ProcessingStatus.PENDING;
+            }
+            lineCount += processUnit(period, run, coverage, events, versions);
+        }
+
+        run.status = RunStatus.COMPLETED;
+        run.finishedAt = clock.now();
+        run.counters = "{\"coverages\":" + coverages.size() + ",\"lines\":" + lineCount + "}";
+        return run;
+    }
+
+    /**
+     * Resolves the coverages designated by a partial-recalc scope.
+     *
+     * @param entity     the entity
+     * @param period     the period
+     * @param scopeType  the scope kind
+     * @param scopeValue the scoped code
+     * @return the scoped coverages
+     */
+    private List<Coverage> scopedCoverages(LegalEntity entity, Period period, String scopeType,
+                                           String scopeValue) {
+        return switch (scopeType) {
+            case "DISTRIBUTOR" -> CoverageAssignment.<CoverageAssignment>list(
+                    "productionCode.distributor.partnerCode = ?1 and productionCode.entity = ?2",
+                    scopeValue, entity).stream().map(a -> a.coverage).distinct().toList();
+            case "PRODUCT" -> Coverage.<Coverage>list(
+                    "contract.entity = ?1 and contract.product.code = ?2", entity, scopeValue);
+            case "RULE" -> CommissionLine.<CommissionLine>list(
+                    "period = ?1 and ruleVersion.rule.code = ?2 and coverage is not null", period, scopeValue)
+                    .stream().map(l -> l.coverage).distinct().toList();
+            default -> throw new fr.alptis.remuneration.domain.ValidationException(
+                    "Périmètre de recalcul inconnu : " + scopeType);
+        };
+    }
+
+    /**
      * Returns the entity's coverages that requested the advance and have no position yet and no event
      * this period, so their versement échéance can still be processed (D3).
      *

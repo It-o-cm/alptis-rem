@@ -27,6 +27,9 @@ public final class FlowCodes {
     /** Quality indicators file (section 9.10). */
     public static final String QUALITY_INDICATORS = "quality_indicators";
 
+    /** Opening-balance file for the history reprise (ING-11, section 14). */
+    public static final String OPENING_BALANCES = "opening_balances";
+
     /** Prevents instantiation. */
     private FlowCodes() {
     }

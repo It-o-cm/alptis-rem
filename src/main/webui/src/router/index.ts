@@ -29,6 +29,9 @@ import AccountingView from '../views/AccountingView.vue';
 import FluxView from '../views/FluxView.vue';
 import ExportsView from '../views/ExportsView.vue';
 import FormatsView from '../views/FormatsView.vue';
+import SimulationView from '../views/SimulationView.vue';
+import ParameterTransferView from '../views/ParameterTransferView.vue';
+import RepriseView from '../views/RepriseView.vue';
 import { allNavItems } from '../presentation/navigation';
 
 // Screens delivered so far use a real component; the others are empty titled placeholders.
@@ -43,6 +46,9 @@ const REAL_VIEWS: Record<string, unknown> = {
   flows: FluxView,
   exports: ExportsView,
   formats: FormatsView,
+  simulation: SimulationView,
+  paramTransfer: ParameterTransferView,
+  reprise: RepriseView,
   distributor: DistributorAccountView,
   imports: ImportsView,
   mapping: MappingView,
