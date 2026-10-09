@@ -4,6 +4,8 @@ import {
   nextState,
   canDrivePeriod,
   canOperateCycle,
+  canValidateFinance,
+  paymentStatusLabel,
   severityTag,
   decisionLabel,
 } from './cycle';
@@ -34,6 +36,26 @@ describe('cycle access', () => {
     expect(canOperateCycle(['OPERATOR'])).toBe(true);
     expect(canOperateCycle(['BUSINESS_ADMIN'])).toBe(true);
     expect(canOperateCycle(['BUSINESS_VALIDATOR'])).toBe(false);
+  });
+
+  it('lets only the finance controller validate for finance', () => {
+    expect(canValidateFinance(['FINANCE_CONTROLLER'])).toBe(true);
+    expect(canValidateFinance(['OPERATOR'])).toBe(false);
+  });
+});
+
+describe('payment status labels', () => {
+  it('labels known statuses in French and echoes an unknown one', () => {
+    expect(paymentStatusLabel('DRAFT')).toBe('Brouillon');
+    expect(paymentStatusLabel('ISSUED')).toBe('Émis');
+    expect(paymentStatusLabel('SETTLED')).toBe('Réglé');
+    expect(paymentStatusLabel('TO_VALIDATE')).toBe('À valider');
+    expect(paymentStatusLabel('REJECTED')).toBe('Rejeté');
+    expect(paymentStatusLabel('CANCELLED')).toBe('Annulé');
+    expect(paymentStatusLabel('VALIDATED')).toBe('Validé');
+    expect(paymentStatusLabel('PUBLISHED')).toBe('Publié');
+    expect(paymentStatusLabel('CORRECTED')).toBe('Rectifié');
+    expect(paymentStatusLabel('XXX')).toBe('XXX');
   });
 });
 

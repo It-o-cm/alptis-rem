@@ -40,6 +40,24 @@ async function request<T>(method: string, path: string, body?: unknown, headers:
 /** Issues a GET and returns the parsed JSON. */
 export const apiGet = <T>(path: string): Promise<T> => request<T>('GET', path);
 
+/** Issues a GET and returns the raw body as text (for non-JSON payloads such as SEPA XML or CSV). */
+export async function apiGetText(path: string): Promise<string> {
+  const response = await fetch(path, { method: 'GET' });
+  if (!response.ok) {
+    let detail = `Erreur ${response.status}`;
+    try {
+      const problem = await response.json();
+      if (problem && typeof problem.detail === 'string') {
+        detail = problem.detail;
+      }
+    } catch {
+      // no JSON body; keep the generic message
+    }
+    throw new ApiError(response.status, detail);
+  }
+  return response.text();
+}
+
 /** Issues a POST with a JSON body and returns the parsed JSON. */
 export const apiPost = <T>(path: string, body: unknown): Promise<T> => request<T>('POST', path, body);
 

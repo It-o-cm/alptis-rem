@@ -50,6 +50,27 @@ export function canOperateCycle(roles: readonly string[]): boolean {
   return roles.includes('OPERATOR') || roles.includes('BUSINESS_ADMIN');
 }
 
+/** Tells whether a user holding the given roles may validate a lot for Finance and record results. */
+export function canValidateFinance(roles: readonly string[]): boolean {
+  return roles.includes('FINANCE_CONTROLLER');
+}
+
+/** French label of a payment lot or order status. */
+export function paymentStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    DRAFT: 'Brouillon',
+    VALIDATED: 'Validé',
+    ISSUED: 'Émis',
+    SETTLED: 'Réglé',
+    TO_VALIDATE: 'À valider',
+    REJECTED: 'Rejeté',
+    CANCELLED: 'Annulé',
+    PUBLISHED: 'Publié',
+    CORRECTED: 'Rectifié',
+  };
+  return labels[status] ?? status;
+}
+
 /** Tag CSS class for an anomaly severity. */
 export function severityTag(severity: string): string {
   if (severity === 'BLOCKING') return 'tag ko';

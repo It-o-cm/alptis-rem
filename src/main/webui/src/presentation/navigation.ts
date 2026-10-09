@@ -31,6 +31,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'controls', path: '/controles', label: 'Contrôles' },
       { name: 'adjustments', path: '/ajustements', label: 'Ajustements' },
       { name: 'payment', path: '/paiement', label: 'Paiement' },
+      { name: 'statements', path: '/bordereaux', label: 'Bordereaux' },
     ],
   },
   {

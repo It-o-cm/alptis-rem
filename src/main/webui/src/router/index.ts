@@ -22,6 +22,8 @@ import PeriodsView from '../views/PeriodsView.vue';
 import ControlsView from '../views/ControlsView.vue';
 import AdjustmentsView from '../views/AdjustmentsView.vue';
 import DistributorAccountView from '../views/DistributorAccountView.vue';
+import PaymentView from '../views/PaymentView.vue';
+import BordereauxView from '../views/BordereauxView.vue';
 import { allNavItems } from '../presentation/navigation';
 
 // Screens delivered so far use a real component; the others are empty titled placeholders.
@@ -29,6 +31,8 @@ const REAL_VIEWS: Record<string, unknown> = {
   periods: PeriodsView,
   controls: ControlsView,
   adjustments: AdjustmentsView,
+  payment: PaymentView,
+  statements: BordereauxView,
   distributor: DistributorAccountView,
   imports: ImportsView,
   mapping: MappingView,

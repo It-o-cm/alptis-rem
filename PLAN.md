@@ -18,7 +18,7 @@ listés passent, `README.md` et ce fichier sont à jour, et le commit est fait.
 | 7 | Épargne retraite | [x] | CR-30 à CR-36, CR-82 à CR-84 |
 | 8 | Surcommissions et partage | [x] | CR-40 à CR-50, CR-76 |
 | 9 | Cycle, contrôles, ajustements, comptes | [x] | CR-60, CR-61, CR-63 |
-| 10 | Paiement et documents | [ ] | CR-62, CR-64, CR-85, CR-86 |
+| 10 | Paiement et documents | [x] | CR-62, CR-64, CR-85, CR-86 |
 | 11 | Comptabilité et restitutions | [ ] | CR-65, CR-66 |
 | 12 | Simulation et volume | [ ] | CR-69, CR-72 |
 | 13 | Interface : restitutions, administration, finition | [ ] | — |

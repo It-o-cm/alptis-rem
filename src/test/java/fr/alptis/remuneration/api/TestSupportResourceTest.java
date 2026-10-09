@@ -32,7 +32,7 @@ class TestSupportResourceTest {
                 RESET_CALLED[0] = true;
             }
         };
-        CycleDemoSeeder fakeSeeder = new CycleDemoSeeder(provider) {
+        CycleDemoSeeder fakeSeeder = new CycleDemoSeeder(provider, null) {
             @Override
             public void seed(String entity, java.time.LocalDate month) {
                 DEMO_ARGS[0] = entity + "/" + month;

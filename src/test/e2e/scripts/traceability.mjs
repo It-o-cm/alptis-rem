@@ -79,6 +79,21 @@ const REQUIREMENTS_BY_STEP = {
       'BUSINESS_ADMIN-approve-adjustment', 'OPERATOR-compensate-accounts', 'OPERATOR-block-account',
     ],
   },
+  // Step 10 delivers the payment screen (cycle lot, preparation, Finance validation with the SEPA
+  // file, bank result, off-cycle lot) and the bordereaux screen (rubric preview, spreadsheet export,
+  // publication and rectificative version). CR-62/64/85/86 (lot alignment, ORIAS release, bank
+  // rejection, period PAID) are covered by server unit tests (PaymentServiceTest), as noted in
+  // docs/DECISIONS.md.
+  10: {
+    screens: ['payment', 'statements'],
+    reqs: ['PAY-01', 'PAY-02', 'PAY-03', 'PAY-06', 'PAY-07', 'BRD-01', 'BRD-02', 'BRD-06', 'BRD-07', 'BRD-12'],
+    crs: [],
+    paths: [],
+    roleActions: [
+      'OPERATOR-prepare-lot', 'FINANCE_CONTROLLER-validate-lot', 'FINANCE_CONTROLLER-record-bank-result',
+      'OPERATOR-create-off-cycle', 'OPERATOR-publish-statement', 'OPERATOR-rectify-statement',
+    ],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */

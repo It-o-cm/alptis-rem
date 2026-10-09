@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.domain.BankAccount;
 import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Direction;
@@ -34,15 +35,18 @@ public class CycleDemoSeeder {
     public static final String PARTNER = "P13897";
 
     private final DateTimeProvider clock;
+    private final fr.alptis.remuneration.accounts.AccountService accounts;
 
     /**
      * Creates the seeder.
      *
-     * @param clock the application date/time provider
+     * @param clock    the application date/time provider
+     * @param accounts the distributor-account service
      */
     @Inject
-    public CycleDemoSeeder(DateTimeProvider clock) {
+    public CycleDemoSeeder(DateTimeProvider clock, fr.alptis.remuneration.accounts.AccountService accounts) {
         this.clock = clock;
+        this.accounts = accounts;
     }
 
     /**
@@ -68,7 +72,18 @@ public class CycleDemoSeeder {
         distributor.legalName = "Cabinet Martin";
         distributor.persist();
         account(entity, period, distributor, "PC-DEBIT", "-100");
-        account(entity, period, distributor, "PC-CREDIT", "500");
+        DistributorAccount creditor = account(entity, period, distributor, "PC-CREDIT", "500");
+        BankAccount bank = new BankAccount();
+        bank.entity = entity;
+        bank.holderType = creditor.payeeType;
+        bank.holderId = creditor.payeeId;
+        bank.iban = "FR7630001007941234567890185";
+        bank.bic = "AGRIFRPP";
+        bank.holderName = "Cabinet Martin";
+        bank.validFrom = LocalDate.of(2020, 1, 1);
+        bank.persist();
+        // Prepare a cycle lot and the statements so the payment and documents screens have data.
+        accounts.proposePayments(entity, period);
     }
 
     /**
@@ -80,7 +95,8 @@ public class CycleDemoSeeder {
      * @param code        the production code
      * @param amount      the line amount
      */
-    private void account(LegalEntity entity, Period period, Distributor distributor, String code, String amount) {
+    private DistributorAccount account(LegalEntity entity, Period period, Distributor distributor, String code,
+                                       String amount) {
         ProductionCode pc = new ProductionCode();
         pc.entity = entity;
         pc.code = code;
@@ -103,6 +119,7 @@ public class CycleDemoSeeder {
         line.attachmentMonth = month(period);
         line.setCreatedAt(clock.now());
         line.persist();
+        return account;
     }
 
     /**
