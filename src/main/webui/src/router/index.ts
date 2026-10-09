@@ -32,6 +32,12 @@ import FormatsView from '../views/FormatsView.vue';
 import SimulationView from '../views/SimulationView.vue';
 import ParameterTransferView from '../views/ParameterTransferView.vue';
 import RepriseView from '../views/RepriseView.vue';
+import DashboardsView from '../views/DashboardsView.vue';
+import CommissionSearchView from '../views/CommissionSearchView.vue';
+import GroupView from '../views/GroupView.vue';
+import IndicatorsView from '../views/IndicatorsView.vue';
+import SupervisionView from '../views/SupervisionView.vue';
+import PurgeView from '../views/PurgeView.vue';
 import { allNavItems } from '../presentation/navigation';
 
 // Screens delivered so far use a real component; the others are empty titled placeholders.
@@ -49,6 +55,12 @@ const REAL_VIEWS: Record<string, unknown> = {
   simulation: SimulationView,
   paramTransfer: ParameterTransferView,
   reprise: RepriseView,
+  dashboards: DashboardsView,
+  commissionSearch: CommissionSearchView,
+  groupView: GroupView,
+  indicators: IndicatorsView,
+  supervision: SupervisionView,
+  purge: PurgeView,
   distributor: DistributorAccountView,
   imports: ImportsView,
   mapping: MappingView,

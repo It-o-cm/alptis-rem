@@ -82,11 +82,22 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     ],
   },
   {
+    heading: 'Restitutions',
+    items: [
+      { name: 'dashboards', path: '/tableaux-de-bord', label: 'Tableaux de bord' },
+      { name: 'commissionSearch', path: '/recherche-commissions', label: 'Recherche de commissions' },
+      { name: 'groupView', path: '/vision-groupe', label: 'Vision consolidée groupe' },
+      { name: 'indicators', path: '/indicateurs-fonctionnement', label: 'Indicateurs de fonctionnement' },
+    ],
+  },
+  {
     heading: 'Administration',
     items: [
       { name: 'adminEntities', path: '/entites', label: 'Entités et paramètres' },
       { name: 'adminRoleMappings', path: '/correspondances-roles', label: 'Groupes et rôles' },
       { name: 'adminAudit', path: '/audit', label: "Piste d'audit" },
+      { name: 'supervision', path: '/supervision', label: 'Supervision' },
+      { name: 'purge', path: '/purge', label: 'Purge et anonymisation' },
     ],
   },
   {

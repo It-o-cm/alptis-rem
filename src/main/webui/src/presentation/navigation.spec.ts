@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { NAV_SECTIONS, allNavItems } from './navigation';
 
 describe('navigation', () => {
-  it('reproduces the six sections of the mock-up in order', () => {
+  it('reproduces the sections of the mock-up in order', () => {
     expect(NAV_SECTIONS.map((s) => s.heading)).toEqual([
       'Cycle mensuel',
       'Distributeurs',
@@ -10,6 +10,7 @@ describe('navigation', () => {
       'Flux',
       'Référentiels',
       'Comptabilité',
+      'Restitutions',
       'Administration',
       'Forces de vente',
     ]);
@@ -17,7 +18,7 @@ describe('navigation', () => {
 
   it('exposes every entry, starting with the periods home page', () => {
     const items = allNavItems();
-    expect(items).toHaveLength(35);
+    expect(items).toHaveLength(41);
     expect(items[0]).toEqual({ name: 'periods', path: '/', label: 'Périodes' });
   });
 

@@ -117,6 +117,17 @@ const REQUIREMENTS_BY_STEP = {
     paths: [],
     roleActions: ['OPERATOR-run-simulation', 'BUSINESS_ADMIN-import-plan', 'OPERATOR-import-opening-balance'],
   },
+  // Step 13 delivers the restitution and administration screens: dashboards (REP-01), commission
+  // cross-search (REP-02/03), consolidated group view (REP-07), operating indicators (REP-09),
+  // treatment/flow supervision (OUT-07) and personal-data purge (ADM-06). Cross-entity isolation
+  // (CR-70) is also verified by PublicApiResourceTest / ReportingResourceTest on the server.
+  13: {
+    screens: ['dashboards', 'commissionSearch', 'groupView', 'indicators', 'supervision', 'purge'],
+    reqs: ['REP-01', 'REP-02', 'REP-03', 'REP-07', 'REP-09', 'ADM-06'],
+    crs: [],
+    paths: [],
+    roleActions: ['IT_ADMIN-purge'],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */
