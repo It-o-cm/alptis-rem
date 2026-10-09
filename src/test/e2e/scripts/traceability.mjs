@@ -128,6 +128,17 @@ const REQUIREMENTS_BY_STEP = {
     paths: [],
     roleActions: ['IT_ADMIN-purge'],
   },
+  // Step 14 delivers the sales-force module: the variable plan with collaborators and objectives
+  // (FDV-01/03/04), the monthly calculation, manager validation and adjustment (FDV-05/13), the pay
+  // export (FDV-14) and a commercial's own variable (FDV-15). The market weighting (CR-87) and the
+  // absence rule (CR-88) are covered by SalesForceServiceTest on the server.
+  14: {
+    screens: ['fdvPlan', 'fdvValidation', 'fdvCommercial'],
+    reqs: ['FDV-01', 'FDV-04', 'FDV-13', 'FDV-14', 'FDV-15'],
+    crs: [],
+    paths: [],
+    roleActions: ['SALES_MANAGER-validate-variable', 'FINANCE_CONTROLLER-export-pay'],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */

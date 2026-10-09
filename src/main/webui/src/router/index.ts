@@ -38,6 +38,9 @@ import GroupView from '../views/GroupView.vue';
 import IndicatorsView from '../views/IndicatorsView.vue';
 import SupervisionView from '../views/SupervisionView.vue';
 import PurgeView from '../views/PurgeView.vue';
+import FdvPlanView from '../views/FdvPlanView.vue';
+import FdvValidationView from '../views/FdvValidationView.vue';
+import FdvCommercialView from '../views/FdvCommercialView.vue';
 import { allNavItems } from '../presentation/navigation';
 
 // Screens delivered so far use a real component; the others are empty titled placeholders.
@@ -61,6 +64,9 @@ const REAL_VIEWS: Record<string, unknown> = {
   indicators: IndicatorsView,
   supervision: SupervisionView,
   purge: PurgeView,
+  fdvPlan: FdvPlanView,
+  fdvValidation: FdvValidationView,
+  fdvCommercial: FdvCommercialView,
   distributor: DistributorAccountView,
   imports: ImportsView,
   mapping: MappingView,

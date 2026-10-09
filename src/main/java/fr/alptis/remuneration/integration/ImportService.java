@@ -21,6 +21,7 @@ public class ImportService {
     private final TransferImportService transfers;
     private final PayeeExternalImportService payeeAndCodes;
     private final OpeningBalanceImportService openingBalances;
+    private final EmployeeImportService employees;
 
     /**
      * Creates the facade.
@@ -37,7 +38,8 @@ public class ImportService {
     public ImportService(EventImportService events, CoverageImportService coverages,
                          ReferentialImportService referentials, ProductReferentialImportService products,
                          AccountQualityImportService accountsAndQuality, TransferImportService transfers,
-                         PayeeExternalImportService payeeAndCodes, OpeningBalanceImportService openingBalances) {
+                         PayeeExternalImportService payeeAndCodes, OpeningBalanceImportService openingBalances,
+                         EmployeeImportService employees) {
         this.events = events;
         this.coverages = coverages;
         this.referentials = referentials;
@@ -46,6 +48,7 @@ public class ImportService {
         this.transfers = transfers;
         this.payeeAndCodes = payeeAndCodes;
         this.openingBalances = openingBalances;
+        this.employees = employees;
     }
 
     /**
@@ -78,6 +81,8 @@ public class ImportService {
             case PayeeExternalImportService.PAYEE_RULES -> payeeAndCodes.importPayeeRules(entityCode, sourceSystem, fileName, content);
             case PayeeExternalImportService.EXTERNAL_CODES -> payeeAndCodes.importExternalCodes(entityCode, sourceSystem, fileName, content);
             case OpeningBalanceImportService.OPENING_BALANCES -> openingBalances.importOpeningBalances(entityCode, sourceSystem, fileName, content);
+            case EmployeeImportService.EMPLOYEES -> employees.importEmployees(entityCode, sourceSystem, fileName, content);
+            case EmployeeImportService.EMPLOYEE_MEASURES -> employees.importMeasures(entityCode, sourceSystem, fileName, content);
             default -> throw new ValidationException("Flux inconnu : " + flowCode);
         };
     }

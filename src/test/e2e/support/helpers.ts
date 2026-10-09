@@ -11,6 +11,7 @@ export const USERS = {
   operatorUnep: { username: 'operator-unep', password: 'operator-unep' },
   itAdmin: { username: 'it-admin', password: 'it-admin' },
   auditor: { username: 'auditor', password: 'auditor' },
+  managerAlptis: { username: 'manager-alptis', password: 'manager-alptis' },
   salesRep: { username: 'rep-alptis', password: 'rep-alptis' },
 };
 
@@ -27,6 +28,14 @@ export const DEMO_MONTH = '2026-09-01';
 export async function seedCycle(request: APIRequestContext): Promise<void> {
   const response = await request.post(
     `/api/test/cycle-demo?entity=ALPTIS_ASSURANCES&month=${DEMO_MONTH}`,
+  );
+  expect(response.ok()).toBeTruthy();
+}
+
+/** Plants the deterministic sales-force scene (collaborator, plan, objective, measure). */
+export async function seedFdv(request: APIRequestContext): Promise<void> {
+  const response = await request.post(
+    `/api/test/fdv-demo?entity=ALPTIS_ASSURANCES&month=${DEMO_MONTH}`,
   );
   expect(response.ok()).toBeTruthy();
 }

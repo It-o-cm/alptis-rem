@@ -30,6 +30,12 @@ public final class FlowCodes {
     /** Opening-balance file for the history reprise (ING-11, section 14). */
     public static final String OPENING_BALANCES = "opening_balances";
 
+    /** Collaborators file for the sales-force module (FDV-01, section 9.10). */
+    public static final String EMPLOYEES = "employees";
+
+    /** Employee-measures file for the sales-force module (FDV-02, section 9.10). */
+    public static final String EMPLOYEE_MEASURES = "employee_measures";
+
     /** Prevents instantiation. */
     private FlowCodes() {
     }
