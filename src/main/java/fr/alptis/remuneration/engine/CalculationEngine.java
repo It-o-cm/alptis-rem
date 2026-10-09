@@ -7,6 +7,11 @@ import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CalculationRun;
 import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.ControlDecision;
+import fr.alptis.remuneration.domain.ControlDefinition;
+import fr.alptis.remuneration.domain.ControlFamily;
+import fr.alptis.remuneration.domain.ControlResult;
+import fr.alptis.remuneration.domain.ControlSeverity;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
@@ -25,6 +30,8 @@ import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.RuleVersion;
 import fr.alptis.remuneration.domain.RunStatus;
 import fr.alptis.remuneration.domain.RunType;
+import fr.alptis.remuneration.domain.Scale;
+import fr.alptis.remuneration.domain.ScaleTier;
 import fr.alptis.remuneration.engine.families.CalculationInput;
 import fr.alptis.remuneration.engine.families.ComputingFamily;
 import fr.alptis.remuneration.engine.families.ProposedLine;
@@ -205,15 +212,28 @@ public class CalculationEngine {
             return 0;
         }
         int count = 0;
-        AdvanceState advance = openAdvanceIfEligible(period, run, coverage);
+        List<RuleVersion> savingsRules = savingsDiscountRules(coverage, versions);
+        RuleVersion outboundSavings = savingsRuleOf(savingsRules, Direction.OUTBOUND);
+        RuleVersion inboundSavings = savingsRuleOf(savingsRules, Direction.INBOUND);
+        boolean savings = outboundSavings != null || inboundSavings != null;
+        AdvanceState advance = savings ? null : openAdvanceIfEligible(period, run, coverage);
         if (advance != null) {
             count += advance.versementLines;
+        }
+        if (savings) {
+            count += openSavingsDiscount(period, run, coverage, outboundSavings);
         }
         for (BusinessEvent event : events) {
             if (event.eventType == EventType.PREMIUM_CANCELLED) {
                 count += cancel(period, run, event);
             } else if (event.eventType == EventType.UNPAID_NOTICE) {
                 count += unpaid(period, run, event, coverage, advance);
+            } else if (savings && event.eventType == EventType.SCHEDULED_PAYMENT) {
+                // The retirement discount covers the scheduled payments of years one to five, so they
+                // produce no line and are marked treated, not held under P8 (section 6.6).
+                event.processingStatus = ProcessingStatus.PROCESSED;
+            } else if (savings && isSavingsRecall(event.eventType)) {
+                count += savingsRecall(period, run, coverage, event, outboundSavings, inboundSavings);
             } else if (isTerminal(event.eventType)) {
                 count += rupture(period, run, event, coverage, advance);
                 count += clawback(period, run, event, coverage);
@@ -223,7 +243,11 @@ public class CalculationEngine {
                 count += apureAndSettle(period, run, coverage, advance, written);
             }
         }
-        count += settleAtDueDate(period, run, coverage, advance);
+        if (savings) {
+            count += savingsReadjustAndSettle(period, run, coverage, outboundSavings, inboundSavings);
+        } else {
+            count += settleAtDueDate(period, run, coverage, advance);
+        }
         return count;
     }
 
@@ -244,7 +268,7 @@ public class CalculationEngine {
         Map<String, String> attributes = attributes(event, coverage, choice);
         List<RuleVersion> candidates = new ArrayList<>();
         for (RuleVersion version : versions) {
-            if (version.rule.family != RuleFamily.ADVANCE && families.containsKey(version.rule.family)
+            if (eventDriven(version.rule.family) && families.containsKey(version.rule.family)
                     && activeAt(version, event.eventDate) && scopeMatcher.matches(version.scope, attributes)) {
                 candidates.add(version);
             }
@@ -268,6 +292,9 @@ public class CalculationEngine {
 
         List<CommissionLine> written = new ArrayList<>();
         for (RuleVersion version : kept) {
+            if (belowMinRank(event, version)) {
+                continue;
+            }
             ComputingFamily family = families.get(version.rule.family);
             CalculationInput input = input(event, coverage, choice, version);
             for (ProposedLine proposed : family.propose(input)) {
@@ -276,6 +303,51 @@ public class CalculationEngine {
         }
         event.processingStatus = ProcessingStatus.PROCESSED;
         return written;
+    }
+
+    /**
+     * Tells whether a family is driven by a single business event, and so is a candidate in the
+     * per-event premium loop. The advance is driven by the échéance and the discount lifecycle, and
+     * the tiered complement by the annual close, so both are handled apart.
+     *
+     * @param family the rule family
+     * @return {@code true} for an event-driven family
+     */
+    private static boolean eventDriven(RuleFamily family) {
+        return family != RuleFamily.ADVANCE && family != RuleFamily.TIERED;
+    }
+
+    /**
+     * Tells whether a linear rule declares a minimum rank in the calendar year (section 6.6: the
+     * second arbitrage of the year, CR-83) that the event has not yet reached, in which case the rule
+     * produces no line for it.
+     *
+     * @param event   the event
+     * @param version the rule version
+     * @return {@code true} when the event is below the rule's minimum rank
+     */
+    private static boolean belowMinRank(BusinessEvent event, RuleVersion version) {
+        if (version.rule.family != RuleFamily.LINEAR) {
+            return false;
+        }
+        Integer min = fr.alptis.remuneration.engine.families.LinearFamily.minRankInCalendarYear(version.parameters);
+        return min != null && calendarYearRank(event) < min;
+    }
+
+    /**
+     * Returns the rank of an event among the same contract's events of the same type in its calendar
+     * year, counting those at or before it by date then by identity, so a rerun is stable (D8).
+     *
+     * @param event the event
+     * @return the one-based rank in the calendar year
+     */
+    private static long calendarYearRank(BusinessEvent event) {
+        LocalDate yearStart = event.eventDate.withDayOfYear(1);
+        LocalDate yearEnd = yearStart.plusYears(1).minusDays(1);
+        return BusinessEvent.count(
+                "contract = ?1 and eventType = ?2 and eventDate >= ?3 and eventDate <= ?4 "
+                        + "and (eventDate < ?5 or (eventDate = ?5 and id <= ?6))",
+                event.contract, event.eventType, yearStart, yearEnd, event.eventDate, event.getId());
     }
 
     /**
@@ -537,7 +609,7 @@ public class CalculationEngine {
 
         CalculationInput input = new CalculationInput(EventType.PREMIUM_COLLECTED, null, choice.linearRate,
                 choice.acquisitionRate, choice.servicingRate, coverage.effectDate, coverage.effectDate, null, null,
-                null, null, null, coverage.annualPremium, LineNature.ADVANCE, null);
+                null, null, null, coverage.annualPremium, LineNature.ADVANCE, null, null);
         List<ProposedLine> advanceLines = families.get(RuleFamily.ADVANCE).propose(input);
 
         AdvancePosition position = new AdvancePosition();
@@ -776,6 +848,746 @@ public class CalculationEngine {
     }
 
     /**
+     * Returns the active rule versions of the entity that drive a retirement-savings discount on the
+     * coverage (section 6.6): an advance family rule whose settlement rule is the fifth anniversary,
+     * matching the coverage's perimeter, in any direction (owed to the distributor or expected from
+     * the insurer).
+     *
+     * @param coverage the coverage
+     * @param versions the active versions of the entity
+     * @return the matching savings-discount rules (possibly empty)
+     */
+    private List<RuleVersion> savingsDiscountRules(Coverage coverage, List<RuleVersion> versions) {
+        Map<String, String> attributes = coverageAttributes(coverage);
+        List<RuleVersion> matches = new ArrayList<>();
+        for (RuleVersion version : versions) {
+            if (version.rule.family == RuleFamily.ADVANCE && isSavingsRule(version)
+                    && activeAt(version, coverage.effectDate) && scopeMatcher.matches(version.scope, attributes)) {
+                matches.add(version);
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * Returns the first savings rule of the given direction among the matches, or null.
+     *
+     * @param savingsRules the matching savings rules
+     * @param direction    the wanted direction
+     * @return the rule of that direction, or null
+     */
+    private static RuleVersion savingsRuleOf(List<RuleVersion> savingsRules, Direction direction) {
+        for (RuleVersion version : savingsRules) {
+            if (version.rule.plan.direction == direction) {
+                return version;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Tells whether an advance rule is a retirement-savings discount, settled at the fifth anniversary
+     * without a convention (section 6.6).
+     *
+     * @param version the rule version
+     * @return {@code true} for a savings discount rule
+     */
+    private boolean isSavingsRule(RuleVersion version) {
+        return "FIFTH_ANNIVERSARY".equals(paramText(mapper, version.parameters, "settlementRule"));
+    }
+
+    /**
+     * Reads a text parameter, returning null when the parameters or the field are absent, blank or
+     * malformed.
+     *
+     * @param mapper the Jackson mapper
+     * @param params the parameters JSON
+     * @param field  the field name
+     * @return the text value, or null
+     */
+    static String paramText(ObjectMapper mapper, String params, String field) {
+        JsonNode node = readObject(mapper, params);
+        return node == null ? null : node.path(field).asText(null);
+    }
+
+    /**
+     * Reads a boolean parameter, defaulting to false when the parameters or the field are absent,
+     * blank or malformed.
+     *
+     * @param mapper the Jackson mapper
+     * @param params the parameters JSON
+     * @param field  the field name
+     * @return the boolean value, or false
+     */
+    static boolean paramFlag(ObjectMapper mapper, String params, String field) {
+        JsonNode node = readObject(mapper, params);
+        return node != null && node.path(field).asBoolean(false);
+    }
+
+    /**
+     * Reads a decimal parameter, returning null when the parameters or the field are absent, blank or
+     * malformed.
+     *
+     * @param mapper the Jackson mapper
+     * @param params the parameters JSON
+     * @param field  the field name
+     * @return the decimal value, or null
+     */
+    static BigDecimal paramDecimal(ObjectMapper mapper, String params, String field) {
+        JsonNode node = readObject(mapper, params);
+        if (node == null) {
+            return null;
+        }
+        JsonNode value = node.get(field);
+        return value == null ? null : value.decimalValue();
+    }
+
+    /**
+     * Reads a decimal parameter, defaulting to zero when absent.
+     *
+     * @param mapper the Jackson mapper
+     * @param params the parameters JSON
+     * @param field  the field name
+     * @return the decimal value, or zero
+     */
+    static BigDecimal paramDecimalOrZero(ObjectMapper mapper, String params, String field) {
+        BigDecimal value = paramDecimal(mapper, params, field);
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    /**
+     * Tells whether an event breaks a retirement discount and triggers its recall (section 6.6): a
+     * plan suspension, a surrender or an outbound transfer.
+     *
+     * @param type the event type
+     * @return {@code true} for a recall-triggering event
+     */
+    private static boolean isSavingsRecall(EventType type) {
+        return type == EventType.PLAN_SUSPENDED || type == EventType.SURRENDER
+                || type == EventType.OUTBOUND_TRANSFER;
+    }
+
+    /**
+     * Opens the retirement discount of a coverage (section 6.6): on the first scheduled payment, once
+     * the period reaches that payment's month and no position is open yet, the discount is paid on the
+     * annualised scheduled payment at the rule's rate and the position is opened, settled at the fifth
+     * anniversary of the first payment, without a convention and without offsetting.
+     *
+     * @param period          the period
+     * @param run             the run
+     * @param coverage        the coverage
+     * @param outboundSavings the outbound savings rule, or null when only the insurer side applies
+     * @return the number of advance lines written (0 or 1)
+     */
+    private int openSavingsDiscount(Period period, CalculationRun run, Coverage coverage, RuleVersion outboundSavings) {
+        if (outboundSavings == null || activeSavingsPosition(coverage) != null) {
+            return 0;
+        }
+        BusinessEvent first = firstScheduledPayment(coverage);
+        if (first == null || period.periodMonth.isBefore(firstOfMonth(first.eventDate))) {
+            return 0;
+        }
+        BigDecimal rate = advanceRate(outboundSavings);
+        BigDecimal base = basisOf(first).multiply(BigDecimal.valueOf(12));
+        BigDecimal advanced = base.multiply(rate).setScale(2, RoundingMode.HALF_UP);
+
+        AdvancePosition position = new AdvancePosition();
+        position.coverage = coverage;
+        position.status = AdvanceStatus.ACTIVE;
+        position.paidAt = clock.now();
+        position.settlementDueDate = first.eventDate.plusYears(5);
+        position.advancedAcquisition = BigDecimal.ZERO;
+        position.advancedServicing = BigDecimal.ZERO;
+        position.advancedLinear = advanced;
+        position.offsetAcquisition = BigDecimal.ZERO;
+        position.offsetServicing = BigDecimal.ZERO;
+        position.offsetLinear = BigDecimal.ZERO;
+        position.setCreatedAt(clock.now());
+        position.persist();
+
+        String explanation = "{\"family\":\"ADVANCE\",\"savings\":true,\"annualisedPayment\":"
+                + base.toPlainString() + ",\"rate\":" + rate.toPlainString() + ",\"amount\":"
+                + advanced.toPlainString() + "}";
+        writeSavingsLine(period, run, coverage, LineNature.ADVANCE, advanced, position, explanation);
+        return 1;
+    }
+
+    /**
+     * Recalls a retirement discount broken within its five years (section 6.6): the recall is the
+     * advance less the scheduled payments encashed times the contract's linear rate; it is a
+     * {@code CLAWBACK} line on the distributor side and an expected amount on the insurer side, and the
+     * position leaves the discounted mode for good.
+     *
+     * @param period          the period
+     * @param run             the run
+     * @param coverage        the coverage
+     * @param event           the recall-triggering event
+     * @param outboundSavings the outbound savings rule, or null
+     * @param inboundSavings  the inbound (insurer) savings rule, or null
+     * @return the number of clawback lines written (0 or 1)
+     */
+    private int savingsRecall(Period period, CalculationRun run, Coverage coverage, BusinessEvent event,
+                              RuleVersion outboundSavings, RuleVersion inboundSavings) {
+        event.processingStatus = ProcessingStatus.PROCESSED;
+        RemunerationChoice choice = choiceAt(coverage, event.eventDate);
+        BigDecimal paid = scheduledSum(coverage, event.eventDate);
+        int count = 0;
+        AdvancePosition position = activeSavingsPosition(coverage);
+        if (outboundSavings != null && position != null) {
+            BigDecimal recall = position.advancedLinear
+                    .subtract(paid.multiply(recallLinearRate(outboundSavings, choice)))
+                    .setScale(2, RoundingMode.HALF_UP);
+            position.status = AdvanceStatus.CANCELLED;
+            position.closedAt = clock.now();
+            position.closeReason = event.eventType.name();
+            if (recall.signum() != 0) {
+                String explanation = "{\"family\":\"CLAWBACK\",\"savingsRecall\":true,\"advanced\":"
+                        + position.advancedLinear.toPlainString() + ",\"paid\":" + paid.toPlainString()
+                        + ",\"amount\":" + recall.negate().toPlainString() + "}";
+                writeSavingsLine(period, run, coverage, LineNature.CLAWBACK, recall.negate(), position, explanation);
+                count++;
+            }
+        }
+        if (inboundSavings != null) {
+            BusinessEvent first = firstScheduledPayment(coverage);
+            if (first != null) {
+                BigDecimal advanced = basisOf(first).multiply(BigDecimal.valueOf(12))
+                        .multiply(advanceRate(inboundSavings)).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal recall = advanced.subtract(paid.multiply(recallLinearRate(inboundSavings, choice)))
+                        .setScale(2, RoundingMode.HALF_UP);
+                recordExpected(period, coverage, "SAVINGS_RECALL", recall.negate());
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Settles a retirement discount at its fifth anniversary without regularisation, or applies the
+     * annual readjustment at an earlier anniversary (section 6.6).
+     *
+     * @param period          the period
+     * @param run             the run
+     * @param coverage        the coverage
+     * @param outboundSavings the outbound savings rule, or null
+     * @param inboundSavings  the inbound (insurer) savings rule, or null
+     * @return the number of lines written
+     */
+    private int savingsReadjustAndSettle(Period period, CalculationRun run, Coverage coverage,
+                                         RuleVersion outboundSavings, RuleVersion inboundSavings) {
+        AdvancePosition position = activeSavingsPosition(coverage);
+        if (position != null && !period.periodMonth.isBefore(firstOfMonth(position.settlementDueDate))) {
+            position.status = AdvanceStatus.SETTLED;
+            position.closedAt = clock.now();
+            position.closeReason = "FIFTH_ANNIVERSARY";
+            return 0;
+        }
+        int count = 0;
+        if (outboundSavings != null && position != null) {
+            count += savingsReadjust(period, run, coverage, outboundSavings, position, Direction.OUTBOUND);
+        }
+        if (inboundSavings != null) {
+            count += savingsReadjust(period, run, coverage, inboundSavings, null, Direction.INBOUND);
+        }
+        return count;
+    }
+
+    /**
+     * Applies the annual readjustment of a retirement discount (section 6.6): at an anniversary of the
+     * first scheduled payment within the first five years, the gap between the scheduled payments
+     * encashed over twelve months and the initial annualised base, times the rate, is a discount
+     * supplement ({@code ADVANCE}) or a reprise ({@code CLAWBACK}) when it exceeds the tolerance; on the
+     * insurer side it is only an expected amount.
+     *
+     * @param period    the period
+     * @param run       the run
+     * @param coverage  the coverage
+     * @param version   the savings rule
+     * @param position  the discount position, or null on the insurer side
+     * @param direction the direction of the rule
+     * @return the number of lines written
+     */
+    private int savingsReadjust(Period period, CalculationRun run, Coverage coverage, RuleVersion version,
+                                AdvancePosition position, Direction direction) {
+        if (!annualReadjustment(version)) {
+            return 0;
+        }
+        BigDecimal rate = advanceRate(version);
+        LocalDate anchor;
+        BigDecimal base;
+        if (position != null) {
+            anchor = position.settlementDueDate.minusYears(5);
+            base = position.advancedLinear.divide(rate, 2, RoundingMode.HALF_UP);
+        } else {
+            BusinessEvent first = firstScheduledPayment(coverage);
+            if (first == null) {
+                return 0;
+            }
+            anchor = first.eventDate;
+            base = basisOf(first).multiply(BigDecimal.valueOf(12));
+        }
+        LocalDate anniversary = anniversaryInPeriod(anchor, period);
+        if (anniversary == null) {
+            return 0;
+        }
+        BigDecimal collected = scheduledSumBetween(coverage, anniversary.minusYears(1), anniversary);
+        BigDecimal gap = collected.subtract(base);
+        if (base.signum() > 0 && gap.abs().divide(base, 10, RoundingMode.HALF_UP)
+                .compareTo(readjustmentTolerance(version)) < 0) {
+            return 0;
+        }
+        BigDecimal amount = gap.multiply(rate).setScale(2, RoundingMode.HALF_UP);
+        if (amount.signum() == 0) {
+            return 0;
+        }
+        if (direction == Direction.INBOUND) {
+            recordExpected(period, coverage, "SAVINGS_READJUST", amount);
+            return 0;
+        }
+        LineNature nature = amount.signum() > 0 ? LineNature.ADVANCE : LineNature.CLAWBACK;
+        String explanation = "{\"family\":\"" + nature.name() + "\",\"savingsReadjust\":true,\"collected\":"
+                + collected.toPlainString() + ",\"base\":" + base.toPlainString() + ",\"amount\":"
+                + amount.toPlainString() + "}";
+        writeSavingsLine(period, run, coverage, nature, amount, position, explanation);
+        return 1;
+    }
+
+    /**
+     * Returns the anniversary of the anchor date falling in the period's month within the first four
+     * years (the fifth being the settlement), or null.
+     *
+     * @param anchor the first scheduled payment date
+     * @param period the period
+     * @return the matching anniversary date, or null
+     */
+    private static LocalDate anniversaryInPeriod(LocalDate anchor, Period period) {
+        for (int year = 1; year <= 4; year++) {
+            LocalDate anniversary = anchor.plusYears(year);
+            if (firstOfMonth(anniversary).isEqual(period.periodMonth)) {
+                return anniversary;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the active savings discount position of a coverage (the one with no convention), or null.
+     *
+     * @param coverage the coverage
+     * @return the active savings position, or null
+     */
+    private static AdvancePosition activeSavingsPosition(Coverage coverage) {
+        return AdvancePosition.find("coverage = ?1 and status = ?2 and advanceAgreement is null",
+                coverage, AdvanceStatus.ACTIVE).firstResult();
+    }
+
+    /**
+     * Returns the coverage's earliest scheduled-payment event, the anchor of the retirement discount,
+     * or null.
+     *
+     * @param coverage the coverage
+     * @return the first scheduled-payment event, or null
+     */
+    private static BusinessEvent firstScheduledPayment(Coverage coverage) {
+        return BusinessEvent.find("coverage = ?1 and eventType = ?2 order by eventDate, id",
+                coverage, EventType.SCHEDULED_PAYMENT).firstResult();
+    }
+
+    /**
+     * Returns the sum of the coverage's scheduled payments encashed up to a date.
+     *
+     * @param coverage the coverage
+     * @param upTo     the inclusive upper date
+     * @return the summed basis of the scheduled payments
+     */
+    private static BigDecimal scheduledSum(Coverage coverage, LocalDate upTo) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (BusinessEvent event : BusinessEvent.<BusinessEvent>list(
+                "coverage = ?1 and eventType = ?2 and eventDate <= ?3", coverage, EventType.SCHEDULED_PAYMENT, upTo)) {
+            sum = sum.add(basisOf(event));
+        }
+        return sum;
+    }
+
+    /**
+     * Returns the sum of the coverage's scheduled payments encashed within a date range (inclusive).
+     *
+     * @param coverage the coverage
+     * @param from     the inclusive lower date
+     * @param to       the inclusive upper date
+     * @return the summed basis of the scheduled payments in the range
+     */
+    private static BigDecimal scheduledSumBetween(Coverage coverage, LocalDate from, LocalDate to) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (BusinessEvent event : BusinessEvent.<BusinessEvent>list(
+                "coverage = ?1 and eventType = ?2 and eventDate >= ?3 and eventDate <= ?4",
+                coverage, EventType.SCHEDULED_PAYMENT, from, to)) {
+            sum = sum.add(basisOf(event));
+        }
+        return sum;
+    }
+
+    /**
+     * Returns the basis of an event, defaulting to zero when absent.
+     *
+     * @param event the event
+     * @return the basis amount, or zero
+     */
+    private static BigDecimal basisOf(BusinessEvent event) {
+        return event.basisAmount == null ? BigDecimal.ZERO : event.basisAmount;
+    }
+
+    /**
+     * Reads the advance rate a savings rule imposes (section 6.6: 8% owed, 10% expected).
+     *
+     * @param version the savings rule
+     * @return the rate, or zero when absent
+     */
+    private BigDecimal advanceRate(RuleVersion version) {
+        return paramDecimalOrZero(mapper, version.parameters, "rate");
+    }
+
+    /**
+     * Reads the linear rate used for a recall: the rule's own {@code recallRate} when present (the
+     * insurer frais rate), otherwise the contract's linear rate carried by the choice (frais minus
+     * half a point).
+     *
+     * @param version the savings rule
+     * @param choice  the remuneration choice, possibly null
+     * @return the recall linear rate
+     */
+    private BigDecimal recallLinearRate(RuleVersion version, RemunerationChoice choice) {
+        BigDecimal rate = paramDecimal(mapper, version.parameters, "recallRate");
+        if (rate != null) {
+            return rate;
+        }
+        return choice == null || choice.linearRate == null ? BigDecimal.ZERO : choice.linearRate;
+    }
+
+    /**
+     * Tells whether a savings rule applies the annual readjustment.
+     *
+     * @param version the savings rule
+     * @return {@code true} when the readjustment is enabled
+     */
+    private boolean annualReadjustment(RuleVersion version) {
+        return paramFlag(mapper, version.parameters, "annualReadjustment");
+    }
+
+    /**
+     * Reads the readjustment tolerance of a savings rule as a fraction, defaulting to zero (H-15).
+     *
+     * @param version the savings rule
+     * @return the tolerance fraction
+     */
+    private BigDecimal readjustmentTolerance(RuleVersion version) {
+        return paramDecimalOrZero(mapper, version.parameters, "readjustmentTolerance");
+    }
+
+    /**
+     * Writes a savings commission line (advance, clawback or readjustment) attributed to the
+     * coverage's main production code.
+     *
+     * @param period      the period
+     * @param run         the run
+     * @param coverage    the coverage
+     * @param nature      the line nature
+     * @param amount      the signed amount
+     * @param position    the discount position, possibly null
+     * @param explanation the line explanation
+     */
+    private void writeSavingsLine(Period period, CalculationRun run, Coverage coverage, LineNature nature,
+                                  BigDecimal amount, AdvancePosition position, String explanation) {
+        ProductionCode origin = mainProductionCode(coverage);
+        CommissionLine line = new CommissionLine();
+        line.entity = period.entity;
+        line.period = period;
+        line.run = run;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.contract = coverage.contract;
+        line.coverage = coverage;
+        line.nature = nature;
+        line.amount = amount;
+        line.advancePosition = position;
+        line.originProductionCode = origin;
+        line.originDistributor = origin == null ? null : origin.distributor;
+        line.attachmentMonth = period.periodMonth;
+        line.explanation = explanation;
+        line.setCreatedAt(clock.now());
+        line.persist();
+    }
+
+    /**
+     * Records the expected insurer commission of a coverage (P17, CAL-13): the amount the twin inbound
+     * rule computes creates no line and no accounting entry; it is kept with the result of the
+     * "received commission different from expected" control (section 6.6).
+     *
+     * @param period   the period
+     * @param coverage the coverage
+     * @param tag      the kind of expected amount (versement, recall, readjustment, surcommission)
+     * @param expected the expected amount
+     */
+    private void recordExpected(Period period, Coverage coverage, String tag, BigDecimal expected) {
+        BigDecimal received = BigDecimal.ZERO;
+        for (CommissionLine line : CommissionLine.<CommissionLine>list("coverage = ?1 and nature = ?2",
+                coverage, LineNature.INSURER)) {
+            received = received.add(line.amount == null ? BigDecimal.ZERO : line.amount);
+        }
+        ControlResult result = new ControlResult();
+        result.period = period;
+        result.control = expectedControl(period.entity);
+        result.objectType = "COVERAGE";
+        result.objectId = coverage.getId();
+        result.severity = ControlSeverity.WARNING;
+        result.observedValue = received.toPlainString();
+        result.expectedValue = expected.toPlainString();
+        result.decision = ControlDecision.OPEN;
+        result.justification = tag;
+        result.setCreatedAt(clock.now());
+        result.persist();
+    }
+
+    /**
+     * Returns the entity's "received commission different from expected" control definition, creating
+     * it when absent (dev profile).
+     *
+     * @param entity the entity
+     * @return the control definition
+     */
+    private ControlDefinition expectedControl(LegalEntity entity) {
+        ControlDefinition control = ControlDefinition.find("entity = ?1 and code = ?2", entity, "CAL-13").firstResult();
+        if (control == null) {
+            control = new ControlDefinition();
+            control.entity = entity;
+            control.code = "CAL-13";
+            control.label = "Commission reçue différente de l'attendu";
+            control.family = ControlFamily.CALCULATION;
+            control.severity = ControlSeverity.WARNING;
+            control.active = Boolean.TRUE;
+            control.setCreatedAt(clock.now());
+            control.persist();
+        }
+        return control;
+    }
+
+    /**
+     * Runs the annual close of an entity (section 6.6): the retirement complementary remuneration owed
+     * to each distributor (tiered, whole measure on the year's net scheduled payments) and the
+     * expected insurer surcommission (a share of the year's scheduled payments, capped).
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the first day of the close month
+     * @param year        the production year
+     * @return the recorded calculation run
+     */
+    @Transactional
+    public CalculationRun runAnnualClose(String entityCode, LocalDate periodMonth, int year) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        Period period = Period.find("entity = ?1 and periodMonth = ?2", entity, periodMonth).firstResult();
+        if (period == null) {
+            period = new Period();
+            period.entity = entity;
+            period.periodMonth = periodMonth;
+            period.state = PeriodState.OPEN;
+            period.setCreatedAt(clock.now());
+            period.persist();
+        }
+        List<RuleVersion> versions = RuleVersion.list(
+                "status = ?1 and rule.plan.entity = ?2",
+                fr.alptis.remuneration.domain.VersionStatus.ACTIVE, entity);
+        CalculationRun run = new CalculationRun();
+        run.period = period;
+        run.runType = RunType.ACTUAL;
+        run.status = RunStatus.RUNNING;
+        run.startedAt = clock.now();
+        run.launchedBy = "annual-close";
+        run.configHash = HashUtil.sha256(String.valueOf(year));
+        run.setCreatedAt(clock.now());
+        run.persist();
+
+        LocalDate from = LocalDate.of(year, 1, 1);
+        LocalDate to = LocalDate.of(year, 12, 31);
+        CommissionLine.delete("period = ?1 and status in ?2 and nature = ?3", period,
+                List.of(LineStatus.EARNED, LineStatus.FORECAST), LineNature.COMPLEMENT);
+        int lineCount = 0;
+        for (RuleVersion version : versions) {
+            if (version.rule.family == RuleFamily.TIERED && version.outputNature == LineNature.COMPLEMENT) {
+                lineCount += annualComplement(period, run, version, from, to);
+            } else if (version.rule.family == RuleFamily.LINEAR
+                    && version.rule.plan.direction == Direction.INBOUND && isAnnual(version)) {
+                expectedSurcommission(period, version, from, to);
+            }
+        }
+        run.status = RunStatus.COMPLETED;
+        run.finishedAt = clock.now();
+        run.counters = "{\"lines\":" + lineCount + "}";
+        return run;
+    }
+
+    /**
+     * Computes the retirement complementary remuneration of a tiered annual rule (section 6.6, CR-35):
+     * the distributor's whole net production of the year sets the tier, whose rate applies to each of
+     * its coverages' production, one {@code COMPLEMENT} line per coverage.
+     *
+     * @param period  the close period
+     * @param run     the run
+     * @param version the tiered complement rule
+     * @param from    the first day of the production year
+     * @param to      the last day of the production year
+     * @return the number of complement lines written
+     */
+    private int annualComplement(Period period, CalculationRun run, RuleVersion version, LocalDate from, LocalDate to) {
+        String tiers = tiersJson(version);
+        Map<Long, List<Coverage>> byDistributor = new LinkedHashMap<>();
+        Map<Long, BigDecimal> coverageProduction = new LinkedHashMap<>();
+        Map<Long, BigDecimal> distributorTotal = new LinkedHashMap<>();
+        for (Coverage coverage : qualifyingCoverages(version, from, to)) {
+            BigDecimal production = scheduledSumBetween(coverage, from, to);
+            ProductionCode origin = mainProductionCode(coverage);
+            Long distributorId = origin == null || origin.distributor == null ? 0L : origin.distributor.getId();
+            byDistributor.computeIfAbsent(distributorId, k -> new ArrayList<>()).add(coverage);
+            coverageProduction.put(coverage.getId(), production);
+            distributorTotal.merge(distributorId, production, BigDecimal::add);
+        }
+        int count = 0;
+        for (Map.Entry<Long, List<Coverage>> entry : byDistributor.entrySet()) {
+            BigDecimal total = distributorTotal.get(entry.getKey());
+            CalculationInput input = new CalculationInput(EventType.SCHEDULED_PAYMENT, total, null, null, null, null,
+                    null, from, to, null, null, null, null, LineNature.COMPLEMENT, version.parameters, tiers);
+            ProposedLine tier = families.get(RuleFamily.TIERED).propose(input).get(0);
+            for (Coverage coverage : entry.getValue()) {
+                BigDecimal production = coverageProduction.get(coverage.getId());
+                BigDecimal amount = production.multiply(tier.rate()).setScale(2, RoundingMode.HALF_UP);
+                String explanation = "{\"family\":\"TIERED\",\"complement\":true,\"production\":"
+                        + production.toPlainString() + ",\"total\":" + total.toPlainString() + ",\"rate\":"
+                        + tier.rate().toPlainString() + ",\"amount\":" + amount.toPlainString() + "}";
+                writeSavingsLine(period, run, coverage, LineNature.COMPLEMENT, amount, null, explanation);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Computes the expected insurer surcommission of an inbound annual rule (section 6.6, CR-36): a
+     * share of the coverage's scheduled payments of the year, capped per contract, kept as an expected
+     * amount with the control and never a line.
+     *
+     * @param period  the close period
+     * @param version the inbound surcommission rule
+     * @param from    the first day of the production year
+     * @param to      the last day of the production year
+     */
+    private void expectedSurcommission(Period period, RuleVersion version, LocalDate from, LocalDate to) {
+        BigDecimal rate = fr.alptis.remuneration.engine.families.LinearFamily.ruleRate(version.parameters);
+        BigDecimal cap = annualCap(version);
+        for (Coverage coverage : qualifyingCoverages(version, from, to)) {
+            BigDecimal production = scheduledSumBetween(coverage, from, to);
+            BigDecimal expected = production.multiply(rate == null ? BigDecimal.ZERO : rate)
+                    .setScale(2, RoundingMode.HALF_UP);
+            if (cap != null && expected.compareTo(cap) > 0) {
+                expected = cap;
+            }
+            recordExpected(period, coverage, "SURCOMMISSION", expected);
+        }
+    }
+
+    /**
+     * Returns the entity's coverages whose perimeter the rule covers and that bear scheduled payments
+     * in the year, ordered for a stable rerun (D8).
+     *
+     * @param version the rule
+     * @param from    the first day of the year
+     * @param to      the last day of the year
+     * @return the qualifying coverages
+     */
+    private List<Coverage> qualifyingCoverages(RuleVersion version, LocalDate from, LocalDate to) {
+        List<Coverage> coverages = new ArrayList<>();
+        for (BusinessEvent first : BusinessEvent.<BusinessEvent>list(
+                "eventType = ?1 and entity.code = ?2 and eventDate >= ?3 and eventDate <= ?4 order by coverage.id",
+                EventType.SCHEDULED_PAYMENT, version.rule.plan.entity.code, from, to)) {
+            Coverage coverage = first.coverage;
+            if (coverage == null || coverages.contains(coverage)) {
+                continue;
+            }
+            if (scopeMatcher.matches(version.scope, coverageAttributes(coverage))) {
+                coverages.add(coverage);
+            }
+        }
+        return coverages;
+    }
+
+    /**
+     * Tells whether a rule is computed at the annual close.
+     *
+     * @param version the rule version
+     * @return {@code true} when its calculation frequency is annual
+     */
+    private boolean isAnnual(RuleVersion version) {
+        return "ANNUAL".equals(paramText(mapper, version.parameters, "calculationFrequency"));
+    }
+
+    /**
+     * Reads the per-contract annual cap of a surcommission rule, or null when uncapped.
+     *
+     * @param version the rule version
+     * @return the cap, or null
+     */
+    private BigDecimal annualCap(RuleVersion version) {
+        return paramDecimal(mapper, version.parameters, "annualCap");
+    }
+
+    /**
+     * Serialises a tiered rule's scale into a JSON array of lower bounds and rates for the family.
+     *
+     * @param version the tiered rule
+     * @return the tiers JSON array string
+     */
+    private static String tiersJson(RuleVersion version) {
+        Scale scale = Scale.find("ruleVersion", version).firstResult();
+        StringBuilder json = new StringBuilder("[");
+        if (scale != null) {
+            boolean first = true;
+            for (ScaleTier tier : ScaleTier.<ScaleTier>list("scale = ?1 order by lowerBound", scale)) {
+                if (!first) {
+                    json.append(",");
+                }
+                json.append("{\"lowerBound\":").append(tier.lowerBound.toPlainString())
+                        .append(",\"rate\":").append(tier.rate.toPlainString()).append("}");
+                first = false;
+            }
+        }
+        return json.append("]").toString();
+    }
+
+    /**
+     * Builds the scope-matching attributes of a coverage, without an event type (used to match the
+     * savings and annual rules against a coverage).
+     *
+     * @param coverage the coverage
+     * @return the attribute map
+     */
+    private static Map<String, String> coverageAttributes(Coverage coverage) {
+        Map<String, String> attributes = new LinkedHashMap<>();
+        attributes.put("entity", coverage.contract.entity.code);
+        if (coverage.contract.product != null) {
+            attributes.put("product", coverage.contract.product.code);
+        }
+        if (coverage.staffCategory != null) {
+            attributes.put("college", coverage.staffCategory.name());
+        }
+        RemunerationChoice choice = choiceAt(coverage, coverage.effectDate);
+        if (choice != null && choice.mode != null) {
+            attributes.put("remunerationMode", choice.mode.name());
+        }
+        ProductionCode origin = mainProductionCode(coverage);
+        if (origin != null && origin.distributor != null) {
+            attributes.put("distributor", origin.distributor.partnerCode);
+        }
+        return attributes;
+    }
+
+    /**
      * Tells whether a line nature is offset against an advance (the base commission natures).
      *
      * @param nature the line nature
@@ -941,7 +1753,7 @@ public class CalculationEngine {
      */
     private boolean rateInGrid(RuleVersion version, RemunerationChoice choice) {
         if (version.rule.family != RuleFamily.LINEAR
-                || fr.alptis.remuneration.engine.families.LinearFamily.fixedRate(version.parameters) != null) {
+                || fr.alptis.remuneration.engine.families.LinearFamily.ruleRate(version.parameters) != null) {
             return true;
         }
         BigDecimal chosen = choice == null ? null : choice.linearRate;
@@ -1000,7 +1812,7 @@ public class CalculationEngine {
                 coverage.effectDate,
                 event.eventDate, event.periodFrom, event.periodTo,
                 event.precomputedBasis, event.precomputedRate, event.precomputedAmount,
-                coverage.annualPremium, version.outputNature, version.parameters);
+                coverage.annualPremium, version.outputNature, version.parameters, null);
     }
 
     /**

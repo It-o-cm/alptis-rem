@@ -498,6 +498,8 @@ class CalculationEngineTest {
                 "{\"product\":[\"AUTRE\"]}", "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
         version("PLAN", "R_TIERED", RuleFamily.TIERED, LineNature.RCD,
                 "{\"product\":[\"SANTE_SELECT\"]}", "{\"counterCode\":\"X\"}", "OTHER", 10, MONTH, null);
+        version("PLAN", "R_PORTFOLIO", RuleFamily.PORTFOLIO, LineNature.RCP,
+                "{\"product\":[\"SANTE_SELECT\"]}", "{}", "PORTFOLIO", 10, MONTH, null);
         premium(c, "E1", LocalDate.of(2026, 1, 5), "100.00");
 
         engine.runReal("UNEP", MONTH);
@@ -713,7 +715,7 @@ class CalculationEngineTest {
                 "{\"product\":[\"SANTE_SELECT\"],\"distributor\":[\"PX\"]}", "{\"allowedRates\":[0.18]}",
                 "BASE", 30, MONTH, null);
         version("PLAN", "R_BONUS", RuleFamily.LINEAR, LineNature.LINEAR, "{\"product\":[\"SANTE_SELECT\"]}",
-                "{\"fixedRate\":0.02}", "BONUS_RENTREE", 10, MONTH, null);
+                "{\"rateSource\":\"RULE\",\"rate\":0.02}", "BONUS_RENTREE", 10, MONTH, null);
         premium(c, "E1", LocalDate.of(2026, 9, 5), "100.00");
 
         engine.runReal("UNEP", MONTH);

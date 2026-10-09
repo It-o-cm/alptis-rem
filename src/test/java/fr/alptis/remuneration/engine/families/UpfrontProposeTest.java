@@ -23,7 +23,7 @@ class UpfrontProposeTest {
                                           LocalDate to, String parameters) {
         return new CalculationInput(EventType.PREMIUM_COLLECTED, new BigDecimal(basis), null,
                 new BigDecimal("0.30"), new BigDecimal("0.10"), effect, eventDate, from, to, null, null, null,
-                null, LineNature.ACQUISITION, parameters);
+                null, LineNature.ACQUISITION, parameters, null);
     }
 
     /** Returns the amount of the first line of a nature. */
@@ -90,7 +90,7 @@ class UpfrontProposeTest {
     void covers_edge_branches() {
         // Null basis, rates and event date, no covered period: a zero servicing line, no acquisition.
         CalculationInput allNull = new CalculationInput(EventType.PREMIUM_COLLECTED, null, null, null, null,
-                LocalDate.of(2026, 1, 1), null, null, null, null, null, null, null, LineNature.ACQUISITION, null);
+                LocalDate.of(2026, 1, 1), null, null, null, null, null, null, null, LineNature.ACQUISITION, null, null);
         List<ProposedLine> none = upfront.propose(allNull);
         assertEquals(1, none.size());
         assertEquals(0, none.get(0).amount().compareTo(new BigDecimal("0.00")));

@@ -56,7 +56,7 @@ class FamilyRegistryTest {
      */
     @Test
     void treats_null_payload_as_empty_object() {
-        assertThrows(ValidationException.class, () -> registry.validate(RuleFamily.LINEAR, null));
+        assertThrows(ValidationException.class, () -> registry.validate(RuleFamily.OUTSTANDING, null));
         registry.validate(RuleFamily.EXTERNAL, null);
         registry.validate(RuleFamily.EXTERNAL, "   ");
     }

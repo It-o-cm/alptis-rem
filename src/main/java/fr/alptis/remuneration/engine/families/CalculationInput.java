@@ -27,10 +27,11 @@ import java.time.LocalDate;
  * @param annualisedPremium  the annualised premium (section 6.4), or null
  * @param outputNature       the line nature the rule version declares it produces
  * @param parameters         the rule-version parameters, as a JSON object string
+ * @param tiers              the scale tiers of a tiered rule, as a JSON array string, or null
  */
 public record CalculationInput(EventType eventType, BigDecimal basis, BigDecimal linearRate, BigDecimal acquisitionRate,
                                BigDecimal servicingRate, LocalDate coverageEffectDate, LocalDate eventDate,
                                LocalDate periodFrom, LocalDate periodTo, BigDecimal precomputedBasis,
                                BigDecimal precomputedRate, BigDecimal precomputedAmount, BigDecimal annualisedPremium,
-                               LineNature outputNature, String parameters) {
+                               LineNature outputNature, String parameters, String tiers) {
 }

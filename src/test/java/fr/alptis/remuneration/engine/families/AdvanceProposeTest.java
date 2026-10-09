@@ -24,7 +24,7 @@ class AdvanceProposeTest {
                 acquisition == null ? null : new BigDecimal(acquisition),
                 servicing == null ? null : new BigDecimal(servicing),
                 null, null, null, null, null, null, null,
-                premium == null ? null : new BigDecimal(premium), LineNature.ADVANCE, null);
+                premium == null ? null : new BigDecimal(premium), LineNature.ADVANCE, null, null);
     }
 
     /**
