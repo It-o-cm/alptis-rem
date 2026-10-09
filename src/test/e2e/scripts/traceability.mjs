@@ -94,6 +94,18 @@ const REQUIREMENTS_BY_STEP = {
       'OPERATOR-create-off-cycle', 'OPERATOR-publish-statement', 'OPERATOR-rectify-statement',
     ],
   },
+  // Step 11 delivers the accounting and flow screens: the accounting schema and extraction
+  // (FIN-02/03/05), the cut-off pilotage (FIN-04/09), the flow catalogue (ING-10), the exchange-format
+  // reference and the export journal with its on-demand production (REP-04). The accounting cycle
+  // (CR-65/66, FIN-01) and the public §9.8 API isolation (CR-70) are covered by server unit tests
+  // (AccountingServiceTest, PublicApiResourceTest), as noted in docs/DECISIONS.md.
+  11: {
+    screens: ['accounting', 'cutoff', 'flows', 'formats', 'exports'],
+    reqs: ['FIN-02', 'FIN-03', 'FIN-04', 'FIN-05', 'FIN-09', 'ING-10', 'REP-04'],
+    crs: [],
+    paths: [],
+    roleActions: ['OPERATOR-extract-accounting', 'OPERATOR-produce-export'],
+  },
 };
 
 /** Recursively lists every *.spec.ts file under a directory. */

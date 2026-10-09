@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.cycle;
 
+import fr.alptis.remuneration.accounting.AccountingService;
 import fr.alptis.remuneration.accounts.AccountService;
 import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.ControlResult;
@@ -54,17 +55,20 @@ public class PeriodService {
             new Transition(PeriodState.PAYMENT_PREPARED, PeriodState.CONTROLLED, Role.FINANCE_CONTROLLER, true));
 
     private final AccountService accounts;
+    private final AccountingService accounting;
     private final DateTimeProvider clock;
 
     /**
      * Creates the service.
      *
-     * @param accounts the distributor-account service
-     * @param clock    the application date/time provider
+     * @param accounts   the distributor-account service
+     * @param accounting the accounting-entry service
+     * @param clock      the application date/time provider
      */
     @Inject
-    public PeriodService(AccountService accounts, DateTimeProvider clock) {
+    public PeriodService(AccountService accounts, AccountingService accounting, DateTimeProvider clock) {
         this.accounts = accounts;
+        this.accounting = accounting;
         this.clock = clock;
     }
 
@@ -144,6 +148,7 @@ public class PeriodService {
     private void applyEffects(LegalEntity entity, Period period, PeriodState toState) {
         if (toState == PeriodState.BUSINESS_VALIDATED) {
             accounts.postToAccounts(entity, period);
+            accounting.generateForValidation(entity, period);
         } else if (toState == PeriodState.PAYMENT_PREPARED) {
             accounts.proposePayments(entity, period);
         } else if (period.state == PeriodState.PAYMENT_PREPARED && toState == PeriodState.CONTROLLED) {
@@ -171,6 +176,7 @@ public class PeriodService {
                 period, LineStatus.PAYABLE)) {
             line.status = LineStatus.EARNED;
         }
+        accounting.discardForPeriod(period);
     }
 
     /**

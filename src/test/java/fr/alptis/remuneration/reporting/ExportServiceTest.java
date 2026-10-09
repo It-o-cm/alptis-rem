@@ -1,0 +1,179 @@
+package fr.alptis.remuneration.reporting;
+
+import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.Direction;
+import fr.alptis.remuneration.domain.DistributorAccount;
+import fr.alptis.remuneration.domain.ExportBatch;
+import fr.alptis.remuneration.domain.ExportBatchStatus;
+import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.LineNature;
+import fr.alptis.remuneration.domain.LineStatus;
+import fr.alptis.remuneration.domain.PayeeType;
+import fr.alptis.remuneration.domain.Period;
+import fr.alptis.remuneration.domain.PeriodState;
+import fr.alptis.remuneration.reporting.ExportService.ExportObject;
+import fr.alptis.remuneration.reporting.ExportService.ExportView;
+import io.quarkus.test.TestTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Acceptance tests of the export service (sections 9.11, 9.12, REP-04/REP-05): the Data export and the
+ * on-demand list export, both inscribed in the journal and re-downloadable identically, and the
+ * account export with its balances. Runs against UNEP in rolled-back transactions.
+ */
+@QuarkusTest
+class ExportServiceTest {
+
+    @Inject
+    ExportService service;
+
+    private static final LocalDate M = LocalDate.of(2026, 9, 1);
+    private long seq;
+
+    /** Returns the UNEP entity. */
+    private static LegalEntity unep() {
+        return LegalEntity.<LegalEntity>find("code", "UNEP").firstResult();
+    }
+
+    /** Creates a period for a month. */
+    private static Period period(LocalDate month) {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = month;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        return period;
+    }
+
+    /** Creates a distributor account. */
+    private DistributorAccount account() {
+        DistributorAccount account = new DistributorAccount();
+        account.entity = unep();
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = ++seq;
+        account.persist();
+        return account;
+    }
+
+    /** Creates a line with optional account, basis and rate. */
+    private CommissionLine line(Period period, String amount, DistributorAccount account, String basis,
+                                String rate) {
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = LineStatus.EARNED;
+        line.amount = new BigDecimal(amount);
+        line.account = account;
+        line.basisAmount = basis == null ? null : new BigDecimal(basis);
+        line.rate = rate == null ? null : new BigDecimal(rate);
+        line.persist();
+        return line;
+    }
+
+    /**
+     * The Data export of the commission lines journals a full snapshot and is re-downloaded
+     * identically; the CSV carries the header, a line with its payee and basis, and a bare line.
+     */
+    @Test
+    @TestTransaction
+    void data_export_journals_and_redownloads_identically() {
+        Period p = period(M);
+        line(p, "15.00", account(), "100.00", "0.15");
+        line(p, "20.00", null, null, null);
+
+        ExportBatch batch = service.dataExport("UNEP", ExportObject.COMMISSION_LINES, "fin");
+        assertEquals("OUT-05:COMMISSION_LINES", batch.flowCode);
+        assertTrue(batch.fileName.startsWith("UNEP_DATA_commission_lines_"));
+        assertTrue(batch.fileName.endsWith(".csv"));
+        assertEquals(2, batch.linesWritten);
+        assertEquals(0, new BigDecimal("35.00").compareTo(batch.totalAmount));
+        assertEquals(ExportBatchStatus.GENERATED, batch.status);
+
+        String csv = service.content(batch.getId());
+        assertTrue(csv.startsWith("line_id;nature;status;basis;rate;amount;payee_type;payee_id\n"));
+        assertTrue(csv.contains(";100.00;0.15;15.00;DISTRIBUTOR;"));
+        assertTrue(csv.contains(";;;20.00;;\n"));
+        assertEquals(batch.fileHash, io.quarkus.runtime.util.HashUtil.sha256(csv));
+    }
+
+    /**
+     * The on-demand export of a period carries the month in its flow and file name and restricts the
+     * snapshot to the period.
+     */
+    @Test
+    @TestTransaction
+    void on_demand_export_carries_the_period() {
+        Period september = period(M);
+        line(september, "15.00", account(), null, null);
+        Period october = period(LocalDate.of(2026, 10, 1));
+        line(october, "99.00", account(), null, null);
+
+        ExportBatch batch = service.listExport("UNEP", M, ExportObject.COMMISSION_LINES, "op");
+        assertEquals("OUT-04:COMMISSION_LINES:2026-09-01", batch.flowCode);
+        assertEquals("UNEP_COMMISSION_LINES_202609.csv", batch.fileName);
+        assertEquals(1, batch.linesWritten);
+
+        String csv = service.content(batch.getId());
+        assertTrue(csv.contains(";15.00;"));
+        assertTrue(!csv.contains(";99.00;"));
+    }
+
+    /**
+     * The accounts export lists each account with its balance, and a period-less list export covers
+     * every period.
+     */
+    @Test
+    @TestTransaction
+    void accounts_export_lists_balances() {
+        account();
+        account();
+
+        ExportBatch batch = service.listExport("UNEP", null, ExportObject.ACCOUNTS, "fin");
+        assertEquals("OUT-04:ACCOUNTS", batch.flowCode);
+        assertEquals("UNEP_ACCOUNTS_ALL.csv", batch.fileName);
+        assertEquals(2, batch.linesWritten);
+
+        String csv = service.content(batch.getId());
+        assertTrue(csv.startsWith("payee_type;payee_id;blocked;balance\n"));
+        assertTrue(csv.contains("DISTRIBUTOR;"));
+        assertTrue(csv.contains(";false;0.00\n"));
+    }
+
+    /**
+     * The journal lists an entity's exports newest first.
+     */
+    @Test
+    @TestTransaction
+    void journal_lists_newest_first() {
+        service.dataExport("UNEP", ExportObject.ACCOUNTS, "fin");
+        service.dataExport("UNEP", ExportObject.COMMISSION_LINES, "fin");
+
+        List<ExportView> journal = service.list("UNEP");
+        assertTrue(journal.size() >= 2);
+        assertEquals("OUT-05:COMMISSION_LINES", journal.get(0).flowCode());
+    }
+
+    /**
+     * An unknown export batch and an unknown entity are reported as not found.
+     */
+    @Test
+    @TestTransaction
+    void unknown_paths_are_not_found() {
+        assertThrows(fr.alptis.remuneration.domain.ResourceNotFoundException.class,
+                () -> service.content(999999L));
+        assertThrows(fr.alptis.remuneration.domain.ResourceNotFoundException.class,
+                () -> service.dataExport("GHOST", ExportObject.ACCOUNTS, "fin"));
+    }
+}

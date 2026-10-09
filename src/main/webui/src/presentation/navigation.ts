@@ -74,7 +74,10 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   },
   {
     heading: 'Comptabilité',
-    items: [{ name: 'cutoff', path: '/cutoff', label: 'État de cut-off' }],
+    items: [
+      { name: 'accounting', path: '/comptabilite', label: 'Schéma et écritures' },
+      { name: 'cutoff', path: '/cutoff', label: 'État de cut-off' },
+    ],
   },
   {
     heading: 'Administration',

@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.accounting.AccountingSetupService;
 import fr.alptis.remuneration.cycle.ControlCatalogService;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.rules.BaremeInitialService;
@@ -32,21 +33,26 @@ public class TestDatabaseReset {
     /** Re-seeds the control catalogue after the wipe. */
     private final ControlCatalogService catalog;
 
+    /** Re-seeds the accounting schema and mapping after the wipe. */
+    private final AccountingSetupService accounting;
+
     /**
      * Creates the reset helper.
      *
-     * @param em        the entity manager
-     * @param bootstrap the security bootstrap used to re-seed
-     * @param bareme    the initial-barème service used to re-seed
-     * @param catalog   the control-catalogue service used to re-seed
+     * @param em         the entity manager
+     * @param bootstrap  the security bootstrap used to re-seed
+     * @param bareme     the initial-barème service used to re-seed
+     * @param catalog    the control-catalogue service used to re-seed
+     * @param accounting the accounting setup service used to re-seed
      */
     @Inject
     public TestDatabaseReset(EntityManager em, SecurityBootstrap bootstrap, BaremeInitialService bareme,
-                             ControlCatalogService catalog) {
+                             ControlCatalogService catalog, AccountingSetupService accounting) {
         this.em = em;
         this.bootstrap = bootstrap;
         this.bareme = bareme;
         this.catalog = catalog;
+        this.accounting = accounting;
     }
 
     /**
@@ -64,6 +70,7 @@ public class TestDatabaseReset {
         bootstrap.seed();
         for (LegalEntity entity : LegalEntity.<LegalEntity>listAll()) {
             catalog.seed(entity);
+            accounting.seed(entity);
         }
         bareme.seed(LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult());
     }

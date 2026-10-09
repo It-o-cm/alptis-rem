@@ -52,17 +52,21 @@ public class PaymentService {
 
     private final DateTimeProvider clock;
     private final fr.alptis.remuneration.accounts.AccountService accounts;
+    private final fr.alptis.remuneration.accounting.AccountingService accounting;
 
     /**
      * Creates the service.
      *
-     * @param clock    the application date/time provider
-     * @param accounts the distributor-account service
+     * @param clock      the application date/time provider
+     * @param accounts   the distributor-account service
+     * @param accounting the accounting-entry service
      */
     @Inject
-    public PaymentService(DateTimeProvider clock, fr.alptis.remuneration.accounts.AccountService accounts) {
+    public PaymentService(DateTimeProvider clock, fr.alptis.remuneration.accounts.AccountService accounts,
+                          fr.alptis.remuneration.accounting.AccountingService accounting) {
         this.clock = clock;
         this.accounts = accounts;
+        this.accounting = accounting;
     }
 
     /**
@@ -323,6 +327,7 @@ public class PaymentService {
             line.paidAt = clock.now();
         }
         entry(order.account, AccountEntryType.PAYMENT, order.amount.negate());
+        accounting.recordPayment(order, clock.now().toLocalDate());
     }
 
     /**
@@ -399,6 +404,7 @@ public class PaymentService {
                 line.paidAt = null;
             }
             entry(order.account, AccountEntryType.PAYMENT_REJECTION, order.amount);
+            accounting.recordRejection(order, clock.now().toLocalDate());
             rejectionAnomaly(order);
         }
         closeIfDone(order.batch.period);

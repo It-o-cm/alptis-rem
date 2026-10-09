@@ -24,6 +24,11 @@ import AdjustmentsView from '../views/AdjustmentsView.vue';
 import DistributorAccountView from '../views/DistributorAccountView.vue';
 import PaymentView from '../views/PaymentView.vue';
 import BordereauxView from '../views/BordereauxView.vue';
+import CutoffView from '../views/CutoffView.vue';
+import AccountingView from '../views/AccountingView.vue';
+import FluxView from '../views/FluxView.vue';
+import ExportsView from '../views/ExportsView.vue';
+import FormatsView from '../views/FormatsView.vue';
 import { allNavItems } from '../presentation/navigation';
 
 // Screens delivered so far use a real component; the others are empty titled placeholders.
@@ -33,6 +38,11 @@ const REAL_VIEWS: Record<string, unknown> = {
   adjustments: AdjustmentsView,
   payment: PaymentView,
   statements: BordereauxView,
+  cutoff: CutoffView,
+  accounting: AccountingView,
+  flows: FluxView,
+  exports: ExportsView,
+  formats: FormatsView,
   distributor: DistributorAccountView,
   imports: ImportsView,
   mapping: MappingView,
