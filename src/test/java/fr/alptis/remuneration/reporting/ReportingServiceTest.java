@@ -254,6 +254,10 @@ class ReportingServiceTest {
                 && new BigDecimal("15.00").compareTo(m.second()) == 0
                 && new BigDecimal("35.00").compareTo(m.third()) == 0));
         assertTrue(d.topDistributors().stream().anyMatch(a -> a.label().equals("D1")));
+        assertEquals(0, new BigDecimal("-20.00").compareTo(d.reprises()));
+        assertEquals(0, new BigDecimal("50.00").compareTo(d.escomptesVerses()));
+        assertEquals(0, new BigDecimal("22.00").compareTo(d.escomptesApures()));
+        assertEquals(0, new BigDecimal("28.00").compareTo(d.creance()));
         assertTrue(d.debtorAccounts() >= 0);
         assertTrue(d.anomalies() >= 0);
     }

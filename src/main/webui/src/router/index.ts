@@ -35,6 +35,7 @@ import RepriseView from '../views/RepriseView.vue';
 import DashboardsView from '../views/DashboardsView.vue';
 import CommissionSearchView from '../views/CommissionSearchView.vue';
 import GroupView from '../views/GroupView.vue';
+import MarginView from '../views/MarginView.vue';
 import IndicatorsView from '../views/IndicatorsView.vue';
 import SupervisionView from '../views/SupervisionView.vue';
 import PurgeView from '../views/PurgeView.vue';
@@ -61,6 +62,7 @@ const REAL_VIEWS: Record<string, unknown> = {
   dashboards: DashboardsView,
   commissionSearch: CommissionSearchView,
   groupView: GroupView,
+  margin: MarginView,
   indicators: IndicatorsView,
   supervision: SupervisionView,
   purge: PurgeView,

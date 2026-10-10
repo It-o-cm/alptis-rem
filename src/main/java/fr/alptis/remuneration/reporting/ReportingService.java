@@ -117,9 +117,12 @@ public class ReportingService {
         long debtors = accounts.debtors(entity).size();
         long anomalies = BusinessEvent.count("entity = ?1 and processingStatus = ?2", entity,
                 ProcessingStatus.ON_HOLD);
+        BigDecimal versesTotal = sum(versesByMonth.values());
+        BigDecimal apuresTotal = sum(apuresByMonth.values());
         return new Dashboard(entityCode, start, end, months, amounts(byNature), amounts(byGamme),
-                monthNatures(byMonthNature), monthAmounts(reprisesByMonth, months), escompte, debtors, top,
-                anomalies);
+                monthNatures(byMonthNature), monthAmounts(reprisesByMonth, months), escompte,
+                sum(reprisesByMonth.values()), versesTotal, apuresTotal, versesTotal.subtract(apuresTotal),
+                debtors, top, anomalies);
     }
 
     /**
@@ -520,6 +523,20 @@ public class ReportingService {
     }
 
     /**
+     * Sums a collection of amounts.
+     *
+     * @param values the amounts
+     * @return the total
+     */
+    private static BigDecimal sum(java.util.Collection<BigDecimal> values) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (BigDecimal value : values) {
+            total = total.add(value);
+        }
+        return total;
+    }
+
+    /**
      * A mutable month→zero map preserving the range order.
      *
      * @param months the months
@@ -779,6 +796,10 @@ public class ReportingService {
      * @param byMonthNature   the commissions by month and nature (stacked bars)
      * @param reprisesByMonth the clawbacks by month
      * @param escompteByMonth the advances paid, offset and outstanding by month
+     * @param reprises        the clawback total over the range
+     * @param escomptesVerses the advances paid total over the range
+     * @param escomptesApures the advances offset total over the range
+     * @param creance         the outstanding advance debt at the end of the range
      * @param debtorAccounts  the number of debtor accounts
      * @param topDistributors the top distributors by commission
      * @param anomalies       the number of held events
@@ -786,7 +807,9 @@ public class ReportingService {
     public record Dashboard(String entity, LocalDate from, LocalDate to, List<LocalDate> months,
                             List<Amount> byNature, List<Amount> byGamme, List<MonthNature> byMonthNature,
                             List<MonthValue> reprisesByMonth, List<MonthValue> escompteByMonth,
-                            long debtorAccounts, List<Amount> topDistributors, long anomalies) {
+                            BigDecimal reprises, BigDecimal escomptesVerses, BigDecimal escomptesApures,
+                            BigDecimal creance, long debtorAccounts, List<Amount> topDistributors,
+                            long anomalies) {
     }
 
     /**

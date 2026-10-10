@@ -87,6 +87,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'dashboards', path: '/tableaux-de-bord', label: 'Tableaux de bord' },
       { name: 'commissionSearch', path: '/recherche-commissions', label: 'Recherche de commissions' },
       { name: 'groupView', path: '/vision-groupe', label: 'Vision consolidée groupe' },
+      { name: 'margin', path: '/marge', label: 'Marge' },
       { name: 'indicators', path: '/indicateurs-fonctionnement', label: 'Indicateurs de fonctionnement' },
     ],
   },
