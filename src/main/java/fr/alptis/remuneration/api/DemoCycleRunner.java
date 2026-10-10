@@ -298,6 +298,9 @@ public class DemoCycleRunner {
         String entity = DemoCodes.UNEP;
         LocalDate month = LocalDate.of(2026, 10, 1);
         emitOrdinary(world, entity, LocalDate.of(2026, 10, 2));
+        // A zero premium so the UNEP controls raise an anomaly too (non-blocking).
+        emit(entity, bulkCoverages(entity).get(0), EventType.PREMIUM_COLLECTED, LocalDate.of(2026, 10, 2),
+                BigDecimal.ZERO, ProcessingStatus.PENDING);
         engine.runReal(entity, month);
         controls.run(entity, month);
         periods.transition(entity, month, PeriodState.LOADED, ALL, USER, null);
@@ -308,6 +311,18 @@ public class DemoCycleRunner {
         for (PaymentBatch batch : cycleBatches(period(entity, month))) {
             payments.prepareOrderDetails(batch.getId());
         }
+        // Two UNEP adjustments so the adjustments screen is not empty for UNEP users. The clawback uses
+        // a distributor-level account (which carries no commission line) so it is cleanly debtor.
+        DistributorAccount account = accounts.accountFor(world.entity(entity), PayeeType.DISTRIBUTOR,
+                world.distributor("P20003").getId());
+        // An approved clawback drives the account debtor (so UNEP's debtor screen is not empty), plus a
+        // submitted correction awaiting validation.
+        var clawback = adjustments.create(world.entity(entity), period(entity, month),
+                AdjustmentType.MANUAL_CLAWBACK, new BigDecimal("-200.00"), account, "Reprise UNEP", null, false,
+                null, null, "operator-unep");
+        adjustments.approve(clawback.getId(), "validator-unep", ALL);
+        adjustments.create(world.entity(entity), period(entity, month), AdjustmentType.CORRECTION,
+                new BigDecimal("15.00"), account, "Correction UNEP", null, false, null, null, "operator-unep");
     }
 
     /**

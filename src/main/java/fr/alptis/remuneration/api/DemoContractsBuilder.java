@@ -407,6 +407,18 @@ public class DemoContractsBuilder {
         ongoing.status = TransferStatus.PENDING;
         stamp(ongoing);
         ongoing.persist();
+
+        // One UNEP transfer too, so the transfers screen is not empty for UNEP users.
+        PortfolioTransfer unep = new PortfolioTransfer();
+        unep.entity = world.entity(DemoCodes.UNEP);
+        unep.fromDistributor = world.distributor("P20002");
+        unep.toDistributor = world.distributor("P20001");
+        unep.effectDate = LocalDate.of(2026, 4, 1);
+        unep.scope = "[]";
+        unep.advanceDebtHandling = AdvanceDebtHandling.REPAID_BY_TRANSFEROR;
+        unep.status = TransferStatus.PROCESSED;
+        stamp(unep);
+        unep.persist();
     }
 
     /**
@@ -415,11 +427,24 @@ public class DemoContractsBuilder {
      * @param world the shared demo world
      */
     private void replacementOrder(DemoWorld world) {
-        Coverage scene = world.scene(DemoCodes.ALPTIS, DemoCodes.F_LINEAR);
+        replacementOrder(world, DemoCodes.ALPTIS, "PC-" + DemoCodes.CABINET, "PC-P20002");
+        replacementOrder(world, DemoCodes.UNEP, "PC-P20001", "PC-P20002");
+    }
+
+    /**
+     * Creates one replacement order on an entity's linear scene contract.
+     *
+     * @param world    the shared demo world
+     * @param entity   the entity code
+     * @param fromCode the production code replaced
+     * @param toCode   the replacing production code
+     */
+    private void replacementOrder(DemoWorld world, String entity, String fromCode, String toCode) {
+        Coverage scene = world.scene(entity, DemoCodes.F_LINEAR);
         ReplacementOrder order = new ReplacementOrder();
         order.contract = scene.contract;
-        order.fromProductionCode = world.productionCode(DemoCodes.ALPTIS, "PC-" + DemoCodes.CABINET);
-        order.toProductionCode = world.productionCode(DemoCodes.ALPTIS, "PC-P20002");
+        order.fromProductionCode = world.productionCode(entity, fromCode);
+        order.toProductionCode = world.productionCode(entity, toCode);
         order.receivedDate = LocalDate.of(2026, 9, 15);
         order.effectDate = LocalDate.of(2026, 10, 1);
         stamp(order);

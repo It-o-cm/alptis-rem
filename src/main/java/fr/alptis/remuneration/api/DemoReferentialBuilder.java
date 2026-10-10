@@ -787,6 +787,9 @@ public class DemoReferentialBuilder {
         link.persist();
         advanceAgreement(entity, world.distributor("P20003"), AdvanceAgreementStatus.SUSPENDED, 50);
         advanceAgreement(entity, world.distributor("P20005"), AdvanceAgreementStatus.CLOSED, 50);
+        // UNEP carries one convention too, so its escompte screen is not empty for UNEP users.
+        advanceAgreement(world.entity(DemoCodes.UNEP), world.distributor("P20001"),
+                AdvanceAgreementStatus.VALID, 50);
     }
 
     /**
@@ -848,24 +851,26 @@ public class DemoReferentialBuilder {
     }
 
     /**
-     * Creates a multi-beneficiary payee rule on Alptis, splitting a production code's commission
+     * Creates a multi-beneficiary payee rule for each entity, splitting a production code's commission
      * between the production code itself and its group.
      *
      * @param world the shared demo world
      */
     private void payeeRules(DemoWorld world) {
-        ProductionCode pc = world.productionCode(DemoCodes.ALPTIS, "PC-P20001");
-        DistributorGroup group = pc.distributor.group;
-        PayeeRule payeeRule = new PayeeRule();
-        payeeRule.entity = world.entity(DemoCodes.ALPTIS);
-        payeeRule.productionCode = pc;
-        payeeRule.distributor = pc.distributor;
-        payeeRule.paymentFrequency = PaymentFrequency.MONTHLY;
-        payeeRule.validFrom = LocalDate.of(2026, 1, 1);
-        stamp(payeeRule);
-        payeeRule.persist();
-        payeeShare(payeeRule, PayeeType.PRODUCTION_CODE, pc.getId(), new BigDecimal("0.900000"));
-        payeeShare(payeeRule, PayeeType.GROUP, group.getId(), new BigDecimal("0.100000"));
+        for (LegalEntity entity : world.entities.values()) {
+            ProductionCode pc = world.productionCode(entity.code, "PC-P20001");
+            DistributorGroup group = pc.distributor.group;
+            PayeeRule payeeRule = new PayeeRule();
+            payeeRule.entity = entity;
+            payeeRule.productionCode = pc;
+            payeeRule.distributor = pc.distributor;
+            payeeRule.paymentFrequency = PaymentFrequency.MONTHLY;
+            payeeRule.validFrom = LocalDate.of(2026, 1, 1);
+            stamp(payeeRule);
+            payeeRule.persist();
+            payeeShare(payeeRule, PayeeType.PRODUCTION_CODE, pc.getId(), new BigDecimal("0.900000"));
+            payeeShare(payeeRule, PayeeType.GROUP, group.getId(), new BigDecimal("0.100000"));
+        }
     }
 
     /**

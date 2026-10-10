@@ -27,19 +27,29 @@ public class DemoDataService {
     /** Drives the monthly cycle through the real services. */
     private final DemoCycleRunner cycle;
 
+    /** Builds and runs the sales-force variable-pay scene. */
+    private final DemoSalesForceBuilder salesForce;
+
+    /** Builds the flows journal and the audit trail. */
+    private final DemoFluxBuilder flux;
+
     /**
      * Creates the service.
      *
      * @param referential the referential builder
      * @param contracts   the contracts builder
      * @param cycle       the cycle runner
+     * @param salesForce  the sales-force builder
+     * @param flux        the flows and audit builder
      */
     @Inject
     public DemoDataService(DemoReferentialBuilder referential, DemoContractsBuilder contracts,
-                           DemoCycleRunner cycle) {
+                           DemoCycleRunner cycle, DemoSalesForceBuilder salesForce, DemoFluxBuilder flux) {
         this.referential = referential;
         this.contracts = contracts;
         this.cycle = cycle;
+        this.salesForce = salesForce;
+        this.flux = flux;
     }
 
     /**
@@ -55,5 +65,7 @@ public class DemoDataService {
         referential.build(world);
         contracts.build(world);
         cycle.run(world);
+        salesForce.build(world);
+        flux.build(world);
     }
 }

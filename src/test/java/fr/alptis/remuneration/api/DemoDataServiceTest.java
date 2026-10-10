@@ -2,6 +2,7 @@ package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.domain.Adjustment;
 import fr.alptis.remuneration.domain.AdjustmentStatus;
+import fr.alptis.remuneration.domain.AuditEvent;
 import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AssignmentRole;
@@ -19,9 +20,16 @@ import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.DistributorType;
+import fr.alptis.remuneration.domain.Employee;
+import fr.alptis.remuneration.domain.EmployeeMeasure;
 import fr.alptis.remuneration.domain.EntityParameter;
+import fr.alptis.remuneration.domain.ExportBatch;
 import fr.alptis.remuneration.domain.ExternalCode;
+import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.ImportBatchStatus;
 import fr.alptis.remuneration.domain.ImportMapping;
+import fr.alptis.remuneration.domain.ImportRejection;
+import fr.alptis.remuneration.domain.ImportRejectionStatus;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.OriasStatus;
 import fr.alptis.remuneration.domain.PartnerStatus;
@@ -40,6 +48,9 @@ import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.RuleVersion;
 import fr.alptis.remuneration.domain.Statement;
 import fr.alptis.remuneration.domain.TransferStatus;
+import fr.alptis.remuneration.domain.VariablePlan;
+import fr.alptis.remuneration.domain.VariableResult;
+import fr.alptis.remuneration.domain.VariableResultStatus;
 import fr.alptis.remuneration.domain.VersionStatus;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -218,6 +229,56 @@ class DemoDataServiceTest {
 
         // A cut-off extract for each closed period (Alptis June–September, UNEP September).
         assertTrue(CutoffExtract.count() >= 5, "a cut-off extract per closed period");
+    }
+
+    /**
+     * The sales-force floors of section 4 are met: a variable plan per post, at least twelve
+     * collaborators over two supervision levels, objectives, measures, a validated-and-exported month
+     * and a pending month, and the Alptis sales rep's own perimeter is not empty.
+     */
+    @Test
+    void builds_the_sales_force_floors() {
+        service.load();
+
+        assertTrue(VariablePlan.count() >= 2, "a variable plan per post");
+        assertTrue(Employee.count() >= 12, "at least twelve collaborators");
+        assertTrue(Employee.count("manager is not null") > 0, "collaborators under a manager");
+        assertTrue(Employee.count("manager is null") > 0, "managers at the top level");
+        assertTrue(EmployeeMeasure.count() > 0, "sales-force measures");
+
+        Period september = period(DemoCodes.ALPTIS, 9);
+        assertTrue(VariableResult.count("period = ?1 and status = ?2", september,
+                VariableResultStatus.EXPORTED) > 0, "a validated-and-exported month");
+        Period october = period(DemoCodes.ALPTIS, 10);
+        assertTrue(VariableResult.count("period = ?1 and status = ?2", october,
+                VariableResultStatus.CALCULATED) > 0, "a pending month");
+
+        // The Alptis sales rep sees their own variable (its employee carries the dev username).
+        Employee rep = Employee.<Employee>find("externalId", "rep-alptis").firstResult();
+        assertTrue(VariableResult.count("employee = ?1", rep) > 0, "the sales rep's own results");
+    }
+
+    /**
+     * The flows and administration floors of section 4 are met: import batches including one partially
+     * loaded with rejections of several reasons (some handled), export lots, and an audit trail with
+     * varied authors (not a single "demo" user).
+     */
+    @Test
+    void builds_the_flux_and_audit_floors() {
+        service.load();
+
+        assertTrue(ImportBatch.count() >= 4, "import batches");
+        assertTrue(ImportBatch.count("status", ImportBatchStatus.PARTIALLY_LOADED) > 0, "a partial-error batch");
+        long reasons = ImportRejection.<ImportRejection>listAll().stream()
+                .map(r -> r.reasonCode).distinct().count();
+        assertTrue(reasons >= 3, "rejections of several reasons");
+        assertTrue(ImportRejection.count("status", ImportRejectionStatus.CORRECTED) > 0, "a corrected rejection");
+        assertTrue(ImportRejection.count("status", ImportRejectionStatus.DISCARDED) > 0, "a discarded rejection");
+        assertTrue(ExportBatch.count() > 0, "an export journal");
+
+        // The audit trail reflects the demo with varied authors (not a single "demo" user).
+        long authors = AuditEvent.<AuditEvent>listAll().stream().map(a -> a.userId).distinct().count();
+        assertTrue(authors >= 4, "an audit trail with varied authors");
     }
 
     /**
