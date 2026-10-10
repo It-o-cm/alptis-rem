@@ -231,6 +231,105 @@ public class ReportingService {
     }
 
     /**
+     * Exports a reporting list as a semicolon-separated CSV at row grain (REP-04). The same text opens
+     * as a spreadsheet; dev introduces no spreadsheet library (as for the bordereaux). Every object is
+     * entity-partitioned by the caller's scope (enforced in the resource).
+     *
+     * @param entityCode the entity code (ignored for the consolidated object)
+     * @param object     the list to export: SEARCH, MARGIN, INDICATORS, DASHBOARD or CONSOLIDATED
+     * @param from       the first month, or null
+     * @param to         the last month, or null
+     * @param filter     the line filter
+     * @param month      the search month filter, or null
+     * @return the CSV text
+     */
+    public String exportCsv(String entityCode, String object, LocalDate from, LocalDate to, LineFilter filter,
+                            LocalDate month) {
+        StringBuilder csv = new StringBuilder();
+        switch (object) {
+            case "SEARCH" -> {
+                csv.append("distributor;product;gamme;nature;basis;rate;amount;rule;statement;month\n");
+                for (SearchRow r : search(entityCode, filter, month)) {
+                    row(csv, r.distributor(), r.product(), r.gamme(), r.nature(), num(r.basis()), num(r.rate()),
+                            num(r.amount()), r.rule(), r.statementNumber(), text(r.month()));
+                }
+            }
+            case "MARGIN" -> {
+                csv.append("axis;key;received;paid;margin\n");
+                Margin margin = margin(entityCode);
+                marginCsv(csv, "PRODUCT", margin.byProduct());
+                marginCsv(csv, "INSURER", margin.byInsurer());
+                marginCsv(csv, "DISTRIBUTOR", margin.byDistributor());
+            }
+            case "INDICATORS" -> {
+                csv.append("month;active_rules;cycle_duration_days;manual_share;clawback\n");
+                for (IndicatorMonth r : indicators(entityCode, from, to).rows()) {
+                    row(csv, text(r.month()), String.valueOf(r.activeRules()), num(r.cycleDuration()),
+                            num(r.manualShare()), num(r.clawback()));
+                }
+            }
+            case "DASHBOARD" -> {
+                csv.append("month;nature;amount\n");
+                for (MonthNature r : dashboard(entityCode, from, to, filter).byMonthNature()) {
+                    row(csv, text(r.month()), r.nature(), num(r.amount()));
+                }
+            }
+            case "CONSOLIDATED" -> {
+                csv.append("entity;month;total\n");
+                for (EntityMonth r : consolidated(from, to).cells()) {
+                    row(csv, r.entity(), text(r.month()), num(r.total()));
+                }
+            }
+            default -> throw new fr.alptis.remuneration.domain.ValidationException(
+                    "Objet d'export inconnu : " + object);
+        }
+        return csv.toString();
+    }
+
+    /**
+     * Appends one CSV margin row per key.
+     *
+     * @param csv  the builder
+     * @param axis the axis label
+     * @param rows the margin rows
+     */
+    private static void marginCsv(StringBuilder csv, String axis, List<MarginRow> rows) {
+        for (MarginRow r : rows) {
+            row(csv, axis, r.key(), num(r.received()), num(r.paid()), num(r.margin()));
+        }
+    }
+
+    /**
+     * Appends a semicolon-separated CSV row.
+     *
+     * @param csv    the builder
+     * @param values the cell values
+     */
+    private static void row(StringBuilder csv, String... values) {
+        csv.append(String.join(";", values)).append('\n');
+    }
+
+    /**
+     * Formats a nullable amount as a plain decimal, or an empty cell.
+     *
+     * @param value the amount, or null
+     * @return the plain string, or empty
+     */
+    private static String num(BigDecimal value) {
+        return value == null ? "" : value.toPlainString();
+    }
+
+    /**
+     * Formats a nullable date, or an empty cell.
+     *
+     * @param value the date, or null
+     * @return the ISO string, or empty
+     */
+    private static String text(LocalDate value) {
+        return value == null ? "" : value.toString();
+    }
+
+    /**
      * Resolves a month range: the given bounds, or the last {@value #DEFAULT_MONTHS} months carrying
      * data when no bound is given. A single given bound anchors the other.
      *

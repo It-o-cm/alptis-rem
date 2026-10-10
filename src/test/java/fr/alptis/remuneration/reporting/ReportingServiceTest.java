@@ -377,6 +377,28 @@ class ReportingServiceTest {
     }
 
     /**
+     * Every reporting list exports as a semicolon-separated CSV with its header and rows; an unknown
+     * object is rejected (REP-04).
+     */
+    @Test
+    @TestTransaction
+    void export_csv_per_object() {
+        scene();
+        String search = service.exportCsv("UNEP", "SEARCH", null, null, NONE, null);
+        assertTrue(search.startsWith("distributor;product;gamme;nature;basis;rate;amount;rule;statement;month\n"));
+        assertTrue(search.contains(";RP-RULE;ST-RP;"));
+        assertTrue(service.exportCsv("UNEP", "MARGIN", null, null, NONE, null).contains("PRODUCT;PR;"));
+        assertTrue(service.exportCsv("UNEP", "INDICATORS", null, null, NONE, null)
+                .startsWith("month;active_rules;cycle_duration_days;manual_share;clawback\n"));
+        assertTrue(service.exportCsv("UNEP", "DASHBOARD", null, null, NONE, null)
+                .contains("2026-09-01;LINEAR;"));
+        assertTrue(service.exportCsv("UNEP", "CONSOLIDATED", null, null, NONE, null)
+                .startsWith("entity;month;total\n"));
+        assertThrows(fr.alptis.remuneration.domain.ValidationException.class,
+                () -> service.exportCsv("UNEP", "NOPE", null, null, NONE, null));
+    }
+
+    /**
      * An unknown entity is rejected.
      */
     @Test

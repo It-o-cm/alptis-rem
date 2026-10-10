@@ -128,6 +128,108 @@ public class ReportingResource {
     }
 
     /**
+     * Exports the cross-search as CSV at line grain (REP-04).
+     *
+     * @param entityCode  the entity code
+     * @param product     the product filter, or null
+     * @param distributor the distributor filter, or null
+     * @param group       the group filter, or null
+     * @param delegation  the delegation filter, or null
+     * @param nature      the nature filter, or null
+     * @param month       the month filter, or null
+     * @return the CSV text
+     */
+    @GET
+    @Path("/{entity}/export/search")
+    @Produces("text/csv")
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public String exportSearch(@PathParam("entity") String entityCode, @QueryParam("product") String product,
+                               @QueryParam("distributor") String distributor, @QueryParam("group") String group,
+                               @QueryParam("delegation") String delegation, @QueryParam("nature") String nature,
+                               @QueryParam("month") String month) {
+        requireScope(entityCode);
+        return reporting.exportCsv(entityCode, "SEARCH", null, null,
+                filter(product, distributor, group, delegation, nature), month(month));
+    }
+
+    /**
+     * Exports the dashboard commissions by month and nature as CSV (REP-04).
+     *
+     * @param entityCode  the entity code
+     * @param from        the first month, or null
+     * @param to          the last month, or null
+     * @param product     the product filter, or null
+     * @param distributor the distributor filter, or null
+     * @param group       the group filter, or null
+     * @param delegation  the delegation filter, or null
+     * @param nature      the nature filter, or null
+     * @return the CSV text
+     */
+    @GET
+    @Path("/{entity}/export/dashboard")
+    @Produces("text/csv")
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public String exportDashboard(@PathParam("entity") String entityCode, @QueryParam("from") String from,
+                                  @QueryParam("to") String to, @QueryParam("product") String product,
+                                  @QueryParam("distributor") String distributor, @QueryParam("group") String group,
+                                  @QueryParam("delegation") String delegation, @QueryParam("nature") String nature) {
+        requireScope(entityCode);
+        return reporting.exportCsv(entityCode, "DASHBOARD", month(from), month(to),
+                filter(product, distributor, group, delegation, nature), null);
+    }
+
+    /**
+     * Exports the operating indicators month by month as CSV (REP-04).
+     *
+     * @param entityCode the entity code
+     * @param from       the first month, or null
+     * @param to         the last month, or null
+     * @return the CSV text
+     */
+    @GET
+    @Path("/{entity}/export/indicators")
+    @Produces("text/csv")
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public String exportIndicators(@PathParam("entity") String entityCode, @QueryParam("from") String from,
+                                   @QueryParam("to") String to) {
+        requireScope(entityCode);
+        return reporting.exportCsv(entityCode, "INDICATORS", month(from), month(to), LineFilter.none(), null);
+    }
+
+    /**
+     * Exports the margin by product, insurer and distributor as CSV (REP-04).
+     *
+     * @param entityCode the entity code
+     * @return the CSV text
+     */
+    @GET
+    @Path("/{entity}/export/margin")
+    @Produces("text/csv")
+    @RolesAllowed({"BUSINESS_ADMIN", "FINANCE_CONTROLLER", "AUDITOR"})
+    public String exportMargin(@PathParam("entity") String entityCode) {
+        requireScope(entityCode);
+        return reporting.exportCsv(entityCode, "MARGIN", null, null, LineFilter.none(), null);
+    }
+
+    /**
+     * Exports the consolidated group view as CSV, reserved to cross-entity users (REP-04, REP-07).
+     *
+     * @param from the first month, or null
+     * @param to   the last month, or null
+     * @return the CSV text
+     */
+    @GET
+    @Path("/export/consolidated")
+    @Produces("text/csv")
+    @RolesAllowed({"AUDITOR", "IT_ADMIN", "BUSINESS_ADMIN", "FINANCE_CONTROLLER", "VIEWER", "BUSINESS_VALIDATOR", "OPERATOR"})
+    public String exportConsolidated(@QueryParam("from") String from, @QueryParam("to") String to) {
+        if (!scope.unrestricted()) {
+            throw new ResourceNotFoundException("Vision consolidée réservée aux utilisateurs groupe");
+        }
+        return reporting.exportCsv(null, "CONSOLIDATED", month(from), month(to), LineFilter.none(), null);
+    }
+
+    /**
      * Returns the consolidated group view over a range (REP-07), reserved to cross-entity users.
      *
      * @param from the first month (inclusive), or null for the default range

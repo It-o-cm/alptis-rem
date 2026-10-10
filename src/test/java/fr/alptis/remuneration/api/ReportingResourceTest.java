@@ -157,6 +157,31 @@ class ReportingResourceTest {
     }
 
     /**
+     * Every reporting list exports as CSV at line grain (REP-04), each within its own role.
+     */
+    @Test
+    void exports_are_csv() {
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().get("/api/ui/v1/reporting/" + ENTITY + "/export/search")
+                .then().statusCode(200).body(org.hamcrest.Matchers.containsString("distributor;product;gamme;"));
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().get("/api/ui/v1/reporting/" + ENTITY + "/export/dashboard")
+                .then().statusCode(200).body(org.hamcrest.Matchers.containsString("month;nature;amount"));
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().get("/api/ui/v1/reporting/" + ENTITY + "/export/indicators")
+                .then().statusCode(200).body(org.hamcrest.Matchers.containsString("month;active_rules;"));
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/reporting/" + ENTITY + "/export/margin")
+                .then().statusCode(200).body(org.hamcrest.Matchers.containsString("axis;key;received;paid;margin"));
+        given().auth().preemptive().basic("auditor", "auditor")
+                .when().get("/api/ui/v1/reporting/export/consolidated")
+                .then().statusCode(200).body(org.hamcrest.Matchers.containsString("entity;month;total"));
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/reporting/export/consolidated")
+                .then().statusCode(404);
+    }
+
+    /**
      * The consolidated view is reserved to cross-entity users: an auditor sees every entity, a UNEP
      * operator is out of scope, and a dashboard of another entity is not found.
      */
