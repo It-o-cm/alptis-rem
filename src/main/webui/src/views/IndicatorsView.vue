@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount, formatPercent } from '../presentation/format';
+import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 import LineChart from '../components/charts/LineChart.vue';
 
 interface IndicatorMonth {
@@ -25,7 +27,9 @@ const to = ref('');
 const data = ref<Indicators | null>(null);
 const csv = ref('');
 const error = ref('');
+const loading = ref(false);
 
+/** Builds the query string from the current month-range values. */
 function query(): string {
   const params = new URLSearchParams();
   if (from.value) {
@@ -38,77 +42,141 @@ function query(): string {
   return q ? `?${q}` : '';
 }
 
-async function load() {
+/** Loads the operating indicators of the entity over the filtered range. */
+async function load(): Promise<void> {
   error.value = '';
   csv.value = '';
+  loading.value = true;
   try {
     data.value = await apiGet<Indicators>(`/api/ui/v1/reporting/${entity.value}/indicators${query()}`);
   } catch (e) {
     data.value = null;
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function exportCsv() {
+/** Fetches the CSV export of the indicators for display. */
+async function exportCsv(): Promise<void> {
   csv.value = await apiGetText(`/api/ui/v1/reporting/${entity.value}/export/indicators${query()}`);
 }
 
+/** The months covered by the loaded indicators. */
 const months = computed(() => data.value?.months ?? []);
+
+/**
+ * Builds a single-value line series over the indicator rows.
+ * @param label the series label
+ * @param pick the accessor of the plotted value
+ */
 function serie(label: string, pick: (r: IndicatorMonth) => number) {
   return [{ key: 'v', label, values: data.value ? data.value.rows.map(pick) : [] }];
 }
+/** Line series of active rules per month. */
 const rulesSeries = computed(() => serie('Règles actives', (r) => r.activeRules));
+/** Line series of the cycle duration per month. */
 const cycleSeries = computed(() => serie('Durée du cycle', (r) => r.cycleDuration));
+/** Line series of the manual-line share per month. */
 const manualSeries = computed(() => serie('Lignes manuelles', (r) => r.manualShare));
+/** Line series of clawed-back amounts per month. */
 const clawbackSeries = computed(() => serie('Montants repris', (r) => r.clawback));
+
+/** Indicator rows paired with their index, for the per-row test identifier. */
+const indexedRows = computed(() => (data.value ? data.value.rows.map((r, i) => ({ ...r, i })) : []));
+
+/** Columns of the indicators table. */
+const columns: Column<IndicatorMonth & { i: number }>[] = [
+  { key: 'month', label: 'Mois' },
+  { key: 'activeRules', label: 'Règles actives', align: 'num' },
+  { key: 'cycleDuration', label: 'Durée du cycle (jours)', align: 'num' },
+  { key: 'manualShare', label: 'Lignes manuelles', align: 'num', value: (r) => formatPercent(r.manualShare) },
+  { key: 'clawback', label: 'Montants repris', align: 'num', value: (r) => formatAmount(r.clawback) },
+];
 
 onMounted(load);
 </script>
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Indicateurs de fonctionnement</h1>
-      <div class="page__subtitle">
-        Règles actives, durée du cycle, part des lignes ajustées à la main et montants repris, mois par mois (REP-09).
-      </div>
+    <PageHeading title="Indicateurs de fonctionnement" subtitle="Règles actives, durée du cycle, part des lignes ajustées à la main et montants repris, mois par mois (REP-09)." />
+
+    <FilterBar
+      :loading="loading"
+      search-label="Rafraîchir"
+      search-testid="ind-refresh"
+      :resettable="false"
+      @search="load"
+    >
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="ind-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Du mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="ind-from" type="text" v-model="from" placeholder="2026-06-01" />
+      </FormField>
+      <FormField label="Au mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="ind-to" type="text" v-model="to" placeholder="2026-11-01" />
+      </FormField>
+    </FilterBar>
+
+    <div class="ind-actions">
+      <AppButton variant="secondary" data-testid="ind-export" @click="exportCsv">Exporter CSV</AppButton>
     </div>
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="ind-entity" type="text" v-model="entity" /></label>
-        <label>Du mois <input data-testid="ind-from" type="text" v-model="from" placeholder="2026-06-01" /></label>
-        <label>Au mois <input data-testid="ind-to" type="text" v-model="to" placeholder="2026-11-01" /></label>
-        <button class="btn" data-testid="ind-refresh" @click="load">Rafraîchir</button>
-        <button class="btn sec" data-testid="ind-export" @click="exportCsv">Exporter CSV</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="ind-error" style="margin-top: 10px">{{ error }}</div>
-      <pre v-if="csv" data-testid="ind-export-content" style="margin-top: 10px; overflow-x: auto; background: #f6f8fa; padding: 12px">{{ csv }}</pre>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="ind-error">{{ error }}</AppMessage>
 
-    <div v-if="data" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px">
-      <section class="card"><LineChart :categories="months" :series="rulesSeries" title="Règles actives par mois" testid="chart-ind-rules" /></section>
-      <section class="card"><LineChart :categories="months" :series="cycleSeries" title="Durée du cycle (jours) par mois" testid="chart-ind-cycle" /></section>
-      <section class="card"><LineChart :categories="months" :series="manualSeries" title="Part des lignes manuelles par mois" testid="chart-ind-manual" /></section>
-      <section class="card"><LineChart :categories="months" :series="clawbackSeries" title="Montants repris par mois" testid="chart-ind-clawback" /></section>
+    <AppCard v-if="csv">
+      <pre data-testid="ind-export-content" class="ind-csv">{{ csv }}</pre>
+    </AppCard>
+
+    <div v-if="data" class="ind-charts">
+      <AppCard>
+        <LineChart :categories="months" :series="rulesSeries" title="Règles actives par mois" testid="chart-ind-rules" />
+      </AppCard>
+      <AppCard>
+        <LineChart :categories="months" :series="cycleSeries" title="Durée du cycle (jours) par mois" testid="chart-ind-cycle" />
+      </AppCard>
+      <AppCard>
+        <LineChart :categories="months" :series="manualSeries" title="Part des lignes manuelles par mois" testid="chart-ind-manual" />
+      </AppCard>
+      <AppCard>
+        <LineChart :categories="months" :series="clawbackSeries" title="Montants repris par mois" testid="chart-ind-clawback" />
+      </AppCard>
     </div>
 
-    <section v-if="data" class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Mois</th><th>Règles actives</th><th>Durée du cycle (jours)</th><th>Lignes manuelles</th><th>Montants repris</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="data.rows.length === 0"><td colspan="5" data-testid="ind-empty">Aucune donnée.</td></tr>
-          <tr v-for="(r, i) in data.rows" :key="i" :data-testid="`ind-row-${i}`">
-            <td>{{ r.month }}</td>
-            <td class="num" :data-testid="`ind-rules-${i}`">{{ r.activeRules }}</td>
-            <td class="num">{{ r.cycleDuration }}</td>
-            <td class="num">{{ formatPercent(r.manualShare) }}</td>
-            <td class="num" :data-testid="`ind-clawback-${i}`">{{ formatAmount(r.clawback) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="data" flush>
+      <DataTable
+        :columns="columns"
+        :rows="indexedRows"
+        empty="Aucune donnée."
+        empty-testid="ind-empty"
+        :row-testid="(r) => `ind-row-${r.i}`"
+      >
+        <template #cell-activeRules="{ row }">
+          <span :data-testid="`ind-rules-${row.i}`">{{ row.activeRules }}</span>
+        </template>
+        <template #cell-clawback="{ row }">
+          <span :data-testid="`ind-clawback-${row.i}`">{{ formatAmount(row.clawback) }}</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ind-actions {
+  display: flex;
+}
+.ind-csv {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+}
+.ind-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+</style>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface SearchRow {
   distributor: string;
@@ -23,11 +25,17 @@ const filters = ref({ product: '', distributor: '', group: '', delegation: '', n
 const rows = ref<SearchRow[]>([]);
 const csv = ref('');
 const error = ref('');
+const loading = ref(false);
 
+/**
+ * Formats an amount, showing a dash for a missing value.
+ * @param value the raw amount or null
+ */
 function amount(value: number | null): string {
   return value === null ? '—' : formatAmount(value);
 }
 
+/** Builds the query string from the current filter values. */
 function query(): string {
   const params = new URLSearchParams();
   const add = (key: string, value: string) => {
@@ -45,71 +53,110 @@ function query(): string {
   return q ? `?${q}` : '';
 }
 
-async function search() {
+/** Searches the commission lines of the entity matching the filters. */
+async function search(): Promise<void> {
   error.value = '';
   csv.value = '';
+  loading.value = true;
   try {
     rows.value = await apiGet<SearchRow[]>(`/api/ui/v1/reporting/${entity.value}/search${query()}`);
   } catch (e) {
     rows.value = [];
     error.value = e instanceof ApiError ? e.message : 'Recherche impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function exportCsv() {
+/** Fetches the CSV export of the search results for display. */
+async function exportCsv(): Promise<void> {
   csv.value = await apiGetText(`/api/ui/v1/reporting/${entity.value}/export/search${query()}`);
 }
+
+/** Search rows paired with their index, for the per-row test identifier. */
+const indexedRows = computed(() => rows.value.map((r, i) => ({ ...r, i })));
+
+/** Columns of the commission-lines table. */
+const columns: Column<SearchRow & { i: number }>[] = [
+  { key: 'distributor', label: 'Distributeur' },
+  { key: 'product', label: 'Produit' },
+  { key: 'gamme', label: 'Gamme' },
+  { key: 'nature', label: 'Nature' },
+  { key: 'basis', label: 'Assiette', align: 'num', value: (r) => amount(r.basis) },
+  { key: 'rate', label: 'Taux', align: 'num', value: (r) => r.rate ?? '—' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
+  { key: 'rule', label: 'Règle' },
+  { key: 'statementNumber', label: 'Bordereau' },
+  { key: 'month', label: 'Mois', value: (r) => r.month ?? '—' },
+];
 
 onMounted(search);
 </script>
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Recherche de lignes de commission</h1>
-      <div class="page__subtitle">
-        Combien a été payé, à qui, quand et pourquoi : la ligne, sa gamme, son assiette, son taux, sa règle
-        et son bordereau (REP-02, REP-03, FIN-07).
-      </div>
+    <PageHeading title="Recherche de lignes de commission" subtitle="Combien a été payé, à qui, quand et pourquoi : la ligne, sa gamme, son assiette, son taux, sa règle et son bordereau (REP-02, REP-03, FIN-07)." />
+
+    <FilterBar :loading="loading" search-testid="cs-search" :resettable="false" @search="search">
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="cs-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Produit" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="cs-product" type="text" v-model="filters.product" />
+      </FormField>
+      <FormField label="Distributeur" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="cs-distributor" type="text" v-model="filters.distributor" />
+      </FormField>
+      <FormField label="Groupement" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="cs-group" type="text" v-model="filters.group" />
+      </FormField>
+      <FormField label="Délégation" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="cs-delegation" type="text" v-model="filters.delegation" />
+      </FormField>
+      <FormField label="Nature" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="cs-nature-filter" type="text" v-model="filters.nature" />
+      </FormField>
+      <FormField label="Mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="cs-month" type="text" v-model="filters.month" />
+      </FormField>
+    </FilterBar>
+
+    <div class="cs-actions">
+      <AppButton variant="secondary" data-testid="cs-export" @click="exportCsv">Exporter CSV</AppButton>
     </div>
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="cs-entity" type="text" v-model="entity" /></label>
-        <label>Produit <input data-testid="cs-product" type="text" v-model="filters.product" /></label>
-        <label>Distributeur <input data-testid="cs-distributor" type="text" v-model="filters.distributor" /></label>
-        <label>Groupement <input data-testid="cs-group" type="text" v-model="filters.group" /></label>
-        <label>Délégation <input data-testid="cs-delegation" type="text" v-model="filters.delegation" /></label>
-        <label>Nature <input data-testid="cs-nature-filter" type="text" v-model="filters.nature" /></label>
-        <label>Mois <input data-testid="cs-month" type="text" v-model="filters.month" /></label>
-        <button class="btn" data-testid="cs-search" @click="search">Rechercher</button>
-        <button class="btn sec" data-testid="cs-export" @click="exportCsv">Exporter CSV</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="cs-error" style="margin-top: 10px">{{ error }}</div>
-      <pre v-if="csv" data-testid="cs-export-content" style="margin-top: 10px; overflow-x: auto; background: #f6f8fa; padding: 12px">{{ csv }}</pre>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="cs-error">{{ error }}</AppMessage>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Distributeur</th><th>Produit</th><th>Gamme</th><th>Nature</th><th>Assiette</th><th>Taux</th><th>Montant</th><th>Règle</th><th>Bordereau</th><th>Mois</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="10" data-testid="no-row">Aucune ligne.</td></tr>
-          <tr v-for="(r, i) in rows" :key="i" :data-testid="`cs-row-${i}`">
-            <td>{{ r.distributor }}</td>
-            <td>{{ r.product }}</td>
-            <td>{{ r.gamme }}</td>
-            <td :data-testid="`cs-nature-${i}`">{{ r.nature }}</td>
-            <td class="num">{{ amount(r.basis) }}</td>
-            <td class="num">{{ r.rate ?? '—' }}</td>
-            <td class="num">{{ amount(r.amount) }}</td>
-            <td>{{ r.rule }}</td>
-            <td>{{ r.statementNumber }}</td>
-            <td>{{ r.month ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="csv">
+      <pre data-testid="cs-export-content" class="cs-csv">{{ csv }}</pre>
+    </AppCard>
+
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="indexedRows"
+        :loading="loading"
+        empty="Aucune ligne."
+        empty-testid="no-row"
+        :row-testid="(r) => `cs-row-${r.i}`"
+      >
+        <template #cell-nature="{ row }">
+          <span :data-testid="`cs-nature-${row.i}`">{{ row.nature }}</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.cs-actions {
+  display: flex;
+}
+.cs-csv {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+}
+</style>

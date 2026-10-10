@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 import BarChart from '../components/charts/BarChart.vue';
 import DonutChart from '../components/charts/DonutChart.vue';
 import HBarChart from '../components/charts/HBarChart.vue';
@@ -54,11 +56,17 @@ const nature = ref('');
 const data = ref<Dashboard | null>(null);
 const csv = ref('');
 const error = ref('');
+const loading = ref(false);
 
+/**
+ * Formats an amount, showing a dash for a missing value.
+ * @param value the raw amount or null
+ */
 function amount(value: number | null): string {
   return value === null ? '—' : formatAmount(value);
 }
 
+/** Builds the query string from the current filter values. */
 function query(): string {
   const params = new URLSearchParams();
   const add = (key: string, value: string) => {
@@ -77,23 +85,30 @@ function query(): string {
   return q ? `?${q}` : '';
 }
 
-async function load() {
+/** Loads the dashboard aggregates for the entity over the filtered range. */
+async function load(): Promise<void> {
   error.value = '';
   csv.value = '';
+  loading.value = true;
   try {
     data.value = await apiGet<Dashboard>(`/api/ui/v1/reporting/${entity.value}/dashboard${query()}`);
   } catch (e) {
     data.value = null;
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function exportCsv() {
+/** Fetches the CSV export of the dashboard lists for display. */
+async function exportCsv(): Promise<void> {
   csv.value = await apiGetText(`/api/ui/v1/reporting/${entity.value}/export/dashboard${query()}`);
 }
 
+/** Caption shared by the charts, naming the entity and the unit. */
 const caption = computed(() => (data.value ? `${entity.value} — en euros` : ''));
 
+/** Stacked series of commissions per month and per nature. */
 const stackedSeries = computed(() => {
   if (!data.value) {
     return [];
@@ -108,6 +123,7 @@ const stackedSeries = computed(() => {
   }));
 });
 
+/** Line series of escomptes versés, apurés and créance per month. */
 const escompteSeries = computed(() => {
   if (!data.value) {
     return [];
@@ -119,6 +135,7 @@ const escompteSeries = computed(() => {
   ];
 });
 
+/** Line series of reprises per month. */
 const reprisesSeries = computed(() => {
   if (!data.value) {
     return [];
@@ -126,129 +143,250 @@ const reprisesSeries = computed(() => {
   return [{ key: 'reprises', label: 'Reprises', values: data.value.reprisesByMonth.map((r) => r.primary) }];
 });
 
+/** Donut data of commissions per nature. */
 const natureData = computed(() => (data.value ? data.value.byNature.map((a) => ({ label: a.label, value: a.amount })) : []));
+/** Donut data of commissions per gamme. */
 const gammeData = computed(() => (data.value ? data.value.byGamme.map((a) => ({ label: a.label, value: a.amount })) : []));
+/** Horizontal-bar data of the top distributors. */
 const topData = computed(() => (data.value ? data.value.topDistributors.map((a) => ({ label: a.label, value: a.amount })) : []));
+
+/** Nature rows of the detail table. */
+const natureRows = computed(() => data.value?.byNature ?? []);
+/** Gamme rows paired with their index, for the per-row test identifier. */
+const gammeRows = computed(() => (data.value ? data.value.byGamme.map((g, i) => ({ ...g, i })) : []));
+/** Escompte rows paired with their index, for the per-row test identifier. */
+const escompteRows = computed(() => (data.value ? data.value.escompteByMonth.map((e, i) => ({ ...e, i })) : []));
+/** Reprise rows paired with their index, for the per-row test identifier. */
+const repriseRows = computed(() => (data.value ? data.value.reprisesByMonth.map((r, i) => ({ ...r, i })) : []));
+/** Top-distributor rows paired with their index, for the per-row test identifier. */
+const topRows = computed(() => (data.value ? data.value.topDistributors.map((d, i) => ({ ...d, i })) : []));
+
+/** Columns of the commissions-by-nature table. */
+const natureColumns: Column<Amount>[] = [
+  { key: 'label', label: 'Nature' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (n) => amount(n.amount) },
+];
+
+/** Columns of the commissions-by-gamme table. */
+const gammeColumns: Column<Amount & { i: number }>[] = [
+  { key: 'label', label: 'Gamme' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (g) => amount(g.amount) },
+];
+
+/** Columns of the escomptes-by-month table. */
+const escompteColumns: Column<MonthValue & { i: number }>[] = [
+  { key: 'month', label: 'Mois' },
+  { key: 'primary', label: 'Versés', align: 'num', value: (e) => amount(e.primary) },
+  { key: 'second', label: 'Apurés', align: 'num', value: (e) => amount(e.second) },
+  { key: 'third', label: 'Créance', align: 'num', value: (e) => amount(e.third) },
+];
+
+/** Columns of the reprises-by-month table. */
+const repriseColumns: Column<MonthValue & { i: number }>[] = [
+  { key: 'month', label: 'Mois' },
+  { key: 'primary', label: 'Montant', align: 'num', value: (r) => amount(r.primary) },
+];
+
+/** Columns of the top-distributors table. */
+const topColumns: Column<Amount & { i: number }>[] = [
+  { key: 'label', label: 'Distributeur' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (d) => amount(d.amount) },
+];
 
 onMounted(load);
 </script>
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Tableaux de bord</h1>
-      <div class="page__subtitle">
-        Commissions par mois, nature et gamme ; reprises ; escomptes versés, apurés et créance ; comptes
-        débiteurs ; premiers distributeurs ; anomalies — sur une plage de mois (REP-01, REP-03).
-      </div>
+    <PageHeading title="Tableaux de bord" subtitle="Commissions par mois, nature et gamme ; reprises ; escomptes versés, apurés et créance ; comptes débiteurs ; premiers distributeurs ; anomalies — sur une plage de mois (REP-01, REP-03)." />
+
+    <FilterBar
+      :loading="loading"
+      search-label="Rafraîchir"
+      search-testid="dash-refresh"
+      :resettable="false"
+      @search="load"
+    >
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="dash-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Du mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="dash-from" type="text" v-model="from" placeholder="2026-06-01" />
+      </FormField>
+      <FormField label="Au mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="dash-to" type="text" v-model="to" placeholder="2026-11-01" />
+      </FormField>
+      <FormField label="Produit" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="dash-product" type="text" v-model="product" />
+      </FormField>
+      <FormField label="Distributeur" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="dash-distributor" type="text" v-model="distributor" />
+      </FormField>
+      <FormField label="Groupement" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="dash-group" type="text" v-model="group" />
+      </FormField>
+      <FormField label="Délégation" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="dash-delegation" type="text" v-model="delegation" />
+      </FormField>
+      <FormField label="Nature" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="dash-nature-filter" type="text" v-model="nature" />
+      </FormField>
+    </FilterBar>
+
+    <div class="dash-actions">
+      <AppButton variant="secondary" data-testid="dash-export" @click="exportCsv">Exporter CSV</AppButton>
     </div>
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="dash-entity" type="text" v-model="entity" /></label>
-        <label>Du mois <input data-testid="dash-from" type="text" v-model="from" placeholder="2026-06-01" /></label>
-        <label>Au mois <input data-testid="dash-to" type="text" v-model="to" placeholder="2026-11-01" /></label>
-        <label>Produit <input data-testid="dash-product" type="text" v-model="product" /></label>
-        <label>Distributeur <input data-testid="dash-distributor" type="text" v-model="distributor" /></label>
-        <label>Groupement <input data-testid="dash-group" type="text" v-model="group" /></label>
-        <label>Délégation <input data-testid="dash-delegation" type="text" v-model="delegation" /></label>
-        <label>Nature <input data-testid="dash-nature-filter" type="text" v-model="nature" /></label>
-        <button class="btn" data-testid="dash-refresh" @click="load">Rafraîchir</button>
-        <button class="btn sec" data-testid="dash-export" @click="exportCsv">Exporter CSV</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="dash-error" style="margin-top: 10px">{{ error }}</div>
-      <pre v-if="csv" data-testid="dash-export-content" style="margin-top: 10px; overflow-x: auto; background: #f6f8fa; padding: 12px">{{ csv }}</pre>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="dash-error">{{ error }}</AppMessage>
+
+    <AppCard v-if="csv">
+      <pre data-testid="dash-export-content" class="dash-csv">{{ csv }}</pre>
+    </AppCard>
 
     <template v-if="data">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px">
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Reprises</div>
-          <div data-testid="dash-reprises" style="font: 500 22px monospace; margin-top: 6px">{{ amount(data.reprises) }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Escomptes versés</div>
-          <div data-testid="dash-verses" style="font: 500 22px monospace; margin-top: 6px">{{ amount(data.escomptesVerses) }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Escomptes apurés</div>
-          <div data-testid="dash-apures" style="font: 500 22px monospace; margin-top: 6px">{{ amount(data.escomptesApures) }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Créance d'escompte</div>
-          <div data-testid="dash-creance" style="font: 500 22px monospace; margin-top: 6px">{{ amount(data.creance) }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Comptes débiteurs</div>
-          <div data-testid="dash-debtors" style="font: 500 22px monospace; margin-top: 6px">{{ data.debtorAccounts }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Anomalies</div>
-          <div data-testid="dash-anomalies" style="font: 500 22px monospace; margin-top: 6px">{{ data.anomalies }}</div></div>
+      <div class="dash-stats">
+        <div class="card dash-stat">
+          <span class="dash-stat__label">Reprises</span>
+          <span class="dash-stat__value" data-testid="dash-reprises">{{ amount(data.reprises) }}</span>
+        </div>
+        <div class="card dash-stat">
+          <span class="dash-stat__label">Escomptes versés</span>
+          <span class="dash-stat__value" data-testid="dash-verses">{{ amount(data.escomptesVerses) }}</span>
+        </div>
+        <div class="card dash-stat">
+          <span class="dash-stat__label">Escomptes apurés</span>
+          <span class="dash-stat__value" data-testid="dash-apures">{{ amount(data.escomptesApures) }}</span>
+        </div>
+        <div class="card dash-stat">
+          <span class="dash-stat__label">Créance d'escompte</span>
+          <span class="dash-stat__value" data-testid="dash-creance">{{ amount(data.creance) }}</span>
+        </div>
+        <div class="card dash-stat">
+          <span class="dash-stat__label">Comptes débiteurs</span>
+          <span class="dash-stat__value" data-testid="dash-debtors">{{ data.debtorAccounts }}</span>
+        </div>
+        <div class="card dash-stat">
+          <span class="dash-stat__label">Anomalies</span>
+          <span class="dash-stat__value" data-testid="dash-anomalies">{{ data.anomalies }}</span>
+        </div>
       </div>
 
-      <section class="card">
-        <BarChart mode="stacked" :categories="data.months" :series="stackedSeries"
-                  title="Commissions par mois et par nature" :caption="caption" testid="chart-month-nature" />
-      </section>
+      <AppCard>
+        <BarChart
+          mode="stacked"
+          :categories="data.months"
+          :series="stackedSeries"
+          title="Commissions par mois et par nature"
+          :caption="caption"
+          testid="chart-month-nature"
+        />
+      </AppCard>
 
-      <section class="card" style="overflow-x: auto">
+      <AppCard>
         <DonutChart :data="natureData" title="Répartition par nature" :caption="caption" testid="chart-nature" />
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Commissions par nature</h2>
-        <table>
-          <thead><tr><th>Nature</th><th>Montant</th></tr></thead>
-          <tbody>
-            <tr v-if="data.byNature.length === 0"><td colspan="2" data-testid="no-nature">Aucune commission.</td></tr>
-            <tr v-for="(n, i) in data.byNature" :key="i" :data-testid="`dash-nature-${n.label}`">
-              <td>{{ n.label }}</td><td class="num">{{ amount(n.amount) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+        <h2 class="dash-block-title">Commissions par nature</h2>
+        <DataTable
+          :columns="natureColumns"
+          :rows="natureRows"
+          empty="Aucune commission."
+          empty-testid="no-nature"
+          :row-testid="(n) => `dash-nature-${n.label}`"
+        />
+      </AppCard>
 
-      <section class="card" style="overflow-x: auto">
+      <AppCard>
         <DonutChart :data="gammeData" title="Répartition par gamme" :caption="caption" testid="chart-gamme" />
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Commissions par gamme</h2>
-        <table>
-          <thead><tr><th>Gamme</th><th>Montant</th></tr></thead>
-          <tbody>
-            <tr v-for="(g, i) in data.byGamme" :key="i" :data-testid="`dash-gamme-${i}`">
-              <td>{{ g.label }}</td><td class="num">{{ amount(g.amount) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+        <h2 class="dash-block-title">Commissions par gamme</h2>
+        <DataTable
+          :columns="gammeColumns"
+          :rows="gammeRows"
+          empty="Aucune commission."
+          :row-testid="(g) => `dash-gamme-${g.i}`"
+        />
+      </AppCard>
 
-      <section class="card" style="overflow-x: auto">
-        <LineChart :categories="data.months" :series="escompteSeries"
-                   title="Escomptes versés, apurés et créance dans le temps" :caption="caption" testid="chart-escompte" />
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Escomptes par mois</h2>
-        <table>
-          <thead><tr><th>Mois</th><th>Versés</th><th>Apurés</th><th>Créance</th></tr></thead>
-          <tbody>
-            <tr v-for="(e, i) in data.escompteByMonth" :key="i" :data-testid="`dash-escompte-${i}`">
-              <td>{{ e.month }}</td><td class="num">{{ amount(e.primary) }}</td>
-              <td class="num">{{ amount(e.second) }}</td><td class="num">{{ amount(e.third) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <AppCard>
+        <LineChart
+          :categories="data.months"
+          :series="escompteSeries"
+          title="Escomptes versés, apurés et créance dans le temps"
+          :caption="caption"
+          testid="chart-escompte"
+        />
+        <h2 class="dash-block-title">Escomptes par mois</h2>
+        <DataTable
+          :columns="escompteColumns"
+          :rows="escompteRows"
+          empty="Aucun escompte."
+          :row-testid="(e) => `dash-escompte-${e.i}`"
+        />
+      </AppCard>
 
-      <section class="card" style="overflow-x: auto">
-        <LineChart :categories="data.months" :series="reprisesSeries" title="Reprises par mois"
-                   :caption="caption" testid="chart-reprises" />
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Reprises par mois</h2>
-        <table>
-          <thead><tr><th>Mois</th><th>Montant</th></tr></thead>
-          <tbody>
-            <tr v-for="(r, i) in data.reprisesByMonth" :key="i" :data-testid="`dash-reprise-${i}`">
-              <td>{{ r.month }}</td><td class="num">{{ amount(r.primary) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <AppCard>
+        <LineChart
+          :categories="data.months"
+          :series="reprisesSeries"
+          title="Reprises par mois"
+          :caption="caption"
+          testid="chart-reprises"
+        />
+        <h2 class="dash-block-title">Reprises par mois</h2>
+        <DataTable
+          :columns="repriseColumns"
+          :rows="repriseRows"
+          empty="Aucune reprise."
+          :row-testid="(r) => `dash-reprise-${r.i}`"
+        />
+      </AppCard>
 
-      <section class="card" style="overflow-x: auto">
+      <AppCard>
         <HBarChart :data="topData" title="Premiers distributeurs" :caption="caption" testid="chart-top" />
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Premiers distributeurs</h2>
-        <table>
-          <thead><tr><th>Distributeur</th><th>Montant</th></tr></thead>
-          <tbody>
-            <tr v-for="(d, i) in data.topDistributors" :key="i" :data-testid="`dash-top-${i}`">
-              <td>{{ d.label }}</td><td class="num">{{ amount(d.amount) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+        <h2 class="dash-block-title">Premiers distributeurs</h2>
+        <DataTable
+          :columns="topColumns"
+          :rows="topRows"
+          empty="Aucun distributeur."
+          :row-testid="(d) => `dash-top-${d.i}`"
+        />
+      </AppCard>
     </template>
   </div>
 </template>
+
+<style scoped>
+.dash-actions {
+  display: flex;
+}
+.dash-csv {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+}
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-4);
+}
+.dash-stat {
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.dash-stat__label {
+  font-size: var(--fs-body);
+  color: var(--muted);
+}
+.dash-stat__value {
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-title);
+  font-weight: 500;
+}
+.dash-block-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+</style>

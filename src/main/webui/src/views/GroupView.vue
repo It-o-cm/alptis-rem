@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 import BarChart from '../components/charts/BarChart.vue';
 
 interface EntitySummary {
@@ -25,11 +27,16 @@ const csv = ref('');
 const error = ref('');
 const forbidden = ref(false);
 
+/**
+ * Formats an amount with the common currency formatting.
+ * @param value the raw amount
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
-async function load() {
+/** Loads the consolidated group view, flagging the forbidden case. */
+async function load(): Promise<void> {
   error.value = '';
   forbidden.value = false;
   csv.value = '';
@@ -45,15 +52,22 @@ async function load() {
   }
 }
 
-async function exportCsv() {
+/** Fetches the CSV export of the consolidated view for display. */
+async function exportCsv(): Promise<void> {
   csv.value = await apiGetText('/api/ui/v1/reporting/export/consolidated');
 }
 
+/**
+ * Commission total of an entity for a month, or null when absent.
+ * @param entity the entity code
+ * @param month the month
+ */
 function cell(entity: string, month: string): number | null {
   const found = data.value?.cells.find((c) => c.entity === entity && c.month === month);
   return found ? found.total : null;
 }
 
+/** Grouped bar series of each entity's commissions per month. */
 const entitySeries = computed(() => {
   if (!data.value) {
     return [];
@@ -65,58 +79,95 @@ const entitySeries = computed(() => {
   }));
 });
 
+/** Columns of the total-per-entity table. */
+const summaryColumns: Column<EntitySummary>[] = [
+  { key: 'name', label: 'Entité' },
+  { key: 'total', label: 'Commissions', align: 'num', value: (e) => amount(e.total) },
+];
+
+/** Columns of the entities-by-month table, one numeric column per month. */
+const monthColumns = computed<Column<EntitySummary>[]>(() => {
+  const cols: Column<EntitySummary>[] = [{ key: 'code', label: 'Entité' }];
+  for (const m of data.value?.months ?? []) {
+    cols.push({ key: m, label: m, align: 'num', value: (e) => amount(cell(e.code, m) ?? 0) });
+  }
+  return cols;
+});
+
 onMounted(load);
 </script>
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Vision consolidée groupe</h1>
-      <div class="page__subtitle">Commissions de chaque entité, mois par mois, pour les utilisateurs groupe (REP-07).</div>
-    </div>
+    <PageHeading title="Vision consolidée groupe" subtitle="Commissions de chaque entité, mois par mois, pour les utilisateurs groupe (REP-07)." />
 
-    <section v-if="forbidden" class="card" data-testid="group-forbidden" style="padding: 18px 20px">
+    <AppCard v-if="forbidden" data-testid="group-forbidden">
       La vision consolidée est réservée aux utilisateurs de niveau groupe.
-    </section>
+    </AppCard>
 
     <template v-else>
-      <section class="card" style="padding: 14px 20px">
-        <button class="btn sec" data-testid="group-export" @click="exportCsv">Exporter CSV</button>
-        <div v-if="error" class="tag ko" data-testid="group-error" style="margin-top: 10px">{{ error }}</div>
-        <pre v-if="csv" data-testid="group-export-content" style="margin-top: 10px; overflow-x: auto; background: #f6f8fa; padding: 12px">{{ csv }}</pre>
-      </section>
+      <div class="group-actions">
+        <AppButton variant="secondary" data-testid="group-export" @click="exportCsv">Exporter CSV</AppButton>
+      </div>
 
-      <section v-if="data" class="card" style="overflow-x: auto">
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Total par entité</h2>
-        <table>
-          <thead><tr><th>Entité</th><th>Commissions</th></tr></thead>
-          <tbody>
-            <tr v-for="e in data.summaries" :key="e.code" :data-testid="`group-row-${e.code}`">
-              <td>{{ e.name }}</td><td class="num">{{ amount(e.total) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <AppMessage v-if="error" variant="error" data-testid="group-error">{{ error }}</AppMessage>
 
-      <section v-if="data" class="card">
-        <BarChart mode="grouped" :categories="data.months" :series="entitySeries"
-                  title="Commissions des entités, mois par mois" caption="en euros" testid="chart-group" />
-      </section>
+      <AppCard v-if="csv">
+        <pre data-testid="group-export-content" class="group-csv">{{ csv }}</pre>
+      </AppCard>
 
-      <section v-if="data" class="card" style="overflow-x: auto">
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Entités par mois</h2>
-        <table>
-          <thead>
-            <tr><th>Entité</th><th v-for="m in data.months" :key="m">{{ m }}</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="e in data.summaries" :key="e.code" :data-testid="`group-month-row-${e.code}`">
-              <td>{{ e.code }}</td>
-              <td v-for="m in data.months" :key="m" class="num">{{ amount(cell(e.code, m) ?? 0) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <AppCard v-if="data">
+        <h2 class="group-block-title">Total par entité</h2>
+        <DataTable
+          :columns="summaryColumns"
+          :rows="data.summaries"
+          row-key="code"
+          empty="Aucune entité."
+          :row-testid="(e) => `group-row-${e.code}`"
+        />
+      </AppCard>
+
+      <AppCard v-if="data">
+        <BarChart
+          mode="grouped"
+          :categories="data.months"
+          :series="entitySeries"
+          title="Commissions des entités, mois par mois"
+          caption="en euros"
+          testid="chart-group"
+        />
+      </AppCard>
+
+      <AppCard v-if="data">
+        <h2 class="group-block-title">Entités par mois</h2>
+        <DataTable
+          :columns="monthColumns"
+          :rows="data.summaries"
+          row-key="code"
+          empty="Aucune entité."
+          :row-testid="(e) => `group-month-row-${e.code}`"
+        >
+          <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+        </DataTable>
+      </AppCard>
     </template>
   </div>
 </template>
+
+<style scoped>
+.group-actions {
+  display: flex;
+}
+.group-csv {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+}
+.group-block-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+</style>
