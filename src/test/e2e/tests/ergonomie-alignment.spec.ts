@@ -80,10 +80,14 @@ async function sweep(
       await page.getByTestId('page-title').waitFor();
       await page.waitForLoadState('networkidle');
 
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow, `${screen.name} @${width}: horizontal page scroll`).toBeLessThanOrEqual(1);
+      // Poll until the layout has settled: wide tables scroll inside their own
+      // container, so the page itself must never scroll horizontally.
+      await expect
+        .poll(
+          () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          { message: `${screen.name} @${width}: horizontal page scroll`, timeout: 4000 },
+        )
+        .toBeLessThanOrEqual(1);
 
       const { forms, fiches, numAligns } = await readGroups(page);
       for (const form of forms) {

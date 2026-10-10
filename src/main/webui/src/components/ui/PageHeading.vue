@@ -23,7 +23,7 @@ const rubric = computed(() => sectionHeadingOf(route.name as string | undefined)
 
 <template>
   <div class="ui-heading" data-ui="heading">
-    <p v-if="rubric" class="ui-heading__rubric" data-testid="page-rubric">{{ rubric }}</p>
+    <p v-if="rubric" class="ui-heading__rubric" data-testid="page-rubric">{{ rubric.toUpperCase() }}</p>
     <h1 class="page__title" data-testid="page-title">{{ title }}</h1>
     <p v-if="subtitle" class="page__subtitle">{{ subtitle }}</p>
   </div>

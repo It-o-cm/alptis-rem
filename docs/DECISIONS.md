@@ -135,3 +135,41 @@ sont ordonnés avant les écrans « consultés » dans chaque rubrique (voir
 | 2026-10-10 | ERGONOMIE §3 confirmation | Composant de confirmation livré mais non raccordé aux actions | Le socle fournit `ConfirmDialog` (demande de confirmation unique, modale, Échap annule, focus sur le bouton de confirmation). Il n'est pas raccordé aux actions irréversibles existantes (clôture, validation, purge, rejet) dans cette passe : les tests de bout en bout figés cliquent ces actions directement et affirment leur effet immédiat ; intercaler une confirmation changerait le déroulé (interdit par §1 « ne change ni les fonctions » et §5 « suite existante verte »). Le composant est prêt pour tout nouvel écran. | La passe est purement ergonomique et sans changement de fonction ; fournir le composant commun satisfait le socle (§3), le raccorder partout serait un changement de comportement hors périmètre et casserait la suite gelée. |
 | 2026-10-10 | ERGONOMIE §5 alignement | Interprétation « même bord gauche » pour les formulaires à deux colonnes | Le test d'alignement générique regroupe les bords gauches des libellés et des champs en grappes (tolérance 2 px) : il exige au plus deux grappes de libellés et autant de grappes de champs que de libellés. Un formulaire sur une colonne a donc un seul bord de libellé et un seul bord de champ (le cas courant de §5) ; un formulaire sur deux colonnes (`AppForm two-column`) a deux paires de colonnes, chacune alignée. | §3 demande explicitement le passage à deux colonnes des formulaires longs ; « tous les champs le même bord gauche » décrit le cas à une colonne, le test l'étend proprement au cas à deux colonnes sans l'affaiblir. |
 | 2026-10-10 | ERGONOMIE §5 garde-fous | Garde-fous de construction | `src/main/webui/scripts/ux-guard.mjs` échoue la construction (branché sur `verify` dans `pom.xml`, indépendant de la suite e2e) si une vue ou un composant porte un attribut `style` hors exceptions nommées (les graphiques SVG, géométrie calculée), si une vue contient un `<label>`, `<table>` ou `<button>` nu, ou si un écran du routeur manque au manifeste d'alignement (`src/test/e2e/support/screens.ts`). Le test Playwright d'alignement parcourt ce manifeste, le menu et les états ont leurs tests. | §5 : la construction échoue sur chacune de ces conditions ; l'analyse statique ne dépend pas de l'application lancée, le manifeste tient le routeur et le test d'alignement synchronisés. |
+
+## Revue visuelle des écrans (ERGONOMIE §4)
+
+Méthode : chaque écran du routeur a d'abord été passé sur le socle commun (plus
+aucun attribut `style`, plus aucun `<label>`/`<table>`/`<button>` nu — garde-fou
+`ux-guard.mjs`), puis l'application a été lancée avec le jeu de démonstration et
+chaque écran capturé en 1440 et 1024 px (`scripts/capture-screens.mjs`, dossier
+ignoré par git). Les captures ont été regardées. Les défauts structurels de la
+liste §4 (libellés/champs non alignés, largeurs incohérentes, formulaire étiré,
+débordement, barre horizontale de page, tableaux illisibles, espacements
+irréguliers, boutons disparates, titres incohérents, champ sans libellé
+accessible) sont corrigés par la mise sur le socle : formulaires et fiches en
+colonnes alignées (`AppForm`/`FormField`/`DetailList`), tableaux homogènes à
+montants cadrés à droite en chiffres à chasse fixe (`DataTable`), trois niveaux
+de bouton (`AppButton`), filtres unifiés (`FilterBar`), repère de rubrique au-
+dessus de chaque titre (`PageHeading`), espacements issus des variables. Revue à
+1440 et 1024 : aucune barre de défilement horizontale de page, les formulaires à
+deux colonnes reviennent à une colonne en 1024, aucun chevauchement ni troncature.
+
+Défauts de la liste §4 **laissés**, et pourquoi :
+
+| Catégorie §4 | Constat | Décision |
+| --- | --- | --- |
+| Codes d'énumération en anglais | Certaines colonnes/listes déroulantes affichent le code brut (`OUTBOUND`, `CHEQUE`/`CYCLE`/`OFF_CYCLE`, `PREMIUM_COLLECTED`, natures `LINEAR`/`CLAWBACK`/`FEE`…). Présents avant cette passe. | Laissés : la suite e2e gelée affirme ces valeurs exactes et les saisit dans des listes ; les traduire changerait des valeurs/fonctions (interdit par §1 et §5). À traiter avec une passe de libellés et la mise à jour conjointe des tests. |
+| Saisie d'une valeur connue en champ libre | Code d'entité et mois saisis en champ texte (p. ex. `ALPTIS_ASSURANCES`, `2026-09-01`) sur plusieurs écrans. Présent avant cette passe. | Laissé : les tests e2e gelés remplissent ces champs par `.fill()` ; les remplacer par une liste/sélecteur changerait le mécanisme de saisie (§5). Les champs sont désormais étiquetés et reliés (`FormField`). |
+| Dates au format ISO | Les clés de période/mois s'affichent en ISO (`2026-09-01`). | Laissé : ce sont des identifiants de période affirmés par la suite e2e gelée ; un formatage d'affichage les désynchroniserait des assertions (§5). |
+
+Tous les autres points de la liste §4 sont corrigés par le socle. Les 42 écrans
+du routeur sont passés sur le socle (garde-fou de couverture d'alignement) ;
+aucun n'est resté en l'état.
+
+Défaut **relevé et corrigé** par le test d'alignement : sur un tableau large (p.
+ex. « Exports » en 1024 px), l'en-tête d'actions masqué aux voyants (`.ui-sr`,
+`position: absolute`) s'échappait du rognage horizontal du conteneur de défilement
+et poussait la page au-delà de la fenêtre (défilement horizontal de page). Corrigé
+en faisant du conteneur `.ui-table__scroll` un bloc contenant (`position: relative`)
+pour l'élément absolu : la page ne défile plus horizontalement, le tableau défile
+dans son propre cadre. Vérifié par `ergonomie-alignment.spec.ts` en 1440 et 1024.

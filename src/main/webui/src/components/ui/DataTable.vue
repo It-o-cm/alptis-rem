@@ -194,6 +194,9 @@ function next(): void {
 <style scoped>
 .ui-table__scroll {
   overflow-x: auto;
+  /* Containing block so the sr-only action header cannot escape the horizontal
+     clip and push the page wider than the viewport on a wide table. */
+  position: relative;
 }
 .ui-table__state {
   color: var(--muted);

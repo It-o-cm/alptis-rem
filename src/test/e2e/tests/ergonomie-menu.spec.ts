@@ -111,11 +111,21 @@ test.describe('Rubrique courante toujours ouverte', () => {
 });
 
 test.describe('Rubriques ouvertes par défaut conformes au rôle', () => {
-  for (const [role, work] of Object.entries(WORK)) {
-    test(`le rôle ${role} ouvre ses rubriques de travail @screen:menu`, async ({ browser }) => {
-      const context = await browser.newContext({ httpCredentials: USER_BY_ROLE[role] });
+  for (const [role, creds] of Object.entries(USER_BY_ROLE)) {
+    test(`l’utilisateur du rôle ${role} ouvre ses rubriques de travail @screen:menu`, async ({ browser }) => {
+      const context = await browser.newContext({ httpCredentials: creds });
       const page = await context.newPage();
       await page.goto('/');
+      // Wait for the role-tailored navigation to render before measuring it.
+      await page.locator('[data-testid^="nav-toggle-"]').first().waitFor();
+
+      // The user's real roles (dev users may cumulate roles, e.g. BA + OP); the
+      // expected open rubrics are the union of the work rubrics of those roles.
+      const me = (await page.evaluate(async () => (await fetch('/api/ui/v1/me')).json())) as {
+        roles: string[];
+      };
+      const expectedOpen = new Set(me.roles.flatMap((r) => WORK[r] ?? []));
+
       const headings = await page.evaluate(() =>
         [...document.querySelectorAll('[data-testid^="nav-toggle-"]')].map((t) =>
           (t.getAttribute('data-testid') as string).replace('nav-toggle-', ''),
@@ -124,13 +134,11 @@ test.describe('Rubriques ouvertes par défaut conformes au rôle', () => {
       expect(headings.length, `${role}: at least one rubric is shown`).toBeGreaterThan(0);
       for (const heading of headings) {
         const state = await expanded(page, heading);
-        if (work.includes(heading)) {
-          expect(state, `${role}: work rubric ${heading} open`).toBe('true');
-        } else if (heading === 'Cycle mensuel') {
-          // The home screen's rubric is the current one, always open.
-          expect(state, `${role}: current rubric ${heading} open`).toBe('true');
+        if (expectedOpen.has(heading) || heading === 'Cycle mensuel') {
+          // Work rubrics, and the current screen's rubric (home = Cycle mensuel), are open.
+          expect(state, `${role}: rubric ${heading} should be open`).toBe('true');
         } else {
-          expect(state, `${role}: non-work rubric ${heading} collapsed`).toBe('false');
+          expect(state, `${role}: non-work rubric ${heading} should be collapsed`).toBe('false');
         }
       }
       await context.close();
