@@ -22,6 +22,7 @@ test('le contrôleur Finance lit le cut-off et change de maille @screen:cutoff @
   // Reading by distributor gives the accrued-versus-paid reconciliation (FIN-06).
   await page.getByTestId('cutoff-view-DISTRIBUTOR').click();
   await expect(page.locator('[data-testid^="cutoff-row-"]').first()).toBeVisible();
+  await expect(page.getByTestId('chart-cutoff')).toBeVisible();
   await finance.close();
 });
 

@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
+import LineChart from '../components/charts/LineChart.vue';
+
+interface MonthBalance {
+  month: string;
+  balance: number;
+}
 
 interface AccountView {
   id: number;
@@ -31,15 +37,23 @@ const message = ref('');
 
 const canOperate = () => canOperateCycle(session.roles);
 
+const series = ref<MonthBalance[]>([]);
+
 async function search() {
   error.value = '';
   view.value = null;
+  series.value = [];
   try {
     view.value = await apiGet<DistributorView>(`/api/ui/v1/accounts/${entity.value}/distributor/${partnerCode.value}`);
+    series.value = await apiGet<MonthBalance[]>(
+      `/api/ui/v1/accounts/${entity.value}/distributor/${partnerCode.value}/balance-series`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Distributeur introuvable';
   }
 }
+
+const balanceMonths = computed(() => series.value.map((p) => p.month));
+const balanceSeries = computed(() => [{ key: 'balance', label: 'Solde', values: series.value.map((p) => p.balance) }]);
 
 async function loadDebtors() {
   debtors.value = await apiGet<AccountView[]>(`/api/ui/v1/accounts/${entity.value}/debtors`);
@@ -116,6 +130,11 @@ onMounted(loadDebtors);
           </tr>
         </tbody>
       </table>
+    </section>
+
+    <section v-if="series.length > 0" class="card">
+      <LineChart :categories="balanceMonths" :series="balanceSeries" title="Solde du compte dans le temps"
+                 :caption="view ? view.partnerCode : ''" testid="chart-account-balance" />
     </section>
 
     <section class="card" style="overflow-x: auto" data-testid="debtors">

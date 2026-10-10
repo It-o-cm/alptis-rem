@@ -68,6 +68,27 @@ public class AccountsResource {
     }
 
     /**
+     * Returns a distributor's running account balance month by month (for the balance chart).
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor partner code
+     * @return the balance series
+     */
+    @GET
+    @Path("/{entityCode}/distributor/{partnerCode}/balance-series")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<AccountService.MonthBalance> balanceSeries(@PathParam("entityCode") String entityCode,
+                                                           @PathParam("partnerCode") String partnerCode) {
+        LegalEntity entity = requireEntity(entityCode);
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", partnerCode).firstResult();
+        if (distributor == null) {
+            throw new ResourceNotFoundException("Distributeur inconnu : " + partnerCode);
+        }
+        return accounts.balanceSeries(entity, distributor);
+    }
+
+    /**
      * Lists the entity's debtor accounts (CPT-07).
      *
      * @param entityCode the entity code

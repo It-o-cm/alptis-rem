@@ -23,6 +23,8 @@ test.describe('Contrôles — opérateur', () => {
 
     const row = page.locator('[data-testid^="anomaly-row-"]').first();
     await expect(row).toContainText('ACCOUNT-DEBTOR');
+    await expect(page.getByTestId('chart-ctl-severity')).toBeVisible();
+    await expect(page.getByTestId('chart-ctl-family')).toBeVisible();
     const accept = page.locator('[data-testid^="anomaly-accept-"]').first();
     await accept.click();
     await expect(page.locator('[data-testid^="anomaly-decision-"]').first()).toContainText('Acceptée');

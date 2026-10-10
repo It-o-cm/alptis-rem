@@ -23,6 +23,7 @@ test.describe('Compte distributeur — opérateur', () => {
     await page.getByTestId('acc-search').click();
     await expect(page.getByTestId('account-view')).toBeVisible();
     await expect(page.getByTestId('account-total')).toContainText('400,00');
+    await expect(page.getByTestId('chart-account-balance')).toBeVisible();
 
     await page.getByTestId('acc-compensate').click();
     await expect(page.getByTestId('acc-message')).toContainText('compensation');

@@ -97,6 +97,21 @@ class ControlsResourceTest {
     }
 
     /**
+     * The anomaly breakdown counts the period's anomalies by severity and by control family.
+     */
+    @Test
+    void anomaly_breakdown_counts_by_severity_and_family() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().post("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/run")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/anomaly-breakdown")
+                .then().statusCode(200)
+                .body("bySeverity.label", hasItem("WARNING"))
+                .body("byFamily.label", hasItem("ACCOUNT"));
+    }
+
+    /**
      * The catalogue lists the entity's controls.
      */
     @Test

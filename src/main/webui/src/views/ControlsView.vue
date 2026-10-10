@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, severityTag, decisionLabel } from '../presentation/cycle';
+import HBarChart from '../components/charts/HBarChart.vue';
+
+interface Count {
+  label: string;
+  count: number;
+}
+interface Breakdown {
+  bySeverity: Count[];
+  byFamily: Count[];
+}
 
 interface AnomalyView {
   id: number;
@@ -36,14 +46,24 @@ const justification = ref<Record<number, string>>({});
 
 const canOperate = () => canOperateCycle(session.roles);
 
+const breakdown = ref<Breakdown | null>(null);
+
 async function loadAnomalies() {
   error.value = '';
   try {
     anomalies.value = await apiGet<AnomalyView[]>(`/api/ui/v1/controls/${entity.value}/${month.value}/anomalies`);
+    breakdown.value = await apiGet<Breakdown>(`/api/ui/v1/controls/${entity.value}/${month.value}/anomaly-breakdown`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
   }
 }
+
+const severityData = computed(() =>
+  breakdown.value ? breakdown.value.bySeverity.map((c) => ({ label: c.label, value: c.count })) : [],
+);
+const familyData = computed(() =>
+  breakdown.value ? breakdown.value.byFamily.map((c) => ({ label: c.label, value: c.count })) : [],
+);
 
 async function loadCatalog() {
   catalog.value = await apiGet<CatalogEntry[]>(`/api/ui/v1/controls/${entity.value}/catalog`);
@@ -101,6 +121,16 @@ onMounted(async () => {
       <div v-if="error" class="tag ko" data-testid="ctl-error" style="margin-top: 10px">{{ error }}</div>
       <div v-if="message" class="tag ok" data-testid="ctl-message" style="margin-top: 10px">{{ message }}</div>
     </section>
+
+    <div v-if="breakdown && breakdown.bySeverity.length > 0"
+         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px">
+      <section class="card">
+        <HBarChart :data="severityData" title="Anomalies par sévérité" format="count" testid="chart-ctl-severity" />
+      </section>
+      <section class="card">
+        <HBarChart :data="familyData" title="Anomalies par famille de contrôle" format="count" testid="chart-ctl-family" />
+      </section>
+    </div>
 
     <section class="card" style="overflow-x: auto" data-testid="anomalies">
       <table>

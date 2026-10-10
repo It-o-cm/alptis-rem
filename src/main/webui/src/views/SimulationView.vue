@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
+import BarChart from '../components/charts/BarChart.vue';
 
 interface NatureComparison {
   nature: string;
@@ -50,6 +51,17 @@ function amount(value: number): string {
 function addSubstitution() {
   substitutions.value.push({ oldRate: '', newRate: '' });
 }
+
+const natureCategories = computed(() => (result.value ? result.value.byNature.map((n) => n.nature) : []));
+const compareSeries = computed(() => {
+  if (!result.value) {
+    return [];
+  }
+  return [
+    { key: 'real', label: 'Réel', values: result.value.byNature.map((n) => n.real) },
+    { key: 'simulated', label: 'Simulé', values: result.value.byNature.map((n) => n.simulated) },
+  ];
+});
 
 async function run() {
   error.value = '';
@@ -120,6 +132,11 @@ async function run() {
           <div style="font-size: 13px; color: #4a5868; margin-top: 4px">sur {{ result.linesReplayed }} rejouées</div>
           <div style="font-size: 13px; color: #4a5868; margin-top: 4px">Événements en attente : {{ result.held }}</div></div>
       </div>
+
+      <section class="card">
+        <BarChart mode="grouped" :categories="natureCategories" :series="compareSeries"
+                  title="Réel contre simulé par nature" caption="en euros" testid="chart-sim" />
+      </section>
 
       <section class="card" style="overflow-x: auto">
         <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Écart par nature</h2>

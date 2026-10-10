@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import HBarChart from '../components/charts/HBarChart.vue';
 
 interface Result {
   id: number;
@@ -34,6 +35,8 @@ function amount(value: number): string {
 function total(): number {
   return rows.value.reduce((sum, r) => sum + r.amount, 0);
 }
+
+const achievementData = computed(() => rows.value.map((r) => ({ label: r.employeeName, value: r.achievementRate })));
 
 async function load() {
   error.value = '';
@@ -116,6 +119,11 @@ onMounted(load);
         <label>Motif <input data-testid="fdvv-adj-reason" type="text" v-model="adjust.reason" /></label>
         <button class="btn" data-testid="fdvv-adj-submit" @click="submitAdjustment">Enregistrer</button>
       </div>
+    </section>
+
+    <section v-if="rows.length > 0" class="card">
+      <HBarChart :data="achievementData" title="Atteinte de l'objectif par collaborateur" format="percent"
+                 testid="chart-fdvv" />
     </section>
 
     <section class="card" style="overflow-x: auto">

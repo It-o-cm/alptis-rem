@@ -25,6 +25,7 @@ test('l’administrateur lance une simulation et lit la comparaison @screen:simu
   // The comparison cards appear, computed by the server in the separate simulation space.
   await expect(page.getByTestId('sim-real')).toBeVisible();
   await expect(page.getByTestId('sim-ecart')).toBeVisible();
+  await expect(page.getByTestId('chart-sim')).toBeVisible();
   await admin.close();
 });
 

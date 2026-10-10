@@ -118,6 +118,35 @@ public class AccountService {
     }
 
     /**
+     * The month-by-month running balance of a distributor across all its accounts: the cumulative sum
+     * of its counted commission lines (by period month) and its account entries (by entry month). For
+     * the account-balance chart; the interface only displays it.
+     *
+     * @param entity      the entity
+     * @param distributor the distributor
+     * @return the running balance per month, ascending
+     */
+    public List<MonthBalance> balanceSeries(LegalEntity entity, Distributor distributor) {
+        Map<LocalDate, BigDecimal> delta = new java.util.TreeMap<>();
+        for (DistributorAccount account : accountsOfDistributor(entity, distributor)) {
+            for (CommissionLine line : CommissionLine.<CommissionLine>list(
+                    "account = ?1 and status in ?2 and period is not null", account, COUNTED)) {
+                delta.merge(line.period.periodMonth, line.amount, BigDecimal::add);
+            }
+            for (AccountEntry entry : AccountEntry.<AccountEntry>list("account = ?1", account)) {
+                delta.merge(entry.entryDate.withDayOfMonth(1), entry.amount, BigDecimal::add);
+            }
+        }
+        List<MonthBalance> series = new ArrayList<>();
+        BigDecimal running = BigDecimal.ZERO;
+        for (Map.Entry<LocalDate, BigDecimal> month : delta.entrySet()) {
+            running = running.add(month.getValue());
+            series.add(new MonthBalance(month.getKey(), running));
+        }
+        return series;
+    }
+
+    /**
      * Attaches the period's acquired lines that bear no account yet to their production code's account
      * (the account-posting time of the cycle, D10).
      *
@@ -414,5 +443,14 @@ public class AccountService {
             this.account = account;
             this.amount = amount;
         }
+    }
+
+    /**
+     * One month and the distributor's running account balance at the end of it.
+     *
+     * @param month   the month
+     * @param balance the running balance
+     */
+    public record MonthBalance(LocalDate month, BigDecimal balance) {
     }
 }

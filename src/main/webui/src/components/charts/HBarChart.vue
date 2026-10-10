@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { domainOf, bar } from '../../presentation/charts';
 import { paletteColor } from '../../presentation/palette';
-import { formatAmount } from '../../presentation/format';
+import { formatAmount, formatPercent } from '../../presentation/format';
 
 interface Datum {
   label: string;
@@ -14,10 +14,21 @@ const props = withDefaults(
     title: string;
     caption?: string;
     data: Datum[];
+    format?: 'amount' | 'percent' | 'count';
     testid: string;
   }>(),
-  { caption: '' },
+  { caption: '', format: 'amount' },
 );
+
+function show(value: number): string {
+  if (props.format === 'percent') {
+    return formatPercent(value);
+  }
+  if (props.format === 'count') {
+    return String(value);
+  }
+  return formatAmount(value);
+}
 
 const W = 640;
 const ROW = 28;
@@ -65,10 +76,10 @@ const rows = computed<Row[]>(() =>
       <g v-for="r in rows" :key="r.testid">
         <text :x="PAD_L - 6" :y="r.y + ROW / 2" text-anchor="end" font-size="11" fill="#16202c">{{ r.label }}</text>
         <rect :data-testid="r.testid" :x="r.x" :y="r.y" :width="r.w" :height="ROW - 10" :fill="r.color"
-              tabindex="0" :aria-label="`${r.label} : ${formatAmount(r.value)}`">
-          <title>{{ r.label }} : {{ formatAmount(r.value) }}</title>
+              tabindex="0" :aria-label="`${r.label} : ${show(r.value)}`">
+          <title>{{ r.label }} : {{ show(r.value) }}</title>
         </rect>
-        <text :x="r.labelX" :y="r.y + ROW / 2" font-size="10" fill="#4a5868">{{ formatAmount(r.value) }}</text>
+        <text :x="r.labelX" :y="r.y + ROW / 2" font-size="10" fill="#4a5868">{{ show(r.value) }}</text>
       </g>
     </svg>
   </figure>

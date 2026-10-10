@@ -133,6 +133,7 @@ class DemoVisibilityTest {
                 .replace("{planCode}", DemoCodes.DEMO_PLAN)
                 .replace("{ruleCode}", DemoCodes.DEMO_PLAN + "_" + DemoCodes.F_RCD)
                 .replace("{id}", String.valueOf(batchId))
+                .replace("{partnerCode}", entity.equals(DemoCodes.ALPTIS) ? DemoCodes.CABINET : "P20001")
                 .replace("{externalId}", entity.equals(DemoCodes.ALPTIS) ? "rep-alptis" : "EMP-" + entity + "-2");
     }
 

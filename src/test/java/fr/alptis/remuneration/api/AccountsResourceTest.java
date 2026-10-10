@@ -104,6 +104,16 @@ class AccountsResourceTest {
      * The debtor list includes the account with a negative balance.
      */
     @Test
+    void balance_series_and_unknown_distributor() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/DX/balance-series")
+                .then().statusCode(200).body("month", org.hamcrest.Matchers.hasItem("2026-09-01"));
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/GHOST/balance-series")
+                .then().statusCode(404);
+    }
+
+    @Test
     void lists_debtors() {
         given().auth().preemptive().basic("operator-alptis", "operator-alptis")
                 .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/debtors")

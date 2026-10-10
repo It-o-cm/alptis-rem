@@ -16,6 +16,7 @@ import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.accounts.AccountService.MonthBalance;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -120,6 +122,31 @@ class AccountServiceTest {
         assertEquals(1, PaymentOrder.count("batch", marBatch));
         PaymentOrder order = PaymentOrder.<PaymentOrder>find("batch", marBatch).firstResult();
         assertEquals(0, order.amount.compareTo(new BigDecimal("300")));
+    }
+
+    /**
+     * The balance series accumulates the account's lines (by period month) and entries (by entry
+     * month) into a running balance, month by month.
+     */
+    @Test
+    @TestTransaction
+    void balance_series_runs_month_by_month() {
+        Distributor d = distributor("DS");
+        DistributorAccount a = accountOf(d, "PC-S");
+        line(a, period(LocalDate.of(2026, 1, 1)), "100");
+        line(a, period(LocalDate.of(2026, 2, 1)), "50");
+        AccountEntry payment = new AccountEntry();
+        payment.account = a;
+        payment.entryType = AccountEntryType.PAYMENT;
+        payment.amount = new BigDecimal("-30");
+        payment.entryDate = LocalDate.of(2026, 2, 15);
+        payment.persist();
+
+        List<MonthBalance> series = service.balanceSeries(unep(), d);
+        assertEquals(2, series.size());
+        assertEquals(LocalDate.of(2026, 1, 1), series.get(0).month());
+        assertEquals(0, new BigDecimal("100").compareTo(series.get(0).balance()));
+        assertEquals(0, new BigDecimal("120").compareTo(series.get(1).balance()));
     }
 
     /**

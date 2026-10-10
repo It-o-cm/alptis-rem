@@ -32,6 +32,7 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   const manager = await browser.newContext({ httpCredentials: USERS.managerAlptis });
   const managerPage = await manager.newPage();
   await managerPage.goto('/fdv/validation');
+  await expect(managerPage.getByTestId('chart-fdvv')).toBeVisible();
   await managerPage.locator('[data-testid^="result-validate-"]').first().click();
   await expect(managerPage.locator('[data-testid^="result-status-"]').first()).toContainText('VALIDATED');
   await manager.close();
@@ -59,6 +60,7 @@ test('le commercial consulte son variable @screen:fdvCommercial @req:FDV-15', as
   await page.getByTestId('fdvc-id').fill('C-DEMO');
   await page.getByTestId('fdvc-load').click();
   await expect(page.locator('[data-testid^="my-result-"]').first()).toBeVisible();
+  await expect(page.locator('[data-testid^="chart-gauge-"]').first()).toBeVisible();
   await rep.close();
 });
 

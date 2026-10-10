@@ -84,6 +84,23 @@ public class ControlsResource {
     }
 
     /**
+     * Counts a period's anomalies by severity and by control family (for the controls chart).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the anomaly breakdown
+     */
+    @GET
+    @Path("/{entityCode}/{month}/anomaly-breakdown")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public fr.alptis.remuneration.cycle.CycleQueryService.AnomalyBreakdown anomalyBreakdown(
+            @PathParam("entityCode") String entityCode, @PathParam("month") String month) {
+        requireScope(entityCode);
+        return query.anomalyBreakdown(entityCode, LocalDate.parse(month));
+    }
+
+    /**
      * Reads the control catalogue of an entity.
      *
      * @param entityCode the entity code

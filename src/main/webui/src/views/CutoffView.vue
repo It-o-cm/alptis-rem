@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { cutoffViewLabel } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
+import BarChart from '../components/charts/BarChart.vue';
 
 interface Row {
   label: string;
@@ -55,6 +56,20 @@ function pick(v: string) {
   load();
 }
 
+const cutoffCategories = computed(() => (report.value ? report.value.rows.map((r) => r.label) : []));
+const cutoffSeries = computed(() => {
+  if (!report.value) {
+    return [];
+  }
+  const rows = report.value.rows;
+  return [
+    { key: 'earned', label: 'Acquis', values: rows.map((r) => r.earned) },
+    { key: 'paid', label: 'Payé', values: rows.map((r) => r.paid) },
+    { key: 'balance', label: 'Solde à payer', values: rows.map((r) => r.balance) },
+    { key: 'remaining', label: 'Reste à acquérir', values: rows.map((r) => r.remaining) },
+  ];
+});
+
 onMounted(load);
 </script>
 
@@ -80,6 +95,11 @@ onMounted(load);
                 :data-testid="`cutoff-view-${v}`" @click="pick(v)">{{ viewLabel(v) }}</button>
       </div>
       <div v-if="error" class="tag ko" data-testid="cutoff-error" style="margin-top: 10px">{{ error }}</div>
+    </section>
+
+    <section v-if="report && report.rows.length > 0" class="card">
+      <BarChart mode="stacked" :categories="cutoffCategories" :series="cutoffSeries"
+                title="Acquis, payé, solde à payer et reste à acquérir" caption="en euros" testid="chart-cutoff" />
     </section>
 
     <section v-if="report" class="card" style="overflow-x: auto">

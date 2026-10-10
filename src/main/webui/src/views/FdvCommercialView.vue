@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import GaugeChart from '../components/charts/GaugeChart.vue';
 
 interface Result {
   id: number;
@@ -57,6 +58,13 @@ async function load() {
       </div>
       <div v-if="error" class="tag ko" data-testid="fdvc-error" style="margin-top: 10px">{{ error }}</div>
     </section>
+
+    <div v-if="loaded && rows.length > 0" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px">
+      <section v-for="r in rows" :key="`g${r.id}`" class="card">
+        <GaugeChart :title="`Atteinte — ${r.component}`" :caption="r.employeeName" :value="r.achievementRate"
+                    :target="1" :testid="`chart-gauge-${r.id}`" />
+      </section>
+    </div>
 
     <section v-if="loaded" class="card" style="overflow-x: auto">
       <table>

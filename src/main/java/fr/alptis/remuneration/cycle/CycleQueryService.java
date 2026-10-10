@@ -15,7 +15,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Read model of the cycle screens (WKF-04, section 7): the advancement of the open periods of the
@@ -85,6 +87,40 @@ public class CycleQueryService {
                     result.decision, result.decidedBy, result.justification));
         }
         return views;
+    }
+
+    /**
+     * Counts a period's anomalies by severity and by control family, for the controls chart. The
+     * interface only displays these counts — it does not compute them.
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the period month
+     * @return the anomaly breakdown
+     */
+    public AnomalyBreakdown anomalyBreakdown(String entityCode, LocalDate periodMonth) {
+        Period period = period(entityCode, periodMonth);
+        Map<String, Long> bySeverity = new LinkedHashMap<>();
+        Map<String, Long> byFamily = new LinkedHashMap<>();
+        for (ControlResult result : ControlResult.<ControlResult>list("period = ?1 order by id", period)) {
+            bySeverity.merge(result.severity.name(), 1L, Long::sum);
+            ControlFamily family = result.control.family;
+            byFamily.merge(family == null ? "—" : family.name(), 1L, Long::sum);
+        }
+        return new AnomalyBreakdown(counts(bySeverity), counts(byFamily));
+    }
+
+    /**
+     * Converts a count map to count rows in insertion order.
+     *
+     * @param map the map
+     * @return the count rows
+     */
+    private static List<Count> counts(Map<String, Long> map) {
+        List<Count> list = new ArrayList<>();
+        for (Map.Entry<String, Long> entry : map.entrySet()) {
+            list.add(new Count(entry.getKey(), entry.getValue()));
+        }
+        return list;
     }
 
     /**
@@ -205,6 +241,24 @@ public class CycleQueryService {
     public record AnomalyView(Long id, String controlCode, ControlSeverity severity, String objectType, Long objectId,
                               String observedValue, String expectedValue, ControlDecision decision, String decidedBy,
                               String justification) {
+    }
+
+    /**
+     * The anomaly counts of a period, by severity and by control family.
+     *
+     * @param bySeverity the counts by severity
+     * @param byFamily   the counts by control family
+     */
+    public record AnomalyBreakdown(List<Count> bySeverity, List<Count> byFamily) {
+    }
+
+    /**
+     * One labelled count.
+     *
+     * @param label the label
+     * @param count the count
+     */
+    public record Count(String label, long count) {
     }
 
     /**
