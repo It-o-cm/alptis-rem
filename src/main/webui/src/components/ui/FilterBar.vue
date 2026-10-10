@@ -12,8 +12,20 @@ withDefaults(
     loading?: boolean;
     /** Hides the reset action when a screen has nothing to reset. */
     resettable?: boolean;
+    /** Label of the search action. */
+    searchLabel?: string;
+    /** `data-testid` of the search button, to preserve an existing id. */
+    searchTestid?: string;
+    /** `data-testid` of the reset button. */
+    resetTestid?: string;
   }>(),
-  { loading: false, resettable: true },
+  {
+    loading: false,
+    resettable: true,
+    searchLabel: 'Rechercher',
+    searchTestid: 'filter-search',
+    resetTestid: 'filter-reset',
+  },
 );
 
 const emit = defineEmits<{ (e: 'search'): void; (e: 'reset'): void }>();
@@ -35,8 +47,8 @@ function onReset(): void {
       <slot />
     </div>
     <div class="ui-filterbar__actions">
-      <AppButton type="submit" :loading="loading" data-testid="filter-search">Rechercher</AppButton>
-      <AppButton v-if="resettable" variant="secondary" type="button" data-testid="filter-reset" @click="onReset">
+      <AppButton type="submit" :loading="loading" :data-testid="searchTestid">{{ searchLabel }}</AppButton>
+      <AppButton v-if="resettable" variant="secondary" type="button" :data-testid="resetTestid" @click="onReset">
         Réinitialiser
       </AppButton>
     </div>

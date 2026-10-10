@@ -236,6 +236,9 @@ td {
   font-family: 'IBM Plex Mono', monospace;
   white-space: nowrap;
 }
+.mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
 
 /* Tags */
 .tag {

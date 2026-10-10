@@ -4,6 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, severityTag, decisionLabel } from '../presentation/cycle';
 import HBarChart from '../components/charts/HBarChart.vue';
+import { AppButton, AppCard, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface Count {
   label: string;
@@ -44,11 +46,32 @@ const error = ref('');
 const message = ref('');
 const justification = ref<Record<number, string>>({});
 
-const canOperate = () => canOperateCycle(session.roles);
+/** Whether the current user may operate the cycle (run controls, decide). */
+const canOperate = (): boolean => canOperateCycle(session.roles);
 
 const breakdown = ref<Breakdown | null>(null);
 
-async function loadAnomalies() {
+/** Columns of the anomalies table. */
+const anomalyColumns: Column<AnomalyView>[] = [
+  { key: 'controlCode', label: 'Contrôle' },
+  { key: 'severity', label: 'Gravité' },
+  { key: 'object', label: 'Objet', value: (a) => `${a.objectType} #${a.objectId}` },
+  { key: 'observedValue', label: 'Constaté' },
+  { key: 'expectedValue', label: 'Attendu' },
+  { key: 'decision', label: 'Décision' },
+];
+
+/** Columns of the control catalog table. */
+const catalogColumns: Column<CatalogEntry>[] = [
+  { key: 'code', label: 'Code' },
+  { key: 'label', label: 'Libellé' },
+  { key: 'family', label: 'Famille' },
+  { key: 'severity', label: 'Gravité' },
+  { key: 'active', label: 'Actif', value: (c) => (c.active ? 'Oui' : 'Non') },
+];
+
+/** Loads the anomalies and their breakdown for the selected period. */
+async function loadAnomalies(): Promise<void> {
   error.value = '';
   try {
     anomalies.value = await apiGet<AnomalyView[]>(`/api/ui/v1/controls/${entity.value}/${month.value}/anomalies`);
@@ -58,18 +81,22 @@ async function loadAnomalies() {
   }
 }
 
+/** Anomaly counts by severity, shaped for the bar chart. */
 const severityData = computed(() =>
   breakdown.value ? breakdown.value.bySeverity.map((c) => ({ label: c.label, value: c.count })) : [],
 );
+/** Anomaly counts by control family, shaped for the bar chart. */
 const familyData = computed(() =>
   breakdown.value ? breakdown.value.byFamily.map((c) => ({ label: c.label, value: c.count })) : [],
 );
 
-async function loadCatalog() {
+/** Loads the control catalog of the selected entity. */
+async function loadCatalog(): Promise<void> {
   catalog.value = await apiGet<CatalogEntry[]>(`/api/ui/v1/controls/${entity.value}/catalog`);
 }
 
-async function run() {
+/** Runs the controls of the selected period, then reloads the anomalies. */
+async function run(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -82,16 +109,29 @@ async function run() {
   }
 }
 
-async function decide(a: AnomalyView, decision: string) {
+/**
+ * Records a decision on an anomaly, then reloads.
+ * @param a the anomaly
+ * @param decision the decision code
+ */
+async function decide(a: AnomalyView, decision: string): Promise<void> {
   await apiPost(`/api/ui/v1/controls/anomalies/${a.id}/decision`,
     { decision, justification: justification.value[a.id] ?? '' });
   await loadAnomalies();
 }
 
+/**
+ * Tag class for an anomaly severity.
+ * @param severity the severity code
+ */
 function tag(severity: string): string {
   return severityTag(severity);
 }
 
+/**
+ * French label of a decision code.
+ * @param decision the decision code
+ */
 function decided(decision: string): string {
   return decisionLabel(decision);
 }
@@ -104,75 +144,90 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Contrôles et anomalies</h1>
-      <div class="page__subtitle">
-        Les contrôles de la période, leurs anomalies et la décision prise sur chacune (section 8.6).
-      </div>
-    </div>
+    <PageHeading
+      title="Contrôles et anomalies"
+      subtitle="Les contrôles de la période, leurs anomalies et la décision prise sur chacune (section 8.6)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="ctl-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="ctl-month" type="text" v-model="month" /></label>
-        <button class="btn" data-testid="ctl-refresh" @click="loadAnomalies">Rafraîchir</button>
-        <button v-if="canOperate()" class="btn" data-testid="ctl-run" @click="run">Lancer les contrôles</button>
+    <AppCard>
+      <div class="ui-bar">
+        <FormField label="Entité" stacked width="short" v-slot="{ id }">
+          <input :id="id" data-testid="ctl-entity" type="text" v-model="entity" />
+        </FormField>
+        <FormField label="Mois" stacked width="short" v-slot="{ id }">
+          <input :id="id" data-testid="ctl-month" type="text" v-model="month" />
+        </FormField>
+        <AppButton variant="secondary" data-testid="ctl-refresh" @click="loadAnomalies">Rafraîchir</AppButton>
+        <AppButton v-if="canOperate()" data-testid="ctl-run" @click="run">Lancer les contrôles</AppButton>
       </div>
-      <div v-if="error" class="tag ko" data-testid="ctl-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="ctl-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    </AppCard>
 
-    <div v-if="breakdown && breakdown.bySeverity.length > 0"
-         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px">
-      <section class="card">
+    <AppMessage v-if="error" variant="error" data-testid="ctl-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="ctl-message">{{ message }}</AppMessage>
+
+    <div v-if="breakdown && breakdown.bySeverity.length > 0" class="ui-chart-grid">
+      <AppCard flush>
         <HBarChart :data="severityData" title="Anomalies par sévérité" format="count" testid="chart-ctl-severity" />
-      </section>
-      <section class="card">
+      </AppCard>
+      <AppCard flush>
         <HBarChart :data="familyData" title="Anomalies par famille de contrôle" format="count" testid="chart-ctl-family" />
-      </section>
+      </AppCard>
     </div>
 
-    <section class="card" style="overflow-x: auto" data-testid="anomalies">
-      <table>
-        <thead>
-          <tr><th>Contrôle</th><th>Gravité</th><th>Objet</th><th>Constaté</th><th>Attendu</th><th>Décision</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="anomalies.length === 0"><td colspan="7" data-testid="no-anomaly">Aucune anomalie.</td></tr>
-          <tr v-for="a in anomalies" :key="a.id" :data-testid="`anomaly-row-${a.id}`">
-            <td>{{ a.controlCode }}</td>
-            <td><span :class="tag(a.severity)">{{ a.severity }}</span></td>
-            <td>{{ a.objectType }} #{{ a.objectId }}</td>
-            <td>{{ a.observedValue }}</td>
-            <td>{{ a.expectedValue }}</td>
-            <td :data-testid="`anomaly-decision-${a.id}`">{{ decided(a.decision) }}</td>
-            <td v-if="canOperate()">
-              <input :data-testid="`anomaly-justif-${a.id}`" type="text" v-model="justification[a.id]"
-                     placeholder="Justification" />
-              <button class="btn" :data-testid="`anomaly-accept-${a.id}`" @click="decide(a, 'ACCEPTED')">Accepter</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard flush data-testid="anomalies">
+      <DataTable
+        :columns="anomalyColumns"
+        :rows="anomalies"
+        row-key="id"
+        empty="Aucune anomalie."
+        empty-testid="no-anomaly"
+        :row-testid="(a) => `anomaly-row-${a.id}`"
+      >
+        <template #cell-severity="{ row }"><span :class="tag(row.severity)">{{ row.severity }}</span></template>
+        <template #cell-decision="{ row }">
+          <span :data-testid="`anomaly-decision-${row.id}`">{{ decided(row.decision) }}</span>
+        </template>
+        <template #actions="{ row }">
+          <template v-if="canOperate()">
+            <input
+              :data-testid="`anomaly-justif-${row.id}`"
+              type="text"
+              v-model="justification[row.id]"
+              placeholder="Justification"
+            />
+            <AppButton variant="secondary" :data-testid="`anomaly-accept-${row.id}`" @click="decide(row, 'ACCEPTED')">
+              Accepter
+            </AppButton>
+          </template>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto" data-testid="catalog">
-      <h2 style="margin: 12px 20px; font-size: 16px">Catalogue des contrôles</h2>
-      <table>
-        <thead>
-          <tr><th>Code</th><th>Libellé</th><th>Famille</th><th>Gravité</th><th>Actif</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="catalog.length === 0"><td colspan="5" data-testid="no-catalog">Aucun contrôle.</td></tr>
-          <tr v-for="c in catalog" :key="c.code" :data-testid="`catalog-row-${c.code}`">
-            <td>{{ c.code }}</td>
-            <td>{{ c.label }}</td>
-            <td>{{ c.family }}</td>
-            <td>{{ c.severity }}</td>
-            <td>{{ c.active ? 'Oui' : 'Non' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard title="Catalogue des contrôles" data-testid="catalog">
+      <DataTable
+        :columns="catalogColumns"
+        :rows="catalog"
+        row-key="code"
+        empty="Aucun contrôle."
+        empty-testid="no-catalog"
+        :row-testid="(c) => `catalog-row-${c.code}`"
+      >
+        <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+.ui-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+</style>

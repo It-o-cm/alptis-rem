@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { periodStateLabel, nextState, canDrivePeriod } from '../presentation/cycle';
+import { AppButton, AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface PeriodSummary {
   entityCode: string;
@@ -31,32 +33,60 @@ const periods = ref<PeriodSummary[]>([]);
 const detail = ref<PeriodDetail | null>(null);
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
+const advancing = ref(false);
 
-const canDrive = () => canDrivePeriod(session.roles);
+const canDrive = (): boolean => canDrivePeriod(session.roles);
 
-async function load() {
+/** Columns of the periods list. */
+const columns: Column<PeriodSummary>[] = [
+  { key: 'entityName', label: 'Entité' },
+  { key: 'month', label: 'Mois' },
+  { key: 'state', label: 'État' },
+];
+
+/** Columns of the transitions table. */
+const transitionColumns: Column<TransitionView>[] = [
+  { key: 'fromState', label: 'De', value: (t) => periodStateLabel(t.fromState) },
+  { key: 'toState', label: 'Vers', value: (t) => periodStateLabel(t.toState) },
+  { key: 'userId', label: 'Par' },
+  { key: 'reason', label: 'Motif', value: (t) => t.reason ?? '—' },
+];
+
+/** Loads the open periods of the user's entities. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     periods.value = await apiGet<PeriodSummary[]>('/api/ui/v1/periods');
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function open(p: PeriodSummary) {
+/**
+ * Loads the detail of a period.
+ * @param p the selected period
+ */
+async function open(p: PeriodSummary): Promise<void> {
   detail.value = await apiGet<PeriodDetail>(`/api/ui/v1/periods/${p.entityCode}/${p.month}`);
 }
 
+/** The next cycle state the current period can move to, or null. */
 function target(): string | null {
   return detail.value ? nextState(detail.value.period.state) : null;
 }
 
-async function advance() {
+/** Advances the open period one step in the monthly cycle. */
+async function advance(): Promise<void> {
   if (!detail.value) return;
   const to = target();
   if (!to) return;
   message.value = '';
   error.value = '';
+  advancing.value = true;
   try {
     const p = detail.value.period;
     await apiPost(`/api/ui/v1/periods/${p.entityCode}/${p.month}/transition`, { toState: to });
@@ -65,9 +95,15 @@ async function advance() {
     await open({ ...p });
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Transition refusée';
+  } finally {
+    advancing.value = false;
   }
 }
 
+/**
+ * French label of a cycle state.
+ * @param state the state code
+ */
 function label(state: string): string {
   return periodStateLabel(state);
 }
@@ -77,59 +113,63 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Avancement des périodes</h1>
-      <div class="page__subtitle">
-        Les périodes ouvertes de vos entités et leur état dans le cycle mensuel (section 7).
-      </div>
-    </div>
+    <PageHeading
+      title="Avancement des périodes"
+      subtitle="Les périodes ouvertes de vos entités et leur état dans le cycle mensuel (section 7)."
+    />
 
-    <div v-if="error" class="tag ko" data-testid="periods-error">{{ error }}</div>
-    <div v-if="message" class="tag ok" data-testid="periods-message">{{ message }}</div>
+    <AppMessage v-if="error" variant="error" data-testid="periods-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="periods-message">{{ message }}</AppMessage>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Entité</th><th>Mois</th><th>État</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="periods.length === 0"><td colspan="4" data-testid="no-period">Aucune période ouverte.</td></tr>
-          <tr v-for="p in periods" :key="p.entityCode + p.month" :data-testid="`period-row-${p.entityCode}-${p.month}`">
-            <td>{{ p.entityName }}</td>
-            <td>{{ p.month }}</td>
-            <td><span class="tag mute">{{ label(p.state) }}</span></td>
-            <td><button class="btn" :data-testid="`open-${p.entityCode}-${p.month}`" @click="open(p)">Ouvrir</button></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="periods"
+        :loading="loading"
+        empty="Aucune période ouverte."
+        empty-testid="no-period"
+        :row-testid="(p) => `period-row-${p.entityCode}-${p.month}`"
+      >
+        <template #cell-state="{ row }"><span class="tag mute">{{ label(row.state) }}</span></template>
+        <template #actions="{ row }">
+          <AppButton variant="secondary" :data-testid="`open-${row.entityCode}-${row.month}`" @click="open(row)">
+            Ouvrir
+          </AppButton>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section v-if="detail" class="card" style="padding: 18px 20px" data-testid="period-detail">
-      <h2 style="margin: 0 0 12px; font-size: 16px">
+    <AppCard v-if="detail" data-testid="period-detail">
+      <h2 class="ui-detail-title">
         {{ detail.period.entityName }} — {{ detail.period.month }}
         <span class="tag mute" data-testid="detail-state">{{ label(detail.period.state) }}</span>
       </h2>
-      <div class="page__subtitle" data-testid="detail-counts">
+      <p class="page__subtitle" data-testid="detail-counts">
         {{ detail.lines }} ligne(s), {{ detail.openAnomalies }} anomalie(s) ouverte(s),
         {{ detail.blocking }} bloquante(s).
+      </p>
+      <div v-if="canDrive() && target()">
+        <AppButton :loading="advancing" data-testid="advance-button" @click="advance">
+          Avancer vers « {{ label(target() as string) }} »
+        </AppButton>
       </div>
-      <button v-if="canDrive() && target()" class="btn" data-testid="advance-button" @click="advance">
-        Avancer vers « {{ label(target() as string) }} »
-      </button>
-      <table style="margin-top: 14px">
-        <thead>
-          <tr><th>De</th><th>Vers</th><th>Par</th><th>Motif</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="detail.transitions.length === 0"><td colspan="4" data-testid="no-transition">Aucune transition.</td></tr>
-          <tr v-for="(t, i) in detail.transitions" :key="i" data-testid="transition-row">
-            <td>{{ label(t.fromState) }}</td>
-            <td>{{ label(t.toState) }}</td>
-            <td>{{ t.userId }}</td>
-            <td>{{ t.reason ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+      <DataTable
+        :columns="transitionColumns"
+        :rows="detail.transitions"
+        empty="Aucune transition."
+        empty-testid="no-transition"
+        :row-testid="() => 'transition-row'"
+      />
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-detail-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+</style>

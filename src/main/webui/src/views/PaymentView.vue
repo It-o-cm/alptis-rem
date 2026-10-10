@@ -4,6 +4,8 @@ import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, canValidateFinance, paymentStatusLabel } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface LotView {
   id: number;
@@ -49,32 +51,77 @@ const detail = ref<LotDetail | null>(null);
 const sepa = ref('');
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
 const offCyclePartner = ref('');
 
-const canOperate = () => canOperateCycle(session.roles);
-const canFinance = () => canValidateFinance(session.roles);
+/** Whether the current user may operate the cycle (prepare, off-cycle). */
+const canOperate = (): boolean => canOperateCycle(session.roles);
+/** Whether the current user may validate payments on behalf of Finance. */
+const canFinance = (): boolean => canValidateFinance(session.roles);
 
+/** Columns of the payment lots table. */
+const lotColumns: Column<LotView>[] = [
+  { key: 'reference', label: 'Référence' },
+  { key: 'batchType', label: 'Type' },
+  { key: 'status', label: 'Statut' },
+  { key: 'total', label: 'Total', align: 'num', value: (l) => amount(l.total) },
+  { key: 'orders', label: 'Ordres', align: 'num' },
+  { key: 'exclusions', label: 'Exclusions', align: 'num' },
+];
+
+/** Columns of the orders table of a lot. */
+const orderColumns: Column<OrderView>[] = [
+  { key: 'payee', label: 'Bénéficiaire', value: (o) => `${o.payeeType} #${o.payeeId}` },
+  { key: 'amount', label: 'Montant', align: 'num', value: (o) => amount(o.amount) },
+  { key: 'iban', label: 'IBAN' },
+  { key: 'endToEndId', label: 'Référence', value: (o) => o.endToEndId ?? '—' },
+  { key: 'status', label: 'Statut' },
+];
+
+/** Columns of the exclusions table of a lot. */
+const exclusionColumns: Column<ExclusionView>[] = [
+  { key: 'payee', label: 'Bénéficiaire', value: (x) => `${x.payeeType} #${x.payeeId}` },
+  { key: 'reason', label: 'Motif' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (x) => amount(x.amount) },
+];
+
+/**
+ * French label of a payment status.
+ * @param status the status code
+ */
 function statusLabel(status: string): string {
   return paymentStatusLabel(status);
 }
 
+/**
+ * Formats a monetary value in euros.
+ * @param value the amount
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
-async function loadLots() {
+/** Loads the payment lots of the selected entity and month. */
+async function loadLots(): Promise<void> {
   error.value = '';
   detail.value = null;
   sepa.value = '';
+  loading.value = true;
   try {
     lots.value = await apiGet<LotView[]>(`/api/ui/v1/payment/${entity.value}/${month.value}/lots`);
   } catch (e) {
     lots.value = [];
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function openLot(id: number) {
+/**
+ * Opens a lot and loads its detail.
+ * @param id the lot id
+ */
+async function openLot(id: number): Promise<void> {
   error.value = '';
   sepa.value = '';
   try {
@@ -84,7 +131,8 @@ async function openLot(id: number) {
   }
 }
 
-async function prepare() {
+/** Prepares the open lot. */
+async function prepare(): Promise<void> {
   if (!detail.value) return;
   message.value = '';
   error.value = '';
@@ -97,7 +145,8 @@ async function prepare() {
   }
 }
 
-async function validate() {
+/** Validates the open lot for Finance. */
+async function validate(): Promise<void> {
   if (!detail.value) return;
   message.value = '';
   error.value = '';
@@ -110,7 +159,8 @@ async function validate() {
   }
 }
 
-async function showSepa() {
+/** Loads the SEPA file of the open lot. */
+async function showSepa(): Promise<void> {
   if (!detail.value) return;
   error.value = '';
   try {
@@ -120,7 +170,12 @@ async function showSepa() {
   }
 }
 
-async function recordResult(order: OrderView, settled: boolean) {
+/**
+ * Records the bank result of a payment order, then reloads the lot.
+ * @param order the payment order
+ * @param settled whether the order was settled
+ */
+async function recordResult(order: OrderView, settled: boolean): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -137,7 +192,8 @@ async function recordResult(order: OrderView, settled: boolean) {
   }
 }
 
-async function createOffCycle() {
+/** Creates an off-cycle lot for the entered distributor. */
+async function createOffCycle(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -149,7 +205,8 @@ async function createOffCycle() {
   }
 }
 
-async function loadLotsKeepingDetail() {
+/** Reloads the lots list while keeping the open lot open. */
+async function loadLotsKeepingDetail(): Promise<void> {
   const openId = detail.value?.id;
   try {
     lots.value = await apiGet<LotView[]>(`/api/ui/v1/payment/${entity.value}/${month.value}/lots`);
@@ -166,105 +223,134 @@ onMounted(loadLots);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Paiement</h1>
-      <div class="page__subtitle">
-        Lots de paiement d'une période, préparation, validation Finance et fichier SEPA, résultat bancaire
-        et lot hors-cycle (sections 10.2 à 10.4).
-      </div>
-    </div>
+    <PageHeading
+      title="Paiement"
+      subtitle="Lots de paiement d'une période, préparation, validation Finance et fichier SEPA, résultat bancaire et lot hors-cycle (sections 10.2 à 10.4)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="pay-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="pay-month" type="text" v-model="month" /></label>
-        <button class="btn" data-testid="pay-refresh" @click="loadLots">Rafraîchir</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="pay-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="pay-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <FilterBar
+      :loading="loading"
+      search-label="Rafraîchir"
+      search-testid="pay-refresh"
+      :resettable="false"
+      @search="loadLots"
+    >
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="pay-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Mois" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="pay-month" type="text" v-model="month" />
+      </FormField>
+    </FilterBar>
 
-    <section v-if="canOperate()" class="card" style="padding: 18px 20px" data-testid="pay-offcycle-form">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Lot hors-cycle</h2>
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Code distributeur <input data-testid="pay-offcycle-partner" type="text" v-model="offCyclePartner" /></label>
-        <button class="btn" data-testid="pay-offcycle-submit" @click="createOffCycle">Créer le lot</button>
-      </div>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="pay-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="pay-message">{{ message }}</AppMessage>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Référence</th><th>Type</th><th>Statut</th><th>Total</th><th>Ordres</th><th>Exclusions</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="lots.length === 0"><td colspan="7" data-testid="no-lot">Aucun lot.</td></tr>
-          <tr v-for="l in lots" :key="l.id" :data-testid="`lot-row-${l.id}`">
-            <td>{{ l.reference }}</td>
-            <td :data-testid="`lot-type-${l.id}`">{{ l.batchType }}</td>
-            <td :data-testid="`lot-status-${l.id}`">{{ statusLabel(l.status) }}</td>
-            <td>{{ amount(l.total) }}</td>
-            <td>{{ l.orders }}</td>
-            <td>{{ l.exclusions }}</td>
-            <td><button class="btn" :data-testid="`lot-open-${l.id}`" @click="openLot(l.id)">Détail</button></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="canOperate()" title="Lot hors-cycle" data-testid="pay-offcycle-form">
+      <AppForm @submit="createOffCycle">
+        <FormField label="Code distributeur" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="pay-offcycle-partner" type="text" v-model="offCyclePartner" />
+        </FormField>
+        <AppButton type="submit" data-testid="pay-offcycle-submit">Créer le lot</AppButton>
+      </AppForm>
+    </AppCard>
 
-    <section v-if="detail" class="card" style="padding: 18px 20px" data-testid="lot-detail">
-      <h2 style="margin: 0 0 12px; font-size: 16px">
+    <AppCard flush>
+      <DataTable
+        :columns="lotColumns"
+        :rows="lots"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun lot."
+        empty-testid="no-lot"
+        :row-testid="(l) => `lot-row-${l.id}`"
+      >
+        <template #cell-batchType="{ row }"><span :data-testid="`lot-type-${row.id}`">{{ row.batchType }}</span></template>
+        <template #cell-status="{ row }">
+          <span :data-testid="`lot-status-${row.id}`">{{ statusLabel(row.status) }}</span>
+        </template>
+        <template #actions="{ row }">
+          <AppButton variant="secondary" :data-testid="`lot-open-${row.id}`" @click="openLot(row.id)">Détail</AppButton>
+        </template>
+      </DataTable>
+    </AppCard>
+
+    <AppCard v-if="detail" data-testid="lot-detail">
+      <h2 class="ui-detail-title">
         Lot {{ detail.batchType }} — {{ statusLabel(detail.status) }} — {{ amount(detail.total) }}
       </h2>
-      <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px">
-        <button v-if="canOperate() && detail.status === 'DRAFT'" class="btn" data-testid="lot-prepare" @click="prepare">
+      <div class="ui-action-row">
+        <AppButton v-if="canOperate() && detail.status === 'DRAFT'" variant="secondary" data-testid="lot-prepare" @click="prepare">
           Préparer
-        </button>
-        <button v-if="canFinance() && detail.status === 'DRAFT'" class="btn" data-testid="lot-validate" @click="validate">
+        </AppButton>
+        <AppButton v-if="canFinance() && detail.status === 'DRAFT'" variant="secondary" data-testid="lot-validate" @click="validate">
           Valider (Finance)
-        </button>
-        <button v-if="canFinance() && detail.status === 'ISSUED'" class="btn" data-testid="lot-sepa" @click="showSepa">
+        </AppButton>
+        <AppButton v-if="canFinance() && detail.status === 'ISSUED'" variant="secondary" data-testid="lot-sepa" @click="showSepa">
           Fichier SEPA
-        </button>
+        </AppButton>
       </div>
 
-      <h3 style="margin: 12px 0 8px; font-size: 14px">Ordres</h3>
-      <table>
-        <thead>
-          <tr><th>Bénéficiaire</th><th>Montant</th><th>IBAN</th><th>Référence</th><th>Statut</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="detail.orders.length === 0"><td colspan="6" data-testid="no-order">Aucun ordre.</td></tr>
-          <tr v-for="o in detail.orders" :key="o.id" :data-testid="`order-row-${o.id}`">
-            <td>{{ o.payeeType }} #{{ o.payeeId }}</td>
-            <td>{{ amount(o.amount) }}</td>
-            <td :data-testid="`order-iban-${o.id}`">{{ o.iban ?? '—' }}</td>
-            <td>{{ o.endToEndId ?? '—' }}</td>
-            <td :data-testid="`order-status-${o.id}`">{{ statusLabel(o.status) }}</td>
-            <td>
-              <template v-if="canFinance() && o.status === 'ISSUED'">
-                <button class="btn" :data-testid="`order-settle-${o.id}`" @click="recordResult(o, true)">Réglé</button>
-                <button class="btn" :data-testid="`order-reject-${o.id}`" @click="recordResult(o, false)">Rejeté</button>
-              </template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <h3 class="ui-detail-sub">Ordres</h3>
+      <DataTable
+        :columns="orderColumns"
+        :rows="detail.orders"
+        row-key="id"
+        empty="Aucun ordre."
+        empty-testid="no-order"
+        :row-testid="(o) => `order-row-${o.id}`"
+      >
+        <template #cell-iban="{ row }"><span :data-testid="`order-iban-${row.id}`">{{ row.iban ?? '—' }}</span></template>
+        <template #cell-status="{ row }">
+          <span :data-testid="`order-status-${row.id}`">{{ statusLabel(row.status) }}</span>
+        </template>
+        <template #actions="{ row }">
+          <template v-if="canFinance() && row.status === 'ISSUED'">
+            <AppButton variant="secondary" :data-testid="`order-settle-${row.id}`" @click="recordResult(row, true)">Réglé</AppButton>
+            <AppButton variant="danger" :data-testid="`order-reject-${row.id}`" @click="recordResult(row, false)">Rejeté</AppButton>
+          </template>
+        </template>
+      </DataTable>
 
-      <h3 style="margin: 16px 0 8px; font-size: 14px">Exclusions</h3>
-      <table>
-        <thead><tr><th>Bénéficiaire</th><th>Motif</th><th>Montant</th></tr></thead>
-        <tbody>
-          <tr v-if="detail.exclusions.length === 0"><td colspan="3" data-testid="no-exclusion">Aucune exclusion.</td></tr>
-          <tr v-for="(x, i) in detail.exclusions" :key="i" :data-testid="`exclusion-row-${i}`">
-            <td>{{ x.payeeType }} #{{ x.payeeId }}</td>
-            <td :data-testid="`exclusion-reason-${i}`">{{ x.reason }}</td>
-            <td>{{ amount(x.amount) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <h3 class="ui-detail-sub">Exclusions</h3>
+      <DataTable
+        :columns="exclusionColumns"
+        :rows="detail.exclusions"
+        :row-key="(x) => detail?.exclusions.indexOf(x) ?? 0"
+        empty="Aucune exclusion."
+        empty-testid="no-exclusion"
+        :row-testid="(x) => `exclusion-row-${detail?.exclusions.indexOf(x)}`"
+      >
+        <template #cell-reason="{ row }">
+          <span :data-testid="`exclusion-reason-${detail?.exclusions.indexOf(row)}`">{{ row.reason }}</span>
+        </template>
+      </DataTable>
 
-      <pre v-if="sepa" data-testid="sepa-content" style="margin-top: 12px; overflow-x: auto; background: #f6f8fa; padding: 12px">{{ sepa }}</pre>
-    </section>
+      <pre v-if="sepa" data-testid="sepa-content" class="ui-code">{{ sepa }}</pre>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-detail-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+.ui-detail-sub {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.ui-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.ui-code {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+}
+</style>

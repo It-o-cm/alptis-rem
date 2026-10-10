@@ -4,6 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateImports } from '../presentation/access';
 import { formatDate } from '../presentation/format';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface BatchView {
   id: number;
@@ -35,12 +37,29 @@ interface HeldView {
   holdReason: string | null;
 }
 
+interface ExpectedFlow {
+  code: string;
+  label: string;
+}
+
+interface DetailRowView {
+  key: string;
+  testid: string;
+  kind: 'rejection' | 'held';
+  line: string | number;
+  motif: string;
+  code: string;
+  codeClass: string;
+  status: string;
+  rejection: RejectionView | null;
+}
+
 const FLOWS = [
   'events', 'coverages', 'distributors', 'distributor_groups', 'production_codes',
   'insurers', 'product_ranges', 'products', 'product_options', 'bank_accounts', 'quality_indicators',
   'portfolio_transfers', 'replacement_orders', 'payee_rules', 'external_codes',
 ];
-const EXPECTED = [
+const EXPECTED: ExpectedFlow[] = [
   { code: 'coverages', label: 'Garanties' },
   { code: 'events', label: 'Événements' },
   { code: 'distributors', label: 'Distributeurs' },
@@ -49,6 +68,7 @@ const EXPECTED = [
 const session = useSessionStore();
 const batches = ref<BatchView[]>([]);
 const loadError = ref('');
+const loading = ref(false);
 const selected = ref<BatchView | null>(null);
 const rejections = ref<RejectionView[]>([]);
 const held = ref<HeldView[]>([]);
@@ -57,28 +77,97 @@ const uploadError = ref('');
 
 const form = ref({ flowCode: 'distributors', sourceSystem: 'SESAME', fileName: '', content: '' });
 
-const canOperate = () => canOperateImports(session.roles);
-const entityCode = () => (session.entities.length > 0 ? session.entities[0] : '');
+/** Whether the current user may operate imports (upload, correct, discard). */
+const canOperate = (): boolean => canOperateImports(session.roles);
+/** The user's first entity, or an empty string when none. */
+const entityCode = (): string => (session.entities.length > 0 ? session.entities[0] : '');
 
+/** The set of flow codes already received, to flag expected flows. */
 const receivedFlows = computed(() => new Set(batches.value.map((b) => b.flowCode)));
 
-async function loadJournal() {
+/** Columns of the imports journal. */
+const journalColumns: Column<BatchView>[] = [
+  { key: 'flowCode', label: 'Flux' },
+  { key: 'fileName', label: 'Fichier' },
+  { key: 'receivedAt', label: 'Reçu le', value: (b) => formatDate(b.receivedAt) },
+  { key: 'linesRead', label: 'Lues', align: 'num' },
+  { key: 'linesFiltered', label: 'Filtrées', align: 'num' },
+  { key: 'linesLoaded', label: 'Intégrées', align: 'num' },
+  { key: 'linesRejected', label: 'Rejetées', align: 'num' },
+  { key: 'linesOnHold', label: 'En attente', align: 'num' },
+  { key: 'status', label: 'État' },
+];
+
+/** Columns of the lines-to-process table of a selected batch. */
+const detailColumns: Column<DetailRowView>[] = [
+  { key: 'line', label: 'Ligne', align: 'num' },
+  { key: 'motif', label: 'Motif' },
+  { key: 'code', label: 'Code' },
+  { key: 'status', label: 'Statut' },
+  { key: 'action', label: 'Action' },
+];
+
+/** Columns of the expected-flows table. */
+const expectedColumns: Column<ExpectedFlow>[] = [
+  { key: 'label', label: 'Flux' },
+  { key: 'situation', label: 'Situation' },
+];
+
+/** The rejected and on-hold lines of the selected batch, as display rows. */
+const detailRows = computed<DetailRowView[]>(() => [
+  ...rejections.value.map((r) => ({
+    key: `r-${r.id}`,
+    testid: `rejection-row-${r.id}`,
+    kind: 'rejection' as const,
+    line: r.lineNumber,
+    motif: r.rawLine,
+    code: r.reasonCode,
+    codeClass: 'tag ko',
+    status: r.status,
+    rejection: r,
+  })),
+  ...held.value.map((h, i) => ({
+    key: `h-${i}`,
+    testid: `held-row-${i}`,
+    kind: 'held' as const,
+    line: '—',
+    motif: `${h.sourceKey} · ${h.contractNumber ?? '—'}`,
+    code: h.holdReason ?? '',
+    codeClass: 'tag info',
+    status: 'ON_HOLD',
+    rejection: null,
+  })),
+]);
+
+/** Loads the imports journal of the user's entities. */
+async function loadJournal(): Promise<void> {
   loadError.value = '';
+  loading.value = true;
   try {
     const page = await apiGet<{ items: BatchView[] }>('/api/ui/v1/imports');
     batches.value = page.items;
   } catch (e) {
     loadError.value = e instanceof ApiError ? e.message : 'Erreur de chargement';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function selectBatch(batch: BatchView) {
+/**
+ * Selects a batch and loads its rejected and on-hold lines.
+ * @param batch the batch to open
+ */
+async function selectBatch(batch: BatchView): Promise<void> {
   selected.value = batch;
   rejections.value = await apiGet<RejectionView[]>(`/api/ui/v1/imports/${batch.id}/rejections`);
   held.value = await apiGet<HeldView[]>(`/api/ui/v1/imports/${batch.id}/held`);
 }
 
-async function onFile(event: Event) {
+/**
+ * Reads the chosen file into the upload form.
+ * @param event the file input change event
+ */
+async function onFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement;
   const file = input.files && input.files[0];
   if (file) {
@@ -87,7 +176,8 @@ async function onFile(event: Event) {
   }
 }
 
-async function submitUpload() {
+/** Uploads the file described by the form and refreshes the journal. */
+async function submitUpload(): Promise<void> {
   message.value = '';
   uploadError.value = '';
   try {
@@ -108,23 +198,36 @@ async function submitUpload() {
   }
 }
 
-async function correct(rejection: RejectionView) {
+/**
+ * Corrects and replays a rejected line, then refreshes.
+ * @param rejection the rejected line
+ */
+async function correct(rejection: RejectionView): Promise<void> {
   await apiPost(`/api/ui/v1/imports/rejections/${rejection.id}/correct`, {});
   await refreshSelected();
 }
 
-async function discard(rejection: RejectionView) {
+/**
+ * Discards a rejected line, then refreshes.
+ * @param rejection the rejected line
+ */
+async function discard(rejection: RejectionView): Promise<void> {
   await apiPost(`/api/ui/v1/imports/rejections/${rejection.id}/discard`, {});
   await refreshSelected();
 }
 
-async function refreshSelected() {
+/** Reloads the selected batch and the journal after a line action. */
+async function refreshSelected(): Promise<void> {
   if (selected.value) {
     await selectBatch(selected.value);
     await loadJournal();
   }
 }
 
+/**
+ * Tag class matching a batch status.
+ * @param status the batch status
+ */
 function stateClass(status: string): string {
   if (status === 'LOADED') return 'tag ok';
   if (status === 'PARTIALLY_LOADED') return 'tag warn';
@@ -137,108 +240,96 @@ onMounted(loadJournal);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Imports et rejets</h1>
-      <div class="page__subtitle">
-        Chaque fichier est contrôlé ligne par ligne : une ligne fausse est rejetée, une ligne juste mais
-        non traitable est intégrée en attente. Un fichier déjà intégré est refusé.
-      </div>
-    </div>
+    <PageHeading
+      title="Imports et rejets"
+      subtitle="Chaque fichier est contrôlé ligne par ligne : une ligne fausse est rejetée, une ligne juste mais non traitable est intégrée en attente. Un fichier déjà intégré est refusé."
+    />
 
-    <section v-if="canOperate()" class="card" style="padding: 18px 20px" data-testid="upload-form">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Déposer un fichier</h2>
-      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: end">
-        <label>Flux
-          <select data-testid="upload-flow" v-model="form.flowCode">
+    <AppCard v-if="canOperate()" title="Déposer un fichier" data-testid="upload-form">
+      <AppForm @submit="submitUpload">
+        <FormField label="Flux" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="upload-flow" v-model="form.flowCode">
             <option v-for="f in FLOWS" :key="f" :value="f">{{ f }}</option>
           </select>
-        </label>
-        <label>Système source
-          <input data-testid="upload-source" type="text" v-model="form.sourceSystem" />
-        </label>
-        <label>Fichier
-          <input data-testid="upload-file" type="file" @change="onFile" />
-        </label>
-        <button class="btn" data-testid="upload-submit" @click="submitUpload">Importer</button>
-      </div>
-      <div style="margin-top: 12px; display: flex; gap: 10px">
-        <span v-if="message" class="tag ok" data-testid="upload-message">{{ message }}</span>
-        <span v-if="uploadError" class="tag ko" data-testid="upload-error">{{ uploadError }}</span>
-      </div>
-    </section>
+        </FormField>
+        <FormField label="Système source" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="upload-source" type="text" v-model="form.sourceSystem" />
+        </FormField>
+        <FormField label="Fichier" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="upload-file" type="file" @change="onFile" />
+        </FormField>
+        <AppButton type="submit" data-testid="upload-submit">Importer</AppButton>
+      </AppForm>
+      <AppMessage v-if="message" variant="success" data-testid="upload-message">{{ message }}</AppMessage>
+      <AppMessage v-if="uploadError" variant="error" data-testid="upload-error">{{ uploadError }}</AppMessage>
+    </AppCard>
 
-    <div v-if="loadError" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">{{ loadError }}</div>
+    <AppMessage v-if="loadError" variant="error" data-testid="load-error">{{ loadError }}</AppMessage>
 
-    <section v-else class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Journal des imports</h2>
-      <table>
-        <thead>
-          <tr><th>Flux</th><th>Fichier</th><th>Reçu le</th><th class="num">Lues</th><th class="num">Filtrées</th>
-            <th class="num">Intégrées</th><th class="num">Rejetées</th><th class="num">En attente</th><th>État</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="batches.length === 0"><td colspan="9" data-testid="empty">Aucun import.</td></tr>
-          <tr v-for="b in batches" :key="b.id" :data-testid="`batch-row-${b.id}`" style="cursor: pointer" @click="selectBatch(b)">
-            <td>{{ b.flowCode }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">{{ b.fileName }}</td>
-            <td>{{ formatDate(b.receivedAt) }}</td>
-            <td class="num">{{ b.linesRead }}</td>
-            <td class="num">{{ b.linesFiltered }}</td>
-            <td class="num">{{ b.linesLoaded }}</td>
-            <td class="num">{{ b.linesRejected }}</td>
-            <td class="num">{{ b.linesOnHold }}</td>
-            <td><span :class="stateClass(b.status)" data-testid="batch-state">{{ b.status }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="padding: 12px 18px; font-size: 13px; color: #4A5868">
-        Lues = filtrées + intégrées + rejetées + en attente.
-      </div>
-    </section>
+    <AppCard v-else title="Journal des imports">
+      <DataTable
+        :columns="journalColumns"
+        :rows="batches"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun import."
+        empty-testid="empty"
+        clickable
+        :row-testid="(b) => `batch-row-${b.id}`"
+        @row-click="selectBatch"
+      >
+        <template #cell-fileName="{ row }"><span class="mono">{{ row.fileName }}</span></template>
+        <template #cell-status="{ row }">
+          <span :class="stateClass(row.status)" data-testid="batch-state">{{ row.status }}</span>
+        </template>
+      </DataTable>
+      <p class="page__subtitle">Lues = filtrées + intégrées + rejetées + en attente.</p>
+    </AppCard>
 
-    <section v-if="selected" class="card" style="overflow-x: auto" data-testid="batch-detail">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Lignes à traiter · {{ selected.fileName }}</h2>
-      <table>
-        <thead><tr><th class="num">Ligne</th><th>Motif</th><th>Code</th><th>Statut</th><th>Action</th></tr></thead>
-        <tbody>
-          <tr v-if="rejections.length === 0 && held.length === 0"><td colspan="5" data-testid="detail-empty">Aucune ligne en anomalie.</td></tr>
-          <tr v-for="r in rejections" :key="`r-${r.id}`" :data-testid="`rejection-row-${r.id}`">
-            <td class="num">{{ r.lineNumber }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace; font-size: 12px">{{ r.rawLine }}</td>
-            <td><span class="tag ko">{{ r.reasonCode }}</span></td>
-            <td>{{ r.status }}</td>
-            <td>
-              <template v-if="canOperate() && r.status === 'OPEN'">
-                <button class="btn sec" :data-testid="`correct-${r.id}`" @click="correct(r)">Corriger et relancer</button>
-                <button class="btn sec" :data-testid="`discard-${r.id}`" @click="discard(r)">Écarter</button>
-              </template>
-            </td>
-          </tr>
-          <tr v-for="(h, i) in held" :key="`h-${i}`" :data-testid="`held-row-${i}`">
-            <td class="num">—</td>
-            <td style="font-family: 'IBM Plex Mono', monospace; font-size: 12px">{{ h.sourceKey }} · {{ h.contractNumber ?? '—' }}</td>
-            <td><span class="tag info">{{ h.holdReason }}</span></td>
-            <td>ON_HOLD</td>
-            <td><span style="font-size: 13px; color: #4A5868">Repart seule à l'arrivée de la donnée manquante</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="selected" data-testid="batch-detail" :title="`Lignes à traiter · ${selected.fileName}`">
+      <DataTable
+        :columns="detailColumns"
+        :rows="detailRows"
+        row-key="key"
+        empty="Aucune ligne en anomalie."
+        empty-testid="detail-empty"
+        :row-testid="(r) => r.testid"
+      >
+        <template #cell-motif="{ row }"><span class="mono">{{ row.motif }}</span></template>
+        <template #cell-code="{ row }"><span :class="row.codeClass">{{ row.code }}</span></template>
+        <template #cell-action="{ row }">
+          <template v-if="row.kind === 'rejection' && canOperate() && row.status === 'OPEN' && row.rejection">
+            <AppButton variant="secondary" :data-testid="`correct-${row.rejection.id}`" @click="correct(row.rejection)">
+              Corriger et relancer
+            </AppButton>
+            <AppButton variant="secondary" :data-testid="`discard-${row.rejection.id}`" @click="discard(row.rejection)">
+              Écarter
+            </AppButton>
+          </template>
+          <span v-else-if="row.kind === 'held'" class="ui-hint">Repart seule à l'arrivée de la donnée manquante</span>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Flux attendus sur la période</h2>
-      <table>
-        <thead><tr><th>Flux</th><th>Situation</th></tr></thead>
-        <tbody>
-          <tr v-for="f in EXPECTED" :key="f.code" :data-testid="`flow-${f.code}`">
-            <td>{{ f.label }}</td>
-            <td>
-              <span v-if="receivedFlows.has(f.code)" class="tag ok">Reçu</span>
-              <span v-else class="tag warn">Manquant</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard title="Flux attendus sur la période">
+      <DataTable
+        :columns="expectedColumns"
+        :rows="EXPECTED"
+        row-key="code"
+        :row-testid="(f) => `flow-${f.code}`"
+      >
+        <template #cell-situation="{ row }">
+          <span v-if="receivedFlows.has(row.code)" class="tag ok">Reçu</span>
+          <span v-else class="tag warn">Manquant</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-hint {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+</style>

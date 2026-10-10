@@ -4,6 +4,10 @@ import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, paymentStatusLabel } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
+import {
+  AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading,
+} from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface StatementView {
   id: number;
@@ -41,30 +45,66 @@ const content = ref<StatementContent | null>(null);
 const spreadsheet = ref('');
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
 
-const canOperate = () => canOperateCycle(session.roles);
+/** Whether the current user may operate the cycle (publish, rectify). */
+const canOperate = (): boolean => canOperateCycle(session.roles);
 
+/** Columns of the statements table. */
+const statementColumns: Column<StatementView>[] = [
+  { key: 'statementNumber', label: 'Numéro' },
+  { key: 'versionNo', label: 'Version', value: (s) => `v${s.versionNo}` },
+  { key: 'netAmount', label: 'Net', align: 'num', value: (s) => amount(s.netAmount) },
+  { key: 'status', label: 'Statut' },
+];
+
+/** Columns of the statement detail table. */
+const rowColumns: Column<Row>[] = [
+  { key: 'section', label: 'Rubrique' },
+  { key: 'label', label: 'Libellé' },
+  { key: 'basis', label: 'Assiette', align: 'num', value: (r) => amount(r.basis) },
+  { key: 'rate', label: 'Taux', align: 'num', value: (r) => r.rate ?? '—' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
+  { key: 'reason', label: 'Motif', value: (r) => r.reason ?? '—' },
+];
+
+/**
+ * French label of a payment status.
+ * @param status the status code
+ */
 function statusLabel(status: string): string {
   return paymentStatusLabel(status);
 }
 
+/**
+ * Formats a monetary value in euros, or a dash when null.
+ * @param value the amount or null
+ */
 function amount(value: number | null): string {
   return value === null ? '—' : formatAmount(value);
 }
 
-async function loadStatements() {
+/** Loads the statements of the selected entity and month. */
+async function loadStatements(): Promise<void> {
   error.value = '';
   content.value = null;
   spreadsheet.value = '';
+  loading.value = true;
   try {
     statements.value = await apiGet<StatementView[]>(`/api/ui/v1/documents/${entity.value}/${month.value}/statements`);
   } catch (e) {
     statements.value = [];
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function openStatement(id: number) {
+/**
+ * Opens a statement and loads its content.
+ * @param id the statement id
+ */
+async function openStatement(id: number): Promise<void> {
   error.value = '';
   spreadsheet.value = '';
   try {
@@ -74,7 +114,11 @@ async function openStatement(id: number) {
   }
 }
 
-async function publish(s: StatementView) {
+/**
+ * Publishes a draft statement.
+ * @param s the statement
+ */
+async function publish(s: StatementView): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -86,7 +130,11 @@ async function publish(s: StatementView) {
   }
 }
 
-async function rectify(s: StatementView) {
+/**
+ * Creates a rectifying version of a published statement.
+ * @param s the statement
+ */
+async function rectify(s: StatementView): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -98,7 +146,11 @@ async function rectify(s: StatementView) {
   }
 }
 
-async function showSpreadsheet(id: number) {
+/**
+ * Loads the spreadsheet export of a statement.
+ * @param id the statement id
+ */
+async function showSpreadsheet(id: number): Promise<void> {
   error.value = '';
   try {
     spreadsheet.value = await apiGetText(`/api/ui/v1/documents/statements/${id}/spreadsheet`);
@@ -112,79 +164,105 @@ onMounted(loadStatements);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Bordereaux</h1>
-      <div class="page__subtitle">
-        Bordereaux de commission d'une période : aperçu par rubrique, publication, export tableur et version
-        rectificative (section 10.6).
-      </div>
-    </div>
+    <PageHeading
+      title="Bordereaux"
+      subtitle="Bordereaux de commission d'une période : aperçu par rubrique, publication, export tableur et version rectificative (section 10.6)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="brd-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="brd-month" type="text" v-model="month" /></label>
-        <button class="btn" data-testid="brd-refresh" @click="loadStatements">Rafraîchir</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="brd-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="brd-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <FilterBar
+      :loading="loading"
+      search-label="Rafraîchir"
+      search-testid="brd-refresh"
+      :resettable="false"
+      @search="loadStatements"
+    >
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="brd-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Mois" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="brd-month" type="text" v-model="month" />
+      </FormField>
+    </FilterBar>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Numéro</th><th>Version</th><th>Net</th><th>Statut</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="statements.length === 0"><td colspan="5" data-testid="no-statement">Aucun bordereau.</td></tr>
-          <tr v-for="s in statements" :key="s.id" :data-testid="`statement-row-${s.id}`">
-            <td>{{ s.statementNumber }}</td>
-            <td>v{{ s.versionNo }}</td>
-            <td>{{ amount(s.netAmount) }}</td>
-            <td :data-testid="`statement-status-${s.id}`">{{ statusLabel(s.status) }}</td>
-            <td style="display: flex; gap: 6px; flex-wrap: wrap">
-              <button class="btn" :data-testid="`statement-open-${s.id}`" @click="openStatement(s.id)">Aperçu</button>
-              <button class="btn" :data-testid="`statement-csv-${s.id}`" @click="showSpreadsheet(s.id)">Tableur</button>
-              <button v-if="canOperate() && s.status === 'DRAFT'" class="btn"
-                      :data-testid="`statement-publish-${s.id}`" @click="publish(s)">Publier</button>
-              <button v-if="canOperate() && s.status === 'PUBLISHED'" class="btn"
-                      :data-testid="`statement-rectify-${s.id}`" @click="rectify(s)">Rectifier</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="brd-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="brd-message">{{ message }}</AppMessage>
 
-    <section v-if="content" class="card" style="padding: 18px 20px" data-testid="statement-detail">
-      <h2 style="margin: 0 0 4px; font-size: 16px">
-        Bordereau {{ content.statementNumber }} v{{ content.versionNo }}
-      </h2>
-      <div class="page__subtitle" style="margin-bottom: 12px">{{ content.beneficiary }} — {{ content.month }}</div>
-      <table>
-        <thead>
-          <tr><th>Rubrique</th><th>Libellé</th><th>Assiette</th><th>Taux</th><th>Montant</th><th>Motif</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="(r, i) in content.rows" :key="i" :data-testid="`statement-line-${i}`">
-            <td :data-testid="`statement-line-section-${i}`">{{ r.section }}</td>
-            <td>{{ r.label }}</td>
-            <td>{{ amount(r.basis) }}</td>
-            <td>{{ r.rate ?? '—' }}</td>
-            <td>{{ amount(r.amount) }}</td>
-            <td>{{ r.reason ?? '—' }}</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr><td colspan="4">Total période</td><td data-testid="statement-period-total">{{ amount(content.periodTotal) }}</td><td></td></tr>
-          <tr><td colspan="4">Report</td><td>{{ amount(content.carried) }}</td><td></td></tr>
-          <tr><td colspan="4"><strong>Net payé</strong></td><td data-testid="statement-net"><strong>{{ amount(content.net) }}</strong></td><td></td></tr>
-        </tfoot>
-      </table>
-    </section>
+    <AppCard flush>
+      <DataTable
+        :columns="statementColumns"
+        :rows="statements"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun bordereau."
+        empty-testid="no-statement"
+        :row-testid="(s) => `statement-row-${s.id}`"
+      >
+        <template #cell-status="{ row }">
+          <span :data-testid="`statement-status-${row.id}`">{{ statusLabel(row.status) }}</span>
+        </template>
+        <template #actions="{ row }">
+          <AppButton variant="secondary" :data-testid="`statement-open-${row.id}`" @click="openStatement(row.id)">Aperçu</AppButton>
+          <AppButton variant="secondary" :data-testid="`statement-csv-${row.id}`" @click="showSpreadsheet(row.id)">Tableur</AppButton>
+          <AppButton
+            v-if="canOperate() && row.status === 'DRAFT'"
+            variant="secondary"
+            :data-testid="`statement-publish-${row.id}`"
+            @click="publish(row)"
+          >
+            Publier
+          </AppButton>
+          <AppButton
+            v-if="canOperate() && row.status === 'PUBLISHED'"
+            variant="secondary"
+            :data-testid="`statement-rectify-${row.id}`"
+            @click="rectify(row)"
+          >
+            Rectifier
+          </AppButton>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section v-if="spreadsheet" class="card" style="padding: 18px 20px" data-testid="spreadsheet-detail">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Export tableur</h2>
-      <pre data-testid="spreadsheet-content" style="overflow-x: auto; background: #f6f8fa; padding: 12px">{{ spreadsheet }}</pre>
-    </section>
+    <AppCard v-if="content" data-testid="statement-detail">
+      <h2 class="ui-detail-title">Bordereau {{ content.statementNumber }} v{{ content.versionNo }}</h2>
+      <p class="page__subtitle">{{ content.beneficiary }} — {{ content.month }}</p>
+      <DataTable
+        :columns="rowColumns"
+        :rows="content.rows"
+        :row-key="(r) => content?.rows.indexOf(r) ?? 0"
+        :row-testid="(r) => `statement-line-${content?.rows.indexOf(r)}`"
+      >
+        <template #cell-section="{ row }">
+          <span :data-testid="`statement-line-section-${content?.rows.indexOf(row)}`">{{ row.section }}</span>
+        </template>
+      </DataTable>
+      <DetailList>
+        <DetailRow label="Total période">
+          <span data-testid="statement-period-total">{{ amount(content.periodTotal) }}</span>
+        </DetailRow>
+        <DetailRow label="Report">{{ amount(content.carried) }}</DetailRow>
+        <DetailRow label="Net payé">
+          <strong data-testid="statement-net">{{ amount(content.net) }}</strong>
+        </DetailRow>
+      </DetailList>
+    </AppCard>
+
+    <AppCard v-if="spreadsheet" title="Export tableur" data-testid="spreadsheet-detail">
+      <pre data-testid="spreadsheet-content" class="ui-code">{{ spreadsheet }}</pre>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-detail-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+.ui-code {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+}
+</style>

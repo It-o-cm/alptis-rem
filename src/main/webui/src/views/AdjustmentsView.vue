@@ -4,6 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface AdjustmentView {
   id: number;
@@ -23,20 +25,37 @@ const month = ref('2026-09-01');
 const rows = ref<AdjustmentView[]>([]);
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
 const form = ref({ type: 'CORRECTION', amount: 0, payeeId: 0, reason: '', autoReverse: false });
 
-const canOperate = () => canOperateCycle(session.roles);
+/** Whether the current user may operate the cycle (submit, approve). */
+const canOperate = (): boolean => canOperateCycle(session.roles);
 
-async function load() {
+/** Columns of the adjustments table. */
+const columns: Column<AdjustmentView>[] = [
+  { key: 'type', label: 'Type' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (a) => amount(a.amount) },
+  { key: 'reason', label: 'Motif' },
+  { key: 'status', label: 'Statut' },
+  { key: 'submitter', label: 'Soumis par' },
+  { key: 'approver', label: 'Approuvé par', value: (a) => a.approver ?? '—' },
+];
+
+/** Loads the adjustments of the selected entity and month. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     rows.value = await apiGet<AdjustmentView[]>(`/api/ui/v1/adjustments/${entity.value}/${month.value}`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function submit() {
+/** Submits a new adjustment for approval. */
+async function submit(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -55,7 +74,11 @@ async function submit() {
   }
 }
 
-async function approve(a: AdjustmentView) {
+/**
+ * Approves a submitted adjustment.
+ * @param a the adjustment to approve
+ */
+async function approve(a: AdjustmentView): Promise<void> {
   error.value = '';
   try {
     await apiPost(`/api/ui/v1/adjustments/${a.id}/approve`, {});
@@ -65,6 +88,10 @@ async function approve(a: AdjustmentView) {
   }
 }
 
+/**
+ * Formats a monetary value in euros.
+ * @param value the amount
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
@@ -74,60 +101,76 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Ajustements</h1>
-      <div class="page__subtitle">
-        Saisie, approbation par un second utilisateur et application en ligne de commission (section 8.5).
-      </div>
-    </div>
+    <PageHeading
+      title="Ajustements"
+      subtitle="Saisie, approbation par un second utilisateur et application en ligne de commission (section 8.5)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="adj-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="adj-month" type="text" v-model="month" /></label>
-        <button class="btn" data-testid="adj-refresh" @click="load">Rafraîchir</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="adj-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="adj-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <FilterBar
+      :loading="loading"
+      search-label="Rafraîchir"
+      search-testid="adj-refresh"
+      :resettable="false"
+      @search="load"
+    >
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="adj-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Mois" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="adj-month" type="text" v-model="month" />
+      </FormField>
+    </FilterBar>
 
-    <section v-if="canOperate()" class="card" style="padding: 18px 20px" data-testid="adj-form">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Saisir un ajustement</h2>
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Type
-          <select data-testid="adj-type" v-model="form.type">
+    <AppMessage v-if="error" variant="error" data-testid="adj-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="adj-message">{{ message }}</AppMessage>
+
+    <AppCard v-if="canOperate()" title="Saisir un ajustement" data-testid="adj-form">
+      <AppForm twoColumn @submit="submit">
+        <FormField label="Type" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="adj-type" v-model="form.type">
             <option v-for="t in TYPES" :key="t" :value="t">{{ t }}</option>
           </select>
-        </label>
-        <label>Montant <input data-testid="adj-amount" type="number" v-model.number="form.amount" /></label>
-        <label>Code payé (distributeur) <input data-testid="adj-payee" type="number" v-model.number="form.payeeId" /></label>
-        <label>Motif <input data-testid="adj-reason" type="text" v-model="form.reason" /></label>
-        <label>Contrepassation <input data-testid="adj-reverse" type="checkbox" v-model="form.autoReverse" /></label>
-        <button class="btn" data-testid="adj-submit" @click="submit">Soumettre</button>
-      </div>
-    </section>
+        </FormField>
+        <FormField label="Montant" width="amount" v-slot="{ id }">
+          <input :id="id" data-testid="adj-amount" type="number" v-model.number="form.amount" />
+        </FormField>
+        <FormField label="Code payé (distributeur)" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="adj-payee" type="number" v-model.number="form.payeeId" />
+        </FormField>
+        <FormField label="Motif" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="adj-reason" type="text" v-model="form.reason" />
+        </FormField>
+        <FormField label="Contrepassation" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="adj-reverse" type="checkbox" v-model="form.autoReverse" />
+        </FormField>
+        <AppButton type="submit" data-testid="adj-submit">Soumettre</AppButton>
+      </AppForm>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Type</th><th>Montant</th><th>Motif</th><th>Statut</th><th>Soumis par</th><th>Approuvé par</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="7" data-testid="no-adjustment">Aucun ajustement.</td></tr>
-          <tr v-for="a in rows" :key="a.id" :data-testid="`adjustment-row-${a.id}`">
-            <td>{{ a.type }}</td>
-            <td>{{ amount(a.amount) }}</td>
-            <td>{{ a.reason }}</td>
-            <td :data-testid="`adjustment-status-${a.id}`">{{ a.status }}</td>
-            <td>{{ a.submitter }}</td>
-            <td>{{ a.approver ?? '—' }}</td>
-            <td>
-              <button v-if="canOperate() && a.status === 'SUBMITTED'" class="btn"
-                      :data-testid="`adjustment-approve-${a.id}`" @click="approve(a)">Approuver</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun ajustement."
+        empty-testid="no-adjustment"
+        :row-testid="(a) => `adjustment-row-${a.id}`"
+      >
+        <template #cell-status="{ row }">
+          <span :data-testid="`adjustment-status-${row.id}`">{{ row.status }}</span>
+        </template>
+        <template #actions="{ row }">
+          <AppButton
+            v-if="canOperate() && row.status === 'SUBMITTED'"
+            variant="secondary"
+            :data-testid="`adjustment-approve-${row.id}`"
+            @click="approve(row)"
+          >
+            Approuver
+          </AppButton>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>

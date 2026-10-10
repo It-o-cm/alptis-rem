@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
+import { AppButton, AppCard, AppForm, AppMessage, FormField, PageHeading } from '../components/ui';
 
 const EVENT_TYPES = [
   'PREMIUM_COLLECTED', 'PREMIUM_CANCELLED', 'TERMINATION', 'WITHDRAWAL', 'DEATH',
@@ -21,9 +22,11 @@ const form = ref({
 const message = ref('');
 const error = ref('');
 
-const entityCode = () => (session.entities.length > 0 ? session.entities[0] : '');
+/** The user's first entity, or an empty string when none. */
+const entityCode = (): string => (session.entities.length > 0 ? session.entities[0] : '');
 
-async function submit() {
+/** Submits the manual event, mapping the server outcome to a French message. */
+async function submit(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -54,30 +57,41 @@ async function submit() {
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Saisie d'un événement</h1>
-      <div class="page__subtitle">Saisie manuelle, tracée, contrôlée comme un import ; reprise par le prochain calcul (ING-07).</div>
-    </div>
+    <PageHeading
+      title="Saisie d'un événement"
+      subtitle="Saisie manuelle, tracée, contrôlée comme un import ; reprise par le prochain calcul (ING-07)."
+    />
 
-    <section class="card" style="padding: 18px 20px" data-testid="manual-form">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px">
-        <label>Système source<input data-testid="field-source" type="text" v-model="form.sourceSystem" /></label>
-        <label>Clé source<input data-testid="field-key" type="text" v-model="form.sourceKey" /></label>
-        <label>Type d'événement
-          <select data-testid="field-type" v-model="form.eventType">
+    <AppMessage v-if="message" variant="success" data-testid="manual-message">{{ message }}</AppMessage>
+    <AppMessage v-if="error" variant="error" data-testid="manual-error">{{ error }}</AppMessage>
+
+    <AppCard data-testid="manual-form">
+      <AppForm twoColumn @submit="submit">
+        <FormField label="Système source" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="field-source" type="text" v-model="form.sourceSystem" />
+        </FormField>
+        <FormField label="Clé source" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="field-key" type="text" v-model="form.sourceKey" />
+        </FormField>
+        <FormField label="Type d'événement" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="field-type" v-model="form.eventType">
             <option v-for="t in EVENT_TYPES" :key="t" :value="t">{{ t }}</option>
           </select>
-        </label>
-        <label>Numéro d'adhésion<input data-testid="field-contract" type="text" v-model="form.contractNumber" /></label>
-        <label>Code garantie<input data-testid="field-coverage" type="text" v-model="form.coverageCode" /></label>
-        <label>Date d'effet<input data-testid="field-date" type="date" v-model="form.eventDate" /></label>
-        <label>Montant TTC<input data-testid="field-amount" type="number" step="0.01" v-model="form.grossAmount" /></label>
-      </div>
-      <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center">
-        <button class="btn" data-testid="manual-submit" @click="submit">Enregistrer l'événement</button>
-        <span v-if="message" class="tag ok" data-testid="manual-message">{{ message }}</span>
-        <span v-if="error" class="tag ko" data-testid="manual-error">{{ error }}</span>
-      </div>
-    </section>
+        </FormField>
+        <FormField label="Numéro d'adhésion" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="field-contract" type="text" v-model="form.contractNumber" />
+        </FormField>
+        <FormField label="Code garantie" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="field-coverage" type="text" v-model="form.coverageCode" />
+        </FormField>
+        <FormField label="Date d'effet" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="field-date" type="date" v-model="form.eventDate" />
+        </FormField>
+        <FormField label="Montant TTC" width="amount" v-slot="{ id }">
+          <input :id="id" data-testid="field-amount" type="number" step="0.01" v-model="form.grossAmount" />
+        </FormField>
+        <AppButton type="submit" data-testid="manual-submit">Enregistrer l'événement</AppButton>
+      </AppForm>
+    </AppCard>
   </div>
 </template>
