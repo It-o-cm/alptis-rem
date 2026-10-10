@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface DistributorView {
   partnerCode: string;
@@ -35,10 +37,37 @@ const term = ref('');
 const results = ref<DistributorView[]>([]);
 const detail = ref<DistributorDetail | null>(null);
 const error = ref('');
+const loading = ref(false);
 
-async function search() {
+/** Columns of the distributor results table. */
+const columns: Column<DistributorView>[] = [
+  { key: 'partnerCode', label: 'Code partenaire' },
+  { key: 'legalName', label: 'Raison sociale' },
+  { key: 'distributorType', label: 'Type', value: (d) => d.distributorType ?? '—' },
+  { key: 'groupCode', label: 'Groupement', value: (d) => d.groupCode ?? '—' },
+];
+
+/** Columns of the per-entity status table. */
+const statusColumns: Column<StatusView>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'status', label: 'Statut' },
+  { key: 'validFrom', label: 'Depuis', value: (s) => s.validFrom ?? '—' },
+  { key: 'validTo', label: "Jusqu'à", value: (s) => s.validTo ?? '—' },
+];
+
+/** Columns of the production-codes table. */
+const codeColumns: Column<ProductionCodeView>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'code', label: 'Code' },
+  { key: 'label', label: 'Libellé', value: (c) => c.label ?? '—' },
+  { key: 'status', label: 'Statut', value: (c) => c.status ?? '—' },
+];
+
+/** Searches distributors by code or legal name within the user's entities. */
+async function search(): Promise<void> {
   error.value = '';
   detail.value = null;
+  loading.value = true;
   try {
     const page = await apiGet<{ items: DistributorView[] }>(
       `/api/ui/v1/distributors?q=${encodeURIComponent(term.value)}`,
@@ -46,10 +75,24 @@ async function search() {
     results.value = page.items;
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de recherche';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function open(distributor: DistributorView) {
+/** Clears the search term and its results. */
+function reset(): void {
+  term.value = '';
+  results.value = [];
+  detail.value = null;
+  error.value = '';
+}
+
+/**
+ * Loads the full detail of a distributor.
+ * @param distributor the selected row
+ */
+async function open(distributor: DistributorView): Promise<void> {
   detail.value = await apiGet<DistributorDetail>(`/api/ui/v1/distributors/${distributor.partnerCode}`);
 }
 
@@ -58,65 +101,63 @@ onMounted(search);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Recherche distributeurs</h1>
-      <div class="page__subtitle">Par code partenaire ou raison sociale, dans vos entités.</div>
-    </div>
+    <PageHeading title="Recherche distributeurs" subtitle="Par code partenaire ou raison sociale, dans vos entités." />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 10px; align-items: end">
-        <label style="flex: 1">Recherche
-          <input data-testid="search-term" type="text" v-model="term" style="width: 100%" @keyup.enter="search" />
-        </label>
-        <button class="btn" data-testid="search-button" @click="search">Rechercher</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="search-error" style="margin-top: 10px">{{ error }}</div>
-    </section>
+    <FilterBar :loading="loading" search-testid="search-button" @search="search" @reset="reset">
+      <FormField label="Recherche" stacked width="long" v-slot="{ id }">
+        <input :id="id" data-testid="search-term" type="text" v-model="term" />
+      </FormField>
+    </FilterBar>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead><tr><th>Code partenaire</th><th>Raison sociale</th><th>Type</th><th>Groupement</th></tr></thead>
-        <tbody>
-          <tr v-if="results.length === 0"><td colspan="4" data-testid="empty">Aucun distributeur.</td></tr>
-          <tr v-for="d in results" :key="d.partnerCode" :data-testid="`distributor-row-${d.partnerCode}`"
-              style="cursor: pointer" @click="open(d)">
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ d.partnerCode }}</td>
-            <td>{{ d.legalName }}</td>
-            <td>{{ d.distributorType ?? '—' }}</td>
-            <td>{{ d.groupCode ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="search-error">{{ error }}</AppMessage>
 
-    <section v-if="detail" class="card" style="padding: 18px 20px" data-testid="distributor-detail">
-      <h2 style="margin: 0 0 6px; font-size: 16px">{{ detail.legalName }} · {{ detail.partnerCode }}</h2>
-      <div style="font-size: 14px; color: #4A5868; margin-bottom: 12px">
-        Groupement : {{ detail.groupCode ?? '—' }}
-      </div>
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="results"
+        :loading="loading"
+        row-key="partnerCode"
+        empty="Aucun distributeur."
+        empty-testid="empty"
+        clickable
+        :row-testid="(d) => `distributor-row-${d.partnerCode}`"
+        @row-click="open"
+      >
+        <template #cell-partnerCode="{ row }"><span class="mono">{{ row.partnerCode }}</span></template>
+      </DataTable>
+    </AppCard>
 
-      <h3 style="font-size: 14px; margin: 8px 0">Statut par entité</h3>
-      <table>
-        <thead><tr><th>Entité</th><th>Statut</th><th>Depuis</th><th>Jusqu'à</th></tr></thead>
-        <tbody>
-          <tr v-for="(s, i) in detail.statuses" :key="i" data-testid="status-row">
-            <td>{{ s.entityCode }}</td><td>{{ s.status }}</td><td>{{ s.validFrom ?? '—' }}</td><td>{{ s.validTo ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <AppCard v-if="detail" data-testid="distributor-detail">
+      <h2 class="ui-detail-title">{{ detail.legalName }} · {{ detail.partnerCode }}</h2>
+      <DetailList>
+        <DetailRow label="Groupement">{{ detail.groupCode ?? '—' }}</DetailRow>
+      </DetailList>
 
-      <h3 style="font-size: 14px; margin: 14px 0 8px">Codes de production</h3>
-      <table>
-        <thead><tr><th>Entité</th><th>Code</th><th>Libellé</th><th>Statut</th></tr></thead>
-        <tbody>
-          <tr v-if="detail.productionCodes.length === 0"><td colspan="4" data-testid="no-codes">Aucun code de production.</td></tr>
-          <tr v-for="(c, i) in detail.productionCodes" :key="i" :data-testid="`code-row-${c.code}`">
-            <td>{{ c.entityCode }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ c.code }}</td>
-            <td>{{ c.label ?? '—' }}</td><td>{{ c.status ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+      <h3 class="ui-detail-sub">Statut par entité</h3>
+      <DataTable :columns="statusColumns" :rows="detail.statuses" empty="Aucun statut." :row-testid="() => 'status-row'" />
+
+      <h3 class="ui-detail-sub">Codes de production</h3>
+      <DataTable
+        :columns="codeColumns"
+        :rows="detail.productionCodes"
+        empty="Aucun code de production."
+        empty-testid="no-codes"
+        :row-testid="(c) => `code-row-${c.code}`"
+      >
+        <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-detail-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+.ui-detail-sub {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+</style>

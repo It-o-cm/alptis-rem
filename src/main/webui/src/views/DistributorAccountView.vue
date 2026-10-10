@@ -5,6 +5,8 @@ import { useSessionStore } from '../stores/session';
 import { canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
 import LineChart from '../components/charts/LineChart.vue';
+import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface MonthBalance {
   month: string;
@@ -34,32 +36,54 @@ const view = ref<DistributorView | null>(null);
 const debtors = ref<AccountView[]>([]);
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
 
-const canOperate = () => canOperateCycle(session.roles);
+const canOperate = (): boolean => canOperateCycle(session.roles);
 
 const series = ref<MonthBalance[]>([]);
 
-async function search() {
+/** Columns of the distributor accounts table. */
+const accountColumns: Column<AccountView>[] = [
+  { key: 'account', label: 'Compte', value: (a) => `${a.payeeType} #${a.payeeId}` },
+  { key: 'balance', label: 'Solde', align: 'num' },
+  { key: 'blocked', label: 'Bloqué' },
+];
+
+/** Columns of the debtor accounts table. */
+const debtorColumns: Column<AccountView>[] = [
+  { key: 'account', label: 'Compte', value: (a) => `${a.payeeType} #${a.payeeId}` },
+  { key: 'balance', label: 'Solde', align: 'num', value: (a) => amount(a.balance) },
+];
+
+/** Loads a distributor's accounts and its balance series for the current filter. */
+async function search(): Promise<void> {
   error.value = '';
   view.value = null;
   series.value = [];
+  loading.value = true;
   try {
     view.value = await apiGet<DistributorView>(`/api/ui/v1/accounts/${entity.value}/distributor/${partnerCode.value}`);
     series.value = await apiGet<MonthBalance[]>(
       `/api/ui/v1/accounts/${entity.value}/distributor/${partnerCode.value}/balance-series`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Distributeur introuvable';
+  } finally {
+    loading.value = false;
   }
 }
 
+/** The months shown on the balance chart. */
 const balanceMonths = computed(() => series.value.map((p) => p.month));
+/** The single balance series shown on the chart. */
 const balanceSeries = computed(() => [{ key: 'balance', label: 'Solde', values: series.value.map((p) => p.balance) }]);
 
-async function loadDebtors() {
+/** Loads the debtor accounts of the current entity. */
+async function loadDebtors(): Promise<void> {
   debtors.value = await apiGet<AccountView[]>(`/api/ui/v1/accounts/${entity.value}/debtors`);
 }
 
-async function compensate() {
+/** Writes the compensation lines for the distributor in the selected month. */
+async function compensate(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -72,16 +96,28 @@ async function compensate() {
   }
 }
 
-async function block(a: AccountView) {
+/**
+ * Blocks an account and refreshes the view.
+ * @param a the account to block
+ */
+async function block(a: AccountView): Promise<void> {
   await apiPost(`/api/ui/v1/accounts/${a.id}/block`, { reason: 'Blocage manuel' });
   await search();
 }
 
-async function unblock(a: AccountView) {
+/**
+ * Unblocks an account and refreshes the view.
+ * @param a the account to unblock
+ */
+async function unblock(a: AccountView): Promise<void> {
   await apiPost(`/api/ui/v1/accounts/${a.id}/unblock`, {});
   await search();
 }
 
+/**
+ * Formats an amount in euros.
+ * @param value the raw amount
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
@@ -91,66 +127,79 @@ onMounted(loadDebtors);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Fiche distributeur et compte</h1>
-      <div class="page__subtitle">
-        Les comptes d'un distributeur, leur solde, la compensation et le blocage (section 8.8).
-      </div>
-    </div>
+    <PageHeading
+      title="Fiche distributeur et compte"
+      subtitle="Les comptes d'un distributeur, leur solde, la compensation et le blocage (section 8.8)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="acc-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="acc-month" type="text" v-model="month" /></label>
-        <label>Code partenaire <input data-testid="acc-partner" type="text" v-model="partnerCode" @keyup.enter="search" /></label>
-        <button class="btn" data-testid="acc-search" @click="search">Rechercher</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="acc-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="acc-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <FilterBar :loading="loading" :resettable="false" search-testid="acc-search" @search="search">
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="acc-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="acc-month" type="text" v-model="month" />
+      </FormField>
+      <FormField label="Code partenaire" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="acc-partner" type="text" v-model="partnerCode" />
+      </FormField>
+    </FilterBar>
 
-    <section v-if="view" class="card" style="padding: 18px 20px" data-testid="account-view">
-      <h2 style="margin: 0 0 12px; font-size: 16px">
+    <AppMessage v-if="error" variant="error" data-testid="acc-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="acc-message">{{ message }}</AppMessage>
+
+    <AppCard v-if="view" data-testid="account-view">
+      <h2 class="ui-detail-title">
         {{ view.partnerCode }} — solde total <span data-testid="account-total">{{ amount(view.total) }}</span>
       </h2>
-      <button v-if="canOperate()" class="btn" data-testid="acc-compensate" @click="compensate">Compenser</button>
-      <table style="margin-top: 14px">
-        <thead>
-          <tr><th>Compte</th><th>Solde</th><th>Bloqué</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="a in view.accounts" :key="a.id" :data-testid="`account-row-${a.id}`">
-            <td>{{ a.payeeType }} #{{ a.payeeId }}</td>
-            <td :data-testid="`account-balance-${a.id}`">{{ amount(a.balance) }}</td>
-            <td :data-testid="`account-blocked-${a.id}`">{{ a.blocked ? 'Oui' : 'Non' }}</td>
-            <td v-if="canOperate()">
-              <button v-if="!a.blocked" class="btn" :data-testid="`account-block-${a.id}`" @click="block(a)">Bloquer</button>
-              <button v-else class="btn" :data-testid="`account-unblock-${a.id}`" @click="unblock(a)">Débloquer</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+      <div v-if="canOperate()">
+        <AppButton data-testid="acc-compensate" @click="compensate">Compenser</AppButton>
+      </div>
+      <DataTable
+        :columns="accountColumns"
+        :rows="view.accounts"
+        row-key="id"
+        :row-testid="(a) => `account-row-${a.id}`"
+      >
+        <template #cell-balance="{ row }">
+          <span :data-testid="`account-balance-${row.id}`">{{ amount(row.balance) }}</span>
+        </template>
+        <template #cell-blocked="{ row }">
+          <span :data-testid="`account-blocked-${row.id}`">{{ row.blocked ? 'Oui' : 'Non' }}</span>
+        </template>
+        <template #actions="{ row }">
+          <template v-if="canOperate()">
+            <AppButton v-if="!row.blocked" variant="secondary" :data-testid="`account-block-${row.id}`" @click="block(row)">
+              Bloquer
+            </AppButton>
+            <AppButton v-else variant="secondary" :data-testid="`account-unblock-${row.id}`" @click="unblock(row)">
+              Débloquer
+            </AppButton>
+          </template>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section v-if="series.length > 0" class="card">
+    <AppCard v-if="series.length > 0">
       <LineChart :categories="balanceMonths" :series="balanceSeries" title="Solde du compte dans le temps"
                  :caption="view ? view.partnerCode : ''" testid="chart-account-balance" />
-    </section>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto" data-testid="debtors">
-      <h2 style="margin: 12px 20px; font-size: 16px">Comptes débiteurs</h2>
-      <table>
-        <thead>
-          <tr><th>Compte</th><th>Solde</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="debtors.length === 0"><td colspan="2" data-testid="no-debtor">Aucun compte débiteur.</td></tr>
-          <tr v-for="a in debtors" :key="a.id" :data-testid="`debtor-row-${a.id}`">
-            <td>{{ a.payeeType }} #{{ a.payeeId }}</td>
-            <td>{{ amount(a.balance) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard title="Comptes débiteurs" data-testid="debtors">
+      <DataTable
+        :columns="debtorColumns"
+        :rows="debtors"
+        row-key="id"
+        empty="Aucun compte débiteur."
+        empty-testid="no-debtor"
+        :row-testid="(a) => `debtor-row-${a.id}`"
+      />
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-detail-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+</style>

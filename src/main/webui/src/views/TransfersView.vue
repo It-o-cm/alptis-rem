@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface TransferView {
   entityCode: string;
@@ -22,14 +24,38 @@ interface ReplacementOrderView {
 const transfers = ref<TransferView[]>([]);
 const orders = ref<ReplacementOrderView[]>([]);
 const error = ref('');
+const loading = ref(false);
 
-async function load() {
+/** Columns of the portfolio-transfers table. */
+const transferColumns: Column<TransferView>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'fromPartnerCode', label: 'Cédant', value: (t) => t.fromPartnerCode ?? '—' },
+  { key: 'toPartnerCode', label: 'Repreneur', value: (t) => t.toPartnerCode ?? '—' },
+  { key: 'effectDate', label: 'Effet', value: (t) => t.effectDate ?? '—' },
+  { key: 'advanceDebtHandling', label: "Créance d'escompte", value: (t) => t.advanceDebtHandling ?? '—' },
+  { key: 'status', label: 'Statut' },
+];
+
+/** Columns of the replacement-orders table. */
+const orderColumns: Column<ReplacementOrderView>[] = [
+  { key: 'contractNumber', label: 'Adhésion', value: (o) => o.contractNumber ?? '—' },
+  { key: 'fromProductionCode', label: 'Ancien code', value: (o) => o.fromProductionCode ?? '—' },
+  { key: 'toProductionCode', label: 'Nouveau code', value: (o) => o.toProductionCode ?? '—' },
+  { key: 'receivedDate', label: 'Reçu le', value: (o) => o.receivedDate ?? '—' },
+  { key: 'effectDate', label: 'Effet', value: (o) => o.effectDate ?? '—' },
+];
+
+/** Loads the portfolio transfers and replacement orders of the user's entities. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     transfers.value = await apiGet<TransferView[]>('/api/ui/v1/portfolio-transfers');
     orders.value = await apiGet<ReplacementOrderView[]>('/api/ui/v1/replacement-orders');
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de chargement';
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -38,45 +64,39 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Cessions et ordres de remplacement</h1>
-      <div class="page__subtitle">Transferts de portefeuille et ordres de remplacement reçus du CRM (REF-09).</div>
-    </div>
-    <div v-if="error" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">{{ error }}</div>
+    <PageHeading
+      title="Cessions et ordres de remplacement"
+      subtitle="Transferts de portefeuille et ordres de remplacement reçus du CRM (REF-09)."
+    />
 
-    <section v-else class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Cessions de portefeuille</h2>
-      <table>
-        <thead><tr><th>Entité</th><th>Cédant</th><th>Repreneur</th><th>Effet</th><th>Créance d'escompte</th><th>Statut</th></tr></thead>
-        <tbody>
-          <tr v-if="transfers.length === 0"><td colspan="6" data-testid="no-transfers">Aucune cession.</td></tr>
-          <tr v-for="(t, i) in transfers" :key="i" data-testid="transfer-row">
-            <td>{{ t.entityCode }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ t.fromPartnerCode ?? '—' }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ t.toPartnerCode ?? '—' }}</td>
-            <td>{{ t.effectDate ?? '—' }}</td>
-            <td>{{ t.advanceDebtHandling ?? '—' }}</td>
-            <td><span class="tag info">{{ t.status ?? '—' }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="load-error">{{ error }}</AppMessage>
 
-    <section v-if="!error" class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Ordres de remplacement</h2>
-      <table>
-        <thead><tr><th>Adhésion</th><th>Ancien code</th><th>Nouveau code</th><th>Reçu le</th><th>Effet</th></tr></thead>
-        <tbody>
-          <tr v-if="orders.length === 0"><td colspan="5" data-testid="no-orders">Aucun ordre de remplacement.</td></tr>
-          <tr v-for="(o, i) in orders" :key="i" data-testid="order-row">
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ o.contractNumber ?? '—' }}</td>
-            <td>{{ o.fromProductionCode ?? '—' }}</td>
-            <td>{{ o.toProductionCode ?? '—' }}</td>
-            <td>{{ o.receivedDate ?? '—' }}</td>
-            <td>{{ o.effectDate ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="!error" title="Cessions de portefeuille">
+      <DataTable
+        :columns="transferColumns"
+        :rows="transfers"
+        :loading="loading"
+        empty="Aucune cession."
+        empty-testid="no-transfers"
+        :row-testid="() => 'transfer-row'"
+      >
+        <template #cell-fromPartnerCode="{ row }"><span class="mono">{{ row.fromPartnerCode ?? '—' }}</span></template>
+        <template #cell-toPartnerCode="{ row }"><span class="mono">{{ row.toPartnerCode ?? '—' }}</span></template>
+        <template #cell-status="{ row }"><span class="tag info">{{ row.status ?? '—' }}</span></template>
+      </DataTable>
+    </AppCard>
+
+    <AppCard v-if="!error" title="Ordres de remplacement">
+      <DataTable
+        :columns="orderColumns"
+        :rows="orders"
+        :loading="loading"
+        empty="Aucun ordre de remplacement."
+        empty-testid="no-orders"
+        :row-testid="() => 'order-row'"
+      >
+        <template #cell-contractNumber="{ row }"><span class="mono">{{ row.contractNumber ?? '—' }}</span></template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>

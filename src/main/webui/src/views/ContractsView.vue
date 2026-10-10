@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface CoverageView {
   coverageCode: string;
@@ -19,15 +21,36 @@ interface ContractView {
 const term = ref('');
 const results = ref<ContractView[]>([]);
 const error = ref('');
+const loading = ref(false);
 
-async function search() {
+/** Columns of the contracts results table. */
+const columns: Column<ContractView>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'contractNumber', label: 'Adhésion' },
+  { key: 'sourceSystem', label: 'Source' },
+  { key: 'status', label: 'Statut', value: (c) => c.status ?? '—' },
+  { key: 'coverages', label: 'Garanties' },
+];
+
+/** Searches contracts by membership number within the user's entities. */
+async function search(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     const page = await apiGet<{ items: ContractView[] }>(`/api/ui/v1/contracts?q=${encodeURIComponent(term.value)}`);
     results.value = page.items;
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de recherche';
+  } finally {
+    loading.value = false;
   }
+}
+
+/** Clears the search term and its results. */
+function reset(): void {
+  term.value = '';
+  results.value = [];
+  error.value = '';
 }
 
 onMounted(search);
@@ -35,41 +58,40 @@ onMounted(search);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Recherche contrats</h1>
-      <div class="page__subtitle">Adhésions et garanties, dans vos entités.</div>
-    </div>
+    <PageHeading title="Recherche contrats" subtitle="Adhésions et garanties, dans vos entités." />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 10px; align-items: end">
-        <label style="flex: 1">Numéro d'adhésion
-          <input data-testid="search-term" type="text" v-model="term" style="width: 100%" @keyup.enter="search" />
-        </label>
-        <button class="btn" data-testid="search-button" @click="search">Rechercher</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="search-error" style="margin-top: 10px">{{ error }}</div>
-    </section>
+    <FilterBar :loading="loading" search-testid="search-button" @search="search" @reset="reset">
+      <FormField label="Numéro d'adhésion" stacked width="long" v-slot="{ id }">
+        <input :id="id" data-testid="search-term" type="text" v-model="term" />
+      </FormField>
+    </FilterBar>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead><tr><th>Entité</th><th>Adhésion</th><th>Source</th><th>Statut</th><th>Garanties</th></tr></thead>
-        <tbody>
-          <tr v-if="results.length === 0"><td colspan="5" data-testid="empty">Aucune adhésion.</td></tr>
-          <tr v-for="c in results" :key="c.entityCode + c.sourceSystem + c.contractNumber"
-              :data-testid="`contract-row-${c.contractNumber}`">
-            <td>{{ c.entityCode }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ c.contractNumber }}</td>
-            <td>{{ c.sourceSystem }}</td>
-            <td>{{ c.status ?? '—' }}</td>
-            <td>
-              <span v-for="cov in c.coverages" :key="cov.coverageCode" class="tag info" style="margin-right: 4px">
-                {{ cov.coverageCode }}<span v-if="cov.annualPremium"> · {{ cov.annualPremium }}</span>
-              </span>
-              <span v-if="c.coverages.length === 0">—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="search-error">{{ error }}</AppMessage>
+
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="results"
+        :loading="loading"
+        :row-key="(c) => c.entityCode + c.sourceSystem + c.contractNumber"
+        empty="Aucune adhésion."
+        empty-testid="empty"
+        :row-testid="(c) => `contract-row-${c.contractNumber}`"
+      >
+        <template #cell-contractNumber="{ row }"><span class="mono">{{ row.contractNumber }}</span></template>
+        <template #cell-coverages="{ row }">
+          <span v-for="cov in row.coverages" :key="cov.coverageCode" class="tag info ui-cov">
+            {{ cov.coverageCode }}<span v-if="cov.annualPremium"> · {{ cov.annualPremium }}</span>
+          </span>
+          <span v-if="row.coverages.length === 0">—</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.ui-cov {
+  margin-right: var(--space-1);
+}
+</style>
