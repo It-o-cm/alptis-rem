@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface AgreementView {
   entityCode: string; type: string | null; partnerCode: string | null; groupCode: string | null;
@@ -21,12 +23,41 @@ const message = ref('');
 const agForm = ref({ type: 'PARTNERSHIP', partnerCode: '', reference: '', validFrom: '', signed: true });
 const enForm = ref({ planCode: '', ruleCode: '', partnerCode: '', agreementRef: '', validFrom: '' });
 
-function fail(e: unknown) {
+/** Columns of the agreements table. */
+const agreementColumns: Column<AgreementView>[] = [
+  { key: 'reference', label: 'Référence' },
+  { key: 'type', label: 'Type', value: (a) => a.type ?? '—' },
+  { key: 'distributor', label: 'Distributeur', value: (a) => a.partnerCode ?? a.groupCode ?? '—' },
+  { key: 'signature', label: 'Signature' },
+];
+
+/** Columns of the loaded enrollments table. */
+const enrollmentColumns: Column<EnrollmentView>[] = [
+  { key: 'partnerCode', label: 'Distributeur', value: (e) => e.partnerCode ?? '—' },
+  { key: 'groupCode', label: 'Groupement', value: (e) => e.groupCode ?? '—' },
+  { key: 'agreementRef', label: 'Accord', value: (e) => e.agreementRef ?? '—' },
+  { key: 'status', label: 'Statut' },
+];
+
+/**
+ * Records a failure, showing its message and clearing any success.
+ * @param e the caught error
+ */
+function fail(e: unknown): void {
   error.value = e instanceof ApiError ? e.message : 'Erreur';
   message.value = '';
 }
 
-async function loadAgreements() {
+/**
+ * Builds the data-testid of an enrollment row from its position.
+ * @param e the enrollment row
+ */
+function enrollmentTestid(e: EnrollmentView): string {
+  return `enrollment-row-${enrollments.value.indexOf(e)}`;
+}
+
+/** Loads the founding agreements of the user's entities. */
+async function loadAgreements(): Promise<void> {
   try {
     agreements.value = await apiGet<AgreementView[]>('/api/ui/v1/agreements');
   } catch (e) {
@@ -34,7 +65,8 @@ async function loadAgreements() {
   }
 }
 
-async function createAgreement() {
+/** Creates a founding agreement from the agreement form. */
+async function createAgreement(): Promise<void> {
   try {
     await apiPost('/api/ui/v1/agreements', {
       entityCode: entityCode(), type: agForm.value.type, partnerCode: agForm.value.partnerCode || null,
@@ -48,7 +80,8 @@ async function createAgreement() {
   }
 }
 
-async function loadEnrollments() {
+/** Loads the enrollments of the rule named in the enrollment form. */
+async function loadEnrollments(): Promise<void> {
   if (!enForm.value.planCode || !enForm.value.ruleCode) {
     return;
   }
@@ -60,7 +93,8 @@ async function loadEnrollments() {
   }
 }
 
-async function enroll() {
+/** Enrolls a distributor into a reserved rule, then reloads the enrollments. */
+async function enroll(): Promise<void> {
   try {
     await apiPost(`/api/ui/v1/plans/${enForm.value.planCode}/rules/${enForm.value.ruleCode}/enrollments`, {
       entityCode: entityCode(), partnerCode: enForm.value.partnerCode, agreementRef: enForm.value.agreementRef,
@@ -79,59 +113,80 @@ onMounted(loadAgreements);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Accords et inscriptions</h1>
-      <div class="page__subtitle">Accords fondateurs et inscriptions aux règles réservées, actives une fois l'accord signé (PAR-10).</div>
-    </div>
-    <div v-if="error" class="card" style="padding: 12px 16px; color: #8f1d16" data-testid="enroll-error">{{ error }}</div>
-    <div v-if="message" class="card" style="padding: 12px 16px; color: #1d6b2f" data-testid="enroll-message">{{ message }}</div>
+    <PageHeading
+      title="Accords et inscriptions"
+      subtitle="Accords fondateurs et inscriptions aux règles réservées, actives une fois l'accord signé (PAR-10)."
+    />
 
-    <section class="card" style="overflow-x: auto">
-      <h2 style="margin: 12px 16px">Accords</h2>
-      <table>
-        <thead><tr><th>Référence</th><th>Type</th><th>Distributeur</th><th>Signature</th></tr></thead>
-        <tbody>
-          <tr v-if="agreements.length === 0"><td colspan="4" data-testid="agreements-empty">Aucun accord.</td></tr>
-          <tr v-for="(a, i) in agreements" :key="i" :data-testid="`agreement-row-${a.reference}`">
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ a.reference }}</td>
-            <td>{{ a.type ?? '—' }}</td>
-            <td>{{ a.partnerCode ?? a.groupCode ?? '—' }}</td>
-            <td><span :class="a.signature === 'SIGNED' ? 'tag ok' : 'tag mute'">{{ a.signature ?? '—' }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="canEdit()" style="padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: end">
-        <label>Référence<input data-testid="ag-ref" v-model="agForm.reference" /></label>
-        <label>Distributeur<input data-testid="ag-partner" v-model="agForm.partnerCode" /></label>
-        <label>Du<input data-testid="ag-from" type="date" v-model="agForm.validFrom" /></label>
-        <label>Signé<input data-testid="ag-signed" type="checkbox" v-model="agForm.signed" /></label>
-        <button class="btn" data-testid="ag-create" @click="createAgreement">Enregistrer l'accord</button>
-      </div>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="enroll-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="enroll-message">{{ message }}</AppMessage>
 
-    <section v-if="canEdit()" class="card" style="padding: 12px 16px" data-testid="enroll-section">
-      <h2>Inscription à une règle réservée</h2>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: end">
-        <label>Plan<input data-testid="en-plan" v-model="enForm.planCode" /></label>
-        <label>Règle<input data-testid="en-rule" v-model="enForm.ruleCode" /></label>
-        <label>Distributeur<input data-testid="en-partner" v-model="enForm.partnerCode" /></label>
-        <label>Accord<input data-testid="en-ref" v-model="enForm.agreementRef" /></label>
-        <label>Du<input data-testid="en-from" type="date" v-model="enForm.validFrom" /></label>
-        <button class="btn" data-testid="en-enroll" @click="enroll">Inscrire</button>
-        <button class="btn" data-testid="en-load" @click="loadEnrollments">Voir les inscriptions</button>
-      </div>
-      <table style="margin-top: 10px">
-        <thead><tr><th>Distributeur</th><th>Groupement</th><th>Accord</th><th>Statut</th></tr></thead>
-        <tbody>
-          <tr v-if="enrollments.length === 0"><td colspan="4" data-testid="enrollments-empty">Aucune inscription chargée.</td></tr>
-          <tr v-for="(e, i) in enrollments" :key="i" :data-testid="`enrollment-row-${i}`">
-            <td>{{ e.partnerCode ?? '—' }}</td>
-            <td>{{ e.groupCode ?? '—' }}</td>
-            <td>{{ e.agreementRef ?? '—' }}</td>
-            <td><span :class="e.status === 'ACTIVE' ? 'tag ok' : 'tag mute'">{{ e.status ?? '—' }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard title="Accords">
+      <DataTable
+        :columns="agreementColumns"
+        :rows="agreements"
+        row-key="reference"
+        empty="Aucun accord."
+        empty-testid="agreements-empty"
+        :row-testid="(a) => `agreement-row-${a.reference}`"
+      >
+        <template #cell-reference="{ row }"><span class="mono">{{ row.reference }}</span></template>
+        <template #cell-signature="{ row }">
+          <span :class="row.signature === 'SIGNED' ? 'tag ok' : 'tag mute'">{{ row.signature ?? '—' }}</span>
+        </template>
+      </DataTable>
+
+      <AppForm v-if="canEdit()" @submit="createAgreement">
+        <FormField label="Référence" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="ag-ref" v-model="agForm.reference" />
+        </FormField>
+        <FormField label="Distributeur" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="ag-partner" v-model="agForm.partnerCode" />
+        </FormField>
+        <FormField label="Du" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="ag-from" type="date" v-model="agForm.validFrom" />
+        </FormField>
+        <FormField label="Signé" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="ag-signed" type="checkbox" v-model="agForm.signed" />
+        </FormField>
+        <AppButton type="submit" data-testid="ag-create">Enregistrer l'accord</AppButton>
+      </AppForm>
+    </AppCard>
+
+    <AppCard v-if="canEdit()" data-testid="enroll-section" title="Inscription à une règle réservée">
+      <AppForm @submit="enroll">
+        <FormField label="Plan" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="en-plan" v-model="enForm.planCode" />
+        </FormField>
+        <FormField label="Règle" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="en-rule" v-model="enForm.ruleCode" />
+        </FormField>
+        <FormField label="Distributeur" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="en-partner" v-model="enForm.partnerCode" />
+        </FormField>
+        <FormField label="Accord" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="en-ref" v-model="enForm.agreementRef" />
+        </FormField>
+        <FormField label="Du" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="en-from" type="date" v-model="enForm.validFrom" />
+        </FormField>
+        <AppButton variant="secondary" type="submit" data-testid="en-enroll">Inscrire</AppButton>
+        <AppButton variant="secondary" type="button" data-testid="en-load" @click="loadEnrollments">
+          Voir les inscriptions
+        </AppButton>
+      </AppForm>
+
+      <DataTable
+        :columns="enrollmentColumns"
+        :rows="enrollments"
+        empty="Aucune inscription chargée."
+        empty-testid="enrollments-empty"
+        :row-testid="enrollmentTestid"
+      >
+        <template #cell-status="{ row }">
+          <span :class="row.status === 'ACTIVE' ? 'tag ok' : 'tag mute'">{{ row.status ?? '—' }}</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>

@@ -5,6 +5,8 @@ import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
 import BarChart from '../components/charts/BarChart.vue';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface NatureComparison {
   nature: string;
@@ -42,17 +44,33 @@ const substitutions = ref<{ oldRate: string; newRate: string }[]>([{ oldRate: ''
 const result = ref<Result | null>(null);
 const error = ref('');
 
+/** Whether the current user may run a simulation. */
 const canRun = () => canEditEntityParameters(session.roles) || session.roles.includes('OPERATOR');
 
+/**
+ * Formats a monetary value in euros.
+ * @param value the amount to format
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
-function addSubstitution() {
+/** Appends an empty substitution row to the table. */
+function addSubstitution(): void {
   substitutions.value.push({ oldRate: '', newRate: '' });
 }
 
+/**
+ * Builds the data-testid of a touched-distributor row from its position.
+ * @param d the distributor-impact row
+ */
+function distTestid(d: DistributorImpact): string {
+  return `sim-dist-${result.value ? result.value.topDistributors.indexOf(d) : -1}`;
+}
+
+/** Nature labels used as the chart categories. */
 const natureCategories = computed(() => (result.value ? result.value.byNature.map((n) => n.nature) : []));
+/** Real and simulated series compared by nature. */
 const compareSeries = computed(() => {
   if (!result.value) {
     return [];
@@ -63,7 +81,24 @@ const compareSeries = computed(() => {
   ];
 });
 
-async function run() {
+/** Columns of the per-nature gap table. */
+const natureColumns: Column<NatureComparison>[] = [
+  { key: 'nature', label: 'Nature' },
+  { key: 'real', label: 'Réel', align: 'num', value: (n) => amount(n.real) },
+  { key: 'simulated', label: 'Simulé', align: 'num', value: (n) => amount(n.simulated) },
+  { key: 'ecart', label: 'Écart', align: 'num', value: (n) => amount(n.ecart) },
+];
+
+/** Columns of the most-touched-distributors table. */
+const distributorColumns: Column<DistributorImpact>[] = [
+  { key: 'distributor', label: 'Distributeur' },
+  { key: 'real', label: 'Réel', align: 'num', value: (d) => amount(d.real) },
+  { key: 'simulated', label: 'Simulé', align: 'num', value: (d) => amount(d.simulated) },
+  { key: 'ecart', label: 'Écart', align: 'num', value: (d) => amount(d.ecart) },
+];
+
+/** Runs the simulation for the chosen entity, period, rule and version. */
+async function run(): Promise<void> {
   error.value = '';
   const table = substitutions.value
     .filter((s) => s.oldRate !== '')
@@ -84,84 +119,133 @@ async function run() {
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Simulation d'une version de règle</h1>
-      <div class="page__subtitle">
-        Rejoue une période passée avec une version en projet et compare au réel. Aucun effet sur les comptes,
-        les bordereaux ni la comptabilité (PAR-13).
-      </div>
-    </div>
+    <PageHeading
+      title="Simulation d'une version de règle"
+      subtitle="Rejoue une période passée avec une version en projet et compare au réel. Aucun effet sur les comptes, les bordereaux ni la comptabilité (PAR-13)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="sim-entity" type="text" v-model="entity" /></label>
-        <label>Période rejouée <input data-testid="sim-month" type="text" v-model="month" /></label>
-        <label>Règle <input data-testid="sim-rule" type="text" v-model="ruleCode" /></label>
-        <label>Version <input data-testid="sim-version" type="number" v-model.number="versionNo" /></label>
-        <label>Distributeur (optionnel) <input data-testid="sim-scope" type="text" v-model="scopeDistributor" /></label>
-      </div>
-      <div style="margin-top: 12px">
-        <div style="font-size: 13px; font-weight: 600; color: #3d4a59; margin-bottom: 6px">Table de substitution (ancien taux → nouveau taux ; vide = retiré)</div>
-        <div v-for="(s, i) in substitutions" :key="i" style="display: flex; gap: 10px; align-items: center; margin-bottom: 6px">
-          <input :data-testid="`sim-old-${i}`" aria-label="Ancien taux" type="text" v-model="s.oldRate" placeholder="0.30" style="width: 120px" />
+    <AppCard>
+      <AppForm @submit="run">
+        <FormField label="Entité" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="sim-entity" type="text" v-model="entity" />
+        </FormField>
+        <FormField label="Période rejouée" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="sim-month" type="text" v-model="month" />
+        </FormField>
+        <FormField label="Règle" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="sim-rule" type="text" v-model="ruleCode" />
+        </FormField>
+        <FormField label="Version" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="sim-version" type="number" v-model.number="versionNo" />
+        </FormField>
+        <FormField label="Distributeur (optionnel)" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="sim-scope" type="text" v-model="scopeDistributor" />
+        </FormField>
+      </AppForm>
+
+      <div class="sim-subs">
+        <p class="sim-subs__label">Table de substitution (ancien taux → nouveau taux ; vide = retiré)</p>
+        <div v-for="(s, i) in substitutions" :key="i" class="sim-subs__row">
+          <input :data-testid="`sim-old-${i}`" class="sim-subs__input" aria-label="Ancien taux" type="text" v-model="s.oldRate" placeholder="0.30" />
           <span>→</span>
-          <input :data-testid="`sim-new-${i}`" aria-label="Nouveau taux" type="text" v-model="s.newRate" placeholder="0.25" style="width: 120px" />
+          <input :data-testid="`sim-new-${i}`" class="sim-subs__input" aria-label="Nouveau taux" type="text" v-model="s.newRate" placeholder="0.25" />
         </div>
-        <button class="btn sec" data-testid="sim-add-sub" @click="addSubstitution">Ajouter une substitution</button>
+        <AppButton variant="secondary" data-testid="sim-add-sub" @click="addSubstitution">Ajouter une substitution</AppButton>
       </div>
-      <div style="margin-top: 12px">
-        <button v-if="canRun()" class="btn" data-testid="sim-run" @click="run">Lancer la simulation</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="sim-error" style="margin-top: 10px">{{ error }}</div>
-    </section>
 
-    <div v-if="!result" class="card" data-testid="sim-idle" style="padding: 28px 20px; font-size: 14px; color: #4a5868">
+      <AppButton v-if="canRun()" data-testid="sim-run" @click="run">Lancer la simulation</AppButton>
+
+      <AppMessage v-if="error" variant="error" data-testid="sim-error">{{ error }}</AppMessage>
+    </AppCard>
+
+    <AppCard v-if="!result" data-testid="sim-idle">
       Aucune simulation lancée. Choisir une règle, une version et une période, puis lancer.
-    </div>
+    </AppCard>
 
     <template v-if="result">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px">
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Réel</div>
-          <div data-testid="sim-real" style="font: 500 22px monospace; margin-top: 6px">{{ amount(result.realTotal) }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Simulé</div>
-          <div data-testid="sim-sim" style="font: 500 22px monospace; margin-top: 6px">{{ amount(result.simulatedTotal) }}</div></div>
-        <div class="card" style="padding: 16px 18px; border-color: #0e5a8a"><div style="font-size: 13px; color: #4a5868">Écart</div>
-          <div data-testid="sim-ecart" style="font: 500 22px monospace; margin-top: 6px">{{ amount(result.ecart) }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Lignes modifiées</div>
-          <div data-testid="sim-modified" style="font: 500 22px monospace; margin-top: 6px">{{ result.linesModified }}</div>
-          <div style="font-size: 13px; color: #4a5868; margin-top: 4px">sur {{ result.linesReplayed }} rejouées</div>
-          <div style="font-size: 13px; color: #4a5868; margin-top: 4px">Événements en attente : {{ result.held }}</div></div>
+      <div class="sim-tiles">
+        <AppCard class="sim-tile">
+          <div class="sim-tile__label">Réel</div>
+          <div class="sim-tile__value" data-testid="sim-real">{{ amount(result.realTotal) }}</div>
+        </AppCard>
+        <AppCard class="sim-tile">
+          <div class="sim-tile__label">Simulé</div>
+          <div class="sim-tile__value" data-testid="sim-sim">{{ amount(result.simulatedTotal) }}</div>
+        </AppCard>
+        <AppCard class="sim-tile sim-tile--accent">
+          <div class="sim-tile__label">Écart</div>
+          <div class="sim-tile__value" data-testid="sim-ecart">{{ amount(result.ecart) }}</div>
+        </AppCard>
+        <AppCard class="sim-tile">
+          <div class="sim-tile__label">Lignes modifiées</div>
+          <div class="sim-tile__value" data-testid="sim-modified">{{ result.linesModified }}</div>
+          <div class="sim-tile__sub">sur {{ result.linesReplayed }} rejouées</div>
+          <div class="sim-tile__sub">Événements en attente : {{ result.held }}</div>
+        </AppCard>
       </div>
 
-      <section class="card">
+      <AppCard>
         <BarChart mode="grouped" :categories="natureCategories" :series="compareSeries"
                   title="Réel contre simulé par nature" caption="en euros" testid="chart-sim" />
-      </section>
+      </AppCard>
 
-      <section class="card" style="overflow-x: auto">
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Écart par nature</h2>
-        <table>
-          <thead><tr><th>Nature</th><th>Réel</th><th>Simulé</th><th>Écart</th></tr></thead>
-          <tbody>
-            <tr v-for="(n, i) in result.byNature" :key="i" :data-testid="`sim-nature-${n.nature}`">
-              <td>{{ n.nature }}</td><td>{{ amount(n.real) }}</td><td>{{ amount(n.simulated) }}</td>
-              <td :data-testid="`sim-nature-ecart-${n.nature}`">{{ amount(n.ecart) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <AppCard flush>
+        <h2 class="sim-table-title">Écart par nature</h2>
+        <DataTable :columns="natureColumns" :rows="result.byNature" :row-testid="(n) => `sim-nature-${n.nature}`">
+          <template #cell-ecart="{ row }">
+            <span :data-testid="`sim-nature-ecart-${row.nature}`">{{ amount(row.ecart) }}</span>
+          </template>
+        </DataTable>
+      </AppCard>
 
-      <section v-if="result.topDistributors.length > 0" class="card" style="overflow-x: auto">
-        <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Distributeurs les plus touchés</h2>
-        <table>
-          <thead><tr><th>Distributeur</th><th>Réel</th><th>Simulé</th><th>Écart</th></tr></thead>
-          <tbody>
-            <tr v-for="(d, i) in result.topDistributors" :key="i" :data-testid="`sim-dist-${i}`">
-              <td>{{ d.distributor }}</td><td>{{ amount(d.real) }}</td><td>{{ amount(d.simulated) }}</td><td>{{ amount(d.ecart) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <AppCard v-if="result.topDistributors.length > 0" flush>
+        <h2 class="sim-table-title">Distributeurs les plus touchés</h2>
+        <DataTable :columns="distributorColumns" :rows="result.topDistributors" :row-testid="distTestid" />
+      </AppCard>
     </template>
   </div>
 </template>
+
+<style scoped>
+.sim-subs__label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink);
+}
+.sim-subs__row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+.sim-subs__input {
+  width: var(--w-rate);
+}
+.sim-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+.sim-tile__label {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.sim-tile__value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-h2);
+  font-weight: 500;
+}
+.sim-tile__sub {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.sim-tile--accent {
+  border-color: var(--primary);
+}
+.sim-table-title {
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  font-size: var(--fs-h3);
+}
+</style>

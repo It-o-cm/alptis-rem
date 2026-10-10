@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
+import { AppButton, AppCard, AppForm, AppMessage, FormField, PageHeading } from '../components/ui';
 
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 && session.entities[0] !== '*' ? session.entities[0] : 'ALPTIS_ASSURANCES');
@@ -13,9 +14,11 @@ const json = ref('');
 const error = ref('');
 const message = ref('');
 
-const canImport = () => canEditEntityParameters(session.roles);
+/** Whether the current user may import a plan. */
+const canImport = (): boolean => canEditEntityParameters(session.roles);
 
-async function exportPlan() {
+/** Exports the selected plan and shows its open-format JSON. */
+async function exportPlan(): Promise<void> {
   error.value = '';
   message.value = '';
   try {
@@ -28,7 +31,8 @@ async function exportPlan() {
   }
 }
 
-async function importPlan() {
+/** Imports the exported (or edited) plan under a new code, as draft versions. */
+async function importPlan(): Promise<void> {
   error.value = '';
   message.value = '';
   try {
@@ -46,32 +50,50 @@ async function importPlan() {
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Export et import du paramétrage</h1>
-      <div class="page__subtitle">
-        Exporte un plan complet au format ouvert et le réimporte sous un nouveau code, pour la promotion
-        entre environnements et la réversibilité (PAR-15). Les versions importées sont en projet.
-      </div>
-    </div>
+    <PageHeading
+      title="Export et import du paramétrage"
+      subtitle="Exporte un plan complet au format ouvert et le réimporte sous un nouveau code, pour la promotion entre environnements et la réversibilité (PAR-15). Les versions importées sont en projet."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="pt-entity" type="text" v-model="entity" /></label>
-        <label>Plan à exporter <input data-testid="pt-plan" type="text" v-model="planCode" /></label>
-        <button class="btn" data-testid="pt-export" @click="exportPlan">Exporter</button>
-      </div>
-      <div v-if="canImport()" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-top: 12px">
-        <label>Nouveau code <input data-testid="pt-newcode" type="text" v-model="newCode" /></label>
-        <button class="btn" data-testid="pt-import" @click="importPlan">Importer sous ce code</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="pt-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="pt-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <AppCard>
+      <AppForm @submit="exportPlan">
+        <FormField label="Entité" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="pt-entity" type="text" v-model="entity" />
+        </FormField>
+        <FormField label="Plan à exporter" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="pt-plan" type="text" v-model="planCode" />
+        </FormField>
+        <AppButton type="submit" data-testid="pt-export">Exporter</AppButton>
+      </AppForm>
 
-    <section v-if="json" class="card" style="padding: 18px 20px" data-testid="pt-json-card">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Paramétrage exporté</h2>
-      <textarea data-testid="pt-json" aria-label="Paramétrage exporté" v-model="json" rows="16"
-                style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 12px"></textarea>
-    </section>
+      <AppForm v-if="canImport()" @submit="importPlan">
+        <FormField label="Nouveau code" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="pt-newcode" type="text" v-model="newCode" />
+        </FormField>
+        <AppButton variant="secondary" type="submit" data-testid="pt-import">Importer sous ce code</AppButton>
+      </AppForm>
+
+      <AppMessage v-if="error" variant="error" data-testid="pt-error">{{ error }}</AppMessage>
+      <AppMessage v-if="message" variant="success" data-testid="pt-message">{{ message }}</AppMessage>
+    </AppCard>
+
+    <AppCard v-if="json" data-testid="pt-json-card" title="Paramétrage exporté">
+      <textarea
+        class="pt-json"
+        data-testid="pt-json"
+        aria-label="Paramétrage exporté"
+        v-model="json"
+        rows="16"
+      ></textarea>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.pt-json {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-small);
+}
+</style>

@@ -4,6 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { familyLabel, versionStatusClass, conflictLabel } from '../presentation/rules';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface PlanView { entityCode: string; code: string; label: string; direction: string | null; vintage: number | null; }
 interface RuleView { code: string; label: string; family: string | null; }
@@ -36,16 +38,51 @@ const versionForm = ref({
   priority: 10, exclusionGroup: 'BASE',
 });
 
-function fail(e: unknown) {
+/** Columns of the remuneration plans table. */
+const planColumns: Column<PlanView>[] = [
+  { key: 'code', label: 'Code' },
+  { key: 'label', label: 'Libellé' },
+  { key: 'direction', label: 'Sens', value: (p) => p.direction ?? '—' },
+  { key: 'vintage', label: 'Millésime', value: (p) => p.vintage ?? '—' },
+];
+
+/** Columns of the plan's rules table. */
+const ruleColumns: Column<RuleView>[] = [
+  { key: 'code', label: 'Code' },
+  { key: 'label', label: 'Libellé' },
+  { key: 'family', label: 'Famille', value: (r) => familyLabel(r.family) },
+];
+
+/** Columns of the rule's versions table. */
+const versionColumns: Column<VersionView>[] = [
+  { key: 'versionNo', label: 'Version' },
+  { key: 'validity', label: 'Validité', value: (v) => `${v.validFrom ?? '—'} → ${v.validTo ?? '—'}` },
+  { key: 'status', label: 'Statut' },
+  { key: 'priority', label: 'Priorité', align: 'num', value: (v) => v.priority ?? '—' },
+  { key: 'exclusionGroup', label: 'Groupe', value: (v) => v.exclusionGroup ?? '—' },
+  { key: 'conflicts', label: 'Conflits' },
+];
+
+/**
+ * Records a failure, showing its message and clearing any success.
+ * @param e the caught error
+ */
+function fail(e: unknown): void {
   error.value = e instanceof ApiError ? e.message : 'Erreur';
   message.value = '';
 }
-function ok(text: string) {
+
+/**
+ * Records a success message, clearing any error.
+ * @param text the success message to show
+ */
+function ok(text: string): void {
   message.value = text;
   error.value = '';
 }
 
-async function loadPlans() {
+/** Loads the remuneration plans and calculation families. */
+async function loadPlans(): Promise<void> {
   try {
     plans.value = await apiGet<PlanView[]>('/api/ui/v1/plans');
     families.value = await apiGet<FamilyView[]>('/api/ui/v1/families');
@@ -54,7 +91,8 @@ async function loadPlans() {
   }
 }
 
-async function createPlan() {
+/** Creates a plan from the plan form, then reloads the plans. */
+async function createPlan(): Promise<void> {
   try {
     await apiPost('/api/ui/v1/plans', { entityCode: entityCode(), ...planForm.value });
     ok('Plan créé.');
@@ -64,7 +102,11 @@ async function createPlan() {
   }
 }
 
-async function openPlan(code: string) {
+/**
+ * Opens a plan and loads its rules.
+ * @param code the plan code to open
+ */
+async function openPlan(code: string): Promise<void> {
   selectedPlan.value = code;
   selectedRule.value = null;
   versions.value = [];
@@ -75,7 +117,8 @@ async function openPlan(code: string) {
   }
 }
 
-async function duplicatePlan() {
+/** Duplicates the selected plan under a new code and vintage. */
+async function duplicatePlan(): Promise<void> {
   if (selectedPlan.value === null) {
     return;
   }
@@ -89,7 +132,8 @@ async function duplicatePlan() {
   }
 }
 
-async function createRule() {
+/** Creates a rule in the selected plan, then reopens the plan. */
+async function createRule(): Promise<void> {
   if (selectedPlan.value === null) {
     return;
   }
@@ -102,12 +146,17 @@ async function createRule() {
   }
 }
 
-async function openRule(code: string) {
+/**
+ * Opens a rule and loads its versions.
+ * @param code the rule code to open
+ */
+async function openRule(code: string): Promise<void> {
   selectedRule.value = code;
   await loadVersions();
 }
 
-async function loadVersions() {
+/** Loads the versions of the selected rule. */
+async function loadVersions(): Promise<void> {
   if (selectedPlan.value === null || selectedRule.value === null) {
     return;
   }
@@ -119,7 +168,8 @@ async function loadVersions() {
   }
 }
 
-async function addVersion() {
+/** Adds a draft version to the selected rule from the version form. */
+async function addVersion(): Promise<void> {
   if (selectedPlan.value === null || selectedRule.value === null) {
     return;
   }
@@ -146,7 +196,11 @@ async function addVersion() {
   }
 }
 
-async function approve(versionNo: number) {
+/**
+ * Approves a draft version of the selected rule.
+ * @param versionNo the version number to approve
+ */
+async function approve(versionNo: number): Promise<void> {
   if (selectedPlan.value === null || selectedRule.value === null) {
     return;
   }
@@ -166,101 +220,119 @@ onMounted(loadPlans);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Paramétrage des règles</h1>
-      <div class="page__subtitle">Plans, règles et versions, avec leur cycle d'approbation (PAR-01 à PAR-12).</div>
-    </div>
-    <div v-if="error" class="card" style="padding: 12px 16px; color: #8f1d16" data-testid="rules-error">{{ error }}</div>
-    <div v-if="message" class="card" style="padding: 12px 16px; color: #1d6b2f" data-testid="rules-message">{{ message }}</div>
+    <PageHeading
+      title="Paramétrage des règles"
+      subtitle="Plans, règles et versions, avec leur cycle d'approbation (PAR-01 à PAR-12)."
+    />
 
-    <section class="card" style="overflow-x: auto">
-      <h2 style="margin: 12px 16px">Plans de rémunération</h2>
-      <table>
-        <thead><tr><th>Code</th><th>Libellé</th><th>Sens</th><th>Millésime</th><th></th></tr></thead>
-        <tbody>
-          <tr v-if="plans.length === 0"><td colspan="5" data-testid="plans-empty">Aucun plan.</td></tr>
-          <tr v-for="p in plans" :key="p.entityCode + p.code" :data-testid="`plan-row-${p.code}`">
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ p.code }}</td>
-            <td>{{ p.label }}</td>
-            <td>{{ p.direction ?? '—' }}</td>
-            <td>{{ p.vintage ?? '—' }}</td>
-            <td><button class="btn" :data-testid="`plan-open-${p.code}`" @click="openPlan(p.code)">Ouvrir</button></td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="canEdit()" style="padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: end">
-        <label>Code<input data-testid="plan-code" v-model="planForm.code" /></label>
-        <label>Libellé<input data-testid="plan-label" v-model="planForm.label" /></label>
-        <label>Sens
-          <select data-testid="plan-direction" v-model="planForm.direction">
+    <AppMessage v-if="error" variant="error" data-testid="rules-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="rules-message">{{ message }}</AppMessage>
+
+    <AppCard title="Plans de rémunération">
+      <DataTable :columns="planColumns" :rows="plans" :row-key="(p) => p.entityCode + p.code"
+                 empty="Aucun plan." empty-testid="plans-empty" :row-testid="(p) => `plan-row-${p.code}`">
+        <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+        <template #actions="{ row }">
+          <AppButton variant="secondary" :data-testid="`plan-open-${row.code}`" @click="openPlan(row.code)">
+            Ouvrir
+          </AppButton>
+        </template>
+      </DataTable>
+
+      <AppForm v-if="canEdit()" @submit="createPlan">
+        <FormField label="Code" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="plan-code" v-model="planForm.code" />
+        </FormField>
+        <FormField label="Libellé" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="plan-label" v-model="planForm.label" />
+        </FormField>
+        <FormField label="Sens" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="plan-direction" v-model="planForm.direction">
             <option value="INBOUND">INBOUND</option><option value="OUTBOUND">OUTBOUND</option>
           </select>
-        </label>
-        <label>Millésime<input data-testid="plan-vintage" type="number" v-model.number="planForm.vintage" /></label>
-        <button class="btn" data-testid="plan-create" @click="createPlan">Créer le plan</button>
-      </div>
-    </section>
+        </FormField>
+        <FormField label="Millésime" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="plan-vintage" type="number" v-model.number="planForm.vintage" />
+        </FormField>
+        <AppButton type="submit" data-testid="plan-create">Créer le plan</AppButton>
+      </AppForm>
+    </AppCard>
 
-    <section v-if="selectedPlan" class="card" style="overflow-x: auto" data-testid="rules-section">
-      <h2 style="margin: 12px 16px">Règles du plan {{ selectedPlan }}</h2>
-      <table>
-        <thead><tr><th>Code</th><th>Libellé</th><th>Famille</th><th></th></tr></thead>
-        <tbody>
-          <tr v-if="rules.length === 0"><td colspan="4" data-testid="rules-empty">Aucune règle.</td></tr>
-          <tr v-for="r in rules" :key="r.code" :data-testid="`rule-row-${r.code}`">
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ r.code }}</td>
-            <td>{{ r.label }}</td>
-            <td>{{ familyLabel(r.family) }}</td>
-            <td><button class="btn" :data-testid="`rule-open-${r.code}`" @click="openRule(r.code)">Versions</button></td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="canEdit()" style="padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: end">
-        <label>Code<input data-testid="rule-code" v-model="ruleForm.code" /></label>
-        <label>Libellé<input data-testid="rule-label" v-model="ruleForm.label" /></label>
-        <label>Famille
-          <select data-testid="rule-family" v-model="ruleForm.family">
+    <AppCard v-if="selectedPlan" data-testid="rules-section" :title="`Règles du plan ${selectedPlan}`">
+      <DataTable :columns="ruleColumns" :rows="rules" row-key="code"
+                 empty="Aucune règle." empty-testid="rules-empty" :row-testid="(r) => `rule-row-${r.code}`">
+        <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+        <template #actions="{ row }">
+          <AppButton variant="secondary" :data-testid="`rule-open-${row.code}`" @click="openRule(row.code)">
+            Versions
+          </AppButton>
+        </template>
+      </DataTable>
+
+      <AppForm v-if="canEdit()" @submit="createRule">
+        <FormField label="Code" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="rule-code" v-model="ruleForm.code" />
+        </FormField>
+        <FormField label="Libellé" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="rule-label" v-model="ruleForm.label" />
+        </FormField>
+        <FormField label="Famille" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="rule-family" v-model="ruleForm.family">
             <option v-for="f in families" :key="f.code" :value="f.code">{{ f.label }}</option>
           </select>
-        </label>
-        <button class="btn" data-testid="rule-create" @click="createRule">Créer la règle</button>
-      </div>
-      <div v-if="canEdit()" style="padding: 0 16px 12px; display: flex; gap: 8px; align-items: end">
-        <label>Nouveau code<input data-testid="dup-code" v-model="dupForm.newCode" /></label>
-        <label>Nouveau millésime<input data-testid="dup-vintage" type="number" v-model.number="dupForm.newVintage" /></label>
-        <button class="btn" data-testid="plan-duplicate" @click="duplicatePlan">Dupliquer le plan</button>
-      </div>
-    </section>
+        </FormField>
+        <AppButton variant="secondary" type="submit" data-testid="rule-create">Créer la règle</AppButton>
+      </AppForm>
 
-    <section v-if="selectedRule" class="card" style="overflow-x: auto" data-testid="versions-section">
-      <h2 style="margin: 12px 16px">Versions et conflits — {{ selectedRule }}</h2>
-      <table>
-        <thead><tr><th>Version</th><th>Validité</th><th>Statut</th><th>Priorité</th><th>Groupe</th><th>Conflits</th><th></th></tr></thead>
-        <tbody>
-          <tr v-if="versions.length === 0"><td colspan="7" data-testid="versions-empty">Aucune version.</td></tr>
-          <tr v-for="v in versions" :key="v.versionNo" :data-testid="`version-row-${v.versionNo}`">
-            <td>{{ v.versionNo }}</td>
-            <td>{{ v.validFrom ?? '—' }} → {{ v.validTo ?? '—' }}</td>
-            <td><span :class="versionStatusClass(v.status)" data-testid="version-status">{{ v.status ?? '—' }}</span></td>
-            <td>{{ v.priority ?? '—' }}</td>
-            <td>{{ v.exclusionGroup ?? '—' }}</td>
-            <td data-testid="version-conflicts">{{ conflictLabel(v.conflicts) }}</td>
-            <td>
-              <button v-if="canEdit() && v.status === 'DRAFT'" class="btn" :data-testid="`version-approve-${v.versionNo}`"
-                @click="approve(v.versionNo)">Approuver</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="canEdit()" style="padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px">
-        <label>Valable du<input data-testid="v-from" type="date" v-model="versionForm.validFrom" /></label>
-        <label>Au<input data-testid="v-to" type="date" v-model="versionForm.validTo" /></label>
-        <label>Périmètre (JSON)<input data-testid="v-scope" v-model="versionForm.scope" /></label>
-        <label>Paramètres (JSON)<input data-testid="v-parameters" v-model="versionForm.parameters" /></label>
-        <label>Priorité<input data-testid="v-priority" type="number" v-model.number="versionForm.priority" /></label>
-        <label>Groupe d'exclusion<input data-testid="v-group" v-model="versionForm.exclusionGroup" /></label>
-        <button class="btn" data-testid="version-create" @click="addVersion">Ajouter la version</button>
-      </div>
-    </section>
+      <AppForm v-if="canEdit()" @submit="duplicatePlan">
+        <FormField label="Nouveau code" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="dup-code" v-model="dupForm.newCode" />
+        </FormField>
+        <FormField label="Nouveau millésime" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="dup-vintage" type="number" v-model.number="dupForm.newVintage" />
+        </FormField>
+        <AppButton variant="secondary" type="submit" data-testid="plan-duplicate">Dupliquer le plan</AppButton>
+      </AppForm>
+    </AppCard>
+
+    <AppCard v-if="selectedRule" data-testid="versions-section" :title="`Versions et conflits — ${selectedRule}`">
+      <DataTable :columns="versionColumns" :rows="versions" row-key="versionNo"
+                 empty="Aucune version." empty-testid="versions-empty" :row-testid="(v) => `version-row-${v.versionNo}`">
+        <template #cell-status="{ row }">
+          <span :class="versionStatusClass(row.status)" data-testid="version-status">{{ row.status ?? '—' }}</span>
+        </template>
+        <template #cell-conflicts="{ row }">
+          <span data-testid="version-conflicts">{{ conflictLabel(row.conflicts) }}</span>
+        </template>
+        <template #actions="{ row }">
+          <AppButton v-if="canEdit() && row.status === 'DRAFT'" variant="secondary"
+                     :data-testid="`version-approve-${row.versionNo}`" @click="approve(row.versionNo)">
+            Approuver
+          </AppButton>
+        </template>
+      </DataTable>
+
+      <AppForm v-if="canEdit()" two-column @submit="addVersion">
+        <FormField label="Valable du" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="v-from" type="date" v-model="versionForm.validFrom" />
+        </FormField>
+        <FormField label="Au" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="v-to" type="date" v-model="versionForm.validTo" />
+        </FormField>
+        <FormField label="Périmètre (JSON)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="v-scope" v-model="versionForm.scope" />
+        </FormField>
+        <FormField label="Paramètres (JSON)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="v-parameters" v-model="versionForm.parameters" />
+        </FormField>
+        <FormField label="Priorité" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="v-priority" type="number" v-model.number="versionForm.priority" />
+        </FormField>
+        <FormField label="Groupe d'exclusion" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="v-group" v-model="versionForm.exclusionGroup" />
+        </FormField>
+        <AppButton variant="secondary" type="submit" data-testid="version-create">Ajouter la version</AppButton>
+      </AppForm>
+    </AppCard>
   </div>
 </template>
