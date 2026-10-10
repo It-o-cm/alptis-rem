@@ -21,14 +21,19 @@ public class DemoDataService {
     /** Builds the static referential (distributors, products, rules, agreements, …). */
     private final DemoReferentialBuilder referential;
 
+    /** Builds the contracts, coverages, assignments and choices. */
+    private final DemoContractsBuilder contracts;
+
     /**
      * Creates the service.
      *
      * @param referential the referential builder
+     * @param contracts   the contracts builder
      */
     @Inject
-    public DemoDataService(DemoReferentialBuilder referential) {
+    public DemoDataService(DemoReferentialBuilder referential, DemoContractsBuilder contracts) {
         this.referential = referential;
+        this.contracts = contracts;
     }
 
     /**
@@ -42,5 +47,6 @@ public class DemoDataService {
         }
         DemoWorld world = new DemoWorld();
         referential.build(world);
+        contracts.build(world);
     }
 }

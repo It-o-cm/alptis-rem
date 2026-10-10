@@ -2,6 +2,10 @@ package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
+import fr.alptis.remuneration.domain.AssignmentRole;
+import fr.alptis.remuneration.domain.Contract;
+import fr.alptis.remuneration.domain.Coverage;
+import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
@@ -12,10 +16,14 @@ import fr.alptis.remuneration.domain.ImportMapping;
 import fr.alptis.remuneration.domain.OriasStatus;
 import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.PayeeRuleShare;
+import fr.alptis.remuneration.domain.PortfolioTransfer;
 import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.QualityIndicator;
+import fr.alptis.remuneration.domain.RemunerationChoice;
+import fr.alptis.remuneration.domain.ReplacementOrder;
 import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.RuleVersion;
+import fr.alptis.remuneration.domain.TransferStatus;
 import fr.alptis.remuneration.domain.VersionStatus;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -117,6 +125,24 @@ class DemoDataServiceTest {
         assertTrue(PayeeRuleShare.count() >= 2);
         assertTrue(QualityIndicator.count() >= 2);
         assertTrue(EntityParameter.count() >= 2);
+    }
+
+    /**
+     * The contracts floors of section 4 are met: at least 150 contracts and 200 coverages, co-broked
+     * coverages, a discount choice, two portfolio transfers (one processed, one in progress) and a
+     * replacement order.
+     */
+    @Test
+    void builds_the_contracts_floors() {
+        service.load();
+
+        assertTrue(Contract.count() >= 150, "at least 150 contracts");
+        assertTrue(Coverage.count() >= 200, "at least 200 coverages");
+        assertTrue(CoverageAssignment.count("role", AssignmentRole.CO_BROKER) > 0, "a co-broked coverage");
+        assertTrue(RemunerationChoice.count("advanceRequested", Boolean.TRUE) > 0, "a discount choice");
+        assertTrue(PortfolioTransfer.count("status", TransferStatus.PROCESSED) > 0, "a processed transfer");
+        assertTrue(PortfolioTransfer.count("status", TransferStatus.PENDING) > 0, "an in-progress transfer");
+        assertTrue(ReplacementOrder.count() > 0, "a replacement order");
     }
 
     /**

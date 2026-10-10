@@ -76,9 +76,6 @@ public class DemoReferentialBuilder {
     /** The first day the demonstration referential is valid. */
     private static final LocalDate FROM = LocalDate.of(2025, 1, 1);
 
-    /** The far-future bound used where an open-ended validity is wanted. */
-    private static final LocalDate FOREVER = LocalDate.of(2099, 12, 31);
-
     /** The application date/time provider. */
     private final DateTimeProvider clock;
 
@@ -194,8 +191,8 @@ public class DemoReferentialBuilder {
      */
     private void products(DemoWorld world, Map<String, ProductRange> ranges, List<Insurer> insurers) {
         String[][] rows = {
-                {DemoCodes.P_SANTE_SELECT, "Santé Select", "SANTE"},
-                {DemoCodes.P_SANTE_PRO_PLUS, "Santé Pro+", "SANTE"},
+                {DemoCodes.P_LINEAR, "Santé Démo (linéaire)", "SANTE"},
+                {DemoCodes.P_UPFRONT, "Précompte Démo", "SANTE"},
                 {DemoCodes.P_PREVOYANCE, "Prévoyance Pro+", "PREVOYANCE"},
                 {DemoCodes.P_DECES, "Décès Plus", "PREVOYANCE"},
                 {DemoCodes.P_COLLECTIVE, "Santé Collective", "COLLECTIVE"},
@@ -254,8 +251,9 @@ public class DemoReferentialBuilder {
             OriasStatus orias = (i == 4 || i == 17) ? OriasStatus.STRUCK_OFF : OriasStatus.REGISTERED;
             Distributor distributor = distributor(partner, names[i], legalForm(i), types[i % types.length], orias);
             world.put(distributor);
-            // Partner status cycles through all four values across the roster.
-            PartnerStatus status = statuses[i % statuses.length];
+            // The first four distributors are active (they head groups, are enrolled and carry scenes);
+            // the rest cycle through all four partner statuses so the whole enumeration is represented.
+            PartnerStatus status = i < 4 ? PartnerStatus.ACTIVE : statuses[i % statuses.length];
             link(distributor, world.entity(DemoCodes.ALPTIS), status);
             // The first three distributors work with both entities.
             if (i < 3) {
@@ -445,10 +443,10 @@ public class DemoReferentialBuilder {
     }
 
     /**
-     * Creates the demonstration plan and its nine-family rules for each entity. Alptis already carries
-     * the Guide 2026 linear and upfront rules, so its demo plan adds the other families; UNEP, which
-     * has no Guide barème, carries the full ten rows (including a linear rule with retired/active/draft
-     * versions, the draft standing for a version awaiting four-eyes approval).
+     * Creates the demonstration plan and its ten nine-family rules for each entity, on demo-only
+     * products kept off the Guide barème so the engine never has to arbitrate two base rules on the
+     * same grain. UNEP's linear rule carries retired, active and draft versions, the draft standing for
+     * a version awaiting four-eyes approval; Alptis carries a single active linear rule.
      *
      * @param world the shared demo world
      */
@@ -464,14 +462,17 @@ public class DemoReferentialBuilder {
             plan.persist();
             world.put(plan);
 
-            boolean unep = entity.code.equals(DemoCodes.UNEP);
-            if (unep) {
+            if (entity.code.equals(DemoCodes.UNEP)) {
                 linearRuleWithVersions(plan);
-                simpleRule(plan, "UPFRONT", RuleFamily.UPFRONT, LineNature.ACQUISITION,
-                        DemoCodes.P_SANTE_PRO_PLUS, List.of("PREMIUM_COLLECTED", "PREMIUM_CANCELLED"),
-                        "{\"allowedRates\":[{\"acquisition\":0.2,\"servicing\":0.1}],\"firstYearDays\":365}",
-                        upfrontClawback(), "BASE", VersionStatus.ACTIVE);
+            } else {
+                simpleRule(plan, "LINEAR", RuleFamily.LINEAR, LineNature.LINEAR, DemoCodes.P_LINEAR,
+                        List.of("PREMIUM_COLLECTED"), "{\"allowedRates\":[0.10,0.15]}", null, "BASE",
+                        VersionStatus.ACTIVE);
             }
+            simpleRule(plan, "UPFRONT", RuleFamily.UPFRONT, LineNature.ACQUISITION,
+                    DemoCodes.P_UPFRONT, List.of("PREMIUM_COLLECTED", "PREMIUM_CANCELLED"),
+                    "{\"allowedRates\":[{\"acquisition\":0.2,\"servicing\":0.1}],\"firstYearDays\":365}",
+                    upfrontClawback(), "BASE", VersionStatus.ACTIVE);
             simpleRule(plan, "FIXED", RuleFamily.FIXED, LineNature.FEE, DemoCodes.P_FORFAIT,
                     List.of("PREMIUM_COLLECTED"), "{\"amount\":300}", null, "BASE", VersionStatus.ACTIVE);
             simpleRule(plan, "EXTERNAL", RuleFamily.EXTERNAL, LineNature.EXTERNAL, DemoCodes.P_EXTERNE,
@@ -507,13 +508,13 @@ public class DemoReferentialBuilder {
     private void linearRuleWithVersions(CommissionPlan plan) {
         Rule rule = rule(plan, "LINEAR", RuleFamily.LINEAR);
         version(rule, 1, VersionStatus.RETIRED, LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31),
-                scope(plan.entity.code, DemoCodes.P_SANTE_SELECT, "PREMIUM_COLLECTED"),
+                scope(plan.entity.code, DemoCodes.P_LINEAR, "PREMIUM_COLLECTED"),
                 List.of("PREMIUM_COLLECTED"), LineNature.LINEAR, "{\"allowedRates\":[0.08]}", null, "BASE", true);
         version(rule, 2, VersionStatus.ACTIVE, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
-                scope(plan.entity.code, DemoCodes.P_SANTE_SELECT, "PREMIUM_COLLECTED"),
+                scope(plan.entity.code, DemoCodes.P_LINEAR, "PREMIUM_COLLECTED"),
                 List.of("PREMIUM_COLLECTED"), LineNature.LINEAR, "{\"allowedRates\":[0.10,0.15]}", null, "BASE", true);
         version(rule, 3, VersionStatus.DRAFT, LocalDate.of(2027, 1, 1), LocalDate.of(2027, 12, 31),
-                scope(plan.entity.code, DemoCodes.P_SANTE_SELECT, "PREMIUM_COLLECTED"),
+                scope(plan.entity.code, DemoCodes.P_LINEAR, "PREMIUM_COLLECTED"),
                 List.of("PREMIUM_COLLECTED"), LineNature.LINEAR, "{\"allowedRates\":[0.12]}", null, "BASE", false);
     }
 
@@ -775,15 +776,17 @@ public class DemoReferentialBuilder {
      */
     private void advanceAgreements(DemoWorld world) {
         LegalEntity entity = world.entity(DemoCodes.ALPTIS);
-        AdvanceAgreement valid = advanceAgreement(entity, world.distributor(DemoCodes.CABINET),
+        // The valid convention sits on P20002 (which carries the upfront scene), keeping the mock-up
+        // cabinet's September bordereau a clean 110,00 €.
+        AdvanceAgreement valid = advanceAgreement(entity, world.distributor("P20002"),
                 AdvanceAgreementStatus.VALID, 2);
         AdvanceAgreementProduct link = new AdvanceAgreementProduct();
         link.advanceAgreement = valid;
-        link.product = world.product(DemoCodes.ALPTIS, DemoCodes.P_SANTE_PRO_PLUS);
+        link.product = world.product(DemoCodes.ALPTIS, DemoCodes.P_UPFRONT);
         stamp(link);
         link.persist();
-        advanceAgreement(entity, world.distributor("P20002"), AdvanceAgreementStatus.SUSPENDED, 50);
-        advanceAgreement(entity, world.distributor("P20003"), AdvanceAgreementStatus.CLOSED, 50);
+        advanceAgreement(entity, world.distributor("P20003"), AdvanceAgreementStatus.SUSPENDED, 50);
+        advanceAgreement(entity, world.distributor("P20005"), AdvanceAgreementStatus.CLOSED, 50);
     }
 
     /**
@@ -822,7 +825,7 @@ public class DemoReferentialBuilder {
                 world.distributor("P20001"), world.distributor("P20002"))) {
             externalCode("DISTRIBUTOR", distributor.getId(), "LEGACY", "EXT-D-" + (++i));
         }
-        externalCode("PRODUCT", world.product(DemoCodes.ALPTIS, DemoCodes.P_SANTE_SELECT).getId(),
+        externalCode("PRODUCT", world.product(DemoCodes.ALPTIS, DemoCodes.P_LINEAR).getId(),
                 "LEGACY", "EXT-P-SANTE");
     }
 

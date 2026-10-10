@@ -16,7 +16,7 @@ class DemoDataBootstrapTest {
     @Test
     void startup_loads_the_demo_dataset() {
         boolean[] loaded = {false};
-        DemoDataService service = new DemoDataService(null) {
+        DemoDataService service = new DemoDataService(null, null) {
             @Override
             public void load() {
                 loaded[0] = true;

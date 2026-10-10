@@ -21,11 +21,11 @@ interface DemoCodes {
 
     // --- Products (created for both entities) ---------------------------------
 
-    /** Health product carrying the linear rule and the mock-up 110 € scene. */
-    static final String P_SANTE_SELECT = "SANTE_SELECT";
+    /** Demo health product carrying the linear rule and the mock-up 110 € scene (off the Guide barème). */
+    static final String P_LINEAR = "DEMO_SANTE";
 
-    /** Health product carrying the upfront rule and the discount (escompte) advance. */
-    static final String P_SANTE_PRO_PLUS = "SANTE_PRO_PLUS";
+    /** Demo health product carrying the upfront rule and the discount advance (off the Guide barème). */
+    static final String P_UPFRONT = "DEMO_PREC";
 
     /** Provident product carrying the fixed-fee rule. */
     static final String P_PREVOYANCE = "PREVOYANCE_PRO_PLUS";
@@ -47,4 +47,36 @@ interface DemoCodes {
 
     /** Demo-only product dedicated to the external family (kept off the Guide barème). */
     static final String P_EXTERNE = "COURTAGE_EXTERNE";
+
+    // --- Family scene tags (also the demo rule-code suffixes) ----------------
+
+    /** Linear scene tag. */
+    static final String F_LINEAR = "LINEAR";
+
+    /** Upfront (and discount-advance) scene tag. */
+    static final String F_UPFRONT = "UPFRONT";
+
+    /** Fixed-fee scene tag. */
+    static final String F_FIXED = "FIXED";
+
+    /** External-commission scene tag. */
+    static final String F_EXTERNAL = "EXTERNAL";
+
+    /** Share (retrocession) scene tag. */
+    static final String F_SHARE = "SHARE";
+
+    /** Outstanding-balance scene tag. */
+    static final String F_OUTSTANDING = "OUTSTANDING";
+
+    /** Retirement-savings advance scene tag. */
+    static final String F_SAVINGS = "SAVINGS";
+
+    /** Development remuneration (RCD) scene tag. */
+    static final String F_RCD = "RCD";
+
+    /** Portfolio remuneration (RCP) scene tag. */
+    static final String F_PORTFOLIO = "PORTFOLIO";
+
+    /** Retirement complement scene tag. */
+    static final String F_COMPLEMENT = "COMPLEMENT";
 }

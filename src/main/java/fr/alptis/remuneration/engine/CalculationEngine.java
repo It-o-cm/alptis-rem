@@ -145,6 +145,9 @@ public class CalculationEngine {
         java.util.Map<Long, List<BusinessEvent>> byCoverage = new java.util.LinkedHashMap<>();
         List<BusinessEvent> coverless = new ArrayList<>();
         for (BusinessEvent event : events) {
+            // Record the period this event was calculated in, so the period controls (data quality,
+            // no-rule) can find the events they must check (section 8.6).
+            event.eligiblePeriod = period;
             if (event.coverage == null) {
                 coverless.add(event);
             } else {

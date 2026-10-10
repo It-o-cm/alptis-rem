@@ -230,6 +230,28 @@ class CalculationEngineTest {
     }
 
     /**
+     * Regression (brief DONNEES-DEMO §5): the real calculation records on each processed event the
+     * period it was calculated in, so the period controls of section 8.6 (data quality, no-rule) can
+     * find the events to check. The field was declared and queried but never assigned.
+     */
+    @Test
+    @TestTransaction
+    void stamps_the_eligible_period_on_processed_events() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        linearChoice(c, "0.15", MONTH, null);
+        version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
+        BusinessEvent event = premium(c, "E1", LocalDate.of(2026, 1, 5), "100.00");
+
+        engine.runReal("UNEP", MONTH);
+
+        BusinessEvent reloaded = BusinessEvent.findById(event.getId());
+        assertNotNull(reloaded.eligiblePeriod);
+        assertEquals(MONTH, reloaded.eligiblePeriod.periodMonth);
+    }
+
+    /**
      * CR-09: the cancellation of the CR-01 premium yields the inverse line of −15,00 €.
      */
     @Test

@@ -1,6 +1,7 @@
 package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.domain.CommissionPlan;
+import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.Product;
@@ -33,6 +34,9 @@ public class DemoWorld {
 
     /** The commission plans by {@code entityCode/code}. */
     final Map<String, CommissionPlan> plans = new LinkedHashMap<>();
+
+    /** The family-scene coverages by {@code entityCode/FAMILY}, used by the cycle runner to emit events. */
+    final Map<String, Coverage> sceneCoverages = new LinkedHashMap<>();
 
     /**
      * Returns the key of an entity-scoped object.
@@ -140,5 +144,27 @@ public class DemoWorld {
      */
     Distributor distributor(String partnerCode) {
         return distributors.get(partnerCode);
+    }
+
+    /**
+     * Records a family-scene coverage under {@code entityCode/family}.
+     *
+     * @param entityCode the entity code
+     * @param family     the family tag
+     * @param coverage   the coverage
+     */
+    void putScene(String entityCode, String family, Coverage coverage) {
+        sceneCoverages.put(key(entityCode, family), coverage);
+    }
+
+    /**
+     * Returns the family-scene coverage of the given entity and family tag.
+     *
+     * @param entityCode the entity code
+     * @param family     the family tag
+     * @return the coverage, or null if none
+     */
+    Coverage scene(String entityCode, String family) {
+        return sceneCoverages.get(key(entityCode, family));
     }
 }
