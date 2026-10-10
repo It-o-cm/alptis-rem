@@ -114,6 +114,9 @@ async function sweep(
 }
 
 test.describe('Alignement de tous les écrans', () => {
+  // Sweeping every screen takes longer than the default per-test budget.
+  test.describe.configure({ timeout: 240_000 });
+
   test.beforeEach(async ({ request }) => {
     await loadDemo(request);
   });
