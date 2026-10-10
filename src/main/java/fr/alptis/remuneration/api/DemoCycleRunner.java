@@ -207,6 +207,7 @@ public class DemoCycleRunner {
                     new BigDecimal("1100.00"), ProcessingStatus.PENDING);
         }
         emitFamilies(world, entity, date);
+        emitReprises(world, entity, date);
         engine.runReal(entity, month);
         int year = month.getYear();
         engine.runDevelopment(entity, month, year);
@@ -215,6 +216,29 @@ public class DemoCycleRunner {
         controls.run(entity, month);
         closeFully(entity, month, false);
         rectifyOne(entity, month);
+    }
+
+    /**
+     * Emits the events that exercise decision D12 (a reversal uses the origin rule version): an
+     * annulation (a premium and its cancellation), a reprise (a termination clawing back the upfront
+     * acquisition) and an impayé (an unpaid notice reaching the convention threshold).
+     *
+     * @param world  the shared demo world
+     * @param entity the entity code
+     * @param date   the event date
+     */
+    private void emitReprises(DemoWorld world, String entity, LocalDate date) {
+        List<Coverage> bulk = bulkCoverages(entity);
+        BusinessEvent origin = emit(entity, bulk.get(10), EventType.PREMIUM_COLLECTED, date.minusDays(3),
+                new BigDecimal("800.00"), ProcessingStatus.PENDING);
+        BusinessEvent cancellation = emit(entity, bulk.get(10), EventType.PREMIUM_CANCELLED, date, null,
+                ProcessingStatus.PENDING);
+        cancellation.reversesEvent = origin;
+        emit(entity, world.scene(entity, DemoCodes.F_UPFRONT), EventType.TERMINATION, date, null,
+                ProcessingStatus.PENDING);
+        BusinessEvent unpaid = emit(entity, bulk.get(11), EventType.UNPAID_NOTICE, date, null,
+                ProcessingStatus.PENDING);
+        unpaid.unpaidRank = (short) 2;
     }
 
     /**

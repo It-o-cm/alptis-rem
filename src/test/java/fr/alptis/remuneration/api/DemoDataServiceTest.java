@@ -199,12 +199,14 @@ class DemoDataServiceTest {
         assertTrue(Statement.count("period = ?1 and netAmount = ?2", alptisSep, new BigDecimal("110.00")) > 0,
                 "a 110,00 € September bordereau");
 
-        // Every family produced at least one line.
+        // Every family produced at least one line, and the reprises produced clawback and inverse lines.
         for (LineNature nature : new LineNature[]{LineNature.LINEAR, LineNature.ACQUISITION, LineNature.SERVICING,
                 LineNature.ADVANCE, LineNature.RETROCESSION, LineNature.OUTSTANDING, LineNature.FEE,
-                LineNature.EXTERNAL, LineNature.RCD, LineNature.RCP, LineNature.COMPLEMENT}) {
+                LineNature.EXTERNAL, LineNature.RCD, LineNature.RCP, LineNature.COMPLEMENT, LineNature.CLAWBACK}) {
             assertTrue(CommissionLine.count("nature", nature) > 0, "a line of nature " + nature);
         }
+        // A cancellation (D12) produced an inverse (negative) line.
+        assertTrue(CommissionLine.count("amount < ?1", BigDecimal.ZERO) > 0, "an inverse/clawback line");
 
         // Controls span the three severities, with an open blocking anomaly in October.
         for (ControlSeverity severity : ControlSeverity.values()) {
