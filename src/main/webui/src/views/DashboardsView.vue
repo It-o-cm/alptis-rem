@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import BarChart from '../components/charts/BarChart.vue';
+import DonutChart from '../components/charts/DonutChart.vue';
+import HBarChart from '../components/charts/HBarChart.vue';
+import LineChart from '../components/charts/LineChart.vue';
 
 interface Amount {
   label: string;
@@ -88,6 +92,44 @@ async function exportCsv() {
   csv.value = await apiGetText(`/api/ui/v1/reporting/${entity.value}/export/dashboard${query()}`);
 }
 
+const caption = computed(() => (data.value ? `${entity.value} — en euros` : ''));
+
+const stackedSeries = computed(() => {
+  if (!data.value) {
+    return [];
+  }
+  const natures = [...new Set(data.value.byMonthNature.map((m) => m.nature))];
+  return natures.map((nature) => ({
+    key: nature,
+    label: nature,
+    values: data.value!.months.map(
+      (month) => data.value!.byMonthNature.find((m) => m.month === month && m.nature === nature)?.amount ?? 0,
+    ),
+  }));
+});
+
+const escompteSeries = computed(() => {
+  if (!data.value) {
+    return [];
+  }
+  return [
+    { key: 'verses', label: 'Versés', values: data.value.escompteByMonth.map((e) => e.primary) },
+    { key: 'apures', label: 'Apurés', values: data.value.escompteByMonth.map((e) => e.second ?? 0) },
+    { key: 'creance', label: 'Créance', values: data.value.escompteByMonth.map((e) => e.third ?? 0) },
+  ];
+});
+
+const reprisesSeries = computed(() => {
+  if (!data.value) {
+    return [];
+  }
+  return [{ key: 'reprises', label: 'Reprises', values: data.value.reprisesByMonth.map((r) => r.primary) }];
+});
+
+const natureData = computed(() => (data.value ? data.value.byNature.map((a) => ({ label: a.label, value: a.amount })) : []));
+const gammeData = computed(() => (data.value ? data.value.byGamme.map((a) => ({ label: a.label, value: a.amount })) : []));
+const topData = computed(() => (data.value ? data.value.topDistributors.map((a) => ({ label: a.label, value: a.amount })) : []));
+
 onMounted(load);
 </script>
 
@@ -134,7 +176,13 @@ onMounted(load);
           <div data-testid="dash-anomalies" style="font: 500 22px monospace; margin-top: 6px">{{ data.anomalies }}</div></div>
       </div>
 
+      <section class="card">
+        <BarChart mode="stacked" :categories="data.months" :series="stackedSeries"
+                  title="Commissions par mois et par nature" :caption="caption" testid="chart-month-nature" />
+      </section>
+
       <section class="card" style="overflow-x: auto">
+        <DonutChart :data="natureData" title="Répartition par nature" :caption="caption" testid="chart-nature" />
         <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Commissions par nature</h2>
         <table>
           <thead><tr><th>Nature</th><th>Montant</th></tr></thead>
@@ -148,6 +196,7 @@ onMounted(load);
       </section>
 
       <section class="card" style="overflow-x: auto">
+        <DonutChart :data="gammeData" title="Répartition par gamme" :caption="caption" testid="chart-gamme" />
         <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Commissions par gamme</h2>
         <table>
           <thead><tr><th>Gamme</th><th>Montant</th></tr></thead>
@@ -160,6 +209,8 @@ onMounted(load);
       </section>
 
       <section class="card" style="overflow-x: auto">
+        <LineChart :categories="data.months" :series="escompteSeries"
+                   title="Escomptes versés, apurés et créance dans le temps" :caption="caption" testid="chart-escompte" />
         <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Escomptes par mois</h2>
         <table>
           <thead><tr><th>Mois</th><th>Versés</th><th>Apurés</th><th>Créance</th></tr></thead>
@@ -173,6 +224,8 @@ onMounted(load);
       </section>
 
       <section class="card" style="overflow-x: auto">
+        <LineChart :categories="data.months" :series="reprisesSeries" title="Reprises par mois"
+                   :caption="caption" testid="chart-reprises" />
         <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Reprises par mois</h2>
         <table>
           <thead><tr><th>Mois</th><th>Montant</th></tr></thead>
@@ -185,6 +238,7 @@ onMounted(load);
       </section>
 
       <section class="card" style="overflow-x: auto">
+        <HBarChart :data="topData" title="Premiers distributeurs" :caption="caption" testid="chart-top" />
         <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Premiers distributeurs</h2>
         <table>
           <thead><tr><th>Distributeur</th><th>Montant</th></tr></thead>

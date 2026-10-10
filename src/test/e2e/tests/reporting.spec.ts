@@ -24,6 +24,19 @@ test('le consultant lit les tableaux de bord et la recherche de commissions @scr
   await expect(page.getByTestId('dash-reprises')).toBeVisible();
   await expect(page.locator('[data-testid^="dash-nature-"]').first()).toBeVisible();
 
+  // The charts render the data: the stacked bars, the nature donut and the top-distributor bars.
+  await expect(page.getByTestId('chart-month-nature')).toBeVisible();
+  await expect(page.locator('[data-testid^="chart-month-nature-bar-"]').first()).toBeVisible();
+  await expect(page.locator('[data-testid^="chart-nature-slice-"]').first()).toBeVisible();
+  const bar = page.locator('[data-testid^="chart-top-bar-"]').first();
+  await expect(bar).toBeVisible();
+  await expect(bar).toHaveAttribute('aria-label', /\d/);
+
+  // A filter that matches nothing redraws the chart to its empty state.
+  await page.getByTestId('dash-product').fill('PRODUIT-INEXISTANT');
+  await page.getByTestId('dash-refresh').click();
+  await expect(page.getByTestId('chart-month-nature-empty')).toBeVisible();
+
   await page.goto('/recherche-commissions');
   await page.getByTestId('cs-search').click();
   await expect(page.locator('[data-testid^="cs-row-"]').first()).toBeVisible();
@@ -53,6 +66,7 @@ test('l’auditeur lit la vision consolidée, le consultant en est écarté @scr
   const auditorPage = await auditor.newPage();
   await auditorPage.goto('/vision-groupe');
   await expect(auditorPage.locator('[data-testid^="group-row-"]').first()).toBeVisible();
+  await expect(auditorPage.getByTestId('chart-group')).toBeVisible();
   await auditor.close();
 
   // A single-entity viewer is not entitled to the consolidated view (CR-70).
@@ -70,6 +84,7 @@ test('le contrôleur Finance lit la marge par produit, assureur et distributeur 
   const page = await finance.newPage();
   await page.goto('/marge');
   await expect(page.locator('[data-testid^="margin-product-"]').first()).toBeVisible();
+  await expect(page.getByTestId('chart-margin-product')).toBeVisible();
   await finance.close();
 });
 
@@ -81,6 +96,8 @@ test('le consultant lit les indicateurs de fonctionnement mois par mois @screen:
   await page.goto('/indicateurs-fonctionnement');
   await expect(page.locator('[data-testid^="ind-rules-"]').first()).toBeVisible();
   await expect(page.locator('[data-testid^="ind-clawback-"]').first()).toBeVisible();
+  await expect(page.getByTestId('chart-ind-rules')).toBeVisible();
+  await expect(page.getByTestId('chart-ind-clawback')).toBeVisible();
   await viewer.close();
 });
 

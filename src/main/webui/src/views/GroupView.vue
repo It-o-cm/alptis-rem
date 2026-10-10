@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { formatAmount } from '../presentation/format';
+import BarChart from '../components/charts/BarChart.vue';
 
 interface EntitySummary {
   code: string;
@@ -53,6 +54,17 @@ function cell(entity: string, month: string): number | null {
   return found ? found.total : null;
 }
 
+const entitySeries = computed(() => {
+  if (!data.value) {
+    return [];
+  }
+  return data.value.summaries.map((e) => ({
+    key: e.code,
+    label: e.code,
+    values: data.value!.months.map((m) => cell(e.code, m) ?? 0),
+  }));
+});
+
 onMounted(load);
 </script>
 
@@ -84,6 +96,11 @@ onMounted(load);
             </tr>
           </tbody>
         </table>
+      </section>
+
+      <section v-if="data" class="card">
+        <BarChart mode="grouped" :categories="data.months" :series="entitySeries"
+                  title="Commissions des entités, mois par mois" caption="en euros" testid="chart-group" />
       </section>
 
       <section v-if="data" class="card" style="overflow-x: auto">

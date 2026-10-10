@@ -3,6 +3,11 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import HBarChart from '../components/charts/HBarChart.vue';
+
+function marginData(rows: MarginRow[]): { label: string; value: number }[] {
+  return rows.map((r) => ({ label: r.key, value: r.margin }));
+}
 
 interface MarginRow {
   key: string;
@@ -69,6 +74,8 @@ onMounted(load);
           { id: 'insurer', label: 'Par assureur', rows: data.byInsurer },
           { id: 'distributor', label: 'Par distributeur', rows: data.byDistributor },
         ]" :key="axis.id" class="card" style="overflow-x: auto">
+        <HBarChart :data="marginData(axis.rows)" :title="`Marge ${axis.label.toLowerCase()}`"
+                   caption="en euros" :testid="`chart-margin-${axis.id}`" />
         <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">{{ axis.label }}</h2>
         <table>
           <thead><tr><th>Clé</th><th>Reçu</th><th>Payé</th><th>Marge</th></tr></thead>

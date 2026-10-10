@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount, formatPercent } from '../presentation/format';
+import LineChart from '../components/charts/LineChart.vue';
 
 interface IndicatorMonth {
   month: string;
@@ -52,6 +53,15 @@ async function exportCsv() {
   csv.value = await apiGetText(`/api/ui/v1/reporting/${entity.value}/export/indicators${query()}`);
 }
 
+const months = computed(() => data.value?.months ?? []);
+function serie(label: string, pick: (r: IndicatorMonth) => number) {
+  return [{ key: 'v', label, values: data.value ? data.value.rows.map(pick) : [] }];
+}
+const rulesSeries = computed(() => serie('Règles actives', (r) => r.activeRules));
+const cycleSeries = computed(() => serie('Durée du cycle', (r) => r.cycleDuration));
+const manualSeries = computed(() => serie('Lignes manuelles', (r) => r.manualShare));
+const clawbackSeries = computed(() => serie('Montants repris', (r) => r.clawback));
+
 onMounted(load);
 </script>
 
@@ -75,6 +85,13 @@ onMounted(load);
       <div v-if="error" class="tag ko" data-testid="ind-error" style="margin-top: 10px">{{ error }}</div>
       <pre v-if="csv" data-testid="ind-export-content" style="margin-top: 10px; overflow-x: auto; background: #f6f8fa; padding: 12px">{{ csv }}</pre>
     </section>
+
+    <div v-if="data" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px">
+      <section class="card"><LineChart :categories="months" :series="rulesSeries" title="Règles actives par mois" testid="chart-ind-rules" /></section>
+      <section class="card"><LineChart :categories="months" :series="cycleSeries" title="Durée du cycle (jours) par mois" testid="chart-ind-cycle" /></section>
+      <section class="card"><LineChart :categories="months" :series="manualSeries" title="Part des lignes manuelles par mois" testid="chart-ind-manual" /></section>
+      <section class="card"><LineChart :categories="months" :series="clawbackSeries" title="Montants repris par mois" testid="chart-ind-clawback" /></section>
+    </div>
 
     <section v-if="data" class="card" style="overflow-x: auto">
       <table>
