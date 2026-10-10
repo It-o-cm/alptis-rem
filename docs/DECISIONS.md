@@ -111,3 +111,24 @@ Chaque entrée porte : date, section concernée, question, choix retenu, raison.
 | 2026-10-10 | RESTITUTIONS §3.1 | Graphiques posés (liste minimale) | Tableaux de bord : barres empilées commissions mois × nature, anneaux par nature et par gamme, barres horizontales des premiers distributeurs, courbes escomptes versés/apurés/créance, courbe des reprises. Vision groupe : barres groupées entités × mois. Marge : barres horizontales par produit, par assureur, par distributeur. Simulation : barres groupées réel/simulé par nature. Cut-off : barres empilées acquis/payé/solde à payer/reste à acquérir. Fiche & compte : courbe du solde dans le temps. Mon variable : jauge d'atteinte par composante. Validation FDV : barres d'atteinte par collaborateur. Contrôles : barres des anomalies par sévérité et par famille. Indicateurs : quatre courbes mois par mois. | Les quatorze graphiques de la liste §3.1 sont posés ; chacun s'ajoute au tableau, suit les filtres, est accessible au clavier et au survol, et porte un `data-testid` par élément tracé. |
 | 2026-10-10 | RESTITUTIONS §3.1 serveur | Agrégats serveur pour deux graphiques | Le solde du compte dans le temps (`AccountService.balanceSeries`) et le décompte des anomalies par sévérité et par famille (`CycleQueryService.anomalyBreakdown`) sont calculés par le serveur et servis par de nouveaux points d'accès (`/accounts/.../balance-series`, `/controls/.../anomaly-breakdown`) ; l'interface ne fait qu'afficher. | « L'interface n'additionne rien » : une série mensuelle de solde et des décomptes par catégorie sont des agrégats, donc calculés côté serveur, couverts à 100 %. |
 | 2026-10-10 | RESTITUTIONS §3.2 | Revue des autres écrans | Examinés sans graphique ajouté, le tableau ou l'état suffisant (liste de référentiel, journal, formulaire, état ou compteur isolé) : périodes (états, pas une série), imports et reprise (journaux), saisie d'événement et ajustements (formulaire/liste opérationnelle courte), paiement et bordereaux (documents opérationnels d'une période, montants déjà lisibles), recherche de distributeurs et de contrats (listes paginées), cessions, escompte, règles, inscriptions, paramétrage-transfert, familles (référentiels), produits, indicateurs de qualité, coordonnées bancaires, règles de versement, codes externes (référentiels), flux et formats (catalogues), schéma et écritures comptables (journal), entités, correspondances de rôles, audit, supervision, purge (administration : états, compteurs, journal), plan FDV (paramétrage). Chacun est une liste de référentiel, un journal, un formulaire, un état ou un compteur isolé : un graphique y serait décoratif (§3.2, 3e condition non remplie). | §3.2 : un graphique n'est ajouté que si l'écran porte une série chiffrée, que le graphique révèle quelque chose et que les données existent ; ces écrans n'y répondent pas. |
+| 2026-10-10 | ERGONOMIE §2.2 | Rubriques de travail par rôle (menu ouvert par défaut) | Table ci-dessous, établie à partir des missions de la section 3 de la spécification. À la première connexion, seules ces rubriques sont ouvertes ; pour un utilisateur à plusieurs rôles, c'est l'union. Dans chaque rubrique, les écrans où le rôle agit (fonction `actsOn`, carte `SCREEN_ACTORS` de `presentation/menu.ts`) précèdent ceux qu'il consulte. | §2.2 : la présentation s'adapte au rôle sans toucher aux droits (inchangés, contrôlés serveur) ; la correspondance est une fonction pure couverte à 100 % (`menu.spec.ts`). |
+| 2026-10-10 | ERGONOMIE §5 / role-mappings ADM-01 | Adaptation d'un pas de navigation du test existant | Le parcours ADM-01 vérifie qu'après l'octroi d'OPERATOR, le viewer voit l'écran « Entités et paramètres ». La rubrique « Administration » n'étant pas une rubrique de travail de ce rôle, elle est repliée par défaut (§2.2) : le test déplie d'abord la rubrique (`nav-toggle-Administration`) avant d'affirmer la visibilité du lien. Aucune assertion métier retirée, aucun `data-testid` renommé. | Le repli par rôle est la nouvelle réalité du menu ; déplier une rubrique est une interaction légitime, l'assertion (le lien apparaît après l'octroi) est conservée intacte. |
+
+## Rubriques de travail par rôle (ERGONOMIE §2.2)
+
+Rubriques ouvertes par défaut à la première connexion (les autres sont repliées).
+Source : missions des rôles, section 3 de la spécification. Les écrans « agis »
+sont ordonnés avant les écrans « consultés » dans chaque rubrique (voir
+`SCREEN_ACTORS` dans `src/main/webui/src/presentation/menu.ts`).
+
+| Rôle | Rubriques de travail |
+| --- | --- |
+| `BUSINESS_ADMIN` | Cycle mensuel, Règles, Référentiels, Flux |
+| `OPERATOR` | Cycle mensuel, Distributeurs, Flux |
+| `BUSINESS_VALIDATOR` | Cycle mensuel |
+| `FINANCE_CONTROLLER` | Cycle mensuel, Comptabilité |
+| `VIEWER` | Restitutions, Distributeurs |
+| `AUDITOR` | Administration, Restitutions |
+| `IT_ADMIN` | Administration, Flux |
+| `SALES_MANAGER` | Forces de vente |
+| `SALES_REP` | Forces de vente |

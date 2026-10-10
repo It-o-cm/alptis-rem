@@ -87,6 +87,9 @@ test.describe('Parcours ADM-01', () => {
     const after = await browser.newContext({ httpCredentials: USERS.viewerAlptis });
     const afterPage = await after.newPage();
     await afterPage.goto('/');
+    // The "Administration" rubric is not a work rubric for this user, so it is
+    // collapsed by default (ERGONOMIE §2.2); expand it to reveal its entries.
+    await afterPage.getByTestId('nav-toggle-Administration').click();
     await expect(afterPage.getByRole('link', { name: 'Entités et paramètres' })).toBeVisible();
     await after.close();
   });
