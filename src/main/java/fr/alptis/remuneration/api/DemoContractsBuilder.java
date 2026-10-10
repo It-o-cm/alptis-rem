@@ -140,7 +140,15 @@ public class DemoContractsBuilder {
         Coverage upfront = scene(world, entity, holder, DemoCodes.F_UPFRONT, DemoCodes.P_UPFRONT, other,
                 new BigDecimal("1000.00"));
         choice(upfront, RemunerationMode.UPFRONT, null, new BigDecimal("0.200000"), new BigDecimal("0.100000"),
-                alptis);
+                false);
+
+        // Alptis carries the discount advance (escompte) on its own upfront coverage, which requests the
+        // advance but receives no premium of its own: the engine opens one advance position against the
+        // valid convention of P20002, near its contract cap. (The engine opens one position per coverage
+        // lifecycle; the demo therefore never re-drives this coverage — see docs/DECISIONS.md.)
+        if (alptis) {
+            escompteScene(world, entity, holder);
+        }
 
         scene(world, entity, holder, DemoCodes.F_FIXED, DemoCodes.P_FORFAIT, other, new BigDecimal("600.00"));
         scene(world, entity, holder, DemoCodes.F_EXTERNAL, DemoCodes.P_EXTERNE, other, new BigDecimal("0.00"));
@@ -156,6 +164,27 @@ public class DemoContractsBuilder {
         scene(world, entity, holder, DemoCodes.F_RCD, DemoCodes.P_COLLECTIVE, ENROLLED, new BigDecimal("30000.00"));
         scene(world, entity, holder, DemoCodes.F_PORTFOLIO, DemoCodes.P_COLLECTIVE, ENROLLED,
                 new BigDecimal("50000.00"));
+    }
+
+    /**
+     * Creates the discount-advance (escompte) coverage: an upfront coverage on P20002 that requests the
+     * advance but carries no premium, so the engine opens exactly one advance position against the valid
+     * convention and never reopens it.
+     *
+     * @param world  the shared demo world
+     * @param entity the entity
+     * @param holder the policyholder
+     */
+    private void escompteScene(DemoWorld world, LegalEntity entity, Policyholder holder) {
+        Contract contract = contract(entity, holder, world.product(entity.code, DemoCodes.P_UPFRONT),
+                entity.code + "-ESCOMPTE");
+        Coverage coverage = coverage(contract, contract.contractNumber + "-C1", new BigDecimal("2000.00"));
+        // A June effect keeps the advance within its settlement window while the June run opens it.
+        coverage.effectDate = LocalDate.of(2026, 6, 1);
+        assign(coverage, world.productionCode(entity.code, "PC-P20002"), AssignmentRole.MAIN, BigDecimal.ONE,
+                AssignmentOrigin.SUBSCRIPTION);
+        choice(coverage, RemunerationMode.UPFRONT, null, new BigDecimal("0.200000"), new BigDecimal("0.100000"),
+                true);
     }
 
     /**
@@ -241,7 +270,8 @@ public class DemoContractsBuilder {
     private List<ProductionCode> activeCodes(DemoWorld world, LegalEntity entity) {
         List<ProductionCode> codes = new ArrayList<>();
         for (ProductionCode pc : world.productionCodes.values()) {
-            if (pc.entity.code.equals(entity.code)
+            // The mock-up cabinet stays off the bulk portfolio so its only line is the September scene.
+            if (pc.entity.code.equals(entity.code) && !pc.distributor.partnerCode.equals(DemoCodes.CABINET)
                     && pc.status == fr.alptis.remuneration.domain.PartnerStatus.ACTIVE) {
                 codes.add(pc);
             }

@@ -24,16 +24,22 @@ public class DemoDataService {
     /** Builds the contracts, coverages, assignments and choices. */
     private final DemoContractsBuilder contracts;
 
+    /** Drives the monthly cycle through the real services. */
+    private final DemoCycleRunner cycle;
+
     /**
      * Creates the service.
      *
      * @param referential the referential builder
      * @param contracts   the contracts builder
+     * @param cycle       the cycle runner
      */
     @Inject
-    public DemoDataService(DemoReferentialBuilder referential, DemoContractsBuilder contracts) {
+    public DemoDataService(DemoReferentialBuilder referential, DemoContractsBuilder contracts,
+                           DemoCycleRunner cycle) {
         this.referential = referential;
         this.contracts = contracts;
+        this.cycle = cycle;
     }
 
     /**
@@ -48,5 +54,6 @@ public class DemoDataService {
         DemoWorld world = new DemoWorld();
         referential.build(world);
         contracts.build(world);
+        cycle.run(world);
     }
 }
