@@ -4,6 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
 import HBarChart from '../components/charts/HBarChart.vue';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface Result {
   id: number;
@@ -23,32 +25,60 @@ const month = ref('2026-09-01');
 const rows = ref<Result[]>([]);
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
 const adjust = ref({ externalId: '', amount: 0, reason: '' });
 
-const canValidate = () => session.roles.includes('SALES_MANAGER') || session.roles.includes('BUSINESS_ADMIN');
-const canExport = () => session.roles.includes('FINANCE_CONTROLLER');
+/** Whether the current user may validate results and record an adjustment. */
+const canValidate = (): boolean => session.roles.includes('SALES_MANAGER') || session.roles.includes('BUSINESS_ADMIN');
+/** Whether the current user may export the validated variables to pay. */
+const canExport = (): boolean => session.roles.includes('FINANCE_CONTROLLER');
 
+/**
+ * Formats a monetary value in euros.
+ * @param value the amount to format
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
+/** Sum of the amounts of all displayed results. */
 function total(): number {
   return rows.value.reduce((sum, r) => sum + r.amount, 0);
 }
 
+/** Achievement rate per collaborator, feeding the bar chart. */
 const achievementData = computed(() => rows.value.map((r) => ({ label: r.employeeName, value: r.achievementRate })));
 
-async function load() {
+/** Columns of the monthly results table. */
+const columns: Column<Result>[] = [
+  { key: 'employeeName', label: 'Collaborateur' },
+  { key: 'jobCode', label: 'Poste' },
+  { key: 'component', label: 'Composante' },
+  { key: 'achievementRate', label: 'Atteinte', align: 'num', value: (r) => `${(r.achievementRate * 100).toFixed(0)} %` },
+  { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
+  { key: 'status', label: 'Statut' },
+  { key: 'adjustmentReason', label: 'Motif', value: (r) => r.adjustmentReason ?? '—' },
+];
+
+/** Loads the monthly results for the selected entity and month. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     rows.value = await apiGet<Result[]>(`/api/ui/v1/fdv/${entity.value}/${month.value}/results`);
   } catch (e) {
     rows.value = [];
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function validate(r: Result) {
+/**
+ * Validates one computed result.
+ * @param r the result row to validate
+ */
+async function validate(r: Result): Promise<void> {
   error.value = '';
   try {
     await apiPost(`/api/ui/v1/fdv/results/${r.id}/validate`, {});
@@ -58,7 +88,8 @@ async function validate(r: Result) {
   }
 }
 
-async function submitAdjustment() {
+/** Records a motivated adjustment for a collaborator. */
+async function submitAdjustment(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -74,7 +105,8 @@ async function submitAdjustment() {
   }
 }
 
-async function payExport() {
+/** Exports the validated variables of the selected period to pay. */
+async function payExport(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -92,65 +124,78 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Validation mensuelle du variable</h1>
-      <div class="page__subtitle">
-        Le responsable valide les montants, autorise un ajustement motivé, et la Finance exporte vers la
-        paie une fois tout validé (FDV-13, FDV-14).
-      </div>
+    <PageHeading
+      title="Validation mensuelle du variable"
+      subtitle="Le responsable valide les montants, autorise un ajustement motivé, et la Finance exporte vers la paie une fois tout validé (FDV-13, FDV-14)."
+    />
+
+    <FilterBar :loading="loading" :resettable="false" search-label="Rafraîchir" search-testid="fdvv-refresh" @search="load">
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="fdvv-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="fdvv-month" type="text" v-model="month" />
+      </FormField>
+    </FilterBar>
+
+    <AppMessage v-if="error" variant="error" data-testid="fdvv-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="fdvv-message">{{ message }}</AppMessage>
+
+    <div v-if="canExport()">
+      <AppButton variant="secondary" data-testid="fdvv-export" @click="payExport">Export paie</AppButton>
     </div>
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="fdvv-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="fdvv-month" type="text" v-model="month" /></label>
-        <button class="btn" data-testid="fdvv-refresh" @click="load">Rafraîchir</button>
-        <button v-if="canExport()" class="btn" data-testid="fdvv-export" @click="payExport">Export paie</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="fdvv-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="fdvv-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <AppCard v-if="canValidate()" title="Ajustement motivé" data-testid="fdvv-adjust-form">
+      <AppForm @submit="submitAdjustment">
+        <FormField label="Collaborateur" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="fdvv-adj-id" type="text" v-model="adjust.externalId" />
+        </FormField>
+        <FormField label="Montant" width="amount" v-slot="{ id }">
+          <input :id="id" data-testid="fdvv-adj-amount" type="number" v-model.number="adjust.amount" />
+        </FormField>
+        <FormField label="Motif" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="fdvv-adj-reason" type="text" v-model="adjust.reason" />
+        </FormField>
+        <AppButton variant="secondary" type="submit" data-testid="fdvv-adj-submit">Enregistrer</AppButton>
+      </AppForm>
+    </AppCard>
 
-    <section v-if="canValidate()" class="card" style="padding: 18px 20px" data-testid="fdvv-adjust-form">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Ajustement motivé</h2>
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Collaborateur <input data-testid="fdvv-adj-id" type="text" v-model="adjust.externalId" /></label>
-        <label>Montant <input data-testid="fdvv-adj-amount" type="number" v-model.number="adjust.amount" /></label>
-        <label>Motif <input data-testid="fdvv-adj-reason" type="text" v-model="adjust.reason" /></label>
-        <button class="btn" data-testid="fdvv-adj-submit" @click="submitAdjustment">Enregistrer</button>
-      </div>
-    </section>
-
-    <section v-if="rows.length > 0" class="card">
+    <AppCard v-if="rows.length > 0">
       <HBarChart :data="achievementData" title="Atteinte de l'objectif par collaborateur" format="percent"
                  testid="chart-fdvv" />
-    </section>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Collaborateur</th><th>Poste</th><th>Composante</th><th>Atteinte</th><th>Montant</th><th>Statut</th><th>Motif</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="8" data-testid="no-result">Aucun résultat.</td></tr>
-          <tr v-for="r in rows" :key="r.id" :data-testid="`result-row-${r.id}`">
-            <td>{{ r.employeeName }}</td>
-            <td>{{ r.jobCode }}</td>
-            <td>{{ r.component }}</td>
-            <td>{{ (r.achievementRate * 100).toFixed(0) }} %</td>
-            <td>{{ amount(r.amount) }}</td>
-            <td :data-testid="`result-status-${r.id}`">{{ r.status }}</td>
-            <td>{{ r.adjustmentReason ?? '—' }}</td>
-            <td>
-              <button v-if="canValidate() && r.status === 'CALCULATED'" class="btn"
-                      :data-testid="`result-validate-${r.id}`" @click="validate(r)">Valider</button>
-            </td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr><td colspan="4">Total à payer</td><td data-testid="fdvv-total">{{ amount(total()) }}</td><td colspan="3"></td></tr>
-        </tfoot>
-      </table>
-    </section>
+    <AppCard>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun résultat."
+        empty-testid="no-result"
+        :row-testid="(r) => `result-row-${r.id}`"
+      >
+        <template #cell-status="{ row }"><span :data-testid="`result-status-${row.id}`">{{ row.status }}</span></template>
+        <template #actions="{ row }">
+          <AppButton
+            v-if="canValidate() && row.status === 'CALCULATED'"
+            variant="secondary"
+            :data-testid="`result-validate-${row.id}`"
+            @click="validate(row)"
+          >
+            Valider
+          </AppButton>
+        </template>
+      </DataTable>
+      <p class="fdvv-total">Total à payer <span class="mono" data-testid="fdvv-total">{{ amount(total()) }}</span></p>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.fdvv-total {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+}
+</style>

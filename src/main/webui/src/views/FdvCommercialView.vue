@@ -4,6 +4,8 @@ import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
 import GaugeChart from '../components/charts/GaugeChart.vue';
+import { AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface Result {
   id: number;
@@ -23,63 +25,82 @@ const externalId = ref('');
 const rows = ref<Result[]>([]);
 const error = ref('');
 const loaded = ref(false);
+const loading = ref(false);
 
+/**
+ * Formats a monetary value in euros.
+ * @param value the amount to format
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
-async function load() {
+/** Columns of the commercial's own variable table. */
+const columns: Column<Result>[] = [
+  { key: 'component', label: 'Composante' },
+  { key: 'achievementRate', label: 'Atteinte', align: 'num', value: (r) => `${(r.achievementRate * 100).toFixed(0)} %` },
+  { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
+  { key: 'status', label: 'Statut' },
+  { key: 'adjustmentReason', label: 'Motif', value: (r) => r.adjustmentReason ?? '—' },
+];
+
+/** Loads the commercial's own variable for the given matriculation. */
+async function load(): Promise<void> {
   error.value = '';
   loaded.value = false;
+  loading.value = true;
   try {
     rows.value = await apiGet<Result[]>(`/api/ui/v1/fdv/${entity.value}/my-variable/${externalId.value}`);
     loaded.value = true;
   } catch (e) {
     rows.value = [];
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 </script>
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Mon variable</h1>
-      <div class="page__subtitle">
-        Mon variable, mes objectifs et mon historique mois par mois (FDV-15).
-      </div>
-    </div>
+    <PageHeading title="Mon variable" subtitle="Mon variable, mes objectifs et mon historique mois par mois (FDV-15)." />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="fdvc-entity" type="text" v-model="entity" /></label>
-        <label>Matricule <input data-testid="fdvc-id" type="text" v-model="externalId" /></label>
-        <button class="btn" data-testid="fdvc-load" @click="load">Afficher</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="fdvc-error" style="margin-top: 10px">{{ error }}</div>
-    </section>
+    <FilterBar :loading="loading" :resettable="false" search-label="Afficher" search-testid="fdvc-load" @search="load">
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="fdvc-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Matricule" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="fdvc-id" type="text" v-model="externalId" />
+      </FormField>
+    </FilterBar>
 
-    <div v-if="loaded && rows.length > 0" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px">
-      <section v-for="r in rows" :key="`g${r.id}`" class="card">
+    <AppMessage v-if="error" variant="error" data-testid="fdvc-error">{{ error }}</AppMessage>
+
+    <div v-if="loaded && rows.length > 0" class="fdvc-gauges">
+      <AppCard v-for="r in rows" :key="`g${r.id}`">
         <GaugeChart :title="`Atteinte — ${r.component}`" :caption="r.employeeName" :value="r.achievementRate"
                     :target="1" :testid="`chart-gauge-${r.id}`" />
-      </section>
+      </AppCard>
     </div>
 
-    <section v-if="loaded" class="card" style="overflow-x: auto">
-      <table>
-        <thead><tr><th>Composante</th><th>Atteinte</th><th>Montant</th><th>Statut</th><th>Motif</th></tr></thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="5" data-testid="no-my-result">Aucun variable.</td></tr>
-          <tr v-for="r in rows" :key="r.id" :data-testid="`my-result-${r.id}`">
-            <td>{{ r.component }}</td>
-            <td>{{ (r.achievementRate * 100).toFixed(0) }} %</td>
-            <td>{{ amount(r.amount) }}</td>
-            <td>{{ r.status }}</td>
-            <td>{{ r.adjustmentReason ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="loaded" flush>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun variable."
+        empty-testid="no-my-result"
+        :row-testid="(r) => `my-result-${r.id}`"
+      />
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.fdvc-gauges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+</style>

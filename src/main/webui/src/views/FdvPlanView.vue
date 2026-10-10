@@ -4,6 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface Plan {
   jobCode: string;
@@ -41,25 +43,64 @@ const collaborators = ref<Collaborator[]>([]);
 const objectives = ref<Objective[]>([]);
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
 
-const canRun = () => canEditEntityParameters(session.roles);
+/** Whether the current user may launch the variable calculation. */
+const canRun = (): boolean => canEditEntityParameters(session.roles);
 
+/**
+ * Formats a monetary value in euros.
+ * @param value the amount to format
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
-async function load() {
+/** Columns of the per-job envelope and instalment table. */
+const planColumns: Column<Plan>[] = [
+  { key: 'jobCode', label: 'Poste' },
+  { key: 'component', label: 'Composante' },
+  { key: 'envelope', label: 'Enveloppe', align: 'num', value: (p) => amount(p.envelope) },
+  { key: 'instalment', label: 'Mensualité', align: 'num', value: (p) => amount(p.instalment) },
+  { key: 'validFrom', label: 'Validité', value: (p) => `${p.validFrom} → ${p.validTo ?? '—'}` },
+];
+
+/** Columns of the collaborators table. */
+const collaboratorColumns: Column<Collaborator>[] = [
+  { key: 'externalId', label: 'Matricule' },
+  { key: 'lastName', label: 'Nom', value: (c) => `${c.lastName} ${c.firstName}` },
+  { key: 'jobCode', label: 'Poste' },
+  { key: 'team', label: 'Équipe', value: (c) => c.team ?? '—' },
+  { key: 'region', label: 'Région', value: (c) => c.region ?? '—' },
+  { key: 'manager', label: 'Responsable', value: (c) => c.manager ?? '—' },
+];
+
+/** Columns of the versioned objectives table. */
+const objectiveColumns: Column<Objective>[] = [
+  { key: 'employee', label: 'Collaborateur', value: (o) => o.employee ?? 'Collectif' },
+  { key: 'type', label: 'Type' },
+  { key: 'periodFrom', label: 'Période', value: (o) => `${o.periodFrom} → ${o.periodTo}` },
+  { key: 'target', label: 'Cible', align: 'num' },
+  { key: 'versionNo', label: 'Version', value: (o) => `v${o.versionNo}` },
+];
+
+/** Loads the plans, collaborators and objectives of the selected entity. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     plans.value = await apiGet<Plan[]>(`/api/ui/v1/fdv/${entity.value}/plans`);
     collaborators.value = await apiGet<Collaborator[]>(`/api/ui/v1/fdv/${entity.value}/collaborators`);
     objectives.value = await apiGet<Objective[]>(`/api/ui/v1/fdv/${entity.value}/objectives`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function run() {
+/** Launches the monthly variable calculation for the selected entity and month. */
+async function run(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -75,65 +116,64 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Plan de variable</h1>
-      <div class="page__subtitle">
-        Enveloppes et mensualités par poste, collaborateurs et objectifs versionnés ; l'administrateur
-        métier lance le calcul avec la période (FDV-01, FDV-03, FDV-04, FDV-05).
-      </div>
+    <PageHeading
+      title="Plan de variable"
+      subtitle="Enveloppes et mensualités par poste, collaborateurs et objectifs versionnés ; l'administrateur métier lance le calcul avec la période (FDV-01, FDV-03, FDV-04, FDV-05)."
+    />
+
+    <FilterBar :loading="loading" :resettable="false" search-label="Rafraîchir" search-testid="fdvp-refresh" @search="load">
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="fdvp-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Mois" stacked width="date" v-slot="{ id }">
+        <input :id="id" data-testid="fdvp-month" type="text" v-model="month" />
+      </FormField>
+    </FilterBar>
+
+    <AppMessage v-if="error" variant="error" data-testid="fdvp-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="fdvp-message">{{ message }}</AppMessage>
+
+    <div v-if="canRun()">
+      <AppButton variant="secondary" data-testid="fdvp-run" @click="run">Lancer le calcul</AppButton>
     </div>
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="fdvp-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="fdvp-month" type="text" v-model="month" /></label>
-        <button class="btn" data-testid="fdvp-refresh" @click="load">Rafraîchir</button>
-        <button v-if="canRun()" class="btn" data-testid="fdvp-run" @click="run">Lancer le calcul</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="fdvp-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="fdvp-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <AppCard title="Enveloppes par poste">
+      <DataTable
+        :columns="planColumns"
+        :rows="plans"
+        :loading="loading"
+        empty="Aucun plan."
+        empty-testid="no-plan"
+        :row-testid="(p) => `plan-row-${plans.indexOf(p)}`"
+      >
+        <template #cell-jobCode="{ row }"><span class="mono">{{ row.jobCode }}</span></template>
+      </DataTable>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Enveloppes par poste</h2>
-      <table>
-        <thead><tr><th>Poste</th><th>Composante</th><th>Enveloppe</th><th>Mensualité</th><th>Validité</th></tr></thead>
-        <tbody>
-          <tr v-if="plans.length === 0"><td colspan="5" data-testid="no-plan">Aucun plan.</td></tr>
-          <tr v-for="(p, i) in plans" :key="i" :data-testid="`plan-row-${i}`">
-            <td>{{ p.jobCode }}</td><td>{{ p.component }}</td><td>{{ amount(p.envelope) }}</td>
-            <td>{{ amount(p.instalment) }}</td><td>{{ p.validFrom }} → {{ p.validTo ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard title="Collaborateurs">
+      <DataTable
+        :columns="collaboratorColumns"
+        :rows="collaborators"
+        :loading="loading"
+        row-key="externalId"
+        empty="Aucun collaborateur."
+        empty-testid="no-collab"
+        :row-testid="(c) => `collab-row-${c.externalId}`"
+      >
+        <template #cell-externalId="{ row }"><span class="mono">{{ row.externalId }}</span></template>
+        <template #cell-jobCode="{ row }"><span class="mono">{{ row.jobCode }}</span></template>
+      </DataTable>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Collaborateurs</h2>
-      <table>
-        <thead><tr><th>Matricule</th><th>Nom</th><th>Poste</th><th>Équipe</th><th>Région</th><th>Responsable</th></tr></thead>
-        <tbody>
-          <tr v-if="collaborators.length === 0"><td colspan="6" data-testid="no-collab">Aucun collaborateur.</td></tr>
-          <tr v-for="c in collaborators" :key="c.externalId" :data-testid="`collab-row-${c.externalId}`">
-            <td>{{ c.externalId }}</td><td>{{ c.lastName }} {{ c.firstName }}</td><td>{{ c.jobCode }}</td>
-            <td>{{ c.team ?? '—' }}</td><td>{{ c.region ?? '—' }}</td><td>{{ c.manager ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Objectifs</h2>
-      <table>
-        <thead><tr><th>Collaborateur</th><th>Type</th><th>Période</th><th>Cible</th><th>Version</th></tr></thead>
-        <tbody>
-          <tr v-if="objectives.length === 0"><td colspan="5" data-testid="no-objective">Aucun objectif.</td></tr>
-          <tr v-for="(o, i) in objectives" :key="i" :data-testid="`objective-row-${i}`">
-            <td>{{ o.employee ?? 'Collectif' }}</td><td>{{ o.type }}</td>
-            <td>{{ o.periodFrom }} → {{ o.periodTo }}</td><td>{{ o.target }}</td><td>v{{ o.versionNo }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard title="Objectifs">
+      <DataTable
+        :columns="objectiveColumns"
+        :rows="objectives"
+        :loading="loading"
+        empty="Aucun objectif."
+        empty-testid="no-objective"
+        :row-testid="(o) => `objective-row-${objectives.indexOf(o)}`"
+      />
+    </AppCard>
   </div>
 </template>
