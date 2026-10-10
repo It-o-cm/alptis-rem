@@ -223,6 +223,33 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- UX build guard (ERGONOMIE §5): fails the build on a forbidden style
+                 attribute, a naked label/table/button in a view, or a router screen
+                 not covered by the alignment end-to-end test. Pure static analysis;
+                 runs on `verify` independently of the end-to-end suite. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${exec-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>ux-guard</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>false</skip>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>node</executable>
+                            <arguments>
+                                <argument>${project.basedir}/src/main/webui/scripts/ux-guard.mjs</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 

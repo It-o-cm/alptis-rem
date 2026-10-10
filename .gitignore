@@ -25,6 +25,8 @@ test-results/
 playwright-report/
 blob-report/
 .playwright/
+# Ergonomics visual-review captures (ERGONOMIE §4)
+src/test/e2e/screenshots/
 
 # Editors / IDE
 .idea/
