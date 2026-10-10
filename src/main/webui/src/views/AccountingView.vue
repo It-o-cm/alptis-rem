@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canProduceExport } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface SchemeRow {
   event: string;
@@ -43,13 +45,53 @@ const entries = ref<Entry[]>([]);
 const extractCsv = ref('');
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
+const extracting = ref(false);
 
+/** Whether the current user may produce the accounting extract. */
 const canExtract = () => canProduceExport(session.roles);
 
+/** Columns of the accounting scheme table. */
+const schemeColumns: Column<SchemeRow & { i: number }>[] = [
+  { key: 'event', label: 'Événement' },
+  { key: 'variant', label: 'Variante' },
+  { key: 'debitRole', label: 'Débit (rôle)' },
+  { key: 'creditRole', label: 'Crédit (rôle)' },
+];
+
+/** Columns of the account-mapping table. */
+const mappingColumns: Column<MappingRow & { i: number }>[] = [
+  { key: 'role', label: 'Rôle' },
+  { key: 'accountNumber', label: 'Compte' },
+  { key: 'journal', label: 'Journal' },
+];
+
+/** Columns of the monthly entries table. */
+const entryColumns: Column<Entry>[] = [
+  { key: 'accountingEvent', label: 'Événement' },
+  { key: 'journal', label: 'Journal' },
+  { key: 'entryDate', label: 'Date' },
+  { key: 'debitAccount', label: 'Débit' },
+  { key: 'creditAccount', label: 'Crédit' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (e) => amount(e.amount) },
+  { key: 'piece', label: 'Pièce', value: (e) => e.lineId ?? e.endToEndId ?? '—' },
+];
+
+/** Scheme rows paired with their index, for the per-row test identifier. */
+const schemeRows = computed(() => (scheme.value ? scheme.value.schema.map((s, i) => ({ ...s, i })) : []));
+
+/** Mapping rows paired with their index, for the per-row test identifier. */
+const mappingRows = computed(() => (scheme.value ? scheme.value.mapping.map((m, i) => ({ ...m, i })) : []));
+
+/**
+ * Formats an amount with the common currency formatting.
+ * @param value the raw amount
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
+/** Loads the accounting scheme and account mapping of the entity. */
 async function loadScheme() {
   error.value = '';
   try {
@@ -60,6 +102,7 @@ async function loadScheme() {
   }
 }
 
+/** Loads the accounting entries of the selected month. */
 async function searchEntries() {
   error.value = '';
   try {
@@ -70,9 +113,21 @@ async function searchEntries() {
   }
 }
 
+/** Reloads the scheme and the entries for the current entity and month. */
+async function refresh() {
+  loading.value = true;
+  try {
+    await Promise.all([loadScheme(), searchEntries()]);
+  } finally {
+    loading.value = false;
+  }
+}
+
+/** Produces the accounting extract and closes the month. */
 async function extract() {
   message.value = '';
   error.value = '';
+  extracting.value = true;
   try {
     const summary = await apiPost<{ fileRef: string }>(
       `/api/ui/v1/accounting/${entity.value}/${month.value}/extract`,
@@ -82,81 +137,91 @@ async function extract() {
     extractCsv.value = await apiGetText(`/api/ui/v1/accounting/${entity.value}/${month.value}/extract.csv`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Extraction refusée';
+  } finally {
+    extracting.value = false;
   }
 }
 
-onMounted(() => {
-  loadScheme();
-  searchEntries();
-});
+onMounted(refresh);
 </script>
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Comptabilité</h1>
-      <div class="page__subtitle">
-        Schéma comptable et correspondance des comptes de l'entité, recherche des écritures du mois et
-        extraction comptable à la clôture (section 10, FIN-01 à FIN-07).
-      </div>
+    <PageHeading
+      title="Comptabilité"
+      subtitle="Schéma comptable et correspondance des comptes de l'entité, recherche des écritures du mois et extraction comptable à la clôture (section 10, FIN-01 à FIN-07)."
+    />
+
+    <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="acc-refresh" :resettable="false" @search="refresh">
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="acc-entity" type="text" v-model="entity" />
+      </FormField>
+      <FormField label="Mois" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="acc-month" type="text" v-model="month" />
+      </FormField>
+    </FilterBar>
+
+    <div v-if="canExtract()" class="acc-actions">
+      <AppButton variant="danger" :loading="extracting" data-testid="acc-extract" @click="extract">
+        Extraire et clôturer
+      </AppButton>
     </div>
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="acc-entity" type="text" v-model="entity" /></label>
-        <label>Mois <input data-testid="acc-month" type="text" v-model="month" /></label>
-        <button class="btn" data-testid="acc-refresh" @click="loadScheme(); searchEntries()">Rafraîchir</button>
-        <button v-if="canExtract()" class="btn" data-testid="acc-extract" @click="extract">Extraire et clôturer</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="acc-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="acc-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="acc-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="acc-message">{{ message }}</AppMessage>
 
-    <section v-if="scheme" class="card" style="overflow-x: auto" data-testid="acc-scheme">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Schéma comptable</h2>
-      <table>
-        <thead><tr><th>Événement</th><th>Variante</th><th>Débit (rôle)</th><th>Crédit (rôle)</th></tr></thead>
-        <tbody>
-          <tr v-for="(s, i) in scheme.schema" :key="i" :data-testid="`scheme-row-${i}`">
-            <td>{{ s.event }}</td><td>{{ s.variant }}</td><td>{{ s.debitRole }}</td><td>{{ s.creditRole }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Correspondance des comptes</h2>
-      <table>
-        <thead><tr><th>Rôle</th><th>Compte</th><th>Journal</th></tr></thead>
-        <tbody>
-          <tr v-for="(m, i) in scheme.mapping" :key="i" :data-testid="`mapping-row-${i}`">
-            <td>{{ m.role }}</td><td>{{ m.accountNumber }}</td><td>{{ m.journal }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="scheme" data-testid="acc-scheme">
+      <h2 class="acc-subtitle">Schéma comptable</h2>
+      <DataTable
+        :columns="schemeColumns"
+        :rows="schemeRows"
+        empty="Aucun schéma."
+        :row-testid="(s) => `scheme-row-${s.i}`"
+      />
+      <h2 class="acc-subtitle">Correspondance des comptes</h2>
+      <DataTable
+        :columns="mappingColumns"
+        :rows="mappingRows"
+        empty="Aucune correspondance."
+        :row-testid="(m) => `mapping-row-${m.i}`"
+      />
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Écritures du mois</h2>
-      <table>
-        <thead>
-          <tr><th>Événement</th><th>Journal</th><th>Date</th><th>Débit</th><th>Crédit</th><th>Montant</th><th>Pièce</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="entries.length === 0"><td colspan="7" data-testid="no-entry">Aucune écriture.</td></tr>
-          <tr v-for="e in entries" :key="e.id" :data-testid="`entry-row-${e.id}`">
-            <td :data-testid="`entry-event-${e.id}`">{{ e.accountingEvent }}</td>
-            <td>{{ e.journal }}</td>
-            <td>{{ e.entryDate }}</td>
-            <td>{{ e.debitAccount }}</td>
-            <td>{{ e.creditAccount }}</td>
-            <td>{{ amount(e.amount) }}</td>
-            <td>{{ e.lineId ?? e.endToEndId ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard title="Écritures du mois">
+      <DataTable
+        :columns="entryColumns"
+        :rows="entries"
+        row-key="id"
+        empty="Aucune écriture."
+        empty-testid="no-entry"
+        :row-testid="(e) => `entry-row-${e.id}`"
+      >
+        <template #cell-accountingEvent="{ row }">
+          <span :data-testid="`entry-event-${row.id}`">{{ row.accountingEvent }}</span>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section v-if="extractCsv" class="card" style="padding: 18px 20px" data-testid="acc-extract-card">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Extraction comptable (OUT-02)</h2>
-      <pre data-testid="acc-extract-csv" style="overflow-x: auto; background: #f6f8fa; padding: 12px">{{ extractCsv }}</pre>
-    </section>
+    <AppCard v-if="extractCsv" data-testid="acc-extract-card" title="Extraction comptable (OUT-02)">
+      <pre data-testid="acc-extract-csv" class="acc-csv">{{ extractCsv }}</pre>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.acc-actions {
+  display: flex;
+}
+.acc-subtitle {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+.acc-csv {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+}
+</style>
