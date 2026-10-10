@@ -115,3 +115,16 @@ export const NAV_SECTIONS: readonly NavSection[] = [
 export function allNavItems(): NavItem[] {
   return NAV_SECTIONS.flatMap((section) => [...section.items]);
 }
+
+/**
+ * Heading of the navigation rubric a route belongs to, or an empty string when
+ * the route is unknown. Used as the common eyebrow above every page title.
+ * @param routeName the current route name
+ */
+export function sectionHeadingOf(routeName: string | undefined): string {
+  if (!routeName) {
+    return '';
+  }
+  const match = NAV_SECTIONS.find((section) => section.items.some((item) => item.name === routeName));
+  return match ? match.heading : '';
+}
