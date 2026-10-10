@@ -25,8 +25,8 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21
 mvn quarkus:dev
 ```
 
-- Interface : <http://localhost:8080/>
-- Description OpenAPI : <http://localhost:8080/q/openapi>, Swagger UI : <http://localhost:8080/q/swagger-ui>
+- Interface : <http://localhost:9010/>
+- Description OpenAPI : <http://localhost:9010/q/openapi>, Swagger UI : <http://localhost:9010/q/swagger-ui>
 
 En mode `quarkus:dev`, Quinoa gère le serveur de développement Vite.
 

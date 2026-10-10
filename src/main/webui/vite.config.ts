@@ -12,8 +12,8 @@ export default defineConfig({
     // During `quinoa` dev mode the backend is reachable on the same origin;
     // this proxy is used when running the Vite dev server standalone.
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/q': 'http://localhost:8080',
+      '/api': 'http://localhost:9010',
+      '/q': 'http://localhost:9010',
     },
   },
 });
