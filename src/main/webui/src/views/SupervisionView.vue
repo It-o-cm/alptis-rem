@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { AppCard, AppMessage, DetailList, DetailRow, PageHeading } from '../components/ui';
 
 interface Health {
   status: string;
@@ -15,10 +16,15 @@ interface Health {
 const data = ref<Health | null>(null);
 const error = ref('');
 
+/**
+ * Formats a timestamp for display, or a dash when absent.
+ * @param value the timestamp, or null
+ */
 function at(value: string | null): string {
   return value ?? '—';
 }
 
+/** Loads the supervision health snapshot. */
 async function load() {
   error.value = '';
   try {
@@ -34,37 +40,55 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Supervision des traitements et des flux</h1>
-      <div class="page__subtitle">
-        État de santé et métriques des traitements : événements en attente, périodes ouvertes et derniers
-        échanges (OUT-07, NFR-16).
-      </div>
-    </div>
+    <PageHeading
+      title="Supervision des traitements et des flux"
+      subtitle="État de santé et métriques des traitements : événements en attente, périodes ouvertes et derniers échanges (OUT-07, NFR-16)."
+    />
 
-    <div v-if="error" class="tag ko" data-testid="sup-error">{{ error }}</div>
+    <AppMessage v-if="error" variant="error" data-testid="sup-error">{{ error }}</AppMessage>
 
     <template v-if="data">
-      <div style="display: flex; gap: 10px; align-items: center">
-        <span class="tag ok" data-testid="sup-status">{{ data.status }}</span>
+      <p><span class="tag ok" data-testid="sup-status">{{ data.status }}</span></p>
+
+      <div class="sup-tiles">
+        <AppCard>
+          <p class="sup-tile__label">Événements en attente</p>
+          <p class="sup-tile__value" data-testid="sup-pending">{{ data.pendingEvents }}</p>
+        </AppCard>
+        <AppCard>
+          <p class="sup-tile__label">Événements gelés</p>
+          <p class="sup-tile__value">{{ data.heldEvents }}</p>
+        </AppCard>
+        <AppCard>
+          <p class="sup-tile__label">Périodes ouvertes</p>
+          <p class="sup-tile__value">{{ data.openPeriods }}</p>
+        </AppCard>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px">
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Événements en attente</div>
-          <div data-testid="sup-pending" style="font: 500 22px monospace; margin-top: 6px">{{ data.pendingEvents }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Événements gelés</div>
-          <div style="font: 500 22px monospace; margin-top: 6px">{{ data.heldEvents }}</div></div>
-        <div class="card" style="padding: 16px 18px"><div style="font-size: 13px; color: #4a5868">Périodes ouvertes</div>
-          <div style="font: 500 22px monospace; margin-top: 6px">{{ data.openPeriods }}</div></div>
-      </div>
-      <section class="card" style="overflow-x: auto">
-        <table>
-          <tbody>
-            <tr><td>Dernier import</td><td data-testid="sup-import">{{ at(data.lastImportAt) }}</td></tr>
-            <tr><td>Dernier export</td><td>{{ at(data.lastExportAt) }}</td></tr>
-            <tr><td>Dernier calcul</td><td>{{ at(data.lastCalcAt) }}</td></tr>
-          </tbody>
-        </table>
-      </section>
+
+      <AppCard>
+        <DetailList>
+          <DetailRow label="Dernier import"><span data-testid="sup-import">{{ at(data.lastImportAt) }}</span></DetailRow>
+          <DetailRow label="Dernier export">{{ at(data.lastExportAt) }}</DetailRow>
+          <DetailRow label="Dernier calcul">{{ at(data.lastCalcAt) }}</DetailRow>
+        </DetailList>
+      </AppCard>
     </template>
   </div>
 </template>
+
+<style scoped>
+.sup-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+.sup-tile__label {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.sup-tile__value {
+  margin: 0;
+  font: 500 var(--fs-title) 'IBM Plex Mono', monospace;
+}
+</style>

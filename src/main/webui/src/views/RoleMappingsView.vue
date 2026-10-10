@@ -4,6 +4,8 @@ import { apiGet, apiPost, apiDelete, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canManageRoleMappings } from '../presentation/access';
 import { ROLES } from '../presentation/roles';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface RoleMappingView {
   directoryGroup: string;
@@ -19,8 +21,17 @@ const form = ref({ directoryGroup: '', role: 'VIEWER', entityCode: '' });
 const message = ref('');
 const formError = ref('');
 
+/** Whether the current user may manage role mappings. */
 const canManage = () => canManageRoleMappings(session.roles);
 
+/** Columns of the role-mappings table. */
+const columns: Column<RoleMappingView>[] = [
+  { key: 'directoryGroup', label: "Groupe d'annuaire" },
+  { key: 'role', label: 'Rôle' },
+  { key: 'entityCode', label: 'Entité', value: (m) => m.entityCode ?? 'Toutes' },
+];
+
+/** Loads the directory-group to role mappings. */
 async function reload() {
   loading.value = true;
   loadError.value = '';
@@ -33,6 +44,7 @@ async function reload() {
   }
 }
 
+/** Creates a new mapping from the form. */
 async function create() {
   message.value = '';
   formError.value = '';
@@ -50,6 +62,10 @@ async function create() {
   }
 }
 
+/**
+ * Deletes a mapping.
+ * @param mapping the mapping to remove
+ */
 async function remove(mapping: RoleMappingView) {
   message.value = '';
   formError.value = '';
@@ -71,50 +87,54 @@ onMounted(reload);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Groupes et rôles</h1>
-      <div class="page__subtitle">Correspondance entre groupes d'annuaire et rôles ; un changement prend effet à la connexion suivante (ADM-01).</div>
-    </div>
+    <PageHeading
+      title="Groupes et rôles"
+      subtitle="Correspondance entre groupes d'annuaire et rôles ; un changement prend effet à la connexion suivante (ADM-01)."
+    />
 
-    <div v-if="loadError" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">{{ loadError }}</div>
+    <AppMessage v-if="loadError" variant="error" data-testid="load-error">{{ loadError }}</AppMessage>
 
-    <section v-else class="card" style="overflow-x: auto">
-      <table>
-        <thead><tr><th>Groupe d'annuaire</th><th>Rôle</th><th>Entité</th><th v-if="canManage()"></th></tr></thead>
-        <tbody>
-          <tr v-if="!loading && mappings.length === 0"><td colspan="4" data-testid="empty">Aucune correspondance.</td></tr>
-          <tr v-for="m in mappings" :key="`${m.directoryGroup}:${m.role}:${m.entityCode}`" :data-testid="`mapping-row-${m.directoryGroup}-${m.role}`">
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ m.directoryGroup }}</td>
-            <td>{{ m.role }}</td>
-            <td>{{ m.entityCode ?? 'Toutes' }}</td>
-            <td v-if="canManage()">
-              <button class="btn sec" :data-testid="`delete-${m.directoryGroup}-${m.role}`" @click="remove(m)">Supprimer</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-else flush>
+      <DataTable
+        :columns="columns"
+        :rows="mappings"
+        :loading="loading"
+        :row-key="(m) => `${m.directoryGroup}:${m.role}:${m.entityCode}`"
+        empty="Aucune correspondance."
+        empty-testid="empty"
+        :row-testid="(m) => `mapping-row-${m.directoryGroup}-${m.role}`"
+      >
+        <template #cell-directoryGroup="{ row }"><span class="mono">{{ row.directoryGroup }}</span></template>
+        <template #actions="{ row }">
+          <AppButton
+            v-if="canManage()"
+            variant="danger"
+            :data-testid="`delete-${row.directoryGroup}-${row.role}`"
+            @click="remove(row)"
+          >
+            Supprimer
+          </AppButton>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section v-if="canManage()" class="card" style="padding: 18px 20px" data-testid="mapping-form">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Ajouter une correspondance</h2>
-      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: end">
-        <label>Groupe
-          <input data-testid="field-group" type="text" v-model="form.directoryGroup" />
-        </label>
-        <label>Rôle
-          <select data-testid="field-role" v-model="form.role">
+    <AppCard v-if="canManage()" title="Ajouter une correspondance" data-testid="mapping-form">
+      <AppForm @submit="create">
+        <FormField label="Groupe" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="field-group" type="text" v-model="form.directoryGroup" />
+        </FormField>
+        <FormField label="Rôle" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="field-role" v-model="form.role">
             <option v-for="r in ROLES" :key="r" :value="r">{{ r }}</option>
           </select>
-        </label>
-        <label>Entité (vide = toutes)
-          <input data-testid="field-entity" type="text" v-model="form.entityCode" />
-        </label>
-        <button class="btn" data-testid="create-mapping" @click="create">Ajouter</button>
-      </div>
-      <div style="margin-top: 12px; display: flex; gap: 10px">
-        <span v-if="message" class="tag ok" data-testid="mapping-message">{{ message }}</span>
-        <span v-if="formError" class="tag ko" data-testid="mapping-error">{{ formError }}</span>
-      </div>
-    </section>
+        </FormField>
+        <FormField label="Entité (vide = toutes)" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="field-entity" type="text" v-model="form.entityCode" />
+        </FormField>
+        <AppButton type="submit" data-testid="create-mapping">Ajouter</AppButton>
+      </AppForm>
+      <AppMessage v-if="message" variant="success" data-testid="mapping-message">{{ message }}</AppMessage>
+      <AppMessage v-if="formError" variant="error" data-testid="mapping-error">{{ formError }}</AppMessage>
+    </AppCard>
   </div>
 </template>

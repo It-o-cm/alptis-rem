@@ -4,6 +4,8 @@ import { apiGet, apiPut, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface EntityView {
   code: string;
@@ -24,8 +26,24 @@ const form = ref({ minPaymentAmount: 0, advanceSettlementDays: 0, advanceSettlem
 const message = ref('');
 const formError = ref('');
 
+/** Whether the current user may edit entity parameters. */
 const canEdit = () => canEditEntityParameters(session.roles);
 
+/** Columns of the entities table. */
+const columns: Column<EntityView>[] = [
+  { key: 'name', label: 'Entité' },
+  { key: 'code', label: 'Code' },
+  { key: 'minPaymentAmount', label: 'Seuil de paiement', align: 'num', value: (e) => formatAmount(e.minPaymentAmount) },
+  { key: 'advanceSettlementDays', label: 'Délai solde (j)', align: 'num' },
+  {
+    key: 'advanceSettlementTolerance',
+    label: 'Tolérance',
+    align: 'num',
+    value: (e) => formatAmount(e.advanceSettlementTolerance),
+  },
+];
+
+/** Loads the entities visible to the user. */
 async function reload() {
   loading.value = true;
   loadError.value = '';
@@ -38,6 +56,10 @@ async function reload() {
   }
 }
 
+/**
+ * Selects an entity and fills the edit form with its parameters.
+ * @param entity the selected entity
+ */
 function select(entity: EntityView) {
   selected.value = entity;
   message.value = '';
@@ -50,6 +72,7 @@ function select(entity: EntityView) {
   };
 }
 
+/** Saves the edited parameters of the selected entity. */
 async function save() {
   if (!selected.value) {
     return;
@@ -80,60 +103,47 @@ onMounted(reload);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Entités et paramètres</h1>
-      <div class="page__subtitle">Calendrier, seuil minimal de paiement et tolérances, par entité (ADM-05).</div>
-    </div>
+    <PageHeading
+      title="Entités et paramètres"
+      subtitle="Calendrier, seuil minimal de paiement et tolérances, par entité (ADM-05)."
+    />
 
-    <div v-if="loadError" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">
-      {{ loadError }}
-    </div>
+    <AppMessage v-if="loadError" variant="error" data-testid="load-error">{{ loadError }}</AppMessage>
 
-    <section v-else class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Entité</th><th>Code</th><th class="num">Seuil de paiement</th><th class="num">Délai solde (j)</th><th class="num">Tolérance</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="!loading && entities.length === 0"><td colspan="5" data-testid="empty">Aucune entité visible.</td></tr>
-          <tr
-            v-for="entity in entities"
-            :key="entity.code"
-            :data-testid="`entity-row-${entity.code}`"
-            style="cursor: pointer"
-            @click="select(entity)"
-          >
-            <td>{{ entity.name }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ entity.code }}</td>
-            <td class="num">{{ formatAmount(entity.minPaymentAmount) }}</td>
-            <td class="num">{{ entity.advanceSettlementDays }}</td>
-            <td class="num">{{ formatAmount(entity.advanceSettlementTolerance) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-else flush>
+      <DataTable
+        :columns="columns"
+        :rows="entities"
+        :loading="loading"
+        row-key="code"
+        empty="Aucune entité visible."
+        empty-testid="empty"
+        clickable
+        :row-testid="(e) => `entity-row-${e.code}`"
+        @row-click="select"
+      >
+        <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+      </DataTable>
+    </AppCard>
 
-    <section v-if="selected" class="card" style="padding: 18px 20px" data-testid="entity-form">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Paramètres de {{ selected.name }}</h2>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px">
-        <label>Seuil minimal de paiement
-          <input data-testid="field-min-payment" type="number" step="0.01" v-model.number="form.minPaymentAmount" :disabled="!canEdit()" />
-        </label>
-        <label>Délai de solde de l'escompte (jours)
-          <input data-testid="field-settlement-days" type="number" v-model.number="form.advanceSettlementDays" :disabled="!canEdit()" />
-        </label>
-        <label>Tolérance de solde
-          <input data-testid="field-tolerance" type="number" step="0.01" v-model.number="form.advanceSettlementTolerance" :disabled="!canEdit()" />
-        </label>
-        <label>Calendrier de paiement (JSON)
-          <input data-testid="field-calendar" type="text" v-model="form.paymentCalendar" :disabled="!canEdit()" />
-        </label>
-      </div>
-      <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center">
-        <button v-if="canEdit()" class="btn" data-testid="save-entity" @click="save">Enregistrer</button>
-        <span v-if="message" class="tag ok" data-testid="save-message">{{ message }}</span>
-        <span v-if="formError" class="tag ko" data-testid="form-error">{{ formError }}</span>
-      </div>
-    </section>
+    <AppCard v-if="selected" :title="`Paramètres de ${selected.name}`" data-testid="entity-form">
+      <AppForm @submit="save">
+        <FormField label="Seuil minimal de paiement" width="amount" v-slot="{ id }">
+          <input :id="id" data-testid="field-min-payment" type="number" step="0.01" v-model.number="form.minPaymentAmount" :disabled="!canEdit()" />
+        </FormField>
+        <FormField label="Délai de solde de l'escompte (jours)" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="field-settlement-days" type="number" v-model.number="form.advanceSettlementDays" :disabled="!canEdit()" />
+        </FormField>
+        <FormField label="Tolérance de solde" width="amount" v-slot="{ id }">
+          <input :id="id" data-testid="field-tolerance" type="number" step="0.01" v-model.number="form.advanceSettlementTolerance" :disabled="!canEdit()" />
+        </FormField>
+        <FormField label="Calendrier de paiement (JSON)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="field-calendar" type="text" v-model="form.paymentCalendar" :disabled="!canEdit()" />
+        </FormField>
+        <AppButton v-if="canEdit()" type="submit" data-testid="save-entity">Enregistrer</AppButton>
+      </AppForm>
+      <AppMessage v-if="message" variant="success" data-testid="save-message">{{ message }}</AppMessage>
+      <AppMessage v-if="formError" variant="error" data-testid="form-error">{{ formError }}</AppMessage>
+    </AppCard>
   </div>
 </template>

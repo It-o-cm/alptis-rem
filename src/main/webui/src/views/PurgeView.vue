@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
+import { AppButton, AppCard, AppMessage, PageHeading } from '../components/ui';
 
 const eligible = ref<number | null>(null);
 const message = ref('');
 const error = ref('');
 
+/** Loads the count of beneficiaries eligible for anonymisation. */
 async function load() {
   error.value = '';
   try {
@@ -16,6 +18,7 @@ async function load() {
   }
 }
 
+/** Runs the anonymisation and reloads the eligible count. */
 async function purge() {
   message.value = '';
   error.value = '';
@@ -33,22 +36,21 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Purge et anonymisation</h1>
-      <div class="page__subtitle">
-        Anonymise les données personnelles à l'échéance de la durée de conservation (dix ans) : nom et date
-        de naissance effacés, lignes et écritures conservées (ADM-06).
-      </div>
-    </div>
+    <PageHeading
+      title="Purge et anonymisation"
+      subtitle="Anonymise les données personnelles à l'échéance de la durée de conservation (dix ans) : nom et date de naissance effacés, lignes et écritures conservées (ADM-06)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="font-size: 14px">
+    <AppCard>
+      <p>
         Bénéficiaires éligibles à l'anonymisation :
         <strong data-testid="purge-eligible">{{ eligible === null ? '—' : eligible }}</strong>
+      </p>
+      <div>
+        <AppButton variant="danger" data-testid="purge-run" @click="purge">Anonymiser</AppButton>
       </div>
-      <button class="btn" data-testid="purge-run" style="margin-top: 12px" @click="purge">Anonymiser</button>
-      <div v-if="error" class="tag ko" data-testid="purge-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="purge-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+      <AppMessage v-if="error" variant="error" data-testid="purge-error">{{ error }}</AppMessage>
+      <AppMessage v-if="message" variant="success" data-testid="purge-message">{{ message }}</AppMessage>
+    </AppCard>
   </div>
 </template>

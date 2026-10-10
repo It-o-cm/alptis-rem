@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { AppButton, AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface AuditRow {
   occurredAt: string;
@@ -29,10 +31,27 @@ const total = ref(0);
 const loading = ref(true);
 const loadError = ref('');
 
+/** Columns of the audit table. */
+const columns: Column<AuditRow>[] = [
+  { key: 'occurredAt', label: 'Date' },
+  { key: 'userId', label: 'Auteur' },
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'action', label: 'Action' },
+  { key: 'objectType', label: 'Objet' },
+  { key: 'beforeValue', label: 'Avant' },
+  { key: 'afterValue', label: 'Après' },
+  { key: 'hash', label: 'Empreinte' },
+];
+
+/**
+ * Shortens a hash for display, keeping the first twelve characters.
+ * @param hash the full hash, or null
+ */
 function shortHash(hash: string | null): string {
   return hash ? hash.substring(0, 12) + '…' : '';
 }
 
+/** Loads the current page of the audit trail. */
 async function reload() {
   loading.value = true;
   loadError.value = '';
@@ -47,6 +66,7 @@ async function reload() {
   }
 }
 
+/** Moves to the next page when there is one. */
 function next() {
   if ((page.value + 1) * size.value < total.value) {
     page.value += 1;
@@ -54,6 +74,7 @@ function next() {
   }
 }
 
+/** Moves to the previous page when there is one. */
 function previous() {
   if (page.value > 0) {
     page.value -= 1;
@@ -66,37 +87,51 @@ onMounted(reload);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Piste d'audit</h1>
-      <div class="page__subtitle">Toute modification manuelle : auteur, date, avant, après, chaînée par empreinte (ADM-04).</div>
-    </div>
+    <PageHeading
+      title="Piste d'audit"
+      subtitle="Toute modification manuelle : auteur, date, avant, après, chaînée par empreinte (ADM-04)."
+    />
 
-    <div v-if="loadError" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">{{ loadError }}</div>
+    <AppMessage v-if="loadError" variant="error" data-testid="load-error">{{ loadError }}</AppMessage>
 
-    <section v-else class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Date</th><th>Auteur</th><th>Entité</th><th>Action</th><th>Objet</th><th>Avant</th><th>Après</th><th>Empreinte</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="!loading && rows.length === 0"><td colspan="8" data-testid="empty">Aucune trace.</td></tr>
-          <tr v-for="(row, index) in rows" :key="index" data-testid="audit-row">
-            <td>{{ row.occurredAt }}</td>
-            <td data-testid="audit-user">{{ row.userId }}</td>
-            <td data-testid="audit-entity">{{ row.entityCode ?? '—' }}</td>
-            <td data-testid="audit-action">{{ row.action }}</td>
-            <td>{{ row.objectType }} #{{ row.objectId }}</td>
-            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis">{{ row.beforeValue ?? '—' }}</td>
-            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis">{{ row.afterValue ?? '—' }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace" :title="row.hash">{{ shortHash(row.hash) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="padding: 12px 18px; display: flex; gap: 12px; align-items: center">
-        <button class="btn sec" data-testid="audit-prev" :disabled="page === 0" @click="previous">Précédent</button>
+    <AppCard v-else>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        empty="Aucune trace."
+        empty-testid="empty"
+        :row-testid="() => 'audit-row'"
+      >
+        <template #cell-userId="{ row }"><span data-testid="audit-user">{{ row.userId }}</span></template>
+        <template #cell-entityCode="{ row }"><span data-testid="audit-entity">{{ row.entityCode ?? '—' }}</span></template>
+        <template #cell-action="{ row }"><span data-testid="audit-action">{{ row.action }}</span></template>
+        <template #cell-objectType="{ row }">{{ row.objectType }} #{{ row.objectId }}</template>
+        <template #cell-beforeValue="{ row }"><span class="audit-cell">{{ row.beforeValue ?? '—' }}</span></template>
+        <template #cell-afterValue="{ row }"><span class="audit-cell">{{ row.afterValue ?? '—' }}</span></template>
+        <template #cell-hash="{ row }"><span class="mono" :title="row.hash">{{ shortHash(row.hash) }}</span></template>
+      </DataTable>
+      <div class="audit-pager">
+        <AppButton variant="secondary" data-testid="audit-prev" :disabled="page === 0" @click="previous">Précédent</AppButton>
         <span data-testid="audit-page">Page {{ page + 1 }} · {{ total }} trace(s)</span>
-        <button class="btn sec" data-testid="audit-next" :disabled="(page + 1) * size >= total" @click="next">Suivant</button>
+        <AppButton variant="secondary" data-testid="audit-next" :disabled="(page + 1) * size >= total" @click="next">Suivant</AppButton>
       </div>
-    </section>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.audit-cell {
+  display: inline-block;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.audit-pager {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+</style>
