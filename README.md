@@ -99,6 +99,67 @@ npx playwright install chromium
 npx playwright test
 ```
 
+## Jeu de démonstration
+
+En profil `dev`, le jeu de démonstration est chargé au démarrage (idempotent par la présence
+du cabinet `P13897`). Il peut être rechargé par la suite E2E via `POST /api/test/demo` après
+`POST /api/test/reset` (la remise à zéro ne charge pas le jeu). Il est produit par les
+services réels : seules les données de référence sont créées directement, tout ce que
+l'application calcule (lignes, contrôles, comptes, écritures, lots, bordereaux, extractions,
+variable) vient des services.
+
+### Ce qu'il contient
+
+- **Deux entités** complètes, `ALPTIS_ASSURANCES` et `UNEP`.
+- **26 distributeurs** couvrant tous les types, les deux statuts ORIAS et tous les statuts
+  partenaire ; deux groupements et une hiérarchie code de production → distributeur →
+  groupement ; plusieurs codes de production ; coordonnées bancaires pour la plupart, deux
+  bénéficiaires sans coordonnées (exclusion de paiement) et un distributeur radié ORIAS.
+- **Neuf produits** sur plusieurs gammes ; les **neuf familles** de calcul produisent des
+  lignes (plan `DEMO_2026` par entité, plus le barème `GUIDE_2026` pour Alptis) ; une règle
+  linéaire à versions close/active/brouillon (le brouillon en attente de validation à quatre
+  yeux) ; barèmes à tranches, accords, inscriptions, codes externes et règle de versement à
+  plusieurs bénéficiaires.
+- **Conventions d'escompte** dans des états différents (valide proche de son plafond,
+  suspendue, close) et une dette à reprendre (cession en cours).
+- **~180 contrats, ~230 garanties**, du co-courtage, deux cessions de portefeuille (une
+  réalisée, une en cours) et des ordres de remplacement.
+- **Périodes.** Alptis : juin à septembre 2026 **closes** (septembre garde la scène de la
+  maquette — bordereau net de **110,00 €** du cabinet P13897), octobre **calculée** avec des
+  anomalies ouvertes des trois sévérités dont une bloquante et cinq ajustements de statuts
+  différents, novembre **ouverte** avec des événements en attente. UNEP : septembre **close**,
+  octobre **arrêtée** entre la validation métier et la validation Finance, lot préparé non
+  validé.
+- **Cycle.** Contrôles de chaque sévérité et de plusieurs familles, décisions prises sur une
+  partie, lots payés, un ordre rejeté par la banque puis réémis, un lot hors cycle, des
+  bordereaux publiés dont un rectificatif, des comptes débiteurs et créditeurs avec report de
+  solde, des écritures comptables et un état de cut-off par période close.
+- **Flux et administration.** Lots d'import terminés et un en erreur partielle (rejets de
+  plusieurs motifs, dont certains traités) avec événements en attente, journal d'export,
+  paramètres d'entité et une piste d'audit aux auteurs variés.
+- **Forces de vente.** Un plan par poste et par entité, douze collaborateurs sur deux niveaux
+  d'encadrement, objectifs, mesures sur trois mois, un mois validé et exporté (septembre) et un
+  mois en attente (octobre).
+
+### Par où commencer, selon l'utilisateur
+
+| Identifiant | Ce qu'il voit | Commencer par |
+| --- | --- | --- |
+| `operator-alptis`, `admin-alptis` | tout Alptis : distributeurs, périodes (octobre calculée, novembre ouverte), imports, contrôles, ajustements, paiement, bordereaux, comptabilité | **Distributeurs** (chercher `P13897`) |
+| `validator-alptis` | validation métier des périodes et des ajustements | **Périodes** |
+| `finance-alptis` | paiement, bordereaux (dont le 110,00 € de septembre), cut-off, comptabilité | **Bordereaux** (Alptis, mois `2026-09-01`) |
+| `viewer-alptis` | lecture : tableaux de bord, recherche de commissions, bordereaux | **Tableaux de bord** |
+| `manager-alptis` | forces de vente : plan, collaborateurs, validation du variable | **Forces de vente — Plan** |
+| `rep-alptis` | son propre variable | **Forces de vente — Mon variable** (`rep-alptis`) |
+| `operator-unep`, `admin-unep` | tout UNEP : périodes (octobre préparée), bordereaux de septembre, distributeurs | **Périodes** |
+| `validator-unep`, `finance-unep`, `viewer-unep` | leurs écrans UNEP respectifs | **Périodes** / **Bordereaux** |
+| `it-admin` | supervision des traitements, groupes et rôles | **Supervision** |
+| `auditor` | piste d'audit, vision groupe consolidée, tout en lecture | **Audit** |
+
+Les périodes closes (juin à septembre) ne figurent pas à l'écran « Périodes » (qui ne liste
+que les périodes non closes) : leur contenu se consulte aux écrans **Bordereaux**,
+**Comptabilité**, **Paiement** et **Cut-off** en choisissant l'entité et le mois.
+
 ## Structure
 
 ```

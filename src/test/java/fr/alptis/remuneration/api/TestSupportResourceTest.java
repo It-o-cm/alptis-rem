@@ -25,6 +25,9 @@ class TestSupportResourceTest {
     /** Records the cycle-demo seed arguments. */
     private static final String[] DEMO_ARGS = {null};
 
+    /** Records whether the demonstration dataset was loaded. */
+    private static final boolean[] DEMO_LOADED = {false};
+
     private static TestSupportResource newResource(DateTimeProvider provider) {
         TestDatabaseReset fakeReset = new TestDatabaseReset(null, null, null, null, null) {
             @Override
@@ -38,7 +41,13 @@ class TestSupportResourceTest {
                 DEMO_ARGS[0] = entity + "/" + month;
             }
         };
-        return new TestSupportResource(new TestSupportService(provider), fakeReset, fakeSeeder);
+        DemoDataService fakeDemo = new DemoDataService(null, null, null, null, null) {
+            @Override
+            public void load() {
+                DEMO_LOADED[0] = true;
+            }
+        };
+        return new TestSupportResource(new TestSupportService(provider), fakeReset, fakeSeeder, fakeDemo);
     }
 
     /**
@@ -99,6 +108,20 @@ class TestSupportResourceTest {
 
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
         assertEquals("ALPTIS_ASSURANCES/2026-09-01", DEMO_ARGS[0]);
+    }
+
+    /**
+     * Verifies that the demo endpoint delegates to the demonstration-dataset service and returns 204.
+     */
+    @Test
+    void demo_endpoint_delegates_and_returns_204() {
+        DEMO_LOADED[0] = false;
+        TestSupportResource resource = newResource(new DateTimeProvider());
+
+        Response response = resource.demo();
+
+        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(DEMO_LOADED[0]);
     }
 }
 

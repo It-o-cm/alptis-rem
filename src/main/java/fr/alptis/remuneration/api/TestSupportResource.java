@@ -35,18 +35,24 @@ public class TestSupportResource {
     /** Seeds a deterministic cycle scene for the end-to-end suite. */
     private final CycleDemoSeeder cycleDemo;
 
+    /** Loads the full demonstration dataset on demand. */
+    private final DemoDataService demoData;
+
     /**
      * Creates the resource.
      *
      * @param service       the test-support service to delegate to
      * @param databaseReset the database reset helper
      * @param cycleDemo     the cycle-scene seeder
+     * @param demoData      the demonstration-dataset service
      */
     @Inject
-    public TestSupportResource(TestSupportService service, TestDatabaseReset databaseReset, CycleDemoSeeder cycleDemo) {
+    public TestSupportResource(TestSupportService service, TestDatabaseReset databaseReset,
+                               CycleDemoSeeder cycleDemo, DemoDataService demoData) {
         this.service = service;
         this.databaseReset = databaseReset;
         this.cycleDemo = cycleDemo;
+        this.demoData = demoData;
     }
 
     /**
@@ -73,6 +79,19 @@ public class TestSupportResource {
     @Path("/reset")
     public Response reset() {
         databaseReset.reset();
+        return Response.noContent().build();
+    }
+
+    /**
+     * Loads the full demonstration dataset (the regular reset does not), so the end-to-end suite can
+     * drive the real screens against it. Idempotent through the mock-up cabinet.
+     *
+     * @return an empty {@code 204 No Content} response
+     */
+    @POST
+    @Path("/demo")
+    public Response demo() {
+        demoData.load();
         return Response.noContent().build();
     }
 
