@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { flowDirectionLabel } from '../presentation/reporting';
+import { AppButton, AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface Flow {
   id: string;
@@ -21,23 +23,46 @@ const FILTERS = [
 const rows = ref<Flow[]>([]);
 const filter = ref('');
 const error = ref('');
+const loading = ref(false);
 
+/** Columns of the flow catalog table. */
+const columns: Column<Flow>[] = [
+  { key: 'id', label: 'N°' },
+  { key: 'direction', label: 'Sens' },
+  { key: 'system', label: 'Système' },
+  { key: 'content', label: 'Contenu' },
+  { key: 'format', label: 'Format et transport' },
+  { key: 'frequency', label: 'Fréquence' },
+];
+
+/**
+ * French label of a flow direction.
+ * @param d the direction code
+ */
 function directionLabel(d: string): string {
   return flowDirectionLabel(d);
 }
 
-async function load() {
+/** Loads the flow catalog, filtered by the active direction. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     const q = filter.value ? `?direction=${filter.value}` : '';
     rows.value = await apiGet<Flow[]>(`/api/ui/v1/flows/catalog${q}`);
   } catch (e) {
     rows.value = [];
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-function pick(key: string) {
+/**
+ * Selects a direction filter and reloads the catalog.
+ * @param key the direction key to filter on
+ */
+function pick(key: string): void {
   filter.value = key;
   load();
 }
@@ -47,39 +72,50 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Catalogue des flux</h1>
-      <div class="page__subtitle">
-        Tout ce que l'application reçoit et tout ce qu'elle émet : système, contenu, format, transport et
-        fréquence (section 9.1).
-      </div>
-    </div>
+    <PageHeading
+      title="Catalogue des flux"
+      subtitle="Tout ce que l'application reçoit et tout ce qu'elle émet : système, contenu, format, transport et fréquence (section 9.1)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 8px; flex-wrap: wrap">
-        <button v-for="f in FILTERS" :key="f.key" class="chip" :class="{ on: filter === f.key }"
-                :data-testid="`flux-filter-${f.key || 'all'}`" @click="pick(f.key)">{{ f.label }}</button>
+    <AppCard>
+      <div class="flux-filters">
+        <AppButton
+          v-for="f in FILTERS"
+          :key="f.key"
+          :variant="filter === f.key ? 'primary' : 'secondary'"
+          :data-testid="`flux-filter-${f.key || 'all'}`"
+          @click="pick(f.key)"
+        >
+          {{ f.label }}
+        </AppButton>
       </div>
-      <div v-if="error" class="tag ko" data-testid="flux-error" style="margin-top: 10px">{{ error }}</div>
-    </section>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>N°</th><th>Sens</th><th>Système</th><th>Contenu</th><th>Format et transport</th><th>Fréquence</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="6" data-testid="no-flow">Aucun flux.</td></tr>
-          <tr v-for="f in rows" :key="f.id" :data-testid="`flow-row-${f.id}`">
-            <td>{{ f.id }}</td>
-            <td :data-testid="`flow-direction-${f.id}`">{{ directionLabel(f.direction) }}</td>
-            <td>{{ f.system }}</td>
-            <td>{{ f.content }}</td>
-            <td>{{ f.format }}</td>
-            <td>{{ f.frequency }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppMessage v-if="error" variant="error" data-testid="flux-error">{{ error }}</AppMessage>
+
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun flux."
+        empty-testid="no-flow"
+        :row-testid="(f) => `flow-row-${f.id}`"
+      >
+        <template #cell-id="{ row }"><span class="mono">{{ row.id }}</span></template>
+        <template #cell-direction="{ row }">
+          <span :data-testid="`flow-direction-${row.id}`">{{ directionLabel(row.direction) }}</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.flux-filters {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+</style>

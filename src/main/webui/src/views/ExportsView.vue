@@ -4,6 +4,8 @@ import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canProduceExport, exportStatusLabel } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface ExportRow {
   id: number;
@@ -22,30 +24,55 @@ const rows = ref<ExportRow[]>([]);
 const content = ref('');
 const error = ref('');
 const message = ref('');
+const loading = ref(false);
 const form = ref({ object: 'COMMISSION_LINES', period: '2026-09-01', data: false });
 
 const canProduce = () => canProduceExport(session.roles);
 
+/** Columns of the exports journal table. */
+const columns: Column<ExportRow>[] = [
+  { key: 'flowCode', label: 'Flux' },
+  { key: 'fileName', label: 'Fichier' },
+  { key: 'fileHash', label: 'Empreinte' },
+  { key: 'author', label: 'Auteur' },
+  { key: 'lines', label: 'Lignes', align: 'num' },
+  { key: 'total', label: 'Total', align: 'num', value: (r) => amount(r.total) },
+  { key: 'status', label: 'État' },
+];
+
+/**
+ * French label of an export status.
+ * @param status the status code
+ */
 function statusLabel(status: string): string {
   return exportStatusLabel(status);
 }
 
+/**
+ * Formats a monetary amount in euros.
+ * @param value the raw amount
+ */
 function amount(value: number): string {
   return formatAmount(value);
 }
 
-async function load() {
+/** Loads the exports journal of the selected entity. */
+async function load(): Promise<void> {
   error.value = '';
   content.value = '';
+  loading.value = true;
   try {
     rows.value = await apiGet<ExportRow[]>(`/api/ui/v1/flows/${entity.value}/exports`);
   } catch (e) {
     rows.value = [];
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
-async function produce() {
+/** Produces a new export for the selected object and period. */
+async function produce(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -58,7 +85,11 @@ async function produce() {
   }
 }
 
-async function download(row: ExportRow) {
+/**
+ * Downloads and displays the content of an export.
+ * @param row the export to download
+ */
+async function download(row: ExportRow): Promise<void> {
   error.value = '';
   try {
     content.value = await apiGetText(`/api/ui/v1/flows/exports/${row.id}/content`);
@@ -72,62 +103,78 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Exports de la période</h1>
-      <div class="page__subtitle">
-        Chaque fichier émis est inscrit au journal des exports avec son empreinte, son nombre de lignes et
-        son total : on sait toujours ce qui est parti, quand, vers qui et avec quel contenu (section 9.11).
-      </div>
-    </div>
+    <PageHeading
+      title="Exports de la période"
+      subtitle="Chaque fichier émis est inscrit au journal des exports avec son empreinte, son nombre de lignes et son total : on sait toujours ce qui est parti, quand, vers qui et avec quel contenu (section 9.11)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Entité <input data-testid="exports-entity" type="text" v-model="entity" /></label>
-        <button class="btn" data-testid="exports-refresh" @click="load">Rafraîchir</button>
-      </div>
-      <div v-if="error" class="tag ko" data-testid="exports-error" style="margin-top: 10px">{{ error }}</div>
-      <div v-if="message" class="tag ok" data-testid="exports-message" style="margin-top: 10px">{{ message }}</div>
-    </section>
+    <FilterBar
+      :loading="loading"
+      search-label="Rafraîchir"
+      search-testid="exports-refresh"
+      :resettable="false"
+      @search="load"
+    >
+      <FormField label="Entité" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="exports-entity" type="text" v-model="entity" />
+      </FormField>
+    </FilterBar>
 
-    <section v-if="canProduce()" class="card" style="padding: 18px 20px" data-testid="exports-form">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Produire un export</h2>
-      <div style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap">
-        <label>Objet
-          <select data-testid="exports-object" v-model="form.object">
+    <AppMessage v-if="error" variant="error" data-testid="exports-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="exports-message">{{ message }}</AppMessage>
+
+    <AppCard v-if="canProduce()" title="Produire un export" data-testid="exports-form">
+      <AppForm @submit="produce">
+        <FormField label="Objet" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="exports-object" v-model="form.object">
             <option value="COMMISSION_LINES">Lignes de commission</option>
             <option value="ACCOUNTS">Comptes et soldes</option>
           </select>
-        </label>
-        <label>Période <input data-testid="exports-period" type="text" v-model="form.period" :disabled="form.data" /></label>
-        <label>Export Data (sans période) <input data-testid="exports-data" type="checkbox" v-model="form.data" /></label>
-        <button class="btn" data-testid="exports-produce" @click="produce">Produire</button>
-      </div>
-    </section>
+        </FormField>
+        <FormField label="Période" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="exports-period" type="text" v-model="form.period" :disabled="form.data" />
+        </FormField>
+        <FormField label="Export Data (sans période)" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="exports-data" type="checkbox" v-model="form.data" />
+        </FormField>
+        <AppButton type="submit" data-testid="exports-produce">Produire</AppButton>
+      </AppForm>
+    </AppCard>
 
-    <section class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Flux</th><th>Fichier</th><th>Empreinte</th><th>Auteur</th><th>Lignes</th><th>Total</th><th>État</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="8" data-testid="no-export">Aucun export.</td></tr>
-          <tr v-for="r in rows" :key="r.id" :data-testid="`export-row-${r.id}`">
-            <td>{{ r.flowCode }}</td>
-            <td>{{ r.fileName }}</td>
-            <td style="font-family: monospace; font-size: 12px">{{ r.fileHash.slice(0, 12) }}…</td>
-            <td>{{ r.author }}</td>
-            <td>{{ r.lines }}</td>
-            <td>{{ amount(r.total) }}</td>
-            <td :data-testid="`export-status-${r.id}`">{{ statusLabel(r.status) }}</td>
-            <td><button class="btn" :data-testid="`export-download-${r.id}`" @click="download(r)">Télécharger</button></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        row-key="id"
+        empty="Aucun export."
+        empty-testid="no-export"
+        :row-testid="(r) => `export-row-${r.id}`"
+      >
+        <template #cell-fileHash="{ row }"><span class="mono">{{ row.fileHash.slice(0, 12) }}…</span></template>
+        <template #cell-status="{ row }">
+          <span :data-testid="`export-status-${row.id}`">{{ statusLabel(row.status) }}</span>
+        </template>
+        <template #actions="{ row }">
+          <AppButton variant="secondary" :data-testid="`export-download-${row.id}`" @click="download(row)">
+            Télécharger
+          </AppButton>
+        </template>
+      </DataTable>
+    </AppCard>
 
-    <section v-if="content" class="card" style="padding: 18px 20px" data-testid="export-content-card">
-      <h2 style="margin: 0 0 12px; font-size: 16px">Contenu</h2>
-      <pre data-testid="export-content" style="overflow-x: auto; background: #f6f8fa; padding: 12px">{{ content }}</pre>
-    </section>
+    <AppCard v-if="content" title="Contenu" data-testid="export-content-card">
+      <pre class="export-content" data-testid="export-content">{{ content }}</pre>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.export-content {
+  overflow-x: auto;
+  background: var(--line-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  margin: 0;
+}
+</style>

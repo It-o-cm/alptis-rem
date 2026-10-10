@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface FormatFile {
   flow: string;
@@ -16,14 +18,27 @@ interface Reference {
 
 const reference = ref<Reference | null>(null);
 const error = ref('');
+const loading = ref(false);
 
-async function load() {
+/** Columns of the exchanged-files table. */
+const columns: Column<FormatFile>[] = [
+  { key: 'flow', label: 'Flux' },
+  { key: 'content', label: 'Contenu' },
+  { key: 'format', label: 'Format' },
+  { key: 'fileName', label: 'Nom de fichier' },
+];
+
+/** Loads the exchange-format reference. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     reference.value = await apiGet<Reference>('/api/ui/v1/flows/formats');
   } catch (e) {
     reference.value = null;
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -32,35 +47,38 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Formats d'échange</h1>
-      <div class="page__subtitle">
-        Les principaux fichiers échangés et les conventions communes des fichiers CSV (section 9.9).
-      </div>
-    </div>
+    <PageHeading
+      title="Formats d'échange"
+      subtitle="Les principaux fichiers échangés et les conventions communes des fichiers CSV (section 9.9)."
+    />
 
-    <div v-if="error" class="tag ko" data-testid="formats-error">{{ error }}</div>
+    <AppMessage v-if="error" variant="error" data-testid="formats-error">{{ error }}</AppMessage>
 
-    <section v-if="reference" class="card" style="overflow-x: auto">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Fichiers</h2>
-      <table>
-        <thead><tr><th>Flux</th><th>Contenu</th><th>Format</th><th>Nom de fichier</th></tr></thead>
-        <tbody>
-          <tr v-for="(f, i) in reference.files" :key="i" :data-testid="`format-file-${i}`">
-            <td>{{ f.flow }}</td>
-            <td>{{ f.content }}</td>
-            <td>{{ f.format }}</td>
-            <td>{{ f.fileName }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <AppCard v-if="reference" title="Fichiers">
+      <DataTable
+        :columns="columns"
+        :rows="reference.files"
+        :loading="loading"
+        empty="Aucun fichier."
+        :row-testid="(f) => `format-file-${reference!.files.indexOf(f)}`"
+      />
+    </AppCard>
 
-    <section v-if="reference" class="card" style="padding: 18px 20px">
-      <h2 style="margin: 0 0 10px; font-size: 16px">Conventions communes</h2>
-      <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+    <AppCard v-if="reference" title="Conventions communes">
+      <ul class="formats-conventions">
         <li v-for="(c, i) in reference.conventions" :key="i" :data-testid="`format-convention-${i}`">{{ c }}</li>
       </ul>
-    </section>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.formats-conventions {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--fs-body);
+}
+</style>

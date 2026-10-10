@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditMapping } from '../presentation/access';
+import { AppButton, AppCard, AppForm, DataTable, FormField, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface MappingView {
   id: number;
@@ -61,7 +63,15 @@ const error = ref('');
 const canEdit = () => canEditMapping(session.roles);
 const entityCode = () => (session.entities.length > 0 ? session.entities[0] : '');
 
-async function loadList() {
+/** Columns of the mapping test-result table. */
+const columns: Column<Record<string, string>>[] = [
+  { key: 'source_key', label: 'Clé source' },
+  { key: 'event_type', label: "Type d'événement" },
+  { key: 'precomputed_amount', label: 'Montant reçu', align: 'num', value: (r) => r.precomputed_amount ?? '—' },
+];
+
+/** Loads the list of existing mapping versions. */
+async function loadList(): Promise<void> {
   try {
     mappings.value = await apiGet<MappingView[]>('/api/ui/v1/mappings');
   } catch (e) {
@@ -69,14 +79,19 @@ async function loadList() {
   }
 }
 
-function loadMapping(mapping: MappingView) {
+/**
+ * Loads an existing mapping into the editor.
+ * @param mapping the selected mapping version
+ */
+function loadMapping(mapping: MappingView): void {
   flowCode.value = mapping.flowCode;
   sourceSystem.value = mapping.sourceSystem;
   definition.value = mapping.definition;
   result.value = null;
 }
 
-async function runTest() {
+/** Runs the current definition against the sample file. */
+async function runTest(): Promise<void> {
   message.value = '';
   error.value = '';
   result.value = null;
@@ -90,7 +105,8 @@ async function runTest() {
   }
 }
 
-async function save() {
+/** Saves the current definition as a new mapping version. */
+async function save(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
@@ -112,66 +128,90 @@ onMounted(loadList);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Mapping de fichier</h1>
-      <div class="page__subtitle">
-        Décrit comment chaque colonne du fichier d'un partenaire devient un champ du format pivot.
-        Intégrer un nouveau fichier ne demande aucun développement (flux IN-06).
-      </div>
-    </div>
+    <PageHeading
+      title="Mapping de fichier"
+      subtitle="Décrit comment chaque colonne du fichier d'un partenaire devient un champ du format pivot. Intégrer un nouveau fichier ne demande aucun développement (flux IN-06)."
+    />
 
-    <section class="card" style="padding: 18px 20px">
-      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: end">
-        <label>Objet pivot (flux)
-          <select data-testid="mapping-flow" v-model="flowCode">
+    <AppCard>
+      <AppForm>
+        <FormField label="Objet pivot (flux)" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="mapping-flow" v-model="flowCode">
             <option value="events">Événements</option>
             <option value="coverages">Garanties</option>
           </select>
-        </label>
-        <label>Système source
-          <input data-testid="mapping-source" type="text" v-model="sourceSystem" />
-        </label>
-        <label v-if="mappings.length > 0">Versions existantes
-          <select data-testid="mapping-versions" @change="(e) => { const m = mappings[(e.target as HTMLSelectElement).selectedIndex - 1]; if (m) loadMapping(m); }">
+        </FormField>
+        <FormField label="Système source" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="mapping-source" type="text" v-model="sourceSystem" />
+        </FormField>
+        <FormField v-if="mappings.length > 0" label="Versions existantes" width="long" v-slot="{ id }">
+          <select
+            :id="id"
+            data-testid="mapping-versions"
+            @change="(e) => { const m = mappings[(e.target as HTMLSelectElement).selectedIndex - 1]; if (m) loadMapping(m); }"
+          >
             <option>—</option>
             <option v-for="m in mappings" :key="m.id">{{ m.flowCode }} · {{ m.sourceSystem }} · v{{ m.versionNo }}</option>
           </select>
-        </label>
-      </div>
-    </section>
+        </FormField>
+      </AppForm>
+    </AppCard>
 
-    <section class="card" style="padding: 18px 20px">
-      <h2 style="margin: 0 0 8px; font-size: 16px">Définition du mapping</h2>
-      <textarea data-testid="mapping-definition" aria-label="Définition du mapping" v-model="definition" rows="12" style="width: 100%; font-family: 'IBM Plex Mono', monospace; font-size: 12px"></textarea>
-    </section>
+    <AppCard title="Définition du mapping">
+      <textarea
+        class="code-area"
+        data-testid="mapping-definition"
+        aria-label="Définition du mapping"
+        v-model="definition"
+        rows="12"
+      ></textarea>
+    </AppCard>
 
-    <section class="card" style="padding: 18px 20px">
-      <h2 style="margin: 0 0 8px; font-size: 16px">Fichier d'exemple</h2>
-      <textarea data-testid="mapping-sample" aria-label="Fichier d'exemple" v-model="sample" rows="4" style="width: 100%; font-family: 'IBM Plex Mono', monospace; font-size: 12px"></textarea>
-      <div style="margin-top: 12px; display: flex; gap: 10px; align-items: center">
-        <button class="btn sec" data-testid="mapping-test" @click="runTest">Tester sur le fichier d'exemple</button>
-        <button v-if="canEdit()" class="btn" data-testid="mapping-save" @click="save">Enregistrer</button>
+    <AppCard title="Fichier d'exemple">
+      <textarea
+        class="code-area"
+        data-testid="mapping-sample"
+        aria-label="Fichier d'exemple"
+        v-model="sample"
+        rows="4"
+      ></textarea>
+      <div class="mapping-actions">
+        <AppButton variant="secondary" data-testid="mapping-test" @click="runTest">
+          Tester sur le fichier d'exemple
+        </AppButton>
+        <AppButton v-if="canEdit()" data-testid="mapping-save" @click="save">Enregistrer</AppButton>
         <span v-if="message" class="tag ok" data-testid="mapping-message">{{ message }}</span>
         <span v-if="error" class="tag ko" data-testid="mapping-error">{{ error }}</span>
       </div>
-    </section>
+    </AppCard>
 
-    <section v-if="result" class="card" style="overflow-x: auto" data-testid="mapping-result">
-      <h2 style="margin: 0; padding: 16px 18px 6px; font-size: 16px">Résultat du test</h2>
-      <div style="padding: 0 18px 8px; font-size: 14px; color: #4A5868">
+    <AppCard v-if="result" title="Résultat du test" data-testid="mapping-result">
+      <p class="mapping-counts">
         <span data-testid="result-kept">{{ result.kept }} ligne(s) conforme(s)</span> ·
         <span data-testid="result-filtered">{{ result.filtered }} ligne(s) filtrée(s)</span>
-      </div>
-      <table>
-        <thead><tr><th>Clé source</th><th>Type d'événement</th><th class="num">Montant reçu</th></tr></thead>
-        <tbody>
-          <tr v-for="(r, i) in result.rows" :key="i" data-testid="result-row">
-            <td style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">{{ r.source_key }}</td>
-            <td>{{ r.event_type }}</td>
-            <td class="num">{{ r.precomputed_amount ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+      </p>
+      <DataTable :columns="columns" :rows="result.rows" :row-testid="() => 'result-row'">
+        <template #cell-source_key="{ row }"><span class="mono">{{ row.source_key }}</span></template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
+
+<style scoped>
+.code-area {
+  width: 100%;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--fs-small);
+}
+.mapping-actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mapping-counts {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--muted);
+}
+</style>
