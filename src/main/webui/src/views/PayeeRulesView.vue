@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { formatShareList, type Share as ShareView } from '../presentation/payeeShares';
+import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface PayeeRuleView {
   entityCode: string;
@@ -16,13 +18,30 @@ interface PayeeRuleView {
 
 const rows = ref<PayeeRuleView[]>([]);
 const error = ref('');
+const loading = ref(false);
 
-async function load() {
+/** Columns of the payee-rules list. */
+const columns: Column<PayeeRuleView>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'productionCode', label: 'Code prod.', value: (r) => r.productionCode ?? '—' },
+  { key: 'partnerCode', label: 'Distributeur', value: (r) => r.partnerCode ?? '—' },
+  { key: 'rangeCode', label: 'Gamme', value: (r) => r.rangeCode ?? '—' },
+  { key: 'frequency', label: 'Périodicité', value: (r) => r.frequency ?? '—' },
+  { key: 'validFrom', label: 'Du', value: (r) => r.validFrom ?? '—' },
+  { key: 'validTo', label: 'Au', value: (r) => r.validTo ?? '—' },
+  { key: 'shares', label: 'Parts', value: (r) => formatShareList(r.shares) },
+];
+
+/** Loads the payee rules of the user's entities. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     rows.value = await apiGet<PayeeRuleView[]>('/api/ui/v1/payee-rules');
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de chargement';
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -31,30 +50,22 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Règles de versement</h1>
-      <div class="page__subtitle">Bénéficiaire, parts et périodicité par périmètre (REF-06).</div>
-    </div>
-    <div v-if="error" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">{{ error }}</div>
-    <section v-else class="card" style="overflow-x: auto">
-      <table>
-        <thead>
-          <tr><th>Entité</th><th>Code prod.</th><th>Distributeur</th><th>Gamme</th><th>Périodicité</th><th>Du</th><th>Au</th><th>Parts</th></tr>
-        </thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="8" data-testid="empty">Aucune règle de versement.</td></tr>
-          <tr v-for="(r, i) in rows" :key="i" :data-testid="`rule-row-${i}`">
-            <td>{{ r.entityCode }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ r.productionCode ?? '—' }}</td>
-            <td>{{ r.partnerCode ?? '—' }}</td>
-            <td>{{ r.rangeCode ?? '—' }}</td>
-            <td>{{ r.frequency ?? '—' }}</td>
-            <td>{{ r.validFrom ?? '—' }}</td>
-            <td>{{ r.validTo ?? '—' }}</td>
-            <td data-testid="rule-shares">{{ formatShareList(r.shares) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <PageHeading title="Règles de versement" subtitle="Bénéficiaire, parts et périodicité par périmètre (REF-06)." />
+
+    <AppMessage v-if="error" variant="error" data-testid="load-error">{{ error }}</AppMessage>
+
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        empty="Aucune règle de versement."
+        empty-testid="empty"
+        :row-testid="(r) => `rule-row-${rows.indexOf(r)}`"
+      >
+        <template #cell-productionCode="{ row }"><span class="mono">{{ row.productionCode ?? '—' }}</span></template>
+        <template #cell-shares="{ row }"><span data-testid="rule-shares">{{ formatShareList(row.shares) }}</span></template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>

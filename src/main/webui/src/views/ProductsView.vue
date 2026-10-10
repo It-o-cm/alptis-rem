@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface ProductView {
   entityCode: string;
@@ -13,13 +15,28 @@ interface ProductView {
 
 const rows = ref<ProductView[]>([]);
 const error = ref('');
+const loading = ref(false);
 
-async function load() {
+/** Columns of the products list. */
+const columns: Column<ProductView>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'code', label: 'Code' },
+  { key: 'label', label: 'Libellé' },
+  { key: 'rangeCode', label: 'Gamme', value: (p) => p.rangeCode ?? '—' },
+  { key: 'insurerCode', label: 'Assureur', value: (p) => p.insurerCode ?? '—' },
+  { key: 'commissionable', label: 'Commissionnable' },
+];
+
+/** Loads the products of the user's entities. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     rows.value = await apiGet<ProductView[]>('/api/ui/v1/products');
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de chargement';
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -28,26 +45,25 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Produits</h1>
-      <div class="page__subtitle">Gammes, produits et options par entité (REF-01).</div>
-    </div>
-    <div v-if="error" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">{{ error }}</div>
-    <section v-else class="card" style="overflow-x: auto">
-      <table>
-        <thead><tr><th>Entité</th><th>Code</th><th>Libellé</th><th>Gamme</th><th>Assureur</th><th>Commissionnable</th></tr></thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="6" data-testid="empty">Aucun produit.</td></tr>
-          <tr v-for="p in rows" :key="p.entityCode + p.code" :data-testid="`product-row-${p.code}`">
-            <td>{{ p.entityCode }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ p.code }}</td>
-            <td>{{ p.label }}</td>
-            <td>{{ p.rangeCode ?? '—' }}</td>
-            <td>{{ p.insurerCode ?? '—' }}</td>
-            <td><span :class="p.commissionable ? 'tag ok' : 'tag mute'">{{ p.commissionable ? 'Oui' : 'Non' }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <PageHeading title="Produits" subtitle="Gammes, produits et options par entité (REF-01)." />
+
+    <AppMessage v-if="error" variant="error" data-testid="load-error">{{ error }}</AppMessage>
+
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        :row-key="(p) => p.entityCode + p.code"
+        empty="Aucun produit."
+        empty-testid="empty"
+        :row-testid="(p) => `product-row-${p.code}`"
+      >
+        <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+        <template #cell-commissionable="{ row }">
+          <span :class="row.commissionable ? 'tag ok' : 'tag mute'">{{ row.commissionable ? 'Oui' : 'Non' }}</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>

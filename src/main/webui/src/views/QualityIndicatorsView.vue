@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { formatPercent } from '../presentation/format';
+import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface QualityIndicatorView {
   entityCode: string;
@@ -14,13 +16,28 @@ interface QualityIndicatorView {
 
 const rows = ref<QualityIndicatorView[]>([]);
 const error = ref('');
+const loading = ref(false);
 
-async function load() {
+/** Columns of the quality-indicators list. */
+const columns: Column<QualityIndicatorView>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'partnerCode', label: 'Distributeur', value: (q) => q.partnerCode ?? '—' },
+  { key: 'indicatorType', label: 'Indicateur', value: (q) => q.indicatorType ?? '—' },
+  { key: 'rangeCode', label: 'Gamme', value: (q) => q.rangeCode ?? 'Global' },
+  { key: 'periodTo', label: 'Période (fin)', value: (q) => q.periodTo ?? '—' },
+  { key: 'value', label: 'Valeur', align: 'num', value: (q) => (q.value ? formatPercent(Number(q.value)) : '—') },
+];
+
+/** Loads the quality indicators of the user's entities. */
+async function load(): Promise<void> {
   error.value = '';
+  loading.value = true;
   try {
     rows.value = await apiGet<QualityIndicatorView[]>('/api/ui/v1/quality-indicators');
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Erreur de chargement';
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -29,26 +46,27 @@ onMounted(load);
 
 <template>
   <div class="page">
-    <div>
-      <h1 class="page__title" data-testid="page-title">Indicateurs qualité</h1>
-      <div class="page__subtitle">Indicateurs de qualité par distributeur et par période (REF-07).</div>
-    </div>
-    <div v-if="error" class="card" style="padding: 16px 18px; color: #8f1d16" data-testid="load-error">{{ error }}</div>
-    <section v-else class="card" style="overflow-x: auto">
-      <table>
-        <thead><tr><th>Entité</th><th>Distributeur</th><th>Indicateur</th><th>Gamme</th><th>Période (fin)</th><th class="num">Valeur</th></tr></thead>
-        <tbody>
-          <tr v-if="rows.length === 0"><td colspan="6" data-testid="empty">Aucun indicateur.</td></tr>
-          <tr v-for="(q, i) in rows" :key="i" data-testid="indicator-row">
-            <td>{{ q.entityCode }}</td>
-            <td style="font-family: 'IBM Plex Mono', monospace">{{ q.partnerCode ?? '—' }}</td>
-            <td data-testid="indicator-type">{{ q.indicatorType ?? '—' }}</td>
-            <td>{{ q.rangeCode ?? 'Global' }}</td>
-            <td>{{ q.periodTo ?? '—' }}</td>
-            <td class="num">{{ q.value ? formatPercent(Number(q.value)) : '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <PageHeading
+      title="Indicateurs qualité"
+      subtitle="Indicateurs de qualité par distributeur et par période (REF-07)."
+    />
+
+    <AppMessage v-if="error" variant="error" data-testid="load-error">{{ error }}</AppMessage>
+
+    <AppCard flush>
+      <DataTable
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        empty="Aucun indicateur."
+        empty-testid="empty"
+        :row-testid="() => 'indicator-row'"
+      >
+        <template #cell-partnerCode="{ row }"><span class="mono">{{ row.partnerCode ?? '—' }}</span></template>
+        <template #cell-indicatorType="{ row }">
+          <span data-testid="indicator-type">{{ row.indicatorType ?? '—' }}</span>
+        </template>
+      </DataTable>
+    </AppCard>
   </div>
 </template>
