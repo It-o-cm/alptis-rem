@@ -3,10 +3,11 @@ package fr.alptis.remuneration.api;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.reporting.ReportingService;
+import fr.alptis.remuneration.reporting.ReportingService.Consolidated;
 import fr.alptis.remuneration.reporting.ReportingService.Dashboard;
-import fr.alptis.remuneration.reporting.ReportingService.EntitySummary;
 import fr.alptis.remuneration.reporting.ReportingService.Indicators;
-import fr.alptis.remuneration.reporting.ReportingService.MarginRow;
+import fr.alptis.remuneration.reporting.ReportingService.LineFilter;
+import fr.alptis.remuneration.reporting.ReportingService.Margin;
 import fr.alptis.remuneration.reporting.ReportingService.SearchRow;
 import fr.alptis.remuneration.security.EntityScope;
 import jakarta.annotation.security.RolesAllowed;
@@ -22,10 +23,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Interface endpoints for the restitution screens (section 8.12): the dashboards (REP-01), the
- * "paid to whom, when, why" cross-search (REP-02/03), the margin by product (REP-08), the operating
- * indicators (REP-09) and the consolidated group view (REP-07). Every read is confined to the
- * caller's visible entities; the consolidated view is reserved to cross-entity users (CR-70, REP-07).
+ * Interface endpoints for the restitution screens (section 8.12): the dashboards over a month range
+ * (REP-01), the filtered "paid to whom, when, why" cross-search (REP-02/03), the margin by product,
+ * insurer and distributor (REP-08), the operating indicators month by month (REP-09) and the
+ * consolidated group view by entity and month (REP-07). Every read is confined to the caller's
+ * visible entities; the consolidated view is reserved to cross-entity users (CR-70, REP-07).
  */
 @Path("/api/ui/v1/reporting")
 @Produces(MediaType.APPLICATION_JSON)
@@ -47,32 +49,45 @@ public class ReportingResource {
     }
 
     /**
-     * Returns the dashboards of an entity, optionally for a month (REP-01).
+     * Returns the dashboards of an entity over a month range, with the REP-03 filters (REP-01).
      *
-     * @param entityCode the entity code
-     * @param month      the period month, or null
+     * @param entityCode  the entity code
+     * @param from        the first month (inclusive), or null for the default range
+     * @param to          the last month (inclusive), or null for the default range
+     * @param product     the product code filter, or null
+     * @param distributor the distributor filter, or null
+     * @param group       the distributor group filter, or null
+     * @param delegation  the sales-delegation filter, or null
+     * @param nature      the nature filter, or null
      * @return the dashboard view
      */
     @GET
     @Path("/{entity}/dashboard")
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
-    public Dashboard dashboard(@PathParam("entity") String entityCode, @QueryParam("month") String month) {
+    public Dashboard dashboard(@PathParam("entity") String entityCode, @QueryParam("from") String from,
+                               @QueryParam("to") String to, @QueryParam("product") String product,
+                               @QueryParam("distributor") String distributor, @QueryParam("group") String group,
+                               @QueryParam("delegation") String delegation, @QueryParam("nature") String nature) {
         requireScope(entityCode);
-        return reporting.dashboard(entityCode, month == null ? null : LocalDate.parse(month));
+        return reporting.dashboard(entityCode, month(from), month(to), filter(product, distributor, group,
+                delegation, nature));
     }
 
     /**
-     * Returns the operating indicators of an entity (REP-09).
+     * Returns the operating indicators of an entity month by month over a range (REP-09).
      *
      * @param entityCode the entity code
+     * @param from       the first month (inclusive), or null for the default range
+     * @param to         the last month (inclusive), or null for the default range
      * @return the indicators view
      */
     @GET
     @Path("/{entity}/indicators")
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
-    public Indicators indicators(@PathParam("entity") String entityCode) {
+    public Indicators indicators(@PathParam("entity") String entityCode, @QueryParam("from") String from,
+                                 @QueryParam("to") String to) {
         requireScope(entityCode);
-        return reporting.indicators(entityCode);
+        return reporting.indicators(entityCode, month(from), month(to));
     }
 
     /**
@@ -81,6 +96,8 @@ public class ReportingResource {
      * @param entityCode  the entity code
      * @param product     the product code filter, or null
      * @param distributor the distributor filter, or null
+     * @param group       the distributor group filter, or null
+     * @param delegation  the sales-delegation filter, or null
      * @param nature      the nature filter, or null
      * @param month       the period month filter, or null
      * @return the matching rows
@@ -89,41 +106,68 @@ public class ReportingResource {
     @Path("/{entity}/search")
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
     public List<SearchRow> search(@PathParam("entity") String entityCode, @QueryParam("product") String product,
-                                  @QueryParam("distributor") String distributor,
-                                  @QueryParam("nature") String nature, @QueryParam("month") String month) {
+                                  @QueryParam("distributor") String distributor, @QueryParam("group") String group,
+                                  @QueryParam("delegation") String delegation, @QueryParam("nature") String nature,
+                                  @QueryParam("month") String month) {
         requireScope(entityCode);
-        return reporting.search(entityCode, product, distributor,
-                nature == null ? null : LineNature.valueOf(nature),
-                month == null ? null : LocalDate.parse(month));
+        return reporting.search(entityCode, filter(product, distributor, group, delegation, nature), month(month));
     }
 
     /**
-     * Returns the margin by product of an entity (REP-08).
+     * Returns the margin by product, insurer and distributor of an entity (REP-08).
      *
      * @param entityCode the entity code
-     * @return the margin rows
+     * @return the margin view
      */
     @GET
     @Path("/{entity}/margin")
     @RolesAllowed({"BUSINESS_ADMIN", "FINANCE_CONTROLLER", "AUDITOR"})
-    public List<MarginRow> margin(@PathParam("entity") String entityCode) {
+    public Margin margin(@PathParam("entity") String entityCode) {
         requireScope(entityCode);
         return reporting.margin(entityCode);
     }
 
     /**
-     * Returns the consolidated group view (REP-07), reserved to cross-entity users.
+     * Returns the consolidated group view over a range (REP-07), reserved to cross-entity users.
      *
-     * @return the per-entity summaries
+     * @param from the first month (inclusive), or null for the default range
+     * @param to   the last month (inclusive), or null for the default range
+     * @return the consolidated view
      */
     @GET
     @Path("/consolidated")
     @RolesAllowed({"AUDITOR", "IT_ADMIN", "BUSINESS_ADMIN", "FINANCE_CONTROLLER", "VIEWER", "BUSINESS_VALIDATOR", "OPERATOR"})
-    public List<EntitySummary> consolidated() {
+    public Consolidated consolidated(@QueryParam("from") String from, @QueryParam("to") String to) {
         if (!scope.unrestricted()) {
             throw new ResourceNotFoundException("Vision consolidée réservée aux utilisateurs groupe");
         }
-        return reporting.consolidated();
+        return reporting.consolidated(month(from), month(to));
+    }
+
+    /**
+     * Parses an optional month parameter.
+     *
+     * @param value the ISO date, or null
+     * @return the parsed date, or null
+     */
+    private static LocalDate month(String value) {
+        return value == null ? null : LocalDate.parse(value);
+    }
+
+    /**
+     * Builds a line filter from the query parameters.
+     *
+     * @param product     the product filter, or null
+     * @param distributor the distributor filter, or null
+     * @param group       the group filter, or null
+     * @param delegation  the delegation filter, or null
+     * @param nature      the nature filter, or null
+     * @return the line filter
+     */
+    private static LineFilter filter(String product, String distributor, String group, String delegation,
+                                     String nature) {
+        return new LineFilter(product, distributor, group, delegation,
+                nature == null ? null : LineNature.valueOf(nature));
     }
 
     /**

@@ -101,25 +101,26 @@ class ReportingResourceTest {
     @Test
     void dashboard_aggregates() {
         given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
-                .when().get("/api/ui/v1/reporting/" + ENTITY + "/dashboard?month=" + MONTH)
+                .when().get("/api/ui/v1/reporting/" + ENTITY + "/dashboard?from=" + MONTH + "&to=" + MONTH)
                 .then().statusCode(200)
+                .body("months.size()", is(1))
                 .body("byNature.label", hasItem("LINEAR"))
-                .body("reprises", is(-20.0f))
-                .body("escomptesVerses", is(50.0f))
-                .body("escomptesApures", is(15.0f))
+                .body("reprisesByMonth[0].primary", is(-20.0f))
+                .body("escompteByMonth[0].primary", is(50.0f))
+                .body("escompteByMonth[0].second", is(15.0f))
                 .body("topDistributors.label", hasItem("D-R"));
     }
 
     /**
-     * The indicators count the active rules, the manual share and the clawback total.
+     * The indicators count the active rules and the clawback total, month by month.
      */
     @Test
     void indicators_measure_operation() {
         given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
-                .when().get("/api/ui/v1/reporting/" + ENTITY + "/indicators")
+                .when().get("/api/ui/v1/reporting/" + ENTITY + "/indicators?from=" + MONTH + "&to=" + MONTH)
                 .then().statusCode(200)
-                .body("activeRules", greaterThanOrEqualTo(1))
-                .body("clawback", is(-20.0f));
+                .body("rows[0].activeRules", greaterThanOrEqualTo(1))
+                .body("rows[0].clawback", is(-20.0f));
     }
 
     /**
@@ -136,10 +137,10 @@ class ReportingResourceTest {
     }
 
     /**
-     * A dashboard without a month reads every period.
+     * A dashboard without a range reads the recent months with data.
      */
     @Test
-    void dashboard_without_month() {
+    void dashboard_without_range() {
         given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
                 .when().get("/api/ui/v1/reporting/" + ENTITY + "/dashboard")
                 .then().statusCode(200).body("entity", is(ENTITY));
@@ -152,7 +153,7 @@ class ReportingResourceTest {
     void margin_by_product() {
         given().auth().preemptive().basic("finance-alptis", "finance-alptis")
                 .when().get("/api/ui/v1/reporting/" + ENTITY + "/margin")
-                .then().statusCode(200).body("product", hasItem("PROD-R"));
+                .then().statusCode(200).body("byProduct.key", hasItem("PROD-R"));
     }
 
     /**
@@ -163,7 +164,7 @@ class ReportingResourceTest {
     void consolidated_and_scope() {
         given().auth().preemptive().basic("auditor", "auditor")
                 .when().get("/api/ui/v1/reporting/consolidated")
-                .then().statusCode(200).body("code", hasItem(ENTITY));
+                .then().statusCode(200).body("summaries.code", hasItem(ENTITY));
         given().auth().preemptive().basic("operator-alptis", "operator-alptis")
                 .when().get("/api/ui/v1/reporting/consolidated")
                 .then().statusCode(404);
