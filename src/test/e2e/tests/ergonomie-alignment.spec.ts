@@ -68,7 +68,8 @@ async function readGroups(page: Page): Promise<{ forms: Group[]; fiches: Group[]
 async function sweep(
   browser: import('@playwright/test').Browser,
   width: number,
-): Promise<void> {
+): Promise<number> {
+  let checked = 0;
   for (const [userKey, screens] of byUser()) {
     const context = await browser.newContext({
       httpCredentials: USERS[userKey],
@@ -108,9 +109,11 @@ async function sweep(
         numAligns.every((a) => a === 'right'),
         `${screen.name} @${width}: a numeric cell is not right-aligned`,
       ).toBeTruthy();
+      checked += 1;
     }
     await context.close();
   }
+  return checked;
 }
 
 test.describe('Alignement de tous les écrans', () => {
@@ -122,10 +125,12 @@ test.describe('Alignement de tous les écrans', () => {
   });
 
   test('aligné et sans défilement horizontal en 1440 @screen:alignment', async ({ browser }) => {
-    await sweep(browser, 1440);
+    const checked = await sweep(browser, 1440);
+    expect(checked).toBe(SCREENS.length);
   });
 
   test('aligné et sans défilement horizontal en 1024 @screen:alignment', async ({ browser }) => {
-    await sweep(browser, 1024);
+    const checked = await sweep(browser, 1024);
+    expect(checked).toBe(SCREENS.length);
   });
 });
