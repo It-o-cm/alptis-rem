@@ -6,6 +6,7 @@ import fr.alptis.remuneration.domain.AccountingEntry;
 import fr.alptis.remuneration.domain.AccountingEvent;
 import fr.alptis.remuneration.domain.AccountingScheme;
 import fr.alptis.remuneration.domain.AccountingVariant;
+import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.LegalEntity;
@@ -86,6 +87,49 @@ public class AccountingService {
                 period, AT_VALIDATION)) {
             generateForLine(entity, period, line, month, entryDate);
         }
+        // A discount residual written off under the settlement tolerance produces no commission line, so
+        // its ADVANCE_WRITE_OFF entry is booked here, once, from the position (section 10.2, CR-78).
+        for (AdvancePosition position : AdvancePosition.<AdvancePosition>list(
+                "closeReason = ?1 and adjustmentAmount is not null and coverage.contract.entity = ?2",
+                "WRITE_OFF", entity)) {
+            if (AccountingEntry.count("accountingEvent = ?1 and advancePosition = ?2",
+                    AccountingEvent.ADVANCE_WRITE_OFF, position) == 0) {
+                emitPosition(entity, period, AccountingEvent.ADVANCE_WRITE_OFF, position,
+                        position.adjustmentAmount, month, entryDate);
+            }
+        }
+    }
+
+    /**
+     * Emits one position-level entry (an escompte write-off that carries no commission line): the
+     * accounts come from the schema and the mapping, the amount from the position.
+     *
+     * @param entity    the entity
+     * @param period    the period
+     * @param event     the accounting event
+     * @param position  the discount position
+     * @param amount    the entry amount
+     * @param month     the accounting month (first day)
+     * @param entryDate the entry date (last day of the month)
+     */
+    private void emitPosition(LegalEntity entity, Period period, AccountingEvent event, AdvancePosition position,
+                              BigDecimal amount, LocalDate month, LocalDate entryDate) {
+        AccountingScheme scheme = scheme(entity, event, AccountingVariant.STANDARD);
+        AccountMapping debit = mapping(entity, scheme.debitRole);
+        AccountMapping credit = mapping(entity, scheme.creditRole);
+        AccountingEntry entry = new AccountingEntry();
+        entry.entity = entity;
+        entry.period = period;
+        entry.accountingEvent = event;
+        entry.journal = debit.journal;
+        entry.entryDate = entryDate;
+        entry.debitAccount = debit.accountNumber;
+        entry.creditAccount = credit.accountNumber;
+        entry.amount = amount.abs();
+        entry.fiscalYear = (short) month.getYear();
+        entry.accountingMonth = month.withDayOfMonth(1);
+        entry.advancePosition = position;
+        entry.persist();
     }
 
     /**

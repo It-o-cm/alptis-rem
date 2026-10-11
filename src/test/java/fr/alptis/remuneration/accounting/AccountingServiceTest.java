@@ -3,7 +3,9 @@ package fr.alptis.remuneration.accounting;
 import fr.alptis.remuneration.domain.AccountingEntry;
 import fr.alptis.remuneration.domain.AccountingEvent;
 import fr.alptis.remuneration.domain.AdvancePosition;
+import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.ForecastBasis;
@@ -368,6 +370,55 @@ class AccountingServiceTest {
         service.recordRejection(order, LocalDate.of(2026, 10, 9));
 
         assertEntry(p, AccountingEvent.PAYMENT_REJECTION, "110.00", BANK, DISTRIBUTOR);
+    }
+
+    /** Builds a settled, written-off discount position carrying the given residual, in UNEP. */
+    private static AdvancePosition writtenOffPosition(String residual) {
+        Contract contract = new Contract();
+        contract.entity = unep();
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = "WO-" + residual;
+        contract.persist();
+        Coverage coverage = new Coverage();
+        coverage.contract = contract;
+        coverage.coverageCode = "WO-C-" + residual;
+        coverage.persist();
+        AdvancePosition position = new AdvancePosition();
+        position.coverage = coverage;
+        position.status = AdvanceStatus.SETTLED;
+        position.closeReason = "WRITE_OFF";
+        position.adjustmentAmount = new BigDecimal(residual);
+        position.persist();
+        return position;
+    }
+
+    /**
+     * CR-78: a discount residual written off under the settlement tolerance is booked as an
+     * ADVANCE_WRITE_OFF entry of 0,04 €, commission expense debited against distributor advances.
+     */
+    @Test
+    @TestTransaction
+    void cr78_write_off_books_an_advance_write_off_entry() {
+        Period p = period(PeriodState.CONTROLLED);
+        writtenOffPosition("0.04");
+
+        service.generateForValidation(unep(), p);
+
+        assertEntry(p, AccountingEvent.ADVANCE_WRITE_OFF, "0.04", COMMISSION_EXPENSE, ADVANCES);
+    }
+
+    /**
+     * A write-off entry is booked only once, even when a later period is validated after the one that
+     * first booked it.
+     */
+    @Test
+    @TestTransaction
+    void write_off_entry_is_booked_only_once() {
+        writtenOffPosition("0.04");
+        service.generateForValidation(unep(), period(PeriodState.CONTROLLED));
+        service.generateForValidation(unep(), period(PeriodState.CONTROLLED, LocalDate.of(2026, 10, 1)));
+
+        assertEquals(1, AccountingEntry.count("accountingEvent = ?1", AccountingEvent.ADVANCE_WRITE_OFF));
     }
 
     /** Builds a product with a given forecast basis (possibly null). */

@@ -302,7 +302,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
-| FIN-01 | AccountingService | #53 | accounting | partiel — natures `ADVANCE_WRITE_OFF` et `INSURER_RECEIVABLE` jamais produites |
+| FIN-01 | AccountingService | #53 | accounting | partiel — `ADVANCE_WRITE_OFF` **désormais produite** (CR-78) ; reste `INSURER_RECEIVABLE` (chaîne §6.10 à réaliser) |
 | FIN-02 | AccountingSetupService, AccountingQueryService | #52 | accounting | complet |
 | FIN-03 | AccountingService (extraction) | #54 | accounting | complet |
 | FIN-04 | CutoffService | #55 | cutoff | complet |
@@ -376,6 +376,8 @@ ligne datée sans effacer l'ancienne) :
    des 2026-10-09/10, étapes 6/7/8/9/10/12/14) → CR-60/61/63, CR-62/64/85/86, CR-69/72,
    CR-87/88 et les groupes escompte/RCD/PER.
 2. `ADVANCE_WRITE_OFF` et `INSURER_RECEIVABLE` jamais produites (2026-10-09, §10.2).
+   **`ADVANCE_WRITE_OFF` produite** à la validation métier (2026-10-11, CR-78) ; reste
+   `INSURER_RECEIVABLE` (dépend de la ligne `INSURER` du §6.10, non encore réalisée).
 3. Contournement du défaut d'escompte dans le jeu de démonstration : garantie dédiée
    sans événement (2026-10-10, DONNEES-DEMO §5). **Correctif moteur fait** (2026-10-11,
    `openAdvanceIfEligible` + apurement multi-mois) ; reste à retirer le contournement du

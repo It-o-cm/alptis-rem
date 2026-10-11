@@ -1145,6 +1145,10 @@ public class CalculationEngine {
             advance.position.status = AdvanceStatus.SETTLED;
             advance.position.closedAt = clock.now();
             advance.position.closeReason = "WRITE_OFF";
+            // The residual under tolerance is written off, not clawed back: no commission line, but an
+            // ADVANCE_WRITE_OFF accounting entry is booked for it at business validation (section 10.2,
+            // CR-78). The amount is carried on the position so the accounting can find it.
+            advance.position.adjustmentAmount = delta.abs();
             return 0;
         }
         return settle(period, run, coverage, advance, delta, "SETTLED_AT_DUE_DATE");
