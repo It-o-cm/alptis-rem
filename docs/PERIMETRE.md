@@ -211,7 +211,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | --- | --- | --- | --- | --- |
 | CAL-01 | CalculationEngine | #9 | cr* JUnit | partiel — pas d'écran d'exécution/suivi de calcul |
 | CAL-02 | LinearFamily, UpfrontFamily | #24 | cr01–cr04 JUnit | complet |
-| CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 + apurement multi-mois JUnit | partiel — réentrance `openAdvanceIfEligible` **corrigée** (apurement d'un mois sur l'autre OK) ; reste l'écriture `ADVANCE_WRITE_OFF` non produite |
+| CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 + apurement multi-mois + CR-78/80 JUnit | complet — escomptes, apurements (d'un mois sur l'autre), régularisations, write-off et cession traités par le moteur |
 | CAL-04 | CalculationEngine (reprises) | #24 | cr04–cr07 JUnit | complet |
 | CAL-05 | CalculationEngine (RCD/RCP) | #24 | cr40–cr48 + DEFER JUnit | complet — RCD/RCP et conditions ; rattrapage `DEFER` (§6.7) **implémenté** (évaluation mensuelle de la condition de versement) |
 | CAL-06 | OutstandingFamily, CalculationEngine | — | cr30–cr36 JUnit | partiel — règle linéaire 1,20 % année 6 et `seniorityOrigin` non implémentés ; délai d'escompte retraite approximé |
