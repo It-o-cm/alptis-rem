@@ -1,18 +1,28 @@
 package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.PageResult;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
+import fr.alptis.remuneration.integration.EventQueryService;
+import fr.alptis.remuneration.integration.EventQueryService.EventDetail;
+import fr.alptis.remuneration.integration.EventQueryService.EventView;
+import fr.alptis.remuneration.integration.EventQueryService.ReasonCount;
 import fr.alptis.remuneration.integration.ManualEventService;
 import fr.alptis.remuneration.security.EntityScope;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,18 +33,68 @@ import java.util.Map;
 public class EventsResource {
 
     private final ManualEventService service;
+    private final EventQueryService query;
     private final EntityScope scope;
 
     /**
      * Creates the resource.
      *
      * @param service the manual event service
+     * @param query   the event read model
      * @param scope   the entity partition
      */
     @Inject
-    public EventsResource(ManualEventService service, EntityScope scope) {
+    public EventsResource(ManualEventService service, EventQueryService query, EntityScope scope) {
         this.service = service;
+        this.query = query;
         this.scope = scope;
+    }
+
+    /**
+     * Searches events by key or contract, status and type (ING-06, section 5.3).
+     *
+     * @param q      a term matched against the source key and contract number
+     * @param status a processing status to filter on
+     * @param type   an event type to filter on
+     * @param page   the zero-based page index
+     * @param size   the page size
+     * @return a page of event views
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public PageResult<EventView> search(@QueryParam("q") String q, @QueryParam("status") String status,
+                                        @QueryParam("type") String type,
+                                        @QueryParam("page") @DefaultValue("0") int page,
+                                        @QueryParam("size") @DefaultValue("20") int size) {
+        return query.search(q, status, type, page, size);
+    }
+
+    /**
+     * Counts the held events by reason (P8, ING-06).
+     *
+     * @return the reason counts
+     */
+    @GET
+    @Path("/held-by-reason")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public List<ReasonCount> heldByReason() {
+        return query.heldByReason();
+    }
+
+    /**
+     * Returns the detail of one event: its status, hold reason and produced lines (ING-06, 5.3).
+     *
+     * @param id the event id
+     * @return the event detail
+     */
+    @GET
+    @Path("/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public EventDetail detail(@PathParam("id") long id) {
+        return query.detail(id);
     }
 
     /**

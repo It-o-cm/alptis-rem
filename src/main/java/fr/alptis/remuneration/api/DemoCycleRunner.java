@@ -9,6 +9,7 @@ import fr.alptis.remuneration.documents.StatementService;
 import fr.alptis.remuneration.domain.AdjustmentStatus;
 import fr.alptis.remuneration.domain.AdjustmentType;
 import fr.alptis.remuneration.domain.BusinessEvent;
+import fr.alptis.remuneration.domain.HoldReason;
 import fr.alptis.remuneration.domain.BatchType;
 import fr.alptis.remuneration.domain.ControlDecision;
 import fr.alptis.remuneration.domain.ControlDefinition;
@@ -158,6 +159,7 @@ public class DemoCycleRunner {
         payments.offCycleLot(e, "P20007", LocalDate.of(2026, 9, 1));
         octoberAlptis(world);
         novemberAlptis(world);
+        plantHeldEvent(e);
     }
 
     /**
@@ -170,6 +172,29 @@ public class DemoCycleRunner {
         String e = DemoCodes.UNEP;
         showcaseMonth(world, e, LocalDate.of(2026, 9, 5), false);
         octoberUnep(world);
+        plantHeldEvent(e);
+    }
+
+    /**
+     * Plants one event left on hold for an unknown reference, so the held-events screen (P8, ING-06)
+     * shows a real event waiting for its reference for every entity. Persisted {@code ON_HOLD}, it is
+     * ignored by later calculations (which process only pending events) and stays held.
+     *
+     * @param entity the entity code
+     */
+    private void plantHeldEvent(String entity) {
+        BusinessEvent event = new BusinessEvent();
+        event.entity = LegalEntity.<LegalEntity>find("code", entity).firstResult();
+        event.sourceSystem = "DEMO";
+        event.sourceKey = "EVT-HELD-" + entity;
+        event.eventType = EventType.TERMINATION;
+        event.eventDate = LocalDate.of(2026, 10, 15);
+        event.receivedDate = LocalDate.of(2026, 10, 20);
+        event.processingStatus = ProcessingStatus.ON_HOLD;
+        event.holdReason = HoldReason.UNKNOWN_REFERENCE;
+        event.setCreatedAt(clock.now());
+        event.setCreatedBy(USER);
+        event.persist();
     }
 
     /**

@@ -12,6 +12,8 @@ import QualityIndicatorsView from '../views/QualityIndicatorsView.vue';
 import BankAccountsView from '../views/BankAccountsView.vue';
 import TransfersView from '../views/TransfersView.vue';
 import ManualEventView from '../views/ManualEventView.vue';
+import EventsView from '../views/EventsView.vue';
+import HeldEventsView from '../views/HeldEventsView.vue';
 import PayeeRulesView from '../views/PayeeRulesView.vue';
 import ExternalCodesView from '../views/ExternalCodesView.vue';
 import RulesView from '../views/RulesView.vue';
@@ -79,6 +81,8 @@ const REAL_VIEWS: Record<string, unknown> = {
   bankAccounts: BankAccountsView,
   transfers: TransfersView,
   manualEvent: ManualEventView,
+  events: EventsView,
+  heldEvents: HeldEventsView,
   payeeRules: PayeeRulesView,
   externalCodes: ExternalCodesView,
   rules: RulesView,

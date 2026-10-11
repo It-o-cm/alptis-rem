@@ -28,6 +28,8 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'periods', path: '/', label: 'Périodes' },
       { name: 'imports', path: '/imports', label: 'Imports' },
       { name: 'manualEvent', path: '/saisie-evenement', label: 'Saisie manuelle' },
+      { name: 'events', path: '/evenements', label: 'Recherche d’événements' },
+      { name: 'heldEvents', path: '/evenements-en-attente', label: 'Événements en attente' },
       { name: 'controls', path: '/controles', label: 'Contrôles' },
       { name: 'adjustments', path: '/ajustements', label: 'Ajustements' },
       { name: 'payment', path: '/paiement', label: 'Paiement' },

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 
 /**
@@ -138,6 +139,47 @@ class EventsResourceTest {
         given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
                 .contentType(ContentType.JSON).body(coverageBody("ALPTIS_ASSURANCES"))
                 .when().post("/api/ui/v1/events/complementary-data")
+                .then().statusCode(403);
+    }
+
+    /**
+     * An operator searches events, reads the held-by-reason counts and opens an event's detail
+     * (ING-06): a manually-entered, held event is found, searchable, and shows its hold reason.
+     */
+    @Test
+    void operator_searches_and_opens_an_event() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON)
+                .body(body("ALPTIS_ASSURANCES", "SEARCH-1",
+                        ",\"contract_number\":\"C-X\",\"event_date\":\"2026-09-30\",\"gross_amount\":\"120.00\""))
+                .when().post("/api/ui/v1/events").then().statusCode(201);
+
+        int id = given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .queryParam("q", "SEARCH-1").queryParam("status", "ON_HOLD").queryParam("type", "PREMIUM_COLLECTED")
+                .when().get("/api/ui/v1/events")
+                .then().statusCode(200)
+                .body("items.sourceKey", hasItem("SEARCH-1"))
+                .extract().jsonPath().getInt("items[0].id");
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/events/held-by-reason")
+                .then().statusCode(200)
+                .body("reason", hasItem("UNKNOWN_REFERENCE"));
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/events/" + id)
+                .then().statusCode(200)
+                .body("event.sourceKey", is("SEARCH-1"))
+                .body("event.holdReason", is("UNKNOWN_REFERENCE"));
+    }
+
+    /**
+     * A sales representative may not search events (outside the imports-screen roles).
+     */
+    @Test
+    void sales_rep_cannot_search_events() {
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().get("/api/ui/v1/events")
                 .then().statusCode(403);
     }
 }
