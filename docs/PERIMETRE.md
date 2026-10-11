@@ -380,8 +380,10 @@ ligne datée sans effacer l'ancienne) :
    `INSURER_RECEIVABLE` (dépend de la ligne `INSURER` du §6.10, non encore réalisée).
 3. Contournement du défaut d'escompte dans le jeu de démonstration : garantie dédiée
    sans événement (2026-10-10, DONNEES-DEMO §5). **Correctif moteur fait** (2026-10-11,
-   `openAdvanceIfEligible` + apurement multi-mois) ; reste à retirer le contournement du
-   jeu de démonstration et à y porter un escompte réel suivi sur plusieurs mois.
+   `openAdvanceIfEligible` + apurement multi-mois). **Contournement retiré** (2026-10-11) :
+   la garantie d'escompte du jeu porte une prime mensuelle, le moteur ouvre la position en
+   juin et l'apure d'un mois sur l'autre jusqu'au solde ; prouvé par
+   `DemoDataServiceTest.follows_a_real_multi_month_discount`.
 4. Épargne retraite : règle 1,20 % année 6 et `seniorityOrigin` non livrés (2026-10-09, §6.6).
    **Livrés** (2026-10-11, règle linéaire post-escompte à condition d'ancienneté).
 5. Délai de versement de l'escompte retraite approximé (2026-10-09, §6.6).

@@ -5,6 +5,8 @@ import fr.alptis.remuneration.domain.AdjustmentStatus;
 import fr.alptis.remuneration.domain.AuditEvent;
 import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
+import fr.alptis.remuneration.domain.AdvancePosition;
+import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BatchStatus;
 import fr.alptis.remuneration.domain.BatchType;
@@ -15,6 +17,7 @@ import fr.alptis.remuneration.domain.ControlResult;
 import fr.alptis.remuneration.domain.ControlSeverity;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
+import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.CutoffExtract;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorEntity;
@@ -63,6 +66,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -172,6 +176,31 @@ class DemoDataServiceTest {
         assertTrue(PortfolioTransfer.count("status", TransferStatus.PROCESSED) > 0, "a processed transfer");
         assertTrue(PortfolioTransfer.count("status", TransferStatus.PENDING) > 0, "an in-progress transfer");
         assertTrue(ReplacementOrder.count() > 0, "a replacement order");
+    }
+
+    /**
+     * The discount (escompte) is a real one followed over several months (simplification #3): the engine
+     * opens exactly one advance position on the Alptis escompte coverage in June and the coverage's
+     * monthly premiums apure it from one month to the next (offset lines across more than one period)
+     * until it reaches its settlement due date — a full open-apure-settle lifecycle, with no second
+     * position (the reentrancy fix of docs/DECISIONS.md).
+     */
+    @Test
+    void follows_a_real_multi_month_discount() {
+        service.load();
+
+        Coverage escompte = Coverage.<Coverage>find("contract.contractNumber like ?1",
+                DemoCodes.ALPTIS + "-ESCOMPTE-%").firstResult();
+        assertNotNull(escompte, "the escompte coverage");
+        assertEquals(1, AdvancePosition.count("coverage", escompte), "exactly one advance position");
+        AdvancePosition position = AdvancePosition.<AdvancePosition>find("coverage", escompte).firstResult();
+        assertEquals(AdvanceStatus.SETTLED, position.status, "the discount reaches its settlement");
+        assertTrue(CommissionLine.count("coverage = ?1 and nature = ?2", escompte, LineNature.ADVANCE) > 0,
+                "a versement line");
+        long apuredMonths = CommissionLine.<CommissionLine>list("coverage = ?1 and status = ?2", escompte,
+                        LineStatus.OFFSET).stream()
+                .map(l -> l.period.periodMonth).distinct().count();
+        assertTrue(apuredMonths >= 2, "the discount is apured over at least two months, not one");
     }
 
     /**

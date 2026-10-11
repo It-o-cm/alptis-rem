@@ -142,10 +142,10 @@ public class DemoContractsBuilder {
         choice(upfront, RemunerationMode.UPFRONT, null, new BigDecimal("0.200000"), new BigDecimal("0.100000"),
                 false);
 
-        // Alptis carries the discount advance (escompte) on its own upfront coverage, which requests the
-        // advance but receives no premium of its own: the engine opens one advance position against the
-        // valid convention of P20002, near its contract cap. (The engine opens one position per coverage
-        // lifecycle; the demo therefore never re-drives this coverage — see docs/DECISIONS.md.)
+        // Alptis carries the discount advance (escompte) on its own upfront coverage against the valid
+        // convention of P20002, near its contract cap. The engine opens the advance in June and the
+        // coverage's monthly premiums apure it from one month to the next (section 6.4), so the dataset
+        // shows a real discount followed over several months.
         if (alptis) {
             escompteScene(world, entity, holder);
         }
@@ -168,8 +168,9 @@ public class DemoContractsBuilder {
 
     /**
      * Creates the discount-advance (escompte) coverage: an upfront coverage on P20002 that requests the
-     * advance but carries no premium, so the engine opens exactly one advance position against the valid
-     * convention and never reopens it.
+     * advance against the valid convention. The engine opens one advance position in June; the coverage's
+     * monthly premiums (emitted by the cycle runner) apure it from one month to the next, so the discount
+     * is a real one followed over several months. Recorded under {@link DemoCodes#F_ESCOMPTE}.
      *
      * @param world  the shared demo world
      * @param entity the entity
@@ -185,6 +186,7 @@ public class DemoContractsBuilder {
                 AssignmentOrigin.SUBSCRIPTION);
         choice(coverage, RemunerationMode.UPFRONT, null, new BigDecimal("0.200000"), new BigDecimal("0.100000"),
                 true);
+        world.putScene(entity.code, DemoCodes.F_ESCOMPTE, coverage);
     }
 
     /**

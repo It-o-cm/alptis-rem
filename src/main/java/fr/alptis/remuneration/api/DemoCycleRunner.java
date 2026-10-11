@@ -252,6 +252,13 @@ public class DemoCycleRunner {
     private void emitOrdinary(DemoWorld world, String entity, LocalDate date) {
         emit(entity, world.scene(entity, DemoCodes.F_UPFRONT), EventType.PREMIUM_COLLECTED, date,
                 new BigDecimal("1000.00"), ProcessingStatus.PENDING);
+        // The escompte coverage (Alptis only) collects a monthly premium so the June-opened advance is
+        // apured from one month to the next: a real discount followed over several months (section 6.4).
+        Coverage escompte = world.scene(entity, DemoCodes.F_ESCOMPTE);
+        if (escompte != null) {
+            emit(entity, escompte, EventType.PREMIUM_COLLECTED, date, new BigDecimal("300.00"),
+                    ProcessingStatus.PENDING);
+        }
         for (Coverage coverage : bulkCoverages(entity).stream().limit(8).toList()) {
             emit(entity, coverage, EventType.PREMIUM_COLLECTED, date, new BigDecimal("1000.00"),
                     ProcessingStatus.PENDING);

@@ -56,6 +56,9 @@ interface DemoCodes {
     /** Upfront (and discount-advance) scene tag. */
     static final String F_UPFRONT = "UPFRONT";
 
+    /** Discount-advance (escompte) scene tag: an upfront coverage followed over several months. */
+    static final String F_ESCOMPTE = "ESCOMPTE";
+
     /** Fixed-fee scene tag. */
     static final String F_FIXED = "FIXED";
 
