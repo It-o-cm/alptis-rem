@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.cycle;
 
+import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.ControlDecision;
 import fr.alptis.remuneration.domain.ControlDefinition;
@@ -7,12 +8,16 @@ import fr.alptis.remuneration.domain.ControlFamily;
 import fr.alptis.remuneration.domain.ControlResult;
 import fr.alptis.remuneration.domain.ControlSeverity;
 import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.PaymentBatch;
+import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.PeriodTransition;
+import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -68,7 +73,69 @@ public class CycleQueryService {
         long openAnomalies = ControlResult.count("period = ?1 and decision = ?2", period, ControlDecision.OPEN);
         long blocking = ControlResult.count("period = ?1 and severity = ?2 and decision = ?3", period,
                 ControlSeverity.BLOCKING, ControlDecision.OPEN);
-        return new PeriodDetail(summary(period), transitions, lines, openAnomalies, blocking);
+        // Reste à traiter (section 7.3): held events are listed without blocking the period, pending
+        // events are the entity's backlog not yet calculated.
+        long heldEvents = BusinessEvent.count("entity = ?1 and processingStatus = ?2", period.entity,
+                ProcessingStatus.ON_HOLD);
+        long pendingEvents = BusinessEvent.count("entity = ?1 and processingStatus = ?2", period.entity,
+                ProcessingStatus.PENDING);
+        return new PeriodDetail(summary(period), transitions, lines, openAnomalies, blocking, heldEvents,
+                pendingEvents, calendar(period.state), lots(period));
+    }
+
+    /**
+     * Builds a period's payment lots (section 7.1): one row per batch of the period, with its order
+     * count and total.
+     *
+     * @param period the period
+     * @return the lot views, by batch type
+     */
+    private static List<LotView> lots(Period period) {
+        List<LotView> lots = new ArrayList<>();
+        for (PaymentBatch batch : PaymentBatch.<PaymentBatch>list("period = ?1 order by batchType", period)) {
+            long orders = PaymentOrder.count("batch = ?1", batch);
+            lots.add(new LotView(batch.batchReference, batch.batchType.name(), batch.status.name(), orders,
+                    batch.totalAmount));
+        }
+        return lots;
+    }
+
+    /**
+     * Builds the target calendar of a period (section 7.3, default milestones of hypothesis H-55): each
+     * milestone is reached once the period's state has passed the state that milestone targets.
+     *
+     * @param state the period's current state
+     * @return the calendar milestones, in order
+     */
+    private static List<CalendarMilestone> calendar(PeriodState state) {
+        List<CalendarMilestone> milestones = new ArrayList<>();
+        milestones.add(milestone("Jour ouvré 1", "Gel des données, calcul prévisionnel et réel",
+                PeriodState.CALCULATED, state));
+        milestones.add(milestone("Jour ouvré 2", "Contrôles automatiques et manuels",
+                PeriodState.CONTROLLED, state));
+        milestones.add(milestone("Jour ouvré 3", "Validation métier, préparation du paiement",
+                PeriodState.PAYMENT_PREPARED, state));
+        milestones.add(milestone("Jour ouvré 4", "Contrôle Finance et émission du virement",
+                PeriodState.FINANCE_VALIDATED, state));
+        milestones.add(milestone("Jours ouvrés 5 à 7", "Exécution des virements", PeriodState.PAID, state));
+        milestones.add(milestone("Lendemain du paiement", "Publication des bordereaux", PeriodState.PAID, state));
+        milestones.add(milestone("Dernier jour ouvré", "Clôture et extraction comptable",
+                PeriodState.CLOSED, state));
+        return milestones;
+    }
+
+    /**
+     * Builds one calendar milestone, marking it reached when the current state is at or past its target.
+     *
+     * @param businessDay the business day label
+     * @param label       the milestone label
+     * @param target      the state the milestone targets
+     * @param current     the period's current state
+     * @return the milestone
+     */
+    private static CalendarMilestone milestone(String businessDay, String label, PeriodState target,
+                                               PeriodState current) {
+        return new CalendarMilestone(businessDay, label, current.ordinal() >= target.ordinal());
     }
 
     /**
@@ -221,7 +288,31 @@ public class CycleQueryService {
      * @param blocking      the number of open blocking anomalies
      */
     public record PeriodDetail(PeriodSummary period, List<TransitionView> transitions, long lines, long openAnomalies,
-                               long blocking) {
+                               long blocking, long heldEvents, long pendingEvents,
+                               List<CalendarMilestone> calendar, List<LotView> lots) {
+    }
+
+    /**
+     * One milestone of a period's target calendar (section 7.3).
+     *
+     * @param businessDay the business day label of month M+1
+     * @param milestone   the milestone label
+     * @param reached     whether the period has passed this milestone
+     */
+    public record CalendarMilestone(String businessDay, String milestone, boolean reached) {
+    }
+
+    /**
+     * One payment lot of a period (section 7.1).
+     *
+     * @param reference   the batch reference
+     * @param batchType   the batch type code
+     * @param status      the batch status code
+     * @param orderCount  the number of payment orders in the lot
+     * @param totalAmount the lot total
+     */
+    public record LotView(String reference, String batchType, String status, long orderCount,
+                          BigDecimal totalAmount) {
     }
 
     /**

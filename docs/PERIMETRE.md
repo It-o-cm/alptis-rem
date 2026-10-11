@@ -37,7 +37,7 @@ d'accès serveur · test de bout en bout · état.
 | # | Écran | Exig. | Route / Vue | Points d'accès | Test E2E | État |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Avancement des périodes, toutes entités visibles | WKF-04 | `periods` / PeriodsView | GET /periods | periods.spec | complet |
-| 2 | Détail d'une période : états, transitions, calendrier, lots, reste à traiter | WKF-01, 7.1–7.3 | `periods` (détail) / PeriodsView | GET /periods/{e}/{m}, POST transition | periods.spec | partiel — pas de calendrier, pas de liste des lots de la période, pas de « reste à traiter » |
+| 2 | Détail d'une période : états, transitions, calendrier, lots, reste à traiter | WKF-01, 7.1–7.3 | `periods` (détail) / PeriodsView | GET /periods/{e}/{m}, POST transition | periods.spec | complet — calendrier cible (§7.3), lots de paiement de la période et reste à traiter (événements en attente/à l'écart) ajoutés |
 | 3 | Journal des imports et flux attendus | ING-05, ING-10 | `imports` / ImportsView | GET /imports, GET /flows catalog | imports.spec, flux.spec | complet |
 | 4 | Détail d'un import : compteurs, rejets, lignes en attente, correction/mise à l'écart | ING-04, ING-06 | `imports` (détail) / ImportsView | GET rejections/held, POST correct/discard | imports.spec | complet |
 | 5 | Téléversement d'un fichier, avec choix du flux et du système source | ING-01, ING-08 | `imports` / ImportsView | POST /imports | imports.spec | partiel — sélecteur de système source et import en masse de données complémentaires (ING-08) à vérifier/compléter |

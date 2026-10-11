@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
-import { periodStateLabel, nextState, canDrivePeriod } from '../presentation/cycle';
+import { periodStateLabel, nextState, canDrivePeriod, batchTypeLabel, paymentStatusLabel } from '../presentation/cycle';
+import { formatAmount } from '../presentation/format';
 import { AppButton, AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -20,12 +21,30 @@ interface TransitionView {
   reason: string | null;
 }
 
+interface CalendarMilestone {
+  businessDay: string;
+  milestone: string;
+  reached: boolean;
+}
+
+interface LotView {
+  reference: string;
+  batchType: string;
+  status: string;
+  orderCount: number;
+  totalAmount: number;
+}
+
 interface PeriodDetail {
   period: PeriodSummary;
   transitions: TransitionView[];
   lines: number;
   openAnomalies: number;
   blocking: number;
+  heldEvents: number;
+  pendingEvents: number;
+  calendar: CalendarMilestone[];
+  lots: LotView[];
 }
 
 const session = useSessionStore();
@@ -51,6 +70,22 @@ const transitionColumns: Column<TransitionView>[] = [
   { key: 'toState', label: 'Vers', value: (t) => periodStateLabel(t.toState) },
   { key: 'userId', label: 'Par' },
   { key: 'reason', label: 'Motif', value: (t) => t.reason ?? '—' },
+];
+
+/** Columns of the target-calendar table (section 7.3). */
+const calendarColumns: Column<CalendarMilestone>[] = [
+  { key: 'businessDay', label: 'Jalon' },
+  { key: 'milestone', label: 'Étape' },
+  { key: 'reached', label: 'Atteint', value: (m) => (m.reached ? 'Oui' : 'En attente') },
+];
+
+/** Columns of the period lots table (section 7.1). */
+const lotColumns: Column<LotView>[] = [
+  { key: 'batchType', label: 'Type', value: (l) => batchTypeLabel(l.batchType) },
+  { key: 'reference', label: 'Référence' },
+  { key: 'status', label: 'Statut', value: (l) => paymentStatusLabel(l.status) },
+  { key: 'orderCount', label: 'Ordres', align: 'num', value: (l) => String(l.orderCount) },
+  { key: 'totalAmount', label: 'Total', align: 'num', value: (l) => formatAmount(l.totalAmount) },
 ];
 
 /** Loads the open periods of the user's entities. */
@@ -148,11 +183,41 @@ onMounted(load);
         {{ detail.lines }} ligne(s), {{ detail.openAnomalies }} anomalie(s) ouverte(s),
         {{ detail.blocking }} bloquante(s).
       </p>
+      <p class="page__subtitle" data-testid="detail-remaining">
+        Reste à traiter : {{ detail.pendingEvents }} événement(s) en attente de calcul,
+        {{ detail.heldEvents }} événement(s) mis à l’écart.
+      </p>
       <div v-if="canDrive() && target()">
         <AppButton :loading="advancing" data-testid="advance-button" @click="advance">
           Avancer vers « {{ label(target() as string) }} »
         </AppButton>
       </div>
+
+      <h3 class="ui-detail-section">Calendrier cible (section 7.3)</h3>
+      <DataTable
+        :columns="calendarColumns"
+        :rows="detail.calendar"
+        empty="Aucun jalon."
+        empty-testid="no-milestone"
+        :row-testid="(m) => `milestone-row-${m.businessDay}`"
+      >
+        <template #cell-reached="{ row }">
+          <span :class="row.reached ? 'tag ok' : 'tag mute'" :data-testid="`milestone-reached-${row.reached}`">
+            {{ row.reached ? 'Oui' : 'En attente' }}
+          </span>
+        </template>
+      </DataTable>
+
+      <h3 class="ui-detail-section">Lots de paiement de la période</h3>
+      <DataTable
+        :columns="lotColumns"
+        :rows="detail.lots"
+        empty="Aucun lot de paiement."
+        empty-testid="no-lot"
+        :row-testid="(l) => `lot-row-${l.batchType}`"
+      />
+
+      <h3 class="ui-detail-section">Historique des transitions</h3>
       <DataTable
         :columns="transitionColumns"
         :rows="detail.transitions"
@@ -171,5 +236,10 @@ onMounted(load);
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+.ui-detail-section {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: var(--fs-h3);
 }
 </style>

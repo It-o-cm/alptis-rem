@@ -71,6 +71,17 @@ export function paymentStatusLabel(status: string): string {
   return labels[status] ?? status;
 }
 
+/** French label of a payment lot type (section 7.1). */
+export function batchTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    CYCLE: 'Lot de cycle',
+    SAVINGS_CYCLE: 'Lot épargne retraite',
+    OFF_CYCLE: 'Lot hors cycle',
+    CHEQUE: 'Lot de chèques',
+  };
+  return labels[type] ?? type;
+}
+
 /** Tag CSS class for an anomaly severity. */
 export function severityTag(severity: string): string {
   if (severity === 'BLOCKING') return 'tag ko';

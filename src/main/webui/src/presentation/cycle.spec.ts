@@ -6,6 +6,7 @@ import {
   canOperateCycle,
   canValidateFinance,
   paymentStatusLabel,
+  batchTypeLabel,
   severityTag,
   decisionLabel,
 } from './cycle';
@@ -56,6 +57,14 @@ describe('payment status labels', () => {
     expect(paymentStatusLabel('PUBLISHED')).toBe('Publié');
     expect(paymentStatusLabel('CORRECTED')).toBe('Rectifié');
     expect(paymentStatusLabel('XXX')).toBe('XXX');
+  });
+
+  it('labels known lot types in French and echoes an unknown one', () => {
+    expect(batchTypeLabel('CYCLE')).toBe('Lot de cycle');
+    expect(batchTypeLabel('SAVINGS_CYCLE')).toBe('Lot épargne retraite');
+    expect(batchTypeLabel('OFF_CYCLE')).toBe('Lot hors cycle');
+    expect(batchTypeLabel('CHEQUE')).toBe('Lot de chèques');
+    expect(batchTypeLabel('XXX')).toBe('XXX');
   });
 });
 

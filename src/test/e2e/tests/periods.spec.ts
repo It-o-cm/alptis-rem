@@ -24,6 +24,15 @@ test.describe('Périodes — opérateur', () => {
     await expect(page.getByTestId('period-detail')).toBeVisible();
     await expect(page.getByTestId('detail-state')).toContainText('Calculée');
 
+    // The target calendar (section 7.3): the calcul milestone reached, a later one still pending.
+    await expect(page.getByText('Gel des données, calcul prévisionnel et réel')).toBeVisible();
+    await expect(page.getByTestId('milestone-reached-true').first()).toBeVisible();
+    await expect(page.getByTestId('milestone-reached-false').first()).toBeVisible();
+    // The period's payment lot, translated to its French label.
+    await expect(page.getByTestId('lot-row-CYCLE')).toContainText('Lot de cycle');
+    // The reste à traiter.
+    await expect(page.getByTestId('detail-remaining')).toContainText('Reste à traiter');
+
     await page.getByTestId('advance-button').click();
     await expect(page.getByTestId('detail-state')).toContainText('Contrôlée');
     await expect(page.getByTestId('periods-message')).toContainText('Contrôlée');
