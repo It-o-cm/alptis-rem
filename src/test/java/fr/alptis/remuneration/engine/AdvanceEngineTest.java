@@ -923,4 +923,146 @@ class AdvanceEngineTest {
         engine.runReal("UNEP", EFFECT);
         assertEquals(AdvanceStatus.ACTIVE, position().status);
     }
+
+    /** Injects a pending premium, then runs the real calculation for its month. */
+    private void runMonthWithPremium(Coverage c, String key, LocalDate date, String basis) {
+        premium(c, key, date, basis);
+        engine.runReal("UNEP", LocalDate.of(date.getYear(), date.getMonthValue(), 1));
+    }
+
+    /** The receivable materialised on the single position: advanced minus offset cumuls. */
+    private static BigDecimal receivable() {
+        AdvancePosition p = position();
+        BigDecimal advanced = p.advancedAcquisition.add(p.advancedServicing).add(p.advancedLinear);
+        BigDecimal offset = p.offsetAcquisition.add(p.offsetServicing).add(p.offsetLinear);
+        return advanced.subtract(offset);
+    }
+
+    /**
+     * CR-21 across months: the advance is opened in its month, then the next month's premium is offset
+     * against the carried position — reused, not reopened — the versement is not written again, and the
+     * receivable drops by the offset amount.
+     */
+    @Test
+    @TestTransaction
+    void apurement_carries_across_months() {
+        Coverage c = escomptedCoverage("1000");
+        convention(100, LocalDate.of(2026, 12, 31));
+        upfrontRule();
+
+        engine.runReal("UNEP", EFFECT);
+        assertEquals(0, totalOf(LineNature.ADVANCE).compareTo(new BigDecimal("400.00")));
+        assertEquals(0, receivable().compareTo(new BigDecimal("400.00")));
+
+        // Next month: one 100 € premium → acquisition 30 + servicing 10 offset against the advance.
+        runMonthWithPremium(c, "FEB", LocalDate.of(2026, 2, 15), "100.00");
+
+        assertEquals(1, AdvancePosition.count(), "the carried position is reused, not duplicated");
+        assertEquals(AdvanceStatus.ACTIVE, position().status);
+        // The versement (two ADVANCE lines, 400 €) is unchanged — not written again.
+        assertEquals(2, CommissionLine.count("nature", LineNature.ADVANCE));
+        assertEquals(0, totalOf(LineNature.ADVANCE).compareTo(new BigDecimal("400.00")));
+        assertEquals(2, countStatus(LineStatus.OFFSET));
+        // Receivable fell from 400 to 360, materialised on the position.
+        assertEquals(0, position().offsetAcquisition.compareTo(new BigDecimal("30.00")));
+        assertEquals(0, position().offsetServicing.compareTo(new BigDecimal("10.00")));
+        assertEquals(0, receivable().compareTo(new BigDecimal("360.00")));
+    }
+
+    /**
+     * CR-23 across months: offsets accumulated over several later months settle the carried advance
+     * with no adjustment, and no second position is ever opened.
+     */
+    @Test
+    @TestTransaction
+    void settles_across_months() {
+        Coverage c = escomptedCoverage("1000");
+        convention(100, LocalDate.of(2026, 12, 31));
+        upfrontRule();
+
+        engine.runReal("UNEP", EFFECT);
+        for (int i = 1; i <= 10; i++) {
+            runMonthWithPremium(c, "P" + i, EFFECT.plusMonths(i).plusDays(14), "100.00");
+        }
+
+        assertEquals(1, AdvancePosition.count());
+        assertEquals(AdvanceStatus.SETTLED, position().status);
+        assertEquals("SETTLED_BY_OFFSET", position().closeReason);
+        assertEquals(0, totalOf(LineNature.ADVANCE_ADJUSTMENT).compareTo(BigDecimal.ZERO));
+        assertEquals(0, receivable().compareTo(BigDecimal.ZERO));
+    }
+
+    /**
+     * Once the advance is settled, a premium in a later month is earned and paid normally, not offset,
+     * and no new position is opened.
+     */
+    @Test
+    @TestTransaction
+    void settled_position_pays_later_premiums() {
+        Coverage c = escomptedCoverage("1000");
+        convention(100, LocalDate.of(2027, 12, 31));
+        upfrontRule();
+
+        engine.runReal("UNEP", EFFECT);
+        for (int i = 1; i <= 10; i++) {
+            runMonthWithPremium(c, "P" + i, EFFECT.plusMonths(i).plusDays(14), "100.00");
+        }
+        assertEquals(AdvanceStatus.SETTLED, position().status);
+
+        // A premium in year two: earned, not offset; still one position.
+        runMonthWithPremium(c, "Y2", EFFECT.plusYears(1).plusMonths(1), "100.00");
+        assertEquals(1, AdvancePosition.count());
+        assertTrue(CommissionLine.<CommissionLine>list("nature = ?1 and status = ?2",
+                LineNature.SERVICING, LineStatus.EARNED).size() >= 1);
+    }
+
+    /**
+     * A termination in a later month cancels the carried advance and regularises the unapplied amount,
+     * reusing the position opened earlier.
+     */
+    @Test
+    @TestTransaction
+    void rupture_across_months() {
+        Coverage c = escomptedCoverage("1000");
+        convention(100, LocalDate.of(2026, 12, 31));
+        upfrontRule();
+
+        engine.runReal("UNEP", EFFECT);
+        runMonthWithPremium(c, "FEB", EFFECT.plusMonths(2).plusDays(14), "500.00");
+        // Offset so far: 500 → acquisition 150 + servicing 50 = 200; receivable 200.
+        assertEquals(0, receivable().compareTo(new BigDecimal("200.00")));
+
+        // A termination at the sixth month, injected and run on its month.
+        terminal(c, "TERM", EventType.TERMINATION, 180, null);
+        engine.runReal("UNEP", EFFECT.plusMonths(6));
+
+        assertEquals(1, AdvancePosition.count());
+        assertEquals(AdvanceStatus.CANCELLED, position().status);
+        assertEquals(0, totalOf(LineNature.ADVANCE_ADJUSTMENT).compareTo(new BigDecimal("-200.00")));
+        assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-150.00")));
+    }
+
+    /**
+     * A partial recalculation of the opening month re-grants the versement into the same position
+     * instead of opening a duplicate (the fixed openAdvanceIfEligible defect on retraitement).
+     */
+    @Test
+    @TestTransaction
+    void partial_recalc_regrants_into_the_same_position() {
+        Coverage c = escomptedCoverage("1000");
+        convention(100, LocalDate.of(2026, 12, 31));
+        upfrontRule();
+
+        engine.runReal("UNEP", EFFECT);
+        assertEquals(1, AdvancePosition.count());
+        assertEquals(2, CommissionLine.count("nature", LineNature.ADVANCE));
+
+        engine.runPartial("UNEP", EFFECT, "PRODUCT", "SANTE_SELECT");
+
+        assertEquals(1, AdvancePosition.count(), "no duplicate position after a retraitement");
+        assertEquals(AdvanceStatus.ACTIVE, position().status);
+        assertEquals(2, CommissionLine.count("nature", LineNature.ADVANCE));
+        assertEquals(0, totalOf(LineNature.ADVANCE).compareTo(new BigDecimal("400.00")));
+        assertNotNull(c);
+    }
 }

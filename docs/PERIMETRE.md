@@ -211,7 +211,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | --- | --- | --- | --- | --- |
 | CAL-01 | CalculationEngine | #9 | cr* JUnit | partiel — pas d'écran d'exécution/suivi de calcul |
 | CAL-02 | LinearFamily, UpfrontFamily | #24 | cr01–cr04 JUnit | complet |
-| CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 JUnit | partiel — réentrance de l'escompte (`openAdvanceIfEligible`) défectueuse ; écriture `ADVANCE_WRITE_OFF` non produite |
+| CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 + apurement multi-mois JUnit | partiel — réentrance `openAdvanceIfEligible` **corrigée** (apurement d'un mois sur l'autre OK) ; reste l'écriture `ADVANCE_WRITE_OFF` non produite |
 | CAL-04 | CalculationEngine (reprises) | #24 | cr04–cr07 JUnit | complet |
 | CAL-05 | CalculationEngine (RCD/RCP) | #24 | cr40–cr48 JUnit | partiel — rattrapage `DEFER` (§6.7) non implémenté |
 | CAL-06 | OutstandingFamily, CalculationEngine | — | cr30–cr36 JUnit | partiel — règle linéaire 1,20 % année 6 et `seniorityOrigin` non implémentés ; délai d'escompte retraite approximé |
@@ -375,7 +375,9 @@ ligne datée sans effacer l'ancienne) :
    CR-87/88 et les groupes escompte/RCD/PER.
 2. `ADVANCE_WRITE_OFF` et `INSURER_RECEIVABLE` jamais produites (2026-10-09, §10.2).
 3. Contournement du défaut d'escompte dans le jeu de démonstration : garantie dédiée
-   sans événement (2026-10-10, DONNEES-DEMO §5) ; correctif moteur reporté.
+   sans événement (2026-10-10, DONNEES-DEMO §5). **Correctif moteur fait** (2026-10-11,
+   `openAdvanceIfEligible` + apurement multi-mois) ; reste à retirer le contournement du
+   jeu de démonstration et à y porter un escompte réel suivi sur plusieurs mois.
 4. Épargne retraite : règle 1,20 % année 6 et `seniorityOrigin` non livrés (2026-10-09, §6.6).
 5. Délai de versement de l'escompte retraite approximé (2026-10-09, §6.6).
 6. `DEFER` (§6.7) non livré, seul `FORFEIT` (2026-10-09).

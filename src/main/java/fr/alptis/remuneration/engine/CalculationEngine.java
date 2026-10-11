@@ -663,6 +663,36 @@ public class CalculationEngine {
      * @return the opened advance state, or null when the garantie is not eligible
      */
     private AdvanceState openAdvanceIfEligible(Period period, CalculationRun run, Coverage coverage) {
+        // A garantie carries at most one discount position over its life (uq_advance_position_coverage).
+        // When one already exists, the unit does not open a second: the position is reconstructed from
+        // its validated lines (D8) and reused so its apurement continues from one month to the next.
+        AdvancePosition existing = AdvancePosition.<AdvancePosition>find("coverage = ?1", coverage).firstResult();
+        if (existing != null) {
+            if (existing.status != AdvanceStatus.ACTIVE) {
+                // Settled or cancelled in an earlier period: the discount is closed and the premiums of
+                // this period are paid normally.
+                return null;
+            }
+            BigDecimal advanced = CommissionLine.<CommissionLine>list("advancePosition = ?1 and nature = ?2",
+                    existing, LineNature.ADVANCE).stream().map(l -> l.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (advanced.signum() != 0) {
+                // Versement written in an earlier period: reconstruct the running state and reuse the
+                // position without writing the versement again.
+                AdvanceState carried = new AdvanceState();
+                carried.position = existing;
+                carried.advanced = advanced;
+                carried.offset = CommissionLine.<CommissionLine>list("advancePosition = ?1 and status = ?2",
+                        existing, LineStatus.OFFSET).stream().map(l -> l.amount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                carried.versementLines = 0;
+                return carried;
+            }
+            // The position was opened in this same not-yet-validated period, whose versement lines a
+            // rerun has just dropped (D13): re-grant the versement into the same position, so no new
+            // position is created and the convention cap is not counted twice.
+            return grantVersement(period, run, coverage, choiceAt(coverage, coverage.effectDate), existing);
+        }
+
         RemunerationChoice choice = choiceAt(coverage, coverage.effectDate);
         if (choice == null || !Boolean.TRUE.equals(choice.advanceRequested)
                 || Boolean.TRUE.equals(coverage.singlePremium)) {
@@ -690,13 +720,30 @@ public class CalculationEngine {
             return null;
         }
 
+        AdvancePosition position = new AdvancePosition();
+        position.advanceAgreement = agreement;
+        return grantVersement(period, run, coverage, choice, position);
+    }
+
+    /**
+     * Grants (or re-grants, on a same-period recompute) the discount versement into a position: the
+     * advance amount is proposed by the advance family on the annualised premium, the position's cumul
+     * columns are reset, the position is persisted when new, and the {@code ADVANCE} lines are written.
+     *
+     * @param period   the period
+     * @param run      the run
+     * @param coverage the coverage
+     * @param choice   the remuneration choice at the effect date
+     * @param position the position to grant into (new or reused)
+     * @return the opened advance state
+     */
+    private AdvanceState grantVersement(Period period, CalculationRun run, Coverage coverage,
+                                        RemunerationChoice choice, AdvancePosition position) {
         CalculationInput input = new CalculationInput(EventType.PREMIUM_COLLECTED, null, choice.linearRate,
                 choice.acquisitionRate, choice.servicingRate, coverage.effectDate, coverage.effectDate, null, null,
                 null, null, null, coverage.annualPremium, LineNature.ADVANCE, null, null);
         List<ProposedLine> advanceLines = families.get(RuleFamily.ADVANCE).propose(input);
 
-        AdvancePosition position = new AdvancePosition();
-        position.advanceAgreement = agreement;
         position.coverage = coverage;
         position.status = AdvanceStatus.ACTIVE;
         position.paidAt = clock.now();
@@ -707,8 +754,10 @@ public class CalculationEngine {
         position.offsetAcquisition = BigDecimal.ZERO;
         position.offsetServicing = BigDecimal.ZERO;
         position.offsetLinear = BigDecimal.ZERO;
-        position.setCreatedAt(clock.now());
-        position.persist();
+        if (position.getId() == null) {
+            position.setCreatedAt(clock.now());
+            position.persist();
+        }
 
         AdvanceState state = new AdvanceState();
         state.position = position;
@@ -772,6 +821,9 @@ public class CalculationEngine {
                 line.status = LineStatus.OFFSET;
                 line.advancePosition = advance.position;
                 advance.offset = advance.offset.add(line.amount);
+                // Materialise the offset cumul on the position by nature (D8), so the discount
+                // receivable (advanced − offset) stays right from one month to the next.
+                addOffsetByNature(advance.position, line.nature, line.amount);
             }
         }
         BigDecimal delta = advance.offset.subtract(advance.advanced);
@@ -779,6 +831,22 @@ public class CalculationEngine {
             return settle(period, run, coverage, advance, delta, "SETTLED_BY_OFFSET");
         }
         return 0;
+    }
+
+    /**
+     * Adds an offset amount to the position's cumul column that matches the offset line's nature, so
+     * the receivable it materialises (advanced minus offset) stays exact across periods.
+     *
+     * @param position the discount position
+     * @param nature   the offset line's nature
+     * @param amount   the offset amount
+     */
+    private static void addOffsetByNature(AdvancePosition position, LineNature nature, BigDecimal amount) {
+        switch (nature) {
+            case ACQUISITION -> position.offsetAcquisition = position.offsetAcquisition.add(amount);
+            case SERVICING -> position.offsetServicing = position.offsetServicing.add(amount);
+            default -> position.offsetLinear = position.offsetLinear.add(amount);
+        }
     }
 
     /**
