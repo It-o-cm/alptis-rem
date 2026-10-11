@@ -57,6 +57,27 @@ public class EventsResource {
     }
 
     /**
+     * Records one manually-entered complementary datum (a coverage) (ING-07).
+     *
+     * @param request the manual complementary-data request
+     * @return a 201 response with the resulting line counters
+     */
+    @POST
+    @Path("/complementary-data")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public Response createComplementaryData(ManualEventRequest request) {
+        if (!scope.canSee(request.entityCode())) {
+            throw new ResourceNotFoundException("Entité hors périmètre : " + request.entityCode());
+        }
+        ImportBatch batch = service.createComplementaryData(request.entityCode(), request.sourceSystem(),
+                request.fields());
+        ManualEventResponse body = new ManualEventResponse(batch.linesLoaded, batch.linesRejected, batch.linesOnHold);
+        return Response.status(Response.Status.CREATED).entity(body).build();
+    }
+
+    /**
      * Request body carrying the manual event.
      *
      * @param entityCode   the entity code

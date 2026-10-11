@@ -90,4 +90,54 @@ class EventsResourceTest {
                 .when().post("/api/ui/v1/events")
                 .then().statusCode(403);
     }
+
+    /**
+     * Builds a manual complementary-data (coverage) request body for the given entity.
+     *
+     * @param entity the entity code
+     * @return the JSON body
+     */
+    private static String coverageBody(String entity) {
+        return "{\"entityCode\":\"" + entity + "\",\"sourceSystem\":\"MANUAL\",\"fields\":{"
+                + "\"contract_number\":\"AD-M-1\",\"coverage_code\":\"GAR-M-1\",\"product_code\":\"P-X\","
+                + "\"policyholder_id\":\"SUB-1\",\"production_code\":\"PC-X\",\"remuneration_mode\":\"LINEAR\","
+                + "\"status\":\"IN_FORCE\",\"registration_date\":\"2026-01-15\",\"effect_date\":\"2026-02-01\","
+                + "\"annual_premium\":\"1200.00\"}}";
+    }
+
+    /**
+     * An operator enters a well-formed complementary datum referencing an unknown product: it is held
+     * (ING-07), and journalled.
+     */
+    @Test
+    void operator_enters_complementary_data_held_for_unknown_reference() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON).body(coverageBody("ALPTIS_ASSURANCES"))
+                .when().post("/api/ui/v1/events/complementary-data")
+                .then().statusCode(201)
+                .body("loaded", is(0)).body("onHold", is(1)).body("rejected", is(0));
+    }
+
+    /**
+     * A UNEP operator cannot enter complementary data into Alptis: the entity is out of scope.
+     */
+    @Test
+    void cannot_enter_complementary_data_for_another_entity() {
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .contentType(ContentType.JSON).body(coverageBody("ALPTIS_ASSURANCES"))
+                .when().post("/api/ui/v1/events/complementary-data")
+                .then().statusCode(404)
+                .contentType("application/problem+json");
+    }
+
+    /**
+     * A viewer may not enter complementary data.
+     */
+    @Test
+    void viewer_cannot_enter_complementary_data() {
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .contentType(ContentType.JSON).body(coverageBody("ALPTIS_ASSURANCES"))
+                .when().post("/api/ui/v1/events/complementary-data")
+                .then().statusCode(403);
+    }
 }

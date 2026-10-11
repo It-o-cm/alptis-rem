@@ -17,7 +17,7 @@ test.describe('Saisie manuelle — opérateur', () => {
 
   test('enregistre un événement et le trace dans le journal @screen:manualEvent @req:ING-07 @path:INT-11', async ({ page }) => {
     await page.goto('/saisie-evenement');
-    await expect(page.getByTestId('page-title')).toHaveText("Saisie d'un événement");
+    await expect(page.getByTestId('page-title')).toHaveText('Saisie manuelle');
 
     await page.getByTestId('field-source').fill('MANUAL');
     await page.getByTestId('field-key').fill('EVT-MAN-001');
@@ -35,6 +35,33 @@ test.describe('Saisie manuelle — opérateur', () => {
     const batchRow = page.locator('[data-testid^="batch-row-"]').first();
     await expect(batchRow).toContainText('Événements');
     await expect(batchRow).toContainText('manual-EVT-MAN-001');
+  });
+
+  test('enregistre une donnée complémentaire (garantie) et la trace @screen:manualEvent @req:ING-07', async ({ page }) => {
+    await page.goto('/saisie-evenement');
+    await expect(page.getByTestId('manual-coverage-form')).toBeVisible();
+
+    await page.getByTestId('cov-source').fill('MANUAL');
+    await page.getByTestId('cov-contract').fill('AD-MAN-1');
+    await page.getByTestId('cov-coverage').fill('GAR-MAN-1');
+    await page.getByTestId('cov-product').fill('P-UNKNOWN');
+    await page.getByTestId('cov-holder').fill('SUB-1');
+    await page.getByTestId('cov-production').fill('PC-UNKNOWN');
+    await page.getByTestId('cov-mode').selectOption('LINEAR');
+    await page.getByTestId('cov-status').selectOption('IN_FORCE');
+    await page.getByTestId('cov-registration').fill('2026-01-15');
+    await page.getByTestId('cov-effect').fill('2026-02-01');
+    await page.getByTestId('cov-premium').fill('1200.00');
+    await page.getByTestId('coverage-submit').click();
+
+    // No seeded product/production code: the datum is accepted and held for an unknown reference.
+    await expect(page.getByTestId('coverage-message')).toContainText('attente');
+
+    // The entry is journalled like an import, visible on the imports screen as a coverage flow.
+    await page.goto('/imports');
+    const batchRow = page.locator('[data-testid^="batch-row-"]').first();
+    await expect(batchRow).toContainText('Garanties');
+    await expect(batchRow).toContainText('manual-coverage-GAR-MAN-1');
   });
 
   test('refuse une saisie incomplète @screen:manualEvent @req:ING-07', async ({ page }) => {
@@ -61,7 +88,7 @@ test.describe('Saisie manuelle — accès', () => {
     const context = await browser.newContext({ httpCredentials: USERS.salesRep });
     const page = await context.newPage();
     await page.goto('/saisie-evenement');
-    await expect(page.getByRole('link', { name: 'Saisie d’un événement' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Saisie manuelle' })).toHaveCount(0);
     await context.close();
   });
 });

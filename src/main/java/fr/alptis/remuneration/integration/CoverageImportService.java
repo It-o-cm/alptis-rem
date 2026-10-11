@@ -26,6 +26,7 @@ import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,15 +63,77 @@ public class CoverageImportService {
      */
     @Transactional
     public ImportBatch importCoverages(String entityCode, String sourceSystem, String fileName, String content) {
+        LegalEntity entity = requireEntity(entityCode);
+        String fileHash = HashUtil.sha256(fileName + "\n" + content);
+        rejectDuplicate(entity, sourceSystem, fileHash, fileName);
+        return ingest(entity, sourceSystem, fileName, fileHash, CsvFile.parse(content).rows());
+    }
+
+    /**
+     * Imports pre-parsed coverage rows (complementary data entered by hand, ING-07): the rows go
+     * through the same controls and journal as a file, so a manual entry is traced and idempotent by
+     * its hash source.
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the journal file name
+     * @param hashSource   the string hashed for idempotence
+     * @param rows         the parsed coverage rows
+     * @return the journalled import batch
+     * @throws ConflictException if the entity is unknown or the entry was already recorded
+     */
+    @Transactional
+    public ImportBatch importCoverageRows(String entityCode, String sourceSystem, String fileName, String hashSource,
+                                          List<Map<String, String>> rows) {
+        LegalEntity entity = requireEntity(entityCode);
+        String fileHash = HashUtil.sha256(hashSource);
+        rejectDuplicate(entity, sourceSystem, fileHash, fileName);
+        return ingest(entity, sourceSystem, fileName, fileHash, rows);
+    }
+
+    /**
+     * Finds the entity or fails.
+     *
+     * @param entityCode the entity code
+     * @return the entity
+     * @throws ConflictException when the entity is unknown
+     */
+    private static LegalEntity requireEntity(String entityCode) {
         LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
         if (entity == null) {
             throw new ConflictException("Entité inconnue : " + entityCode);
         }
-        String fileHash = HashUtil.sha256(fileName + "\n" + content);
-        if (ImportBatch.count("entity = ?1 and sourceSystem = ?2 and fileHash = ?3", entity, sourceSystem, fileHash) > 0) {
+        return entity;
+    }
+
+    /**
+     * Rejects an entry whose hash was already journalled for the entity and source system.
+     *
+     * @param entity       the entity
+     * @param sourceSystem the source system
+     * @param fileHash     the file hash
+     * @param fileName     the file name, for the message
+     * @throws ConflictException when the hash is already present
+     */
+    private static void rejectDuplicate(LegalEntity entity, String sourceSystem, String fileHash, String fileName) {
+        if (ImportBatch.count("entity = ?1 and sourceSystem = ?2 and fileHash = ?3", entity, sourceSystem,
+                fileHash) > 0) {
             throw new ConflictException("Fichier déjà intégré : " + fileName);
         }
+    }
 
+    /**
+     * Journals a batch and runs each coverage row through its controls, hold check and upsert.
+     *
+     * @param entity       the entity
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param fileHash     the file hash
+     * @param rows         the parsed rows
+     * @return the journalled import batch
+     */
+    private ImportBatch ingest(LegalEntity entity, String sourceSystem, String fileName, String fileHash,
+                               List<Map<String, String>> rows) {
         ImportBatch batch = new ImportBatch();
         batch.entity = entity;
         batch.flowCode = FlowCodes.COVERAGES;
@@ -82,12 +145,11 @@ public class CoverageImportService {
         batch.linesFiltered = 0;
         batch.persist();
 
-        CsvFile csv = CsvFile.parse(content);
         int loaded = 0;
         int rejected = 0;
         int onHold = 0;
         int lineNumber = 1;
-        for (Map<String, String> row : csv.rows()) {
+        for (Map<String, String> row : rows) {
             lineNumber++;
             RejectionReasonCode reject = control(entity, row);
             if (reject != null) {
@@ -107,7 +169,7 @@ public class CoverageImportService {
             }
         }
 
-        batch.linesRead = csv.rows().size();
+        batch.linesRead = rows.size();
         batch.linesLoaded = loaded;
         batch.linesRejected = rejected;
         batch.linesOnHold = onHold;
