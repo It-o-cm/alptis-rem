@@ -4,6 +4,7 @@ import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.AdvanceStatus;
+import fr.alptis.remuneration.domain.AdvanceDebtHandling;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
@@ -19,7 +20,9 @@ import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.Product;
+import fr.alptis.remuneration.domain.PortfolioTransfer;
 import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.domain.TransferStatus;
 import fr.alptis.remuneration.domain.RemunerationChoice;
 import fr.alptis.remuneration.domain.RemunerationMode;
 import fr.alptis.remuneration.domain.Rule;
@@ -1064,5 +1067,207 @@ class AdvanceEngineTest {
         assertEquals(2, CommissionLine.count("nature", LineNature.ADVANCE));
         assertEquals(0, totalOf(LineNature.ADVANCE).compareTo(new BigDecimal("400.00")));
         assertNotNull(c);
+    }
+
+    /** Creates the receiving distributor P2 with its production code PC-2. */
+    private static Distributor repreneurWithCode() {
+        Distributor d = repreneur();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = unep();
+        pc.code = "PC-2";
+        pc.distributor = d;
+        pc.persist();
+        return d;
+    }
+
+    /** Creates the receiving distributor P2 without any production code. */
+    private static Distributor repreneur() {
+        Distributor d = new Distributor();
+        d.partnerCode = "P2";
+        d.legalName = "Repreneur";
+        d.persist();
+        return d;
+    }
+
+    /** Creates a pending portfolio transfer of P1 to P2 at 1 February 2026 with the given handling. */
+    private static PortfolioTransfer transfer(AdvanceDebtHandling handling, String scope) {
+        PortfolioTransfer t = new PortfolioTransfer();
+        t.entity = unep();
+        t.fromDistributor = Distributor.find("partnerCode", "P1").firstResult();
+        t.toDistributor = Distributor.find("partnerCode", "P2").firstResult();
+        t.effectDate = LocalDate.of(2026, 2, 1);
+        t.scope = scope;
+        t.advanceDebtHandling = handling;
+        t.status = TransferStatus.PENDING;
+        t.persist();
+        return t;
+    }
+
+    /** The current main assignment production code of a coverage, or null. */
+    private static String currentMainCode(Coverage c) {
+        CoverageAssignment a = CoverageAssignment.find("coverage = ?1 and role = ?2 and validTo is null",
+                c, AssignmentRole.MAIN).firstResult();
+        return a == null ? null : a.productionCode.code;
+    }
+
+    /** Opens an advance of 480 € with 200 € offset: premium 1 200 at 30/10, one 500 € apurement. */
+    private Coverage escomptedWith480Advanced200Offset() {
+        Coverage c = escomptedCoverage("1200");
+        convention(100, LocalDate.of(2026, 12, 31));
+        upfrontRule();
+        premium(c, "E1", LocalDate.of(2026, 1, 15), "500.00");
+        engine.runReal("UNEP", EFFECT);
+        return c;
+    }
+
+    /**
+     * CR-80: a portfolio ceded while an escompte is running, the transferor repaying the receivable,
+     * cancels the position and regularises the remaining gap (200 apurés − 480 avancés = −280,00 €) on
+     * the transferor's account.
+     */
+    @Test
+    @TestTransaction
+    void cr80_cession_receivable_repaid_by_transferor() {
+        Coverage c = escomptedWith480Advanced200Offset();
+        repreneurWithCode();
+        transfer(AdvanceDebtHandling.REPAID_BY_TRANSFEROR, null);
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+
+        assertEquals(AdvanceStatus.CANCELLED, position().status);
+        assertEquals("PORTFOLIO_TRANSFER_REPAID", position().closeReason);
+        assertEquals(0, totalOf(LineNature.ADVANCE_ADJUSTMENT).compareTo(new BigDecimal("-280.00")));
+        assertEquals("P1", CommissionLine.<CommissionLine>list("nature = ?1", LineNature.ADVANCE_ADJUSTMENT)
+                .get(0).originDistributor.partnerCode);
+        assertEquals("PC-2", currentMainCode(c));
+    }
+
+    /**
+     * CR-80 variant: the transferee takes the receivable over — the discount stays active, no entry is
+     * passed at the cession, and the later apurements fall on the transferee's commissions.
+     */
+    @Test
+    @TestTransaction
+    void cr80_cession_receivable_taken_over() {
+        Coverage c = escomptedWith480Advanced200Offset();
+        repreneurWithCode();
+        transfer(AdvanceDebtHandling.TAKEN_OVER, null);
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+        assertEquals(AdvanceStatus.ACTIVE, position().status);
+        assertEquals(0, CommissionLine.count("nature", LineNature.ADVANCE_ADJUSTMENT));
+        assertEquals("PC-2", currentMainCode(c));
+
+        // A later premium is offset against the carried position, attributed to the transferee P2.
+        premium(c, "E2", LocalDate.of(2026, 3, 15), "100.00");
+        engine.runReal("UNEP", LocalDate.of(2026, 3, 1));
+        assertEquals(AdvanceStatus.ACTIVE, position().status);
+        assertTrue(CommissionLine.<CommissionLine>list("status = ?1 and originDistributor.partnerCode = ?2",
+                LineStatus.OFFSET, "P2").size() >= 1);
+    }
+
+    /**
+     * A transfer of a coverage with no discount position reassigns it to the transferee without any
+     * regularisation line.
+     */
+    @Test
+    @TestTransaction
+    void cession_without_advance_only_reassigns() {
+        Coverage c = escomptedCoverage("1000");
+        choice(c).advanceRequested = false;
+        repreneurWithCode();
+        transfer(AdvanceDebtHandling.REPAID_BY_TRANSFEROR, null);
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+
+        assertEquals(0, CommissionLine.count("nature", LineNature.ADVANCE_ADJUSTMENT));
+        assertEquals("PC-2", currentMainCode(c));
+    }
+
+    /**
+     * A transfer whose discount position is already settled passes no regularisation line (only an
+     * active position is repaid).
+     */
+    @Test
+    @TestTransaction
+    void cession_leaves_a_settled_position_alone() {
+        Coverage c = escomptedCoverage("1000");
+        AdvanceAgreement agreement = convention(100, LocalDate.of(2026, 12, 31));
+        AdvancePosition settled = new AdvancePosition();
+        settled.advanceAgreement = agreement;
+        settled.coverage = c;
+        settled.status = AdvanceStatus.SETTLED;
+        settled.persist();
+        repreneurWithCode();
+        transfer(AdvanceDebtHandling.REPAID_BY_TRANSFEROR, null);
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+
+        assertEquals(AdvanceStatus.SETTLED, position().status);
+        assertEquals(0, CommissionLine.count("nature", LineNature.ADVANCE_ADJUSTMENT));
+        assertEquals("PC-2", currentMainCode(c));
+    }
+
+    /**
+     * A transfer whose scope lists the ceded production code catches the coverage carried by that code.
+     */
+    @Test
+    @TestTransaction
+    void cession_scope_selects_the_listed_codes() {
+        Coverage c = escomptedWith480Advanced200Offset();
+        repreneurWithCode();
+        transfer(AdvanceDebtHandling.REPAID_BY_TRANSFEROR, "[\"PC-1\"]");
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+
+        assertEquals(AdvanceStatus.CANCELLED, position().status);
+        assertEquals(0, totalOf(LineNature.ADVANCE_ADJUSTMENT).compareTo(new BigDecimal("-280.00")));
+    }
+
+    /**
+     * A transfer whose scope is valid JSON but not an array catches nothing (the non-array branch),
+     * leaving the coverage untouched and the transfer processed.
+     */
+    @Test
+    @TestTransaction
+    void cession_non_array_scope_is_a_no_op() {
+        Coverage c = escomptedWith480Advanced200Offset();
+        repreneurWithCode();
+        PortfolioTransfer t = transfer(AdvanceDebtHandling.REPAID_BY_TRANSFEROR, "5");
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+
+        assertEquals(AdvanceStatus.ACTIVE, position().status);
+        assertEquals("PC-1", currentMainCode(c));
+        assertEquals(TransferStatus.PROCESSED, PortfolioTransfer.<PortfolioTransfer>findById(t.getId()).status);
+    }
+
+    /**
+     * The scope parser reads a JSON array of production codes, and yields nothing for a non-array or
+     * malformed scope. (The persisted scope column is JSON-typed, so a malformed scope is exercised
+     * here directly rather than through the database.)
+     */
+    @Test
+    void scope_parser_reads_arrays_and_tolerates_the_rest() {
+        assertEquals(java.util.List.of("PC-1", "PC-2"), engine.scopeCodes("[\"PC-1\",\"PC-2\"]"));
+        assertTrue(engine.scopeCodes("5").isEmpty());
+        assertTrue(engine.scopeCodes("{bad").isEmpty());
+    }
+
+    /**
+     * When the transferee has no production code, the receivable is still repaid but the assignment is
+     * left on the transferor (nothing to reassign to).
+     */
+    @Test
+    @TestTransaction
+    void cession_without_transferee_code_keeps_the_assignment() {
+        Coverage c = escomptedWith480Advanced200Offset();
+        repreneur();
+        transfer(AdvanceDebtHandling.REPAID_BY_TRANSFEROR, null);
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+
+        assertEquals(0, totalOf(LineNature.ADVANCE_ADJUSTMENT).compareTo(new BigDecimal("-280.00")));
+        assertEquals("PC-1", currentMainCode(c));
     }
 }

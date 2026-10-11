@@ -2,8 +2,11 @@ package fr.alptis.remuneration.engine;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.alptis.remuneration.domain.AdvanceDebtHandling;
 import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.AdvanceStatus;
+import fr.alptis.remuneration.domain.PortfolioTransfer;
+import fr.alptis.remuneration.domain.TransferStatus;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CalculationRun;
 import fr.alptis.remuneration.domain.CommissionLine;
@@ -136,6 +139,11 @@ public class CalculationEngine {
         // D13: a rerun first removes the non-validated lines it had produced for the period.
         CommissionLine.delete("period = ?1 and status in ?2", period,
                 List.of(LineStatus.EARNED, LineStatus.FORECAST));
+
+        // Apply the portfolio transfers that take effect by this period (REF-09, CR-80): reassign the
+        // ceded garanties to the transferee, so their later premiums go to it, and settle the discount
+        // receivable on the transferor when it repays it.
+        applyPortfolioTransfers(entity, period, run);
 
         List<BusinessEvent> events = BusinessEvent.list(
                 "entity = ?1 and processingStatus = ?2 order by coverage.id, eventDate, receivedDate, sourceKey",
@@ -745,6 +753,141 @@ public class CalculationEngine {
      * @param coverage the coverage
      * @return the opened advance state, or null when the garantie is not eligible
      */
+    /**
+     * Applies the portfolio transfers that take effect on or before the end of the period and are not
+     * yet processed (REF-09, section 6.4, CR-80). For each ceded garantie: when the transferor repays
+     * the discount receivable, the active discount position is cancelled and a regularisation line of
+     * the remaining gap is booked on the transferor's account; then the main assignment is moved to the
+     * transferee from the effect date, so later premiums — and, when the receivable is taken over, the
+     * continuing apurement — are attributed to it. When the receivable is taken over, no entry is passed
+     * at the transfer.
+     *
+     * @param entity the entity
+     * @param period the period
+     * @param run    the run
+     */
+    private void applyPortfolioTransfers(LegalEntity entity, Period period, CalculationRun run) {
+        LocalDate periodEnd = period.periodMonth.plusMonths(1).minusDays(1);
+        List<PortfolioTransfer> transfers = PortfolioTransfer.<PortfolioTransfer>list(
+                "entity = ?1 and status = ?2 and effectDate <= ?3 order by effectDate, id",
+                entity, TransferStatus.PENDING, periodEnd);
+        for (PortfolioTransfer transfer : transfers) {
+            for (CoverageAssignment main : cededMainAssignments(entity, transfer)) {
+                Coverage coverage = main.coverage;
+                AdvancePosition pos = AdvancePosition.<AdvancePosition>find("coverage = ?1", coverage).firstResult();
+                boolean repaid = transfer.advanceDebtHandling == AdvanceDebtHandling.REPAID_BY_TRANSFEROR;
+                if (repaid && pos != null && pos.status == AdvanceStatus.ACTIVE) {
+                    repayAdvanceOnTransfer(period, run, coverage, pos);
+                }
+                reassignMain(main, transfer);
+            }
+            transfer.status = TransferStatus.PROCESSED;
+        }
+    }
+
+    /**
+     * Returns the current main assignments of the transferor caught by a transfer's scope (all of them
+     * when the scope is empty).
+     *
+     * @param entity   the entity
+     * @param transfer the transfer
+     * @return the ceded main assignments
+     */
+    private List<CoverageAssignment> cededMainAssignments(LegalEntity entity, PortfolioTransfer transfer) {
+        if (transfer.scope == null) {
+            return CoverageAssignment.list(
+                    "role = ?1 and validTo is null and productionCode.distributor = ?2 and productionCode.entity = ?3",
+                    fr.alptis.remuneration.domain.AssignmentRole.MAIN, transfer.fromDistributor, entity);
+        }
+        return CoverageAssignment.list(
+                "role = ?1 and validTo is null and productionCode.distributor = ?2 and productionCode.entity = ?3 "
+                        + "and productionCode.code in ?4",
+                fr.alptis.remuneration.domain.AssignmentRole.MAIN, transfer.fromDistributor, entity,
+                scopeCodes(transfer.scope));
+    }
+
+    /**
+     * Reads a transfer scope — a JSON array of production-code strings — into a list, empty when the
+     * scope is malformed.
+     *
+     * @param scope the scope JSON
+     * @return the production-code list
+     */
+    List<String> scopeCodes(String scope) {
+        List<String> codes = new ArrayList<>();
+        for (JsonNode node : readArrayNode(scope)) {
+            codes.add(node.asText());
+        }
+        return codes;
+    }
+
+    /**
+     * Parses a JSON array, returning an empty iterable when the text is not a JSON array.
+     *
+     * @param json the JSON text
+     * @return the array node, or an empty node
+     */
+    private JsonNode readArrayNode(String json) {
+        try {
+            JsonNode node = mapper.readTree(json);
+            return node.isArray() ? node : mapper.createArrayNode();
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return mapper.createArrayNode();
+        }
+    }
+
+    /**
+     * Cancels the active discount position of a ceded garantie whose receivable the transferor repays,
+     * and books the remaining gap (offset cumul minus advanced) as a regularisation line on the
+     * transferor's account (section 6.4: the cession is a rupture event).
+     *
+     * @param period   the period
+     * @param run      the run
+     * @param coverage the coverage
+     * @param pos      the active discount position
+     */
+    private void repayAdvanceOnTransfer(Period period, CalculationRun run, Coverage coverage, AdvancePosition pos) {
+        BigDecimal advanced = CommissionLine.<CommissionLine>list("advancePosition = ?1 and nature = ?2",
+                pos, LineNature.ADVANCE).stream().map(l -> l.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal offset = CommissionLine.<CommissionLine>list("advancePosition = ?1 and status = ?2",
+                pos, LineStatus.OFFSET).stream().map(l -> l.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal delta = offset.subtract(advanced);
+        pos.status = AdvanceStatus.CANCELLED;
+        pos.closedAt = clock.now();
+        pos.closeReason = "PORTFOLIO_TRANSFER_REPAID";
+        String explanation = "{\"family\":\"ADVANCE_ADJUSTMENT\",\"trigger\":\"PORTFOLIO_TRANSFER\",\"delta\":"
+                + delta.toPlainString() + "}";
+        writeShared(period, run, null, coverage, null, pos, Direction.OUTBOUND, LineNature.ADVANCE_ADJUSTMENT,
+                null, null, delta, explanation);
+    }
+
+    /**
+     * Moves a main assignment to the transferee from the transfer's effect date: the current assignment
+     * is closed the day before, and a new one is opened on the transferee's first production code. When
+     * the transferee has no production code, the assignment is left unchanged.
+     *
+     * @param main     the transferor's current main assignment
+     * @param transfer the transfer
+     */
+    private void reassignMain(CoverageAssignment main, PortfolioTransfer transfer) {
+        ProductionCode target = ProductionCode.<ProductionCode>find(
+                "entity = ?1 and distributor = ?2 order by code", main.productionCode.entity,
+                transfer.toDistributor).firstResult();
+        if (target == null) {
+            return;
+        }
+        main.validTo = transfer.effectDate.minusDays(1);
+        CoverageAssignment next = new CoverageAssignment();
+        next.coverage = main.coverage;
+        next.productionCode = target;
+        next.role = fr.alptis.remuneration.domain.AssignmentRole.MAIN;
+        next.share = main.share;
+        next.origin = fr.alptis.remuneration.domain.AssignmentOrigin.TRANSFER;
+        next.validFrom = transfer.effectDate;
+        next.setCreatedAt(clock.now());
+        next.persist();
+    }
+
     private AdvanceState openAdvanceIfEligible(Period period, CalculationRun run, Coverage coverage) {
         // A garantie carries at most one discount position over its life (uq_advance_position_coverage).
         // When one already exists, the unit does not open a second: the position is reconstructed from
