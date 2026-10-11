@@ -196,7 +196,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | PAR-05 | RuleConfigService (conflits) | #37 | rules | complet |
 | PAR-06 | TieredFamily, BaremeInitialService | #38 | — | partiel — édition des barèmes à paliers par écran à confirmer |
 | PAR-07 | RuleCondition, CalculationEngine | #38 | — | complet |
-| PAR-08 | RuleConfigService, CalculationEngine | #38 | — | partiel — mode `DEFER` stocké mais ignoré par le moteur (seul `FORFEIT`) |
+| PAR-08 | RuleConfigService, CalculationEngine | #38 | — | complet — politique de reprise + mode `DEFER`/`FORFEIT` de la condition de versement (§6.7) désormais honorés par le moteur |
 | PAR-09 | AgreementService | #31, #32 | advance-agreements | partiel — fiche convention (compteurs, garanties, simulation de rupture) absente |
 | PAR-10 | AgreementService | #40 | enrollments | complet |
 | PAR-11 | — | — | — | partiel — génération d'avenant absente ; envoi en signature électronique hors périmètre dev (LANCEMENT §6) |
@@ -213,7 +213,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CAL-02 | LinearFamily, UpfrontFamily | #24 | cr01–cr04 JUnit | complet |
 | CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 + apurement multi-mois JUnit | partiel — réentrance `openAdvanceIfEligible` **corrigée** (apurement d'un mois sur l'autre OK) ; reste l'écriture `ADVANCE_WRITE_OFF` non produite |
 | CAL-04 | CalculationEngine (reprises) | #24 | cr04–cr07 JUnit | complet |
-| CAL-05 | CalculationEngine (RCD/RCP) | #24 | cr40–cr48 JUnit | partiel — rattrapage `DEFER` (§6.7) non implémenté |
+| CAL-05 | CalculationEngine (RCD/RCP) | #24 | cr40–cr48 + DEFER JUnit | complet — RCD/RCP et conditions ; rattrapage `DEFER` (§6.7) **implémenté** (évaluation mensuelle de la condition de versement) |
 | CAL-06 | OutstandingFamily, CalculationEngine | — | cr30–cr36 JUnit | partiel — règle linéaire 1,20 % année 6 et `seniorityOrigin` non implémentés ; délai d'escompte retraite approximé |
 | CAL-07 | CalculationEngine (co-courtage, partages) | #24 | cr49, cr50, cr76 JUnit | complet |
 | CAL-08 | FeeFamily, FixedFamily | #24 | cr77 JUnit | complet |
@@ -384,7 +384,8 @@ ligne datée sans effacer l'ancienne) :
    jeu de démonstration et à y porter un escompte réel suivi sur plusieurs mois.
 4. Épargne retraite : règle 1,20 % année 6 et `seniorityOrigin` non livrés (2026-10-09, §6.6).
 5. Délai de versement de l'escompte retraite approximé (2026-10-09, §6.6).
-6. `DEFER` (§6.7) non livré, seul `FORFEIT` (2026-10-09).
+6. `DEFER` (§6.7) non livré, seul `FORFEIT` (2026-10-09). **`DEFER` livré** (2026-10-11,
+   évaluation mensuelle de la condition de versement, rattrapage du mois reporté).
 7. FIN-06, FIN-08, REP-08 (marge et rapprochements) reportés/approchés (2026-10-09).
 8. Export Data complet au lieu d'incrémental (2026-10-09, REP-04/05).
 9. CR-72 mesuré par extrapolation depuis 60 bénéficiaires (2026-10-09, §11).

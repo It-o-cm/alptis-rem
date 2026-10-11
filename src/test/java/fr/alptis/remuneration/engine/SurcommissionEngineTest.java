@@ -6,6 +6,7 @@ import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.CommissionPlan;
+import fr.alptis.remuneration.domain.ConditionFailureMode;
 import fr.alptis.remuneration.domain.ConditionOperator;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.ControlResult;
@@ -259,6 +260,31 @@ class SurcommissionEngineTest {
         condition.persist();
     }
 
+    /** Adds a payment condition whose failure defers the month's entitlement rather than forfeiting it. */
+    private static void deferredCondition(RuleVersion version, QualityIndicatorType type,
+                                          ConditionOperator operator, String threshold) {
+        RuleCondition condition = new RuleCondition();
+        condition.ruleVersion = version;
+        condition.indicatorType = type;
+        condition.operator = operator;
+        condition.threshold = new BigDecimal(threshold);
+        condition.onFailure = ConditionFailureMode.DEFER;
+        condition.persist();
+    }
+
+    /** Records a quality indicator valid for a single month. */
+    private static void monthlyIndicator(Distributor distributor, QualityIndicatorType type, String value,
+                                         int year, int month) {
+        QualityIndicator indicator = new QualityIndicator();
+        indicator.entity = unep();
+        indicator.distributor = distributor;
+        indicator.indicatorType = type;
+        indicator.periodFrom = LocalDate.of(year, month, 1);
+        indicator.periodTo = LocalDate.of(year, month, 1).plusMonths(1).minusDays(1);
+        indicator.value = new BigDecimal(value);
+        indicator.persist();
+    }
+
     /** Attaches the santé development marginal scale to a rule version. */
     private static void santeDevelopmentScale(RuleVersion version) {
         Scale scale = scale(version, ScaleMode.MARGINAL);
@@ -421,6 +447,36 @@ class SurcommissionEngineTest {
         assertEquals(1, lines().size());
         assertEquals(0, amountOf(LineNature.RCD).compareTo(BigDecimal.ZERO));
         assertTrue(lines().get(0).explanation.contains("forfeited"));
+    }
+
+    /**
+     * Section 6.7, DEFER: a month whose payment condition fails does not lose its entitlement when the
+     * rule defers — January pays 300 €, February (condition failing) pays 0 € and is deferred, and
+     * March (condition holding again) catches it up, paying 1 350 − 300 = 1 050 € instead of 0 €.
+     */
+    @Test
+    @TestTransaction
+    void development_defers_a_failed_month() {
+        Product p = product("SANTE");
+        Distributor d = distributor("D1");
+        RuleVersion v = developmentRule(d);
+        deferredCondition(v, QualityIndicatorType.UNPAID_RATE, ConditionOperator.LT, "0.05");
+        monthlyIndicator(d, QualityIndicatorType.UNPAID_RATE, "0.02", 2026, 1);
+        // February has no indicator, so its condition fails and the month is deferred.
+        monthlyIndicator(d, QualityIndicatorType.UNPAID_RATE, "0.02", 2026, 3);
+        Coverage jan = coverage("S-1", p, d, LocalDate.of(2026, 1, 10), "30000");
+        event(jan, "SUB1", EventType.SUBSCRIPTION, LocalDate.of(2026, 1, 15), null);
+        Coverage feb = coverage("S-2", p, d, LocalDate.of(2026, 2, 10), "30000");
+        event(feb, "SUB2", EventType.SUBSCRIPTION, LocalDate.of(2026, 2, 15), null);
+
+        engine.runDevelopment("UNEP", LocalDate.of(2026, 1, 1), 2026);
+        engine.runDevelopment("UNEP", LocalDate.of(2026, 2, 1), 2026);
+        engine.runDevelopment("UNEP", LocalDate.of(2026, 3, 1), 2026);
+
+        assertTrue(hasAmount("300.00"), "January pays its entitlement");
+        assertTrue(lines().stream().anyMatch(l -> l.amount.signum() == 0 && l.explanation.contains("deferred")),
+                "February is deferred, not forfeited");
+        assertTrue(hasAmount("1050.00"), "March catches up the deferred month");
     }
 
     /**

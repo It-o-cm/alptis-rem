@@ -30,6 +30,7 @@ import fr.alptis.remuneration.domain.PayeeRule;
 import fr.alptis.remuneration.domain.PayeeRuleShare;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.ProductionCounter;
+import fr.alptis.remuneration.domain.ConditionFailureMode;
 import fr.alptis.remuneration.domain.QualityIndicator;
 import fr.alptis.remuneration.domain.QualityIndicatorType;
 import fr.alptis.remuneration.domain.RuleCondition;
@@ -2019,10 +2020,16 @@ public class CalculationEngine {
                 version.rule, payeeType, payeeId, (short) year, (short) (month - 1)).firstResult();
         BigDecimal entitledBefore = previous == null ? BigDecimal.ZERO : previous.cumulativeEntitlement;
         BigDecimal monthly = entitlement.subtract(entitledBefore).setScale(2, RoundingMode.HALF_UP);
-        storeCounter(version.rule, payeeType, payeeId, enrollment, year, month, production, entitlement);
-        if (!paymentConditionsHold(version, distributor, year)) {
+        // A failed payment condition (section 6.7): FORFEIT (default) advances the entitlement counter
+        // past the month, so its gain is lost for good; DEFER freezes the counter at the prior month, so
+        // the gain is caught up the next month the condition holds.
+        ConditionFailureMode failure = paymentFailureMode(version, distributor, year, month);
+        boolean defer = failure == ConditionFailureMode.DEFER;
+        storeCounter(version.rule, payeeType, payeeId, enrollment, year, month, production,
+                defer ? entitledBefore : entitlement);
+        if (failure != null) {
             writeEnrollmentLine(period, run, LineNature.RCD, BigDecimal.ZERO, payeeType, payeeId, distributor,
-                    "{\"family\":\"TIERED\",\"rcd\":true,\"forfeited\":true}");
+                    "{\"family\":\"TIERED\",\"rcd\":true,\"" + (defer ? "deferred" : "forfeited") + "\":true}");
             return 1;
         }
         if (monthly.signum() == 0) {
@@ -2248,16 +2255,37 @@ public class CalculationEngine {
      * @param year        the year
      * @return {@code true} when the unpaid-rate conditions hold
      */
-    private boolean paymentConditionsHold(RuleVersion version, Distributor distributor, int year) {
+    private ConditionFailureMode paymentFailureMode(RuleVersion version, Distributor distributor, int year,
+                                                    int month) {
         for (RuleCondition condition : RuleCondition.<RuleCondition>list("ruleVersion = ?1", version)) {
             if (condition.indicatorType == QualityIndicatorType.UNPAID_RATE) {
-                BigDecimal observed = indicatorValue(condition, distributor, year);
+                BigDecimal observed = monthlyIndicatorValue(condition, distributor, year, month);
                 if (observed == null || !compare(observed, condition.operator, condition.threshold)) {
-                    return false;
+                    return condition.onFailure == null ? ConditionFailureMode.FORFEIT : condition.onFailure;
                 }
             }
         }
-        return true;
+        return null;
+    }
+
+    /**
+     * Returns the quality-indicator value a payment condition reads for a distributor in a given month
+     * — the indicator whose validity covers that month (section 6.7) — or null when absent.
+     *
+     * @param condition   the condition
+     * @param distributor the distributor
+     * @param year        the year
+     * @param month       the month number
+     * @return the observed value, or null
+     */
+    private static BigDecimal monthlyIndicatorValue(RuleCondition condition, Distributor distributor, int year,
+                                                    int month) {
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
+        QualityIndicator indicator = QualityIndicator.find(
+                "distributor = ?1 and indicatorType = ?2 and periodFrom <= ?3 and periodTo >= ?4",
+                distributor, condition.indicatorType, monthEnd, monthStart).firstResult();
+        return indicator == null ? null : indicator.value;
     }
 
     /**
