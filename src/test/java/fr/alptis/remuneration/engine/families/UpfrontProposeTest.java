@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Pure unit tests for the upfront family (section 6.2): first-year acquisition and servicing,
@@ -124,5 +125,22 @@ class UpfrontProposeTest {
         List<ProposedLine> badParams = upfront.propose(
                 input("100", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 1), null, null, "{bad"));
         assertEquals(0, amount(badParams, LineNature.ACQUISITION).compareTo(new BigDecimal("30.00")));
+    }
+
+    /**
+     * The borrower early-repayment parameters are read from the JSON, and null, blank, malformed or
+     * field-absent parameters all yield no value (section 6.5).
+     */
+    @Test
+    void reads_the_borrower_early_repayment_parameters() {
+        assertNull(UpfrontFamily.earlyRepaymentMonths(null));
+        assertNull(UpfrontFamily.earlyRepaymentMonths("   "));
+        assertNull(UpfrontFamily.earlyRepaymentMonths("{bad"));
+        assertNull(UpfrontFamily.recalculationRate(null));
+        assertNull(UpfrontFamily.earlyRepaymentMonths("{\"firstYearDays\":365}"));
+        assertNull(UpfrontFamily.recalculationRate("{\"firstYearDays\":365}"));
+        assertEquals(36, UpfrontFamily.earlyRepaymentMonths("{\"earlyRepaymentMonths\":36}").intValue());
+        assertEquals(0, UpfrontFamily.recalculationRate("{\"recalculationRate\":0.15}")
+                .compareTo(new BigDecimal("0.15")));
     }
 }

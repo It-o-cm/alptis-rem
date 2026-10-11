@@ -302,6 +302,222 @@ class CalculationEngineTest {
     }
 
     /**
+     * CR-74: the garantie's choice changes from 15% to 18% on 16 June, so June's 100 € premium (its
+     * covered period is the whole month) is split pro rata of the days (P12): 15 days at 15% = 7,50 €
+     * and 15 days at 18% = 9,00 €, in two LINEAR lines.
+     */
+    @Test
+    @TestTransaction
+    void cr74_rate_change_within_covered_period() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        linearChoice(c, "0.15", MONTH, LocalDate.of(2026, 6, 15));
+        linearChoice(c, "0.18", LocalDate.of(2026, 6, 16), null);
+        version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.15,0.18]}", "BASE", 10, MONTH, null);
+        BusinessEvent e = premium(c, "JUN", LocalDate.of(2026, 6, 1), "100.00");
+        e.periodFrom = LocalDate.of(2026, 6, 1);
+        e.periodTo = LocalDate.of(2026, 6, 30);
+
+        engine.runReal("UNEP", MONTH);
+
+        List<CommissionLine> lines = lines();
+        assertEquals(2, lines.size());
+        assertEquals(LineNature.LINEAR, lines.get(0).nature);
+        assertEquals(0, lines.get(0).amount.compareTo(new BigDecimal("7.50")));
+        assertEquals(LineNature.LINEAR, lines.get(1).nature);
+        assertEquals(0, lines.get(1).amount.compareTo(new BigDecimal("9.00")));
+    }
+
+    /**
+     * A premium that carries a start but no end to its covered period is attributed whole to its
+     * event-date choice, without prorata (H-45).
+     */
+    @Test
+    @TestTransaction
+    void premium_with_open_covered_period_is_not_prorated() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        linearChoice(c, "0.15", MONTH, null);
+        version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
+        BusinessEvent e = premium(c, "E1", LocalDate.of(2026, 1, 5), "100.00");
+        e.periodFrom = LocalDate.of(2026, 1, 1);
+
+        engine.runReal("UNEP", MONTH);
+
+        List<CommissionLine> lines = lines();
+        assertEquals(1, lines.size());
+        assertEquals(0, lines.get(0).amount.compareTo(new BigDecimal("15.00")));
+    }
+
+    /**
+     * P12 over three choices: a 900 € premium covering the first quarter with the choice changing on
+     * 1 February (0.20) and 1 March (0.30) from 0.10 is split 31/28/31 days — 31,00 €, 56,00 € and
+     * 93,00 € — in three LINEAR lines.
+     */
+    @Test
+    @TestTransaction
+    void premium_prorated_over_three_choices() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        linearChoice(c, "0.10", MONTH, LocalDate.of(2026, 1, 31));
+        linearChoice(c, "0.20", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+        linearChoice(c, "0.30", LocalDate.of(2026, 3, 1), null);
+        version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.10,0.20,0.30]}", "BASE", 10, MONTH, null);
+        BusinessEvent e = premium(c, "Q1", LocalDate.of(2026, 1, 1), "900.00");
+        e.periodFrom = LocalDate.of(2026, 1, 1);
+        e.periodTo = LocalDate.of(2026, 3, 31);
+
+        engine.runReal("UNEP", MONTH);
+
+        List<CommissionLine> lines = lines();
+        assertEquals(3, lines.size());
+        assertEquals(0, lines.get(0).amount.compareTo(new BigDecimal("31.00")));
+        assertEquals(0, lines.get(1).amount.compareTo(new BigDecimal("56.00")));
+        assertEquals(0, lines.get(2).amount.compareTo(new BigDecimal("93.00")));
+    }
+
+    /** Parameters of a borrower upfront rule: 30/10 precompté, 36-month recalc window at a linear rate. */
+    private static String emprunteurParams(String recalcRate) {
+        return "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365,"
+                + "\"earlyRepaymentMonths\":36" + (recalcRate == null ? "" : ",\"recalculationRate\":" + recalcRate)
+                + "}";
+    }
+
+    /** Counts the CLAWBACK lines produced. */
+    private static long clawbackLines() {
+        return CommissionLine.count("nature", LineNature.CLAWBACK);
+    }
+
+    /**
+     * CR-81: a loan bought back at the 24th month (within the 36-month window) is recomputed at the
+     * standard linear rate — 2 000 € collected × 15% = 300 € — against the 500 € already paid (400 €
+     * year one, 100 € year two), giving a CLAWBACK line of −200,00 €.
+     */
+    @Test
+    @TestTransaction
+    void cr81_early_repayment_clawback() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        version("PLAN", "R_EMP", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                emprunteurParams("0.15"), "BASE", 10, MONTH, null);
+        premium(c, "Y1", LocalDate.of(2026, 3, 1), "1000.00");
+        premium(c, "Y2", LocalDate.of(2027, 3, 1), "1000.00");
+        event(c, "BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2028, 1, 1), null);
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(1, clawbackLines());
+        assertEquals(0, CommissionLine.<CommissionLine>list("nature = ?1", LineNature.CLAWBACK)
+                .get(0).amount.compareTo(new BigDecimal("-200.00")));
+    }
+
+    /**
+     * CR-81 variant: a buyback at the 40th month, beyond the 36-month window, produces no clawback.
+     */
+    @Test
+    @TestTransaction
+    void cr81_beyond_window_no_clawback() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        version("PLAN", "R_EMP", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                emprunteurParams("0.15"), "BASE", 10, MONTH, null);
+        premium(c, "Y1", LocalDate.of(2026, 3, 1), "1000.00");
+        premium(c, "Y2", LocalDate.of(2027, 3, 1), "1000.00");
+        event(c, "BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2029, 5, 1), null);
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, clawbackLines());
+    }
+
+    /**
+     * An early repayment with no borrower rule — only a linear rule and a plain upfront rule without
+     * the early-repayment parameters — produces no clawback (the family and months legs of the finder).
+     */
+    @Test
+    @TestTransaction
+    void early_repayment_without_borrower_rule() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"entity\":[\"UNEP\"],\"product\":[\"NOPE\"]}", "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
+        version("PLAN", "R_UP", RuleFamily.UPFRONT, LineNature.ACQUISITION,
+                "{\"entity\":[\"UNEP\"],\"product\":[\"NOPE\"]}",
+                "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}", "BASE", 10,
+                MONTH, null);
+        event(c, "BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2028, 1, 1), null);
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, clawbackLines());
+    }
+
+    /**
+     * An early repayment under an upfront rule that sets the window but no recalculation rate produces
+     * no clawback (the rate leg of the finder).
+     */
+    @Test
+    @TestTransaction
+    void early_repayment_rule_without_recalc_rate() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        version("PLAN", "R_EMP", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                emprunteurParams(null), "BASE", 10, MONTH, null);
+        event(c, "BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2028, 1, 1), null);
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, clawbackLines());
+    }
+
+    /**
+     * An early repayment whose borrower rule is scoped to another product produces no clawback (the
+     * scope leg of the finder).
+     */
+    @Test
+    @TestTransaction
+    void early_repayment_scope_mismatch() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        version("PLAN", "R_EMP", RuleFamily.UPFRONT, LineNature.ACQUISITION,
+                "{\"entity\":[\"UNEP\"],\"product\":[\"OTHER\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
+                emprunteurParams("0.15"), "BASE", 10, MONTH, null);
+        event(c, "BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2028, 1, 1), null);
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, clawbackLines());
+    }
+
+    /**
+     * When the recalculation equals what was already paid, the early repayment writes no clawback line
+     * (the zero-delta leg): 1 000 € collected × 40% = 400 € equals the 400 € paid in year one.
+     */
+    @Test
+    @TestTransaction
+    void early_repayment_no_gap_writes_nothing() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        upfrontChoice(c, "0.30", "0.10");
+        version("PLAN", "R_EMP", RuleFamily.UPFRONT, LineNature.ACQUISITION, UPFRONT_SCOPE,
+                emprunteurParams("0.40"), "BASE", 10, MONTH, null);
+        premium(c, "Y1", LocalDate.of(2026, 3, 1), "1000.00");
+        event(c, "BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2028, 1, 1), null);
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, clawbackLines());
+    }
+
+    /**
      * CR-11: a rate outside the rule's grid holds the event with the off-grid anomaly, no line.
      */
     @Test

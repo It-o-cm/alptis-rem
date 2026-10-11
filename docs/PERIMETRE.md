@@ -19,7 +19,7 @@ ils sont resserrés écran par écran au fur et à mesure de l'étape 2.
 - Écrans de l'inventaire (73) : **37 `complet`, 24 `partiel`, 12 `absent`**.
 - Exigences de la section 8 (135) : **≈ 79 `complet`, ≈ 41 `partiel`, ≈ 15 `absent`** (à resserrer).
 - Cas de recette rejoués par l'interface : **2 sur 70** (`CR-68`, `CR-70`) ; les 71 cas
-  existent côté JUnit sauf **CR-74, CR-80, CR-81** (manquants).
+  existent côté JUnit sauf **CR-80** (manquant) — **CR-74 et CR-81 désormais réalisés et testés**.
 - Parcours métier `@path:` : **8** ; couples rôle-action : **21**.
 - `PlaceholderView` : présent, plus référencé par aucune route vivante (à supprimer, étape 2).
 
@@ -360,7 +360,8 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 
 ## Cas de recette — état du rejeu
 
-- **Existence (JUnit) :** 68 des 71 cas existent. **Manquants : CR-74, CR-80, CR-81.**
+- **Existence (JUnit) :** 70 des 71 cas existent. **Manquant : CR-80** (CR-74 P12 et CR-81
+  rachat anticipé emprunteur réalisés le 2026-10-11, avec tests).
 - **Rejeu par l'interface (`@cr:`) :** 2 sur 70 (`CR-68`, `CR-70`). Tous les autres sont
   renvoyés « au niveau JUnit » par des entrées de `docs/DECISIONS.md` à rectifier (étape 4).
 

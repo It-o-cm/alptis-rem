@@ -47,7 +47,9 @@ public class UpfrontFamily implements ComputingFamily {
                     "required": ["acquisition", "servicing"]
                   }
                 },
-                "firstYearDays": {"type": "integer", "minimum": 1}
+                "firstYearDays": {"type": "integer", "minimum": 1},
+                "earlyRepaymentMonths": {"type": "integer", "minimum": 1},
+                "recalculationRate": {"type": "number", "minimum": 0, "maximum": 1}
               },
               "required": ["allowedRates", "firstYearDays"]
             }
@@ -151,6 +153,49 @@ public class UpfrontFamily implements ComputingFamily {
             return node == null ? DEFAULT_FIRST_YEAR_DAYS : node.asInt(DEFAULT_FIRST_YEAR_DAYS);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             return DEFAULT_FIRST_YEAR_DAYS;
+        }
+    }
+
+    /**
+     * Reads the borrower early-repayment window in months (section 6.5): the number of months during
+     * which an early repayment triggers the linear recalculation; null when the rule is not a borrower
+     * rule.
+     *
+     * @param parameters the parameters JSON
+     * @return the window in months, or null
+     */
+    public static Integer earlyRepaymentMonths(String parameters) {
+        JsonNode node = node(parameters, "earlyRepaymentMonths");
+        return node == null ? null : node.asInt();
+    }
+
+    /**
+     * Reads the borrower recalculation rate (section 6.5): the standard linear rate applied to the
+     * collected premiums when an early repayment falls within the window; null when absent.
+     *
+     * @param parameters the parameters JSON
+     * @return the recalculation rate, or null
+     */
+    public static BigDecimal recalculationRate(String parameters) {
+        JsonNode node = node(parameters, "recalculationRate");
+        return node == null ? null : node.decimalValue();
+    }
+
+    /**
+     * Reads a named node from the parameters JSON, returning null when absent or malformed.
+     *
+     * @param parameters the parameters JSON
+     * @param field      the field name
+     * @return the node, or null
+     */
+    private static JsonNode node(String parameters, String field) {
+        if (parameters == null || parameters.isBlank()) {
+            return null;
+        }
+        try {
+            return MAPPER.readTree(parameters).get(field);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return null;
         }
     }
 

@@ -325,6 +325,8 @@ public class CalculationEngine {
                 count += rupture(period, run, event, coverage, advance);
                 count += clawback(period, run, event, coverage);
                 count += rcdReprise(period, run, event, coverage);
+            } else if (event.eventType == EventType.EARLY_REPAYMENT) {
+                count += earlyRepayment(period, run, event, coverage, versions);
             } else {
                 List<CommissionLine> written = processPremium(period, run, event, coverage, versions);
                 count += written.size();
@@ -379,14 +381,18 @@ public class CalculationEngine {
         }
 
         List<CommissionLine> written = new ArrayList<>();
-        for (RuleVersion version : kept) {
-            if (belowMinRank(event, version)) {
-                continue;
-            }
-            ComputingFamily family = families.get(version.rule.family);
-            CalculationInput input = input(event, coverage, choice, version);
-            for (ProposedLine proposed : family.propose(input)) {
-                written.addAll(writeLine(period, run, event, coverage, version, proposed));
+        // P12: a premium whose covered period straddles a change of the garantie's remuneration choice
+        // is split pro rata of the days under each choice; otherwise it stays on the event-date choice.
+        for (RateSegment segment : proratedSegments(coverage, event, choice)) {
+            for (RuleVersion version : kept) {
+                if (belowMinRank(event, version)) {
+                    continue;
+                }
+                ComputingFamily family = families.get(version.rule.family);
+                CalculationInput input = input(event, coverage, segment.choice(), version, segment.basis());
+                for (ProposedLine proposed : family.propose(input)) {
+                    written.addAll(writeLine(period, run, event, coverage, version, proposed));
+                }
             }
         }
         event.processingStatus = ProcessingStatus.PROCESSED;
@@ -550,6 +556,83 @@ public class CalculationEngine {
                 + ",\"rate\":" + rate.toPlainString() + ",\"amount\":" + amount.negate().toPlainString() + "}";
         return writeShared(period, run, event, coverage, version, null, version.rule.plan.direction,
                 LineNature.CLAWBACK, null, null, amount.negate(), explanation).size();
+    }
+
+    /**
+     * Handles the early repayment of a borrower loan (section 6.5, CR-81): a moteur treatment outside
+     * the reprise policy. Within the rule's early-repayment window, the commission is recomputed at the
+     * rule's standard linear rate on the premiums collected so far, and the gap with what was already
+     * paid is written as a {@code CLAWBACK} line (negative when too much was advanced). Beyond the
+     * window, nothing is clawed back.
+     *
+     * @param period   the period
+     * @param run      the run
+     * @param event    the early-repayment event
+     * @param coverage the coverage
+     * @param versions the active versions of the entity
+     * @return the number of clawback lines written
+     */
+    private int earlyRepayment(Period period, CalculationRun run, BusinessEvent event, Coverage coverage,
+                               List<RuleVersion> versions) {
+        event.processingStatus = ProcessingStatus.PROCESSED;
+        Map<String, String> attributes = attributes(event, coverage, choiceAt(coverage, coverage.effectDate));
+        attributes.put("eventType", EventType.PREMIUM_COLLECTED.name());
+        RuleVersion rule = emprunteurRule(versions, attributes);
+        if (rule == null) {
+            return 0;
+        }
+        int window = fr.alptis.remuneration.engine.families.UpfrontFamily.earlyRepaymentMonths(rule.parameters);
+        if (ChronoUnit.MONTHS.between(coverage.effectDate, event.eventDate) > window) {
+            return 0;
+        }
+        BigDecimal recalcRate = fr.alptis.remuneration.engine.families.UpfrontFamily.recalculationRate(rule.parameters);
+        BigDecimal collected = BigDecimal.ZERO;
+        for (BusinessEvent premium : BusinessEvent.<BusinessEvent>list(
+                "coverage = ?1 and eventType = ?2 and basisAmount is not null",
+                coverage, EventType.PREMIUM_COLLECTED)) {
+            collected = collected.add(premium.basisAmount);
+        }
+        BigDecimal paid = BigDecimal.ZERO;
+        for (CommissionLine line : CommissionLine.<CommissionLine>list("coverage = ?1 and status in ?2", coverage,
+                List.of(LineStatus.EARNED, LineStatus.PAYABLE, LineStatus.PAID))) {
+            paid = paid.add(line.amount);
+        }
+        BigDecimal recalc = collected.multiply(recalcRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal delta = recalc.subtract(paid);
+        if (delta.signum() == 0) {
+            return 0;
+        }
+        String explanation = "{\"family\":\"EARLY_REPAYMENT\",\"collected\":" + collected.toPlainString()
+                + ",\"recalcRate\":" + recalcRate.toPlainString() + ",\"recalc\":" + recalc.toPlainString()
+                + ",\"paid\":" + paid.toPlainString() + ",\"delta\":" + delta.toPlainString() + "}";
+        return writeShared(period, run, event, coverage, rule, null, rule.rule.plan.direction,
+                LineNature.CLAWBACK, null, null, delta, explanation).size();
+    }
+
+    /**
+     * Finds the active upfront rule that carries the borrower early-repayment parameters and matches
+     * the premium context of the coverage, or null when there is none.
+     *
+     * @param versions   the active versions
+     * @param attributes the premium-context attributes of the coverage
+     * @return the matching borrower rule version, or null
+     */
+    private RuleVersion emprunteurRule(List<RuleVersion> versions, Map<String, String> attributes) {
+        for (RuleVersion version : versions) {
+            if (version.rule.family != RuleFamily.UPFRONT) {
+                continue;
+            }
+            if (fr.alptis.remuneration.engine.families.UpfrontFamily.earlyRepaymentMonths(version.parameters) == null) {
+                continue;
+            }
+            if (fr.alptis.remuneration.engine.families.UpfrontFamily.recalculationRate(version.parameters) == null) {
+                continue;
+            }
+            if (scopeMatcher.matches(version.scope, attributes)) {
+                return version;
+            }
+        }
+        return null;
     }
 
     /**
@@ -2732,8 +2815,8 @@ public class CalculationEngine {
      * @return the calculation input
      */
     private static CalculationInput input(BusinessEvent event, Coverage coverage, RemunerationChoice choice,
-                                          RuleVersion version) {
-        return new CalculationInput(event.eventType, event.basisAmount,
+                                          RuleVersion version, BigDecimal basis) {
+        return new CalculationInput(event.eventType, basis,
                 choice == null ? null : choice.linearRate,
                 choice == null ? null : choice.acquisitionRate,
                 choice == null ? null : choice.servicingRate,
@@ -2741,6 +2824,55 @@ public class CalculationEngine {
                 event.eventDate, event.periodFrom, event.periodTo,
                 event.precomputedBasis, event.precomputedRate, event.precomputedAmount,
                 coverage.annualPremium, version.outputNature, version.parameters, null);
+    }
+
+    /** One pro-rata share of a premium's basis attributed to a remuneration choice (P12). */
+    private record RateSegment(BigDecimal basis, RemunerationChoice choice) {
+    }
+
+    /**
+     * Splits a premium across the remuneration choices in force during its covered period (P12): when
+     * the garantie's choice changes between {@code periodFrom} and {@code periodTo}, the basis is shared
+     * pro rata of the days under each choice, the last segment taking the rounding remainder (P13). With
+     * no covered period or a single choice, the whole basis stays on the event-date choice (H-45).
+     *
+     * @param coverage the coverage
+     * @param event    the premium event
+     * @param atEvent  the choice in force at the event date
+     * @return the basis segments, each with its choice
+     */
+    private static List<RateSegment> proratedSegments(Coverage coverage, BusinessEvent event,
+                                                      RemunerationChoice atEvent) {
+        BigDecimal basis = event.basisAmount;
+        List<RemunerationChoice> choices = event.periodFrom == null || event.periodTo == null
+                ? List.of()
+                : RemunerationChoice.<RemunerationChoice>list(
+                        "coverage = ?1 and (validFrom is null or validFrom <= ?2) "
+                                + "and (validTo is null or validTo >= ?3) order by validFrom",
+                        coverage, event.periodTo, event.periodFrom);
+        if (choices.size() <= 1) {
+            return List.of(new RateSegment(basis, atEvent));
+        }
+        // The choices are contiguous over the window: each change starts the next segment, so a
+        // segment runs from its start to the day before the next choice takes effect (P13 rounds, the
+        // last segment taking the remainder).
+        long totalDays = ChronoUnit.DAYS.between(event.periodFrom, event.periodTo) + 1;
+        List<RateSegment> segments = new ArrayList<>();
+        BigDecimal allocated = BigDecimal.ZERO;
+        for (int i = 0; i < choices.size(); i++) {
+            BigDecimal part;
+            if (i == choices.size() - 1) {
+                part = basis.subtract(allocated).setScale(2, RoundingMode.HALF_UP);
+            } else {
+                LocalDate start = i == 0 ? event.periodFrom : choices.get(i).validFrom;
+                long days = ChronoUnit.DAYS.between(start, choices.get(i + 1).validFrom);
+                part = basis.multiply(BigDecimal.valueOf(days))
+                        .divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
+                allocated = allocated.add(part);
+            }
+            segments.add(new RateSegment(part, choices.get(i)));
+        }
+        return segments;
     }
 
     /**
