@@ -325,9 +325,7 @@ public class CalculationEngine {
             } else if (event.eventType == EventType.UNPAID_NOTICE) {
                 count += unpaid(period, run, event, coverage, advance);
             } else if (savings && event.eventType == EventType.SCHEDULED_PAYMENT) {
-                // The retirement discount covers the scheduled payments of years one to five, so they
-                // produce no line and are marked treated, not held under P8 (section 6.6).
-                event.processingStatus = ProcessingStatus.PROCESSED;
+                count += savingsScheduledPayment(period, run, event, coverage, versions);
             } else if (savings && isSavingsRecall(event.eventType)) {
                 count += savingsRecall(period, run, coverage, event, outboundSavings, inboundSavings);
             } else if (isTerminal(event.eventType)) {
@@ -1328,6 +1326,83 @@ public class CalculationEngine {
      * @param outboundSavings the outbound savings rule, or null when only the insurer side applies
      * @return the number of advance lines written (0 or 1)
      */
+    /**
+     * Processes a scheduled payment of a discounted retirement contract (section 6.6): during the
+     * discount (years one to five) it produces no line — the discount covers it and it is marked
+     * treated, not held under P8; from the sixth year the product's post-discount linear rule (1.20%)
+     * applies, found by its minimum-seniority condition.
+     *
+     * @param period   the period
+     * @param run      the run
+     * @param event    the scheduled-payment event
+     * @param coverage the coverage
+     * @param versions the active versions of the entity
+     * @return the number of lines written
+     */
+    private int savingsScheduledPayment(Period period, CalculationRun run, BusinessEvent event, Coverage coverage,
+                                        List<RuleVersion> versions) {
+        event.processingStatus = ProcessingStatus.PROCESSED;
+        RuleVersion rule = postDiscountLinearRule(coverage, event, versions);
+        if (rule == null) {
+            return 0;
+        }
+        RemunerationChoice choice = choiceAt(coverage, event.eventDate);
+        int written = 0;
+        for (ProposedLine proposed : families.get(RuleFamily.LINEAR)
+                .propose(input(event, coverage, choice, rule, event.basisAmount))) {
+            written += writeLine(period, run, event, coverage, rule, proposed).size();
+        }
+        return written;
+    }
+
+    /**
+     * Finds the active linear rule that applies to a scheduled payment once the retirement discount is
+     * over: a {@code LINEAR} rule bearing a minimum-seniority condition, matching the coverage, whose
+     * seniority (counted from its {@code seniorityOrigin}) has reached the condition. Returns null while
+     * the discount still covers the payment.
+     *
+     * @param coverage the coverage
+     * @param event    the scheduled-payment event
+     * @param versions the active versions of the entity
+     * @return the applicable post-discount rule, or null
+     */
+    private RuleVersion postDiscountLinearRule(Coverage coverage, BusinessEvent event, List<RuleVersion> versions) {
+        Map<String, String> attributes = attributes(event, coverage, choiceAt(coverage, event.eventDate));
+        for (RuleVersion version : versions) {
+            if (version.rule.family != RuleFamily.LINEAR) {
+                continue;
+            }
+            Integer min = fr.alptis.remuneration.engine.families.LinearFamily.minSeniorityYears(version.parameters);
+            if (min == null) {
+                continue;
+            }
+            if (!activeAt(version, event.eventDate)) {
+                continue;
+            }
+            if (!scopeMatcher.matches(version.scope, attributes)) {
+                continue;
+            }
+            if (ChronoUnit.YEARS.between(seniorityOriginDate(coverage, version), event.eventDate) >= min) {
+                return version;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the date from which a rule's seniority is counted: the first scheduled payment encashed
+     * when the rule says so, otherwise the garantie's effect date (section 6.6, {@code seniorityOrigin}).
+     *
+     * @param coverage the coverage
+     * @param version  the rule version
+     * @return the seniority origin date
+     */
+    LocalDate seniorityOriginDate(Coverage coverage, RuleVersion version) {
+        return fr.alptis.remuneration.engine.families.LinearFamily
+                .seniorityFromFirstScheduledPayment(version.parameters)
+                ? firstScheduledPayment(coverage).eventDate : coverage.effectDate;
+    }
+
     private int openSavingsDiscount(Period period, CalculationRun run, Coverage coverage, RuleVersion outboundSavings) {
         if (outboundSavings == null || activeSavingsPosition(coverage) != null) {
             return 0;

@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pure unit tests for the core calculation families (section 6.2, 6.5, 6.10): the proposals of the
@@ -109,6 +111,16 @@ class FamilyProposeTest {
                 "{\"rateSource\":\"RULE\",\"rate\":0.003,\"minRankInCalendarYear\":2}"));
         assertEquals(null, LinearFamily.minRankInCalendarYear("{}"));
         assertEquals(null, LinearFamily.minRankInCalendarYear(null));
+        // Seniority parameters (section 6.6): the minimum seniority and the origin flag.
+        assertEquals(5, LinearFamily.minSeniorityYears(
+                "{\"minSeniorityYears\":5,\"seniorityOrigin\":\"FIRST_SCHEDULED_PAYMENT\"}"));
+        assertEquals(null, LinearFamily.minSeniorityYears("{}"));
+        assertEquals(null, LinearFamily.minSeniorityYears(null));
+        assertTrue(LinearFamily.seniorityFromFirstScheduledPayment(
+                "{\"seniorityOrigin\":\"FIRST_SCHEDULED_PAYMENT\"}"));
+        assertFalse(LinearFamily.seniorityFromFirstScheduledPayment("{\"seniorityOrigin\":\"EFFECT_DATE\"}"));
+        assertFalse(LinearFamily.seniorityFromFirstScheduledPayment("{}"));
+        assertFalse(LinearFamily.seniorityFromFirstScheduledPayment(null));
     }
 
     /**

@@ -1056,4 +1056,60 @@ class SavingsEngineTest {
         assertEquals(1, lines().size());
         assertEquals(0, amountOf(LineNature.COMPLEMENT).compareTo(new BigDecimal("351.00")));
     }
+
+    /**
+     * Section 6.6: the scheduled payments of a discounted retirement contract produce no line during the
+     * discount (years one to five) but earn the product's post-discount linear rate of 1,20% from the
+     * sixth year — 300 € × 1,20% = 3,60 €. The decoy rules exercise the finder's skip paths (no
+     * seniority condition, inactive version, another product's scope).
+     */
+    @Test
+    @TestTransaction
+    void scheduled_payment_earns_the_post_discount_rate_from_year_six() {
+        Product p = product("PER");
+        Coverage c = coverage("PER-1", p, distributor("D1"), LocalDate.of(2021, 1, 1));
+        linearChoice(c, "0.03");
+        version("OUT", Direction.OUTBOUND, "R_DISC", RuleFamily.ADVANCE, LineNature.ADVANCE,
+                SAVINGS_SCOPE, OUT_DISCOUNT, "SAVINGS");
+        version("OUT", Direction.OUTBOUND, "R_LIN6", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"entity\":[\"UNEP\"],\"product\":[\"PER\"],\"eventType\":[\"SCHEDULED_PAYMENT\"]}",
+                "{\"rateSource\":\"RULE\",\"rate\":0.012,\"minSeniorityYears\":5,"
+                        + "\"seniorityOrigin\":\"FIRST_SCHEDULED_PAYMENT\"}", "LIN6");
+        version("OUT", Direction.OUTBOUND, "R_NOMIN", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"entity\":[\"UNEP\"],\"product\":[\"PER\"],\"eventType\":[\"SCHEDULED_PAYMENT\"]}",
+                "{\"rateSource\":\"RULE\",\"rate\":0.05}", "NOMIN");
+        RuleVersion inactive = version("OUT", Direction.OUTBOUND, "R_INACT", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"entity\":[\"UNEP\"],\"product\":[\"PER\"],\"eventType\":[\"SCHEDULED_PAYMENT\"]}",
+                "{\"rateSource\":\"RULE\",\"rate\":0.05,\"minSeniorityYears\":5}", "INACT");
+        inactive.validTo = LocalDate.of(2020, 12, 31);
+        version("OUT", Direction.OUTBOUND, "R_OTHER", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"entity\":[\"UNEP\"],\"product\":[\"OTHER\"],\"eventType\":[\"SCHEDULED_PAYMENT\"]}",
+                "{\"rateSource\":\"RULE\",\"rate\":0.05,\"minSeniorityYears\":5}", "OTHER");
+        event(c, "S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2021, 2, 10), "300.00");
+        event(c, "S6", EventType.SCHEDULED_PAYMENT, LocalDate.of(2026, 3, 10), "300.00");
+
+        engine.runReal("UNEP", LocalDate.of(2026, 3, 1));
+
+        assertEquals(1, lines().stream().filter(l -> l.nature == LineNature.LINEAR).count());
+        assertEquals(0, amountOf(LineNature.LINEAR).compareTo(new BigDecimal("3.60")));
+    }
+
+    /**
+     * The seniority origin follows the rule parameter: the first scheduled payment when the rule says
+     * so, otherwise the garantie's effect date (section 6.6).
+     */
+    @Test
+    @TestTransaction
+    void seniority_origin_date_follows_the_parameter() {
+        Product p = product("PER");
+        Coverage c = coverage("PER-1", p, distributor("D1"), LocalDate.of(2021, 1, 1));
+        event(c, "S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2021, 2, 10), "300.00");
+        RuleVersion fromFirst = version("OUT", Direction.OUTBOUND, "R_F", RuleFamily.LINEAR, LineNature.LINEAR,
+                SAVINGS_SCOPE, "{\"seniorityOrigin\":\"FIRST_SCHEDULED_PAYMENT\"}", "F");
+        RuleVersion fromEffect = version("OUT", Direction.OUTBOUND, "R_E", RuleFamily.LINEAR, LineNature.LINEAR,
+                SAVINGS_SCOPE, "{\"seniorityOrigin\":\"EFFECT_DATE\"}", "E");
+
+        assertEquals(LocalDate.of(2021, 2, 10), engine.seniorityOriginDate(c, fromFirst));
+        assertEquals(LocalDate.of(2021, 1, 1), engine.seniorityOriginDate(c, fromEffect));
+    }
 }

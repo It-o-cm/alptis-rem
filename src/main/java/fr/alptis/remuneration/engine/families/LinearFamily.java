@@ -38,6 +38,7 @@ public class LinearFamily implements ComputingFamily {
                 "rateSource": {"enum": ["COVERAGE", "RULE"]},
                 "rate": {"type": "number", "minimum": 0, "maximum": 1},
                 "seniorityOrigin": {"enum": ["EFFECT_DATE", "FIRST_SCHEDULED_PAYMENT"]},
+                "minSeniorityYears": {"type": "integer", "minimum": 0},
                 "minRankInCalendarYear": {"type": "integer", "minimum": 1}
               }
             }
@@ -120,6 +121,39 @@ public class LinearFamily implements ComputingFamily {
         }
         JsonNode rank = params.get("minRankInCalendarYear");
         return rank == null ? null : rank.asInt();
+    }
+
+    /**
+     * Reads the minimum seniority in years the garantie must reach for the rule to apply (section 6.6:
+     * the 1.20% rate from the sixth year of a discounted retirement contract); null when the rule has no
+     * seniority condition.
+     *
+     * @param parameters the parameters JSON
+     * @return the minimum seniority in years, or null
+     */
+    public static Integer minSeniorityYears(String parameters) {
+        JsonNode params = read(parameters);
+        if (params == null) {
+            return null;
+        }
+        JsonNode years = params.get("minSeniorityYears");
+        return years == null ? null : years.asInt();
+    }
+
+    /**
+     * Tells whether the rule counts seniority from the first scheduled payment encashed rather than
+     * from the garantie's effect date (section 6.6, {@code seniorityOrigin}).
+     *
+     * @param parameters the parameters JSON
+     * @return {@code true} when seniority is counted from the first scheduled payment
+     */
+    public static boolean seniorityFromFirstScheduledPayment(String parameters) {
+        JsonNode params = read(parameters);
+        if (params == null) {
+            return false;
+        }
+        JsonNode origin = params.get("seniorityOrigin");
+        return origin != null && "FIRST_SCHEDULED_PAYMENT".equals(origin.asText());
     }
 
     /**

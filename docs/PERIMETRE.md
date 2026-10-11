@@ -214,7 +214,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 + apurement multi-mois + CR-78/80 JUnit | complet — escomptes, apurements (d'un mois sur l'autre), régularisations, write-off et cession traités par le moteur |
 | CAL-04 | CalculationEngine (reprises) | #24 | cr04–cr07 JUnit | complet |
 | CAL-05 | CalculationEngine (RCD/RCP) | #24 | cr40–cr48 + DEFER JUnit | complet — RCD/RCP et conditions ; rattrapage `DEFER` (§6.7) **implémenté** (évaluation mensuelle de la condition de versement) |
-| CAL-06 | OutstandingFamily, CalculationEngine | — | cr30–cr36 JUnit | partiel — règle linéaire 1,20 % année 6 et `seniorityOrigin` non implémentés ; délai d'escompte retraite approximé |
+| CAL-06 | OutstandingFamily, CalculationEngine | — | cr30–cr36 + 1,20 % année 6 JUnit | partiel — règle linéaire 1,20 % année 6 et `seniorityOrigin` **réalisés** ; reste le délai d'escompte retraite approximé (§6.6) |
 | CAL-07 | CalculationEngine (co-courtage, partages) | #24 | cr49, cr50, cr76 JUnit | complet |
 | CAL-08 | FeeFamily, FixedFamily | #24 | cr77 JUnit | complet |
 | CAL-09 | CalculationEngine (règles temporaires) | #38 | cr75 JUnit | complet |
@@ -383,6 +383,7 @@ ligne datée sans effacer l'ancienne) :
    `openAdvanceIfEligible` + apurement multi-mois) ; reste à retirer le contournement du
    jeu de démonstration et à y porter un escompte réel suivi sur plusieurs mois.
 4. Épargne retraite : règle 1,20 % année 6 et `seniorityOrigin` non livrés (2026-10-09, §6.6).
+   **Livrés** (2026-10-11, règle linéaire post-escompte à condition d'ancienneté).
 5. Délai de versement de l'escompte retraite approximé (2026-10-09, §6.6).
 6. `DEFER` (§6.7) non livré, seul `FORFEIT` (2026-10-09). **`DEFER` livré** (2026-10-11,
    évaluation mensuelle de la condition de versement, rattrapage du mois reporté).
