@@ -130,6 +130,40 @@ class ImportsResourceTest {
     }
 
     /**
+     * The upload form's source systems list offers the standard inbound systems (section 9.1) so the
+     * operator chooses one instead of typing a code.
+     */
+    @Test
+    void lists_the_source_systems_for_the_upload_form() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/imports/source-systems")
+                .then().statusCode(200)
+                .body("$", hasItem("SESAME")).body("$", hasItem("CLEVA"));
+    }
+
+    /**
+     * A group-level (unrestricted) user also reads the source systems list, exercising the
+     * cross-entity branch of the query.
+     */
+    @Test
+    void group_user_lists_source_systems_across_entities() {
+        given().auth().preemptive().basic("group-validator", "group-validator")
+                .when().get("/api/ui/v1/imports/source-systems")
+                .then().statusCode(200)
+                .body("$", hasItem("SESAME"));
+    }
+
+    /**
+     * A viewer may not read the source systems list (it is scoped to the imports-screen roles).
+     */
+    @Test
+    void viewer_cannot_list_source_systems() {
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().get("/api/ui/v1/imports/source-systems")
+                .then().statusCode(403);
+    }
+
+    /**
      * A viewer may not upload.
      */
     @Test

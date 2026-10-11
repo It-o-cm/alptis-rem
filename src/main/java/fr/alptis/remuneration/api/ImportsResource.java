@@ -87,6 +87,19 @@ public class ImportsResource {
     }
 
     /**
+     * Lists the source systems the upload form may choose from (ING-01), within the caller's partition.
+     *
+     * @return the source system codes
+     */
+    @GET
+    @Path("/source-systems")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public List<String> sourceSystems() {
+        return query.sourceSystems();
+    }
+
+    /**
      * Lists the rejected lines of a batch.
      *
      * @param id the batch id

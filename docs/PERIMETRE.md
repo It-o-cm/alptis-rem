@@ -40,7 +40,7 @@ d'accès serveur · test de bout en bout · état.
 | 2 | Détail d'une période : états, transitions, calendrier, lots, reste à traiter | WKF-01, 7.1–7.3 | `periods` (détail) / PeriodsView | GET /periods/{e}/{m}, POST transition | periods.spec | complet — calendrier cible (§7.3), lots de paiement de la période et reste à traiter (événements en attente/à l'écart) ajoutés |
 | 3 | Journal des imports et flux attendus | ING-05, ING-10 | `imports` / ImportsView | GET /imports, GET /flows catalog | imports.spec, flux.spec | complet |
 | 4 | Détail d'un import : compteurs, rejets, lignes en attente, correction/mise à l'écart | ING-04, ING-06 | `imports` (détail) / ImportsView | GET rejections/held, POST correct/discard | imports.spec | complet |
-| 5 | Téléversement d'un fichier, avec choix du flux et du système source | ING-01, ING-08 | `imports` / ImportsView | POST /imports | imports.spec | partiel — sélecteur de système source et import en masse de données complémentaires (ING-08) à vérifier/compléter |
+| 5 | Téléversement d'un fichier, avec choix du flux et du système source | ING-01, ING-08 | `imports` / ImportsView | POST /imports, GET /imports/source-systems | imports.spec | complet — système source choisi dans une liste (GET source-systems, §9.1), flux affichés par leur libellé français ; import en masse de données complémentaires par les flux `coverages`/`events` (ING-08) |
 | 6 | Saisie manuelle d'un événement ou d'une donnée complémentaire | ING-07 | `manualEvent` / ManualEventView | POST /events | manual-event.spec | partiel — saisie d'un événement seule ; données complémentaires absentes |
 | 7 | Recherche d'événements et détail d'un événement : statut, motif d'attente, lignes produites | ING-06, 5.3 | — | — | — | absent |
 | 8 | Événements en attente, par motif | P8, ING-06 | — | — | — | absent |
@@ -180,7 +180,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | ING-05 | ImportQueryService | #3 | imports | complet |
 | ING-06 | ImportService (relance auto) | #7, #8 | — | partiel — relance serveur présente ; écrans « recherche d'événements » et « en attente par motif » absents |
 | ING-07 | ManualEventService | #6 | manual-event | partiel — données complémentaires non saisissables |
-| ING-08 | ImportService | #5, #12 | — | partiel — import en masse de données complémentaires et d'ajustements (REG-04) absent |
+| ING-08 | ImportService | #5, #12 | imports | partiel — import en masse de données complémentaires (garanties/événements) livré et vérifié (#5) ; import en masse d'ajustements (REG-04) encore absent (#12) |
 | ING-09 | EXTERNAL family, PayeeExternalImporter | #57 | — | partiel — attendu des assureurs non porté comme donnée |
 | ING-10 | FlowCatalogService | #3, #48 | flux | complet |
 | ING-11 | OpeningBalanceImporter | #51 | reprise | complet |

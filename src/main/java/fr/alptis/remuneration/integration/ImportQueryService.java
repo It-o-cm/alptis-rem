@@ -3,6 +3,7 @@ package fr.alptis.remuneration.integration;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.ImportMapping;
 import fr.alptis.remuneration.domain.ImportRejection;
 import fr.alptis.remuneration.domain.ImportRejectionStatus;
 import fr.alptis.remuneration.domain.PageResult;
@@ -66,6 +67,30 @@ public class ImportQueryService {
         List<BatchView> items = query.page(Page.of(safePage, safeSize)).<ImportBatch>list().stream()
                 .map(ImportQueryService::toView).toList();
         return new PageResult<>(items, safePage, safeSize, total);
+    }
+
+    /**
+     * The standard inbound source systems of section 9.1, always offered so the upload form never
+     * falls back to a free-text code.
+     */
+    private static final List<String> STANDARD_SOURCE_SYSTEMS =
+            List.of("CLEVA", "KELIA", "RSI", "SALESFORCE", "SESAME");
+
+    /**
+     * Lists the source systems the upload form may choose from: the standard inbound systems of section
+     * 9.1, plus any extra system configured by a mapping within the user's entity partition (ING-01,
+     * ING-02), sorted and de-duplicated.
+     *
+     * @return the source system codes, sorted
+     */
+    @Transactional
+    public List<String> sourceSystems() {
+        java.util.SortedSet<String> systems = new java.util.TreeSet<>(STANDARD_SOURCE_SYSTEMS);
+        List<ImportMapping> mappings = scope.unrestricted()
+                ? ImportMapping.listAll()
+                : ImportMapping.list("entity.code in ?1", scope.visibleCodes());
+        mappings.forEach(m -> systems.add(m.sourceSystem));
+        return List.copyOf(systems);
     }
 
     /**

@@ -33,7 +33,7 @@ test.describe('Saisie manuelle — opérateur', () => {
     // The entry is journalled like an import, visible on the imports screen.
     await page.goto('/imports');
     const batchRow = page.locator('[data-testid^="batch-row-"]').first();
-    await expect(batchRow).toContainText('events');
+    await expect(batchRow).toContainText('Événements');
     await expect(batchRow).toContainText('manual-EVT-MAN-001');
   });
 

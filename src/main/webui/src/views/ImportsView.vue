@@ -3,6 +3,7 @@ import { onMounted, ref, computed } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateImports } from '../presentation/access';
+import { flowLabel } from '../presentation/imports';
 import { formatDate } from '../presentation/format';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
@@ -75,7 +76,8 @@ const held = ref<HeldView[]>([]);
 const message = ref('');
 const uploadError = ref('');
 
-const form = ref({ flowCode: 'distributors', sourceSystem: 'SESAME', fileName: '', content: '' });
+const form = ref({ flowCode: 'distributors', sourceSystem: '', fileName: '', content: '' });
+const sourceSystems = ref<string[]>([]);
 
 /** Whether the current user may operate imports (upload, correct, discard). */
 const canOperate = (): boolean => canOperateImports(session.roles);
@@ -87,7 +89,7 @@ const receivedFlows = computed(() => new Set(batches.value.map((b) => b.flowCode
 
 /** Columns of the imports journal. */
 const journalColumns: Column<BatchView>[] = [
-  { key: 'flowCode', label: 'Flux' },
+  { key: 'flowCode', label: 'Flux', value: (b) => flowLabel(b.flowCode) },
   { key: 'fileName', label: 'Fichier' },
   { key: 'receivedAt', label: 'Reçu le', value: (b) => formatDate(b.receivedAt) },
   { key: 'linesRead', label: 'Lues', align: 'num' },
@@ -235,7 +237,19 @@ function stateClass(status: string): string {
   return 'tag mute';
 }
 
-onMounted(loadJournal);
+/** Loads the source systems the upload form may choose from, selecting the first. */
+async function loadSourceSystems(): Promise<void> {
+  if (!canOperate()) return;
+  sourceSystems.value = await apiGet<string[]>('/api/ui/v1/imports/source-systems');
+  if (sourceSystems.value.length > 0) {
+    form.value.sourceSystem = sourceSystems.value[0];
+  }
+}
+
+onMounted(async () => {
+  await loadJournal();
+  await loadSourceSystems();
+});
 </script>
 
 <template>
@@ -249,11 +263,13 @@ onMounted(loadJournal);
       <AppForm @submit="submitUpload">
         <FormField label="Flux" width="short" v-slot="{ id }">
           <select :id="id" data-testid="upload-flow" v-model="form.flowCode">
-            <option v-for="f in FLOWS" :key="f" :value="f">{{ f }}</option>
+            <option v-for="f in FLOWS" :key="f" :value="f">{{ flowLabel(f) }}</option>
           </select>
         </FormField>
         <FormField label="Système source" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="upload-source" type="text" v-model="form.sourceSystem" />
+          <select :id="id" data-testid="upload-source" v-model="form.sourceSystem">
+            <option v-for="s in sourceSystems" :key="s" :value="s">{{ s }}</option>
+          </select>
         </FormField>
         <FormField label="Fichier" width="long" v-slot="{ id }">
           <input :id="id" data-testid="upload-file" type="file" @change="onFile" />
