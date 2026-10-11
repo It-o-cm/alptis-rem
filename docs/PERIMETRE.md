@@ -214,7 +214,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 + apurement multi-mois + CR-78/80 JUnit | complet — escomptes, apurements (d'un mois sur l'autre), régularisations, write-off et cession traités par le moteur |
 | CAL-04 | CalculationEngine (reprises) | #24 | cr04–cr07 JUnit | complet |
 | CAL-05 | CalculationEngine (RCD/RCP) | #24 | cr40–cr48 + DEFER JUnit | complet — RCD/RCP et conditions ; rattrapage `DEFER` (§6.7) **implémenté** (évaluation mensuelle de la condition de versement) |
-| CAL-06 | OutstandingFamily, CalculationEngine | — | cr30–cr36 + 1,20 % année 6 JUnit | partiel — règle linéaire 1,20 % année 6 et `seniorityOrigin` **réalisés** ; reste le délai d'escompte retraite approximé (§6.6) |
+| CAL-06 | OutstandingFamily, CalculationEngine | — | cr30–cr36 + 1,20 % année 6 + délai §6.6 JUnit | complet — règle linéaire 1,20 % année 6, `seniorityOrigin` et délai de versement « période qui suit le premier versement » (§6.6) réalisés et testés |
 | CAL-07 | CalculationEngine (co-courtage, partages) | #24 | cr49, cr50, cr76 JUnit | complet |
 | CAL-08 | FeeFamily, FixedFamily | #24 | cr77 JUnit | complet |
 | CAL-09 | CalculationEngine (règles temporaires) | #38 | cr75 JUnit | complet |
@@ -385,6 +385,9 @@ ligne datée sans effacer l'ancienne) :
 4. Épargne retraite : règle 1,20 % année 6 et `seniorityOrigin` non livrés (2026-10-09, §6.6).
    **Livrés** (2026-10-11, règle linéaire post-escompte à condition d'ancienneté).
 5. Délai de versement de l'escompte retraite approximé (2026-10-09, §6.6).
+   **Corrigé** (2026-10-11) : escompte dû dans la période qui suit le premier versement
+   programmé encaissé ; repêchage mois sur mois par `savingsCandidates` ; cas de recette
+   d'escompte retraite rejoués dans la période suivante.
 6. `DEFER` (§6.7) non livré, seul `FORFEIT` (2026-10-09). **`DEFER` livré** (2026-10-11,
    évaluation mensuelle de la condition de versement, rattrapage du mois reporté).
 7. FIN-06, FIN-08, REP-08 (marge et rapprochements) reportés/approchés (2026-10-09).

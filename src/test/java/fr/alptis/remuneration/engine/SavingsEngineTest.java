@@ -314,7 +314,8 @@ class SavingsEngineTest {
                 SAVINGS_SCOPE, OUT_DISCOUNT, "SAVINGS");
         event(c, "S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2026, 1, 10), "300.00");
 
-        engine.runReal("UNEP", MONTH);
+        // The discount is due in the period that follows the first scheduled payment (section 6.6).
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
 
         assertEquals(1, lines().size());
         assertEquals(0, amountOf(LineNature.ADVANCE).compareTo(new BigDecimal("288.00")));
@@ -338,7 +339,8 @@ class SavingsEngineTest {
         }
         event(c, "SUS", EventType.PLAN_SUSPENDED, LocalDate.of(2026, 1, 28), null);
 
-        engine.runReal("UNEP", MONTH);
+        // The discount is due in the period that follows the first scheduled payment (section 6.6).
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
 
         assertEquals(0, amountOf(LineNature.ADVANCE).compareTo(new BigDecimal("96.00")));
         assertEquals(0, amountOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-59.75")));
@@ -741,7 +743,8 @@ class SavingsEngineTest {
                 SAVINGS_SCOPE, OUT_DISCOUNT, "SAVINGS");
         event(c, "S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2026, 1, 10), "300.00");
 
-        engine.runReal("UNEP", MONTH);
+        // The discount is due in the period that follows the first scheduled payment (section 6.6).
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
 
         assertEquals(1, lines().size());
         assertEquals(0, amountOf(LineNature.ADVANCE).compareTo(new BigDecimal("288.00")));
@@ -910,7 +913,8 @@ class SavingsEngineTest {
         future.validFrom = LocalDate.of(2099, 1, 1);
         event(c, "S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2026, 1, 10), "300.00");
 
-        engine.runReal("UNEP", MONTH);
+        // The discount is due in the period that follows the first scheduled payment (section 6.6).
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
 
         assertEquals(1, lines().size());
         assertEquals(0, amountOf(LineNature.ADVANCE).compareTo(new BigDecimal("288.00")));
@@ -930,7 +934,8 @@ class SavingsEngineTest {
         event(c, "S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2026, 1, 10), "100.00");
         event(c, "SUR", EventType.SURRENDER, LocalDate.of(2026, 1, 20), null);
 
-        engine.runReal("UNEP", MONTH);
+        // The discount is due in the period that follows the first scheduled payment (section 6.6).
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
 
         assertEquals(0, amountOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-96.00")));
         assertEquals(AdvanceStatus.CANCELLED,
@@ -952,7 +957,8 @@ class SavingsEngineTest {
         event(c, "S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2026, 1, 10), "100.00");
         event(c, "TRF", EventType.OUTBOUND_TRANSFER, LocalDate.of(2026, 1, 20), null);
 
-        engine.runReal("UNEP", MONTH);
+        // The discount is due in the period that follows the first scheduled payment (section 6.6).
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
 
         assertEquals(0, amountOf(LineNature.CLAWBACK).compareTo(new BigDecimal("-96.00")));
         assertEquals(AdvanceStatus.CANCELLED,
@@ -1111,5 +1117,51 @@ class SavingsEngineTest {
 
         assertEquals(LocalDate.of(2021, 2, 10), engine.seniorityOriginDate(c, fromFirst));
         assertEquals(LocalDate.of(2021, 1, 1), engine.seniorityOriginDate(c, fromEffect));
+    }
+
+    /** Injects an already-processed scheduled payment on a coverage (as a prior month would leave it). */
+    private void processedPayment(Coverage coverage, String key, LocalDate date, String basis) {
+        BusinessEvent e = event(coverage, key, EventType.SCHEDULED_PAYMENT, date, basis);
+        e.processingStatus = ProcessingStatus.PROCESSED;
+    }
+
+    /**
+     * Section 6.6: in a later period the finder opens the discount of a savings garantie whose first
+     * scheduled payment was encashed in an earlier month and that carries no event this run, and skips
+     * the garanties that already hold a position, that carry no outbound savings rule, or whose first
+     * payment the period has not yet passed. The garantie with two earlier payments exercises the
+     * finder's deduplication.
+     */
+    @Test
+    @TestTransaction
+    void savings_finder_opens_due_discounts_and_skips_others() {
+        Product per = product("PER");
+        Product nosav = product("NOSAV");
+        version("OUT", Direction.OUTBOUND, "R_DISC", RuleFamily.ADVANCE, LineNature.ADVANCE,
+                SAVINGS_SCOPE, OUT_DISCOUNT, "SAVINGS");
+        // A: two earlier payments, no position — the finder opens it once (dedup) at 300 × 12 × 8%.
+        Coverage a = coverage("PER-A", per, distributor("DA"), LocalDate.of(2026, 1, 1));
+        processedPayment(a, "A1", LocalDate.of(2026, 1, 10), "300.00");
+        processedPayment(a, "A2", LocalDate.of(2026, 1, 20), "300.00");
+        // B: an earlier payment but a position already exists — skipped.
+        Coverage b = coverage("PER-B", per, distributor("DB"), LocalDate.of(2026, 1, 1));
+        processedPayment(b, "B1", LocalDate.of(2026, 1, 10), "300.00");
+        discountPosition(b, "288.00", LocalDate.of(2026, 1, 10));
+        // C: an earlier payment but no outbound savings rule for its product — skipped.
+        Coverage c = coverage("NOSAV-C", nosav, distributor("DC"), LocalDate.of(2026, 1, 1));
+        processedPayment(c, "C1", LocalDate.of(2026, 1, 10), "300.00");
+        // D: a payment the period has not yet passed (same month as the run) — skipped.
+        Coverage d = coverage("PER-D", per, distributor("DD"), LocalDate.of(2026, 2, 1));
+        processedPayment(d, "D1", LocalDate.of(2026, 2, 10), "300.00");
+
+        engine.runReal("UNEP", LocalDate.of(2026, 2, 1));
+
+        assertEquals(1, lines().size());
+        assertEquals(0, amountOf(LineNature.ADVANCE).compareTo(new BigDecimal("288.00")));
+        assertEquals(AdvanceStatus.ACTIVE, AdvancePosition.<AdvancePosition>find("coverage", a).firstResult().status);
+        assertEquals(1, AdvancePosition.count("coverage", a));
+        assertEquals(1, AdvancePosition.count("coverage", b));
+        assertNull(AdvancePosition.find("coverage", c).firstResult());
+        assertNull(AdvancePosition.find("coverage", d).firstResult());
     }
 }

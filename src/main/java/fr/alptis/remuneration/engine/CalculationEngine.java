@@ -173,6 +173,12 @@ public class CalculationEngine {
         for (Coverage coverage : advanceCandidates(entity, byCoverage.keySet())) {
             lineCount += processUnit(period, run, coverage, List.of(), versions);
         }
+        // Likewise the retirement discount is due in the period following the first scheduled payment
+        // (section 6.6), so a savings garantie whose payment was encashed earlier is processed even
+        // without an event this period.
+        for (Coverage coverage : savingsCandidates(entity, period, versions, byCoverage.keySet())) {
+            lineCount += processUnit(period, run, coverage, List.of(), versions);
+        }
         for (BusinessEvent event : coverless) {
             lineCount += hold(event, HoldReason.NO_RULE);
         }
@@ -280,6 +286,43 @@ public class CalculationEngine {
                 continue;
             }
             if (AdvancePosition.count("coverage = ?1", coverage) == 0) {
+                candidates.add(coverage);
+            }
+        }
+        return candidates;
+    }
+
+    /**
+     * Returns the entity's savings garanties whose retirement discount is now due but not yet opened:
+     * a first scheduled payment was encashed in an earlier month (the period has moved past it), no
+     * discount position exists, an outbound savings rule matches, and no event brings them into this
+     * run's work units (section 6.6).
+     *
+     * @param entity     the entity
+     * @param period     the period
+     * @param versions   the active versions of the entity
+     * @param withEvents the ids of coverages already processed from their events
+     * @return the savings coverages whose discount must be opened this period
+     */
+    private List<Coverage> savingsCandidates(LegalEntity entity, Period period, List<RuleVersion> versions,
+                                             java.util.Set<Long> withEvents) {
+        List<Coverage> candidates = new ArrayList<>();
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        List<BusinessEvent> payments = BusinessEvent.list(
+                "entity = ?1 and eventType = ?2 and coverage is not null", entity, EventType.SCHEDULED_PAYMENT);
+        for (BusinessEvent payment : payments) {
+            Coverage coverage = payment.coverage;
+            if (withEvents.contains(coverage.getId()) || !seen.add(coverage.getId())) {
+                continue;
+            }
+            if (AdvancePosition.count("coverage = ?1", coverage) > 0) {
+                continue;
+            }
+            if (savingsRuleOf(savingsDiscountRules(coverage, versions), Direction.OUTBOUND) == null) {
+                continue;
+            }
+            // firstScheduledPayment is never null here: this coverage owns at least one scheduled payment.
+            if (period.periodMonth.isAfter(firstOfMonth(firstScheduledPayment(coverage).eventDate))) {
                 candidates.add(coverage);
             }
         }
@@ -1404,11 +1447,13 @@ public class CalculationEngine {
     }
 
     private int openSavingsDiscount(Period period, CalculationRun run, Coverage coverage, RuleVersion outboundSavings) {
-        if (outboundSavings == null || activeSavingsPosition(coverage) != null) {
+        if (outboundSavings == null || AdvancePosition.count("coverage = ?1", coverage) > 0) {
             return 0;
         }
         BusinessEvent first = firstScheduledPayment(coverage);
-        if (first == null || period.periodMonth.isBefore(firstOfMonth(first.eventDate))) {
+        // The discount is due in the period that follows the first scheduled payment encashed
+        // (section 6.6), not in the payment's own month.
+        if (first == null || !period.periodMonth.isAfter(firstOfMonth(first.eventDate))) {
             return 0;
         }
         BigDecimal rate = advanceRate(outboundSavings);
