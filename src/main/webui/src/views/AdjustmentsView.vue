@@ -89,6 +89,31 @@ async function approve(a: AdjustmentView): Promise<void> {
 }
 
 /**
+ * Bulk-imports adjustments from a chosen pivot CSV file (REG-04), then reloads the list.
+ * @param event the file input change event
+ */
+async function bulkImport(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement;
+  const file = input.files && input.files[0];
+  if (!file) return;
+  message.value = '';
+  error.value = '';
+  try {
+    const content = await file.text();
+    const result = await apiPost<{ imported: number }>(
+      `/api/ui/v1/adjustments/${entity.value}/${month.value}/bulk`,
+      { content },
+    );
+    message.value = `${result.imported} ajustement(s) importé(s).`;
+    await load();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Import refusé';
+  } finally {
+    input.value = '';
+  }
+}
+
+/**
  * Formats a monetary value in euros.
  * @param value the amount
  */
@@ -144,6 +169,14 @@ onMounted(load);
           <input :id="id" data-testid="adj-reverse" type="checkbox" v-model="form.autoReverse" />
         </FormField>
         <AppButton type="submit" data-testid="adj-submit">Soumettre</AppButton>
+      </AppForm>
+    </AppCard>
+
+    <AppCard v-if="canOperate()" title="Import en masse d'ajustements" data-testid="adj-bulk">
+      <AppForm>
+        <FormField label="Fichier pivot (CSV)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="adj-bulk-file" type="file" accept=".csv,text/csv" @change="bulkImport" />
+        </FormField>
       </AppForm>
     </AppCard>
 

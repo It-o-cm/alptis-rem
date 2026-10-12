@@ -47,7 +47,7 @@ d'accès serveur · test de bout en bout · état.
 | 9 | Exécutions de calcul : lancement, suivi, compteurs, unités en échec, recalcul partiel | CAL-01, CAL-12, 12.3 | `calculations` / CalculationsView | GET /calculations/{e}/{m}, POST run, POST recalc | calculations.spec | complet — lancement du calcul réel, suivi des exécutions et compteurs, unités en échec (événements en attente) et recalcul partiel par distributeur/produit/règle |
 | 10 | Contrôles et anomalies de la période, décisions, liste de contrôle | CTL-02, CTL-03, CTL-05 | `controls` / ControlsView | GET anomalies/breakdown/catalog/checklist, POST run/decision/checklist | controls.spec | complet — liste de contrôle de la période à cocher (CTL-03) ajoutée, tracée (qui/quand) |
 | 11 | Catalogue des contrôles : seuil, gravité, périmètre, activation, versions | CTL-01, CTL-04 | `controls` (onglet) / ControlsView | GET/POST /controls/{e}/catalog/{code}, GET versions | controls.spec | complet — édition par le métier (gravité, activation, paramètres/seuil) créant une nouvelle version, et historique des versions |
-| 12 | Ajustements : liste, saisie, approbation, import en masse | REG-01→05 | `adjustments` / AdjustmentsView | GET/POST adjustments, POST approve | adjustments.spec | partiel — import en masse (REG-04) et contrepassation automatique (REG-05) absents |
+| 12 | Ajustements : liste, saisie, approbation, import en masse | REG-01→05 | `adjustments` / AdjustmentsView | GET/POST adjustments, POST approve, POST bulk | adjustments.spec | complet — import en masse (REG-04, fichier pivot) et contrepassation automatique (REG-05, option + reprise au mois suivant) livrés |
 | 13 | Réclamations : liste, fiche, lignes contestées, suivi | REG-06 | — | — | — | absent |
 | 14 | Validation métier : totaux, comparaison au mois précédent, second niveau | WKF-02, 7.2 | — | — | — | absent |
 | 15 | Lots de paiement de la période et détail d'un lot : ordres, exclusions, rapprochement, validation Finance | PAY-01→05 | `payment` / PaymentView | GET lots/detail, POST prepare/validate, GET sepa | payment.spec | complet |
@@ -180,7 +180,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | ING-05 | ImportQueryService | #3 | imports | complet |
 | ING-06 | ImportService (relance auto), EventQueryService | #7, #8 | events, held-events | complet — relance serveur, écrans « recherche d'événements » (statut, motif, lignes produites) et « en attente par motif » livrés |
 | ING-07 | ManualEventService | #6 | manual-event | complet — événements et données complémentaires saisissables à la main, tracés |
-| ING-08 | ImportService | #5, #12 | imports | partiel — import en masse de données complémentaires (garanties/événements) livré et vérifié (#5) ; import en masse d'ajustements (REG-04) encore absent (#12) |
+| ING-08 | ImportService, AdjustmentImportService | #5, #12 | imports, adjustments | complet — import en masse de données complémentaires (garanties/événements, #5) et d'ajustements (REG-04, #12) |
 | ING-09 | EXTERNAL family, PayeeExternalImporter | #57 | — | partiel — attendu des assureurs non porté comme donnée |
 | ING-10 | FlowCatalogService | #3, #48 | flux | complet |
 | ING-11 | OpeningBalanceImporter | #51 | reprise | complet |
@@ -231,8 +231,8 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | REG-01 | AdjustmentService | #12 | adjustments | complet |
 | REG-02 | AdjustmentService | #12 | adjustments | partiel — pièce jointe et lien à la ligne corrigée à confirmer |
 | REG-03 | AdjustmentService (double signature, seuil) | #12 | adjustments | complet |
-| REG-04 | — | #12 | — | absent — import en masse d'ajustements |
-| REG-05 | — | #12 | — | partiel — proposition de contrepassation automatique absente |
+| REG-04 | AdjustmentImportService | #12 | adjustments | complet — import en masse d'ajustements depuis un fichier pivot |
+| REG-05 | AdjustmentService (auto-reverse) | #12 | adjustments | complet — option de contrepassation automatique créant la reprise au mois suivant (M+1) |
 | REG-06 | — | #13 | — | absent — réclamations |
 
 ### 8.6 Contrôles (CTL)

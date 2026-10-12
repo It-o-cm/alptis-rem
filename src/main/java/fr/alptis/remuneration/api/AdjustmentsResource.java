@@ -3,6 +3,7 @@ package fr.alptis.remuneration.api;
 import fr.alptis.remuneration.accounts.AccountService;
 import fr.alptis.remuneration.cycle.AdjustmentService;
 import fr.alptis.remuneration.cycle.CycleQueryService;
+import fr.alptis.remuneration.integration.AdjustmentImportService;
 import fr.alptis.remuneration.cycle.CycleQueryService.AdjustmentView;
 import fr.alptis.remuneration.domain.Adjustment;
 import fr.alptis.remuneration.domain.AdjustmentStatus;
@@ -37,6 +38,7 @@ import java.util.List;
 public class AdjustmentsResource {
 
     private final AdjustmentService adjustments;
+    private final AdjustmentImportService imports;
     private final AccountService accounts;
     private final CycleQueryService query;
     private final CurrentUser currentUser;
@@ -46,15 +48,18 @@ public class AdjustmentsResource {
      * Creates the resource.
      *
      * @param adjustments the adjustment service
+     * @param imports     the bulk adjustment importer
      * @param accounts    the distributor-account service
      * @param query       the cycle read model
      * @param currentUser the current user
      * @param scope       the entity partition
      */
     @Inject
-    public AdjustmentsResource(AdjustmentService adjustments, AccountService accounts, CycleQueryService query,
+    public AdjustmentsResource(AdjustmentService adjustments, AdjustmentImportService imports,
+                               AccountService accounts, CycleQueryService query,
                                CurrentUser currentUser, EntityScope scope) {
         this.adjustments = adjustments;
+        this.imports = imports;
         this.accounts = accounts;
         this.query = query;
         this.currentUser = currentUser;
@@ -127,6 +132,27 @@ public class AdjustmentsResource {
     }
 
     /**
+     * Bulk-imports adjustments into a period from a pivot CSV (REG-04).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @param request    the bulk import request
+     * @return the number of adjustments created
+     */
+    @POST
+    @Path("/{entityCode}/{month}/bulk")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public BulkResult bulk(@PathParam("entityCode") String entityCode, @PathParam("month") String month,
+                           BulkRequest request) {
+        requireScope(entityCode);
+        int imported = imports.importAdjustments(entityCode, LocalDate.parse(month), request.content(),
+                currentUser.username());
+        return new BulkResult(imported);
+    }
+
+    /**
      * Checks the entity is within the caller's partition.
      *
      * @param entityCode the entity code
@@ -153,6 +179,22 @@ public class AdjustmentsResource {
     public record AdjustmentRequest(String type, BigDecimal amount, String payeeType, Long payeeId, String reason,
                                     String attachmentRef, Boolean autoReverse, String counterpartPayeeType,
                                     Long counterpartPayeeId) {
+    }
+
+    /**
+     * Request body of a bulk adjustment import.
+     *
+     * @param content the raw CSV content
+     */
+    public record BulkRequest(String content) {
+    }
+
+    /**
+     * Result of a bulk adjustment import.
+     *
+     * @param imported the number of adjustments created
+     */
+    public record BulkResult(int imported) {
     }
 
     /**

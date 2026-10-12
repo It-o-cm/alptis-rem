@@ -3,6 +3,7 @@ package fr.alptis.remuneration.api;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
+import fr.alptis.remuneration.domain.ProductionCode;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
@@ -106,6 +107,48 @@ class AdjustmentsResourceTest {
                         + "\"reason\":\"x\"}")
                 .when().post("/api/ui/v1/adjustments/ALPTIS_ASSURANCES/2020-01-01")
                 .then().statusCode(404);
+    }
+
+    /**
+     * An operator bulk-imports adjustments from a pivot CSV (REG-04): the well-formed line is created.
+     */
+    @Test
+    void operator_bulk_imports_adjustments() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            ProductionCode pc = new ProductionCode();
+            pc.entity = LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult();
+            pc.code = "PC-BULK";
+            pc.persist();
+        });
+        String csv = "adjustment_type;payee_code;amount;reason;auto_reverse\\n"
+                + "CORRECTION;PC-BULK;25.00;import en masse;false\\n"
+                + "CORRECTION;UNKNOWN;9.00;ignorée;false\\n";
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON).body("{\"content\":\"" + csv + "\"}")
+                .when().post("/api/ui/v1/adjustments/ALPTIS_ASSURANCES/" + MONTH + "/bulk")
+                .then().statusCode(200).body("imported", is(1));
+    }
+
+    /**
+     * Bulk-importing into another entity's period is out of scope.
+     */
+    @Test
+    void bulk_out_of_scope_is_not_found() {
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .contentType(ContentType.JSON).body("{\"content\":\"adjustment_type\\n\"}")
+                .when().post("/api/ui/v1/adjustments/ALPTIS_ASSURANCES/" + MONTH + "/bulk")
+                .then().statusCode(404);
+    }
+
+    /**
+     * A viewer may not bulk-import adjustments.
+     */
+    @Test
+    void viewer_cannot_bulk_import() {
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .contentType(ContentType.JSON).body("{\"content\":\"adjustment_type\\n\"}")
+                .when().post("/api/ui/v1/adjustments/ALPTIS_ASSURANCES/" + MONTH + "/bulk")
+                .then().statusCode(403);
     }
 
     /**
