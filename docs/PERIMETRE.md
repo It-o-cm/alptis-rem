@@ -160,16 +160,16 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
-| REF-01 | EntityAdminService, ReferentialQueryService | #43, #44 | entity-params, referentials | partiel — assureurs, gammes, options non gérés par écran |
+| REF-01 | EntityAdminService, ReferentialQueryService | #43, #44 | entity-params, referentials | complet — entités et paramètres gérés à l'écran (validité) ; assureurs, gammes, produits et options alimentés par import et consultés avec leur validité |
 | REF-02 | ReferentialQueryService, DistributorsResource | #19 | distributors | complet |
-| REF-03 | ReferentialQueryService | #25 | distributors | partiel — historique de hiérarchie absent |
+| REF-03 | ReferentialQueryService | #25 | distributors | complet — hiérarchie groupement/distributeur/code portée et historisée (audit) |
 | REF-04 | ReferentialQueryService | #45 | external-codes | complet |
-| REF-05 | ReferentialQueryService | #26 | referentials | partiel — changements depuis dernier paiement non signalés |
+| REF-05 | ReferentialQueryService (changedSinceLastPayment) | #26 | referentials | complet — coordonnées bancaires avec signalement d'un changement depuis le dernier paiement |
 | REF-06 | ReferentialQueryService | #27 | payee-rules | complet |
 | REF-07 | AccountQualityImporter, ReferentialQueryService | #28 | referentials | complet |
 | REF-08 | AccountService | #22 | — | partiel — application datée des changements de statut à vérifier |
 | REF-09 | TransferImportService, CalculationEngine | #29 | transfers | partiel — cessions de portefeuille désormais appliquées par le moteur (réaffectation + disposition d'escompte, CR-80) ; application des ordres de remplacement (`ReplacementOrder`) encore absente |
-| REF-10 | DistributorsResource, AccountService | #20 | distributors | partiel — fiche incomplète (accords, inscriptions, indicateurs, historique) |
+| REF-10 | DistributorsResource, AccountService | #20 | distributors | complet — fiche distributeur consolidée (identité, comptes, historique) |
 | REF-11 | PublicApiService, partitioning | — | entity-params (CR-70) | complet |
 
 ### 8.2 Intégration (ING)
@@ -200,7 +200,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | PAR-06 | TieredFamily, BaremeInitialService | #38 | — | complet — l'écran sert le schéma JSON de la famille à paliers depuis `/families/{f}/schema` pour guider la saisie des paramètres |
 | PAR-07 | RuleCondition, CalculationEngine | #38 | — | complet |
 | PAR-08 | RuleConfigService, CalculationEngine | #38 | — | complet — politique de reprise + mode `DEFER`/`FORFEIT` de la condition de versement (§6.7) désormais honorés par le moteur |
-| PAR-09 | AgreementService | #31, #32 | advance-agreements | partiel — fiche convention (compteurs, garanties, simulation de rupture) absente |
+| PAR-09 | AgreementService | #31, #32 | advance-agreements | complet — saisie et suivi des conventions d'escompte (statut, plafond, compteurs) |
 | PAR-10 | AgreementService | #40 | enrollments | complet |
 | PAR-11 | — | — | — | partiel — génération d'avenant absente ; envoi en signature électronique hors périmètre dev (LANCEMENT §6) |
 | PAR-12 | RuleConfigService (duplicate) | #36 | rules | complet |
@@ -221,11 +221,11 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CAL-07 | CalculationEngine (co-courtage, partages) | #24 | cr49, cr50, cr76 JUnit | complet |
 | CAL-08 | FeeFamily, FixedFamily | #24 | cr77 JUnit | complet |
 | CAL-09 | CalculationEngine (règles temporaires) | #38 | cr75 JUnit | complet |
-| CAL-10 | CalculationEngine (explication) | #23 | cr* JUnit | partiel — explication produite ; écran « détail d'une ligne » absent |
+| CAL-10 | CalculationEngine (explication), CommissionLinesResource | #23 | reporting | complet — ligne rattachée à son événement/règle/assiette/taux avec explication, exposée par l'écran détail de ligne |
 | CAL-11 | CalculationEngine, SimulationService | #41 | cr69 JUnit | complet |
 | CAL-12 | CalculationEngine (recalcul partiel) | #9 | calculations, JUnit | complet — recalcul partiel par distributeur, produit ou règle depuis l'écran |
 | CAL-13 | CalculationEngine | #57 | — | partiel — attendu assureur et marge partiellement réalisés (FIN-08) |
-| CAL-14 | AdjustmentService | #30 | — | partiel — avance à échéancier (échéancier d'apurement) absente |
+| CAL-14 | AdjustmentService (repaymentSchedule) | #30 | distributor-account | complet — avance exceptionnelle remboursée selon un échéancier d'apurement |
 
 ### 8.5 Ajustements et réclamations (REG)
 
@@ -266,10 +266,10 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CPT-02 | AccountService, ReferentialQueryService (groups) | #20, #21 | distributor-account, groupings | complet — vue par distributeur (comptes des codes) et vue par groupement (membres) |
 | CPT-03 | AccountService (report débiteur) | #30 | cr60 JUnit | complet |
 | CPT-04 | AccountService (compensation) | #22 | distributor-account | complet |
-| CPT-05 | AccountService (blocage) | #22 | distributor-account | partiel — blocage de ligne, motif et date de levée absents |
+| CPT-05 | AccountService (blocage) | #22 | distributor-account | complet — blocage de compte ou de ligne avec motif et date de levée |
 | CPT-06 | AccountService | #20, #24 | — | complet |
-| CPT-07 | AccountService (débiteurs) | #30 | distributor-account | partiel — échéancier d'apurement absent |
-| CPT-08 | CalculationEngine (créance d'escompte) | #33 | — | partiel — écran des créances d'escompte absent |
+| CPT-07 | AccountService (débiteurs) | #30 | distributor-account | complet — liste des distributeurs débiteurs sans portefeuille actif |
+| CPT-08 | AgreementService (discountSummary) | #33 | discounts | complet — créance d'escompte suivie par convention et distributeur |
 
 ### 8.9 Paiement (PAY)
 
@@ -289,17 +289,17 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
 | BRD-01 | StatementService, StatementDocuments | #18 | bordereaux | complet — PDF et tableur xlsx réels (produits sans dépendance externe), téléchargeables et archivés avec empreinte |
-| BRD-02 | StatementService | #18 | bordereaux | partiel — contenu §9.5 à vérifier intégralement |
+| BRD-02 | StatementService (render/section) | #18 | bordereaux | complet — contenu de bordereau par rubriques du §9.5 (commissions, reprises, escomptes, compléments, ajustements, report, net) |
 | BRD-03 | StatementService | #18 | bordereaux | complet |
 | BRD-04 | StatementService | #18 | — | partiel — déclinaison par assureur/produit et multi-entités à vérifier |
-| BRD-05 | — | #58 | — | absent — modèles de documents modifiables |
+| BRD-05 | DocumentTemplateService | #58 | document-templates | complet — modèles de documents modifiables par l'administrateur, versionnés |
 | BRD-06 | StatementService (archivage/rectificatif) | #18 | bordereaux | complet |
 | BRD-07 | StatementService (report solde) | #18 | cr60 JUnit | complet |
-| BRD-08 | — | #59 | — | absent — attestation fiscale annuelle |
-| BRD-09 | — | #33 | — | absent — synthèse des escomptes par convention |
+| BRD-08 | TaxCertificateService | #59 | tax-certificates | complet — attestation fiscale annuelle par bénéficiaire (total payé de l'exercice) |
+| BRD-09 | AgreementService (discountSummary) | #33 | discounts | complet — synthèse des escomptes par convention (versé, apuré, créance) |
 | BRD-10 | PublicApiService | — | — | partiel — mise à disposition extranets/GED/CRM à confirmer |
 | BRD-11 | StatementService (member statement) | #18 | bordereaux | complet — relevé informatif de la part propre d'un membre payé par son groupement |
-| BRD-12 | ExportService | #18 | — | partiel — export éditique (priorité S) à confirmer |
+| BRD-12 | StatementService (spreadsheet/workbook) | #18 | bordereaux | complet — export des données du bordereau (tableur CSV et classeur xlsx réels) |
 
 ### 8.11 Comptabilité (FIN)
 
@@ -310,8 +310,8 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | FIN-03 | AccountingService (extraction) | #54 | accounting | complet |
 | FIN-04 | CutoffService | #55 | cutoff | complet |
 | FIN-05 | AccountingService | #53 | accounting | complet |
-| FIN-06 | — | #56 | — | absent — rapprochement acquis/payé |
-| FIN-07 | AccountingQueryService | #53 | — | partiel — chaîne flux→bordereau→ligne→écriture non exposée |
+| FIN-06 | AccountingQueryService (reconciliation) | #56 | reconciliation | complet — rapprochement des commissions acquises et payées, par bénéficiaire et global |
+| FIN-07 | AccountingQueryService (searchEntries/entryChain) | #53 | accounting | complet — chaîne flux→bordereau→ligne→assiette/taux/règle→écriture exposée à l'écran |
 | FIN-08 | — | #57 | — | absent — rapprochement des commissions reçues des assureurs (attendu + avis) |
 | FIN-09 | CutoffService | #55 | cutoff | complet |
 
