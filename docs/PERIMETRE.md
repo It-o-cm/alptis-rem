@@ -46,7 +46,7 @@ d'accès serveur · test de bout en bout · état.
 | 8 | Événements en attente, par motif | P8, ING-06 | `heldEvents` / HeldEventsView | GET /events/held-by-reason, GET /events?status=ON_HOLD | held-events.spec | complet — regroupement par motif et liste des événements en attente (jeu de démonstration en porte un par entité) |
 | 9 | Exécutions de calcul : lancement, suivi, compteurs, unités en échec, recalcul partiel | CAL-01, CAL-12, 12.3 | `calculations` / CalculationsView | GET /calculations/{e}/{m}, POST run, POST recalc | calculations.spec | complet — lancement du calcul réel, suivi des exécutions et compteurs, unités en échec (événements en attente) et recalcul partiel par distributeur/produit/règle |
 | 10 | Contrôles et anomalies de la période, décisions, liste de contrôle | CTL-02, CTL-03, CTL-05 | `controls` / ControlsView | GET anomalies/breakdown/catalog/checklist, POST run/decision/checklist | controls.spec | complet — liste de contrôle de la période à cocher (CTL-03) ajoutée, tracée (qui/quand) |
-| 11 | Catalogue des contrôles : seuil, gravité, périmètre, activation, versions | CTL-01, CTL-04 | `controls` (onglet) / ControlsView | GET /controls/{e}/catalog | controls.spec | partiel — catalogue en lecture seule : pas d'édition de seuil/activation, pas de versions (CTL-04) |
+| 11 | Catalogue des contrôles : seuil, gravité, périmètre, activation, versions | CTL-01, CTL-04 | `controls` (onglet) / ControlsView | GET/POST /controls/{e}/catalog/{code}, GET versions | controls.spec | complet — édition par le métier (gravité, activation, paramètres/seuil) créant une nouvelle version, et historique des versions |
 | 12 | Ajustements : liste, saisie, approbation, import en masse | REG-01→05 | `adjustments` / AdjustmentsView | GET/POST adjustments, POST approve | adjustments.spec | partiel — import en masse (REG-04) et contrepassation automatique (REG-05) absents |
 | 13 | Réclamations : liste, fiche, lignes contestées, suivi | REG-06 | — | — | — | absent |
 | 14 | Validation métier : totaux, comparaison au mois précédent, second niveau | WKF-02, 7.2 | — | — | — | absent |
@@ -239,10 +239,10 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
-| CTL-01 | ControlCatalogService | #11 | controls | partiel — catalogue non éditable par le métier |
+| CTL-01 | ControlCatalogService, ControlService (edit) | #11 | controls | complet — catalogue éditable par le métier (gravité, activation, paramètres) |
 | CTL-02 | ControlService | #10 | controls | partiel — couverture de toutes les familles de contrôle à vérifier |
 | CTL-03 | ControlService (checklist) | #10 | controls | complet — liste de contrôle par période, à cocher, tracée |
-| CTL-04 | — | #11 | — | absent — versionnement des contrôles |
+| CTL-04 | ControlService (edit → version), CycleQueryService (versions) | #11 | controls | complet — versionnement des contrôles (nouvelle version à chaque édition, historique consultable) |
 | CTL-05 | ControlService (décision tracée) | #10 | controls | complet |
 | CTL-06 | ExportService | #49 | — | partiel — export des données de contrôle N2/N3 à confirmer |
 

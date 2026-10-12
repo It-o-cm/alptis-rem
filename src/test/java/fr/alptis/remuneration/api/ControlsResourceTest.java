@@ -152,6 +152,41 @@ class ControlsResourceTest {
     }
 
     /**
+     * A business admin edits a control into a new version and reads its version history (CTL-01,
+     * CTL-04); the catalogue then shows the current version.
+     */
+    @Test
+    void admin_edits_control_into_a_new_version() {
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .contentType(ContentType.JSON)
+                .body("{\"severity\":\"BLOCKING\",\"active\":true,\"parameters\":\"{\\\"days\\\":0}\"}")
+                .when().post("/api/ui/v1/controls/ALPTIS_ASSURANCES/catalog/DATA-FUTURE")
+                .then().statusCode(200).body("versionNo", is(2)).body("severity", is("BLOCKING"));
+
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/controls/ALPTIS_ASSURANCES/catalog/DATA-FUTURE/versions")
+                .then().statusCode(200).body("size()", greaterThanOrEqualTo(2)).body("versionNo", hasItem(2));
+
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/controls/ALPTIS_ASSURANCES/catalog")
+                .then().statusCode(200)
+                .body("find { it.code == 'DATA-FUTURE' }.versionNo", is(2))
+                .body("find { it.code == 'DATA-FUTURE' }.severity", is("BLOCKING"));
+    }
+
+    /**
+     * An operator (not a business admin) may not edit a control.
+     */
+    @Test
+    void operator_cannot_edit_control() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON)
+                .body("{\"severity\":\"WARNING\",\"active\":true,\"parameters\":null}")
+                .when().post("/api/ui/v1/controls/ALPTIS_ASSURANCES/catalog/DATA-FUTURE")
+                .then().statusCode(403);
+    }
+
+    /**
      * The operator reads the period checklist and ticks a control as reviewed (CTL-03).
      */
     @Test

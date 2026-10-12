@@ -63,6 +63,8 @@ public class ControlCatalogService {
                 control.family = seed.family;
                 control.severity = seed.severity;
                 control.active = Boolean.TRUE;
+                control.versionNo = 1;
+                control.validFrom = clock.today();
                 control.setCreatedAt(clock.now());
                 control.persist();
                 created++;

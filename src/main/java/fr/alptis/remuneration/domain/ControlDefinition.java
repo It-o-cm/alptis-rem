@@ -24,7 +24,7 @@ import org.hibernate.type.SqlTypes;
  */
 @Entity
 @Table(name = "control_definition", uniqueConstraints = {
-        @UniqueConstraint(name = "uq_control_definition", columnNames = {"entity_id", "code", "valid_from"})
+        @UniqueConstraint(name = "uq_control_definition", columnNames = {"entity_id", "code", "version_no"})
 })
 public class ControlDefinition extends BaseEntity {
 
@@ -67,4 +67,17 @@ public class ControlDefinition extends BaseEntity {
     /** End of the validity period; null while in force. */
     @Column(name = "valid_to")
     public LocalDate validTo;
+
+    /** The version number of this control among its code's versions (CTL-04); null means version one. */
+    @Column(name = "version_no")
+    public Integer versionNo;
+
+    /**
+     * The version number, treating a null as the first version.
+     *
+     * @return the version number, at least one
+     */
+    public int version() {
+        return versionNo == null ? 1 : versionNo;
+    }
 }

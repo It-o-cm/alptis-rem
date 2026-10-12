@@ -289,6 +289,57 @@ class ControlServiceTest {
     }
 
     /**
+     * Editing a control creates a new active version and deactivates the previous one, keeping it as
+     * history; the engine then uses the new version (CTL-01, CTL-04).
+     */
+    @Test
+    @TestTransaction
+    void edits_a_control_into_a_new_version() {
+        control("CTL-X", ControlSeverity.WARNING, true);
+
+        CycleQueryService.CatalogEntry edited = service.editControl("UNEP", "CTL-X", ControlSeverity.BLOCKING,
+                true, "{\"threshold\":5}");
+        assertEquals(2, edited.versionNo());
+        assertEquals(ControlSeverity.BLOCKING, edited.severity());
+
+        assertEquals(2, ControlDefinition.count("entity = ?1 and code = ?2", unep(), "CTL-X"));
+        ControlDefinition v1 = ControlDefinition.<ControlDefinition>find(
+                "entity = ?1 and code = ?2 and versionNo is null", unep(), "CTL-X").firstResult();
+        assertFalse(Boolean.TRUE.equals(v1.active));
+        ControlDefinition v2 = ControlDefinition.<ControlDefinition>find(
+                "entity = ?1 and code = ?2 and versionNo = 2", unep(), "CTL-X").firstResult();
+        assertTrue(Boolean.TRUE.equals(v2.active));
+    }
+
+    /**
+     * When several versions of a control exist, editing supersedes the highest one and the version
+     * number keeps climbing (CTL-04).
+     */
+    @Test
+    @TestTransaction
+    void edit_picks_the_highest_version_among_several() {
+        control("CTL-DUP", ControlSeverity.WARNING, true);
+        control("CTL-DUP", ControlSeverity.INFO, true);
+
+        // Two version-one rows: the first edit keeps one of them as current and creates version two.
+        service.editControl("UNEP", "CTL-DUP", ControlSeverity.BLOCKING, true, null);
+        // Now a version-two row exists: the next edit supersedes it into version three.
+        CycleQueryService.CatalogEntry third = service.editControl("UNEP", "CTL-DUP", ControlSeverity.WARNING,
+                true, null);
+        assertEquals(3, third.versionNo());
+    }
+
+    /**
+     * Editing an unknown control fails.
+     */
+    @Test
+    @TestTransaction
+    void edit_unknown_control_fails() {
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.editControl("UNEP", "NO-SUCH", ControlSeverity.WARNING, true, null));
+    }
+
+    /**
      * The checklist and the tick guard the unknown entity, period and control.
      */
     @Test

@@ -116,6 +116,45 @@ public class ControlsResource {
     }
 
     /**
+     * Returns the version history of one control (CTL-04).
+     *
+     * @param entityCode  the entity code
+     * @param controlCode the control code
+     * @return the control versions, newest first
+     */
+    @GET
+    @Path("/{entityCode}/catalog/{controlCode}/versions")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<CatalogEntry> versions(@PathParam("entityCode") String entityCode,
+                                       @PathParam("controlCode") String controlCode) {
+        requireScope(entityCode);
+        return query.controlVersions(entityCode, controlCode);
+    }
+
+    /**
+     * Edits a control, creating a new version (CTL-01, CTL-04): threshold/perimeter (parameters),
+     * severity and activation are tuned by the business.
+     *
+     * @param entityCode  the entity code
+     * @param controlCode the control code
+     * @param request     the edit request
+     * @return the new current version
+     */
+    @POST
+    @Path("/{entityCode}/catalog/{controlCode}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public CatalogEntry editControl(@PathParam("entityCode") String entityCode,
+                                    @PathParam("controlCode") String controlCode, ControlEditRequest request) {
+        requireScope(entityCode);
+        return controls.editControl(entityCode, controlCode,
+                fr.alptis.remuneration.domain.ControlSeverity.valueOf(request.severity()), request.active(),
+                request.parameters());
+    }
+
+    /**
      * Returns the manual control checklist of a period (CTL-03).
      *
      * @param entityCode the entity code
@@ -207,6 +246,16 @@ public class ControlsResource {
      * @param checked the new ticked state
      */
     public record CheckRequest(boolean checked) {
+    }
+
+    /**
+     * Request body of a control edit.
+     *
+     * @param severity   the new severity name
+     * @param active     the new activation
+     * @param parameters the new parameters JSON (threshold, perimeter), possibly null
+     */
+    public record ControlEditRequest(String severity, boolean active, String parameters) {
     }
 
     /**

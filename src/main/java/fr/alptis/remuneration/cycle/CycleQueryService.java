@@ -201,13 +201,51 @@ public class CycleQueryService {
         if (entity == null) {
             throw new ResourceNotFoundException("Entité inconnue : " + entityCode);
         }
-        List<CatalogEntry> entries = new ArrayList<>();
+        // Keep the current (highest) version of each code; earlier versions are history (CTL-04).
+        Map<String, ControlDefinition> current = new LinkedHashMap<>();
         for (ControlDefinition control : ControlDefinition.<ControlDefinition>list(
-                "entity = ?1 order by code", entity)) {
-            entries.add(new CatalogEntry(control.code, control.label, control.family, control.severity,
-                    Boolean.TRUE.equals(control.active)));
+                "entity = ?1 order by code, versionNo", entity)) {
+            ControlDefinition kept = current.get(control.code);
+            if (kept == null || control.version() > kept.version()) {
+                current.put(control.code, control);
+            }
+        }
+        List<CatalogEntry> entries = new ArrayList<>();
+        for (ControlDefinition control : current.values()) {
+            entries.add(toCatalogEntry(control));
         }
         return entries;
+    }
+
+    /**
+     * Returns the version history of one control, newest version first (CTL-04).
+     *
+     * @param entityCode  the entity code
+     * @param controlCode the control code
+     * @return the control versions
+     */
+    public List<CatalogEntry> controlVersions(String entityCode, String controlCode) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        if (entity == null) {
+            throw new ResourceNotFoundException("Entité inconnue : " + entityCode);
+        }
+        List<CatalogEntry> versions = new ArrayList<>();
+        for (ControlDefinition control : ControlDefinition.<ControlDefinition>list(
+                "entity = ?1 and code = ?2 order by versionNo desc", entity, controlCode)) {
+            versions.add(toCatalogEntry(control));
+        }
+        return versions;
+    }
+
+    /**
+     * Maps a control definition to its catalogue entry.
+     *
+     * @param control the control
+     * @return the catalogue entry
+     */
+    private static CatalogEntry toCatalogEntry(ControlDefinition control) {
+        return new CatalogEntry(control.code, control.label, control.family, control.severity,
+                Boolean.TRUE.equals(control.active), control.version(), control.parameters);
     }
 
     /**
@@ -362,7 +400,7 @@ public class CycleQueryService {
      * @param active   whether the control is active
      */
     public record CatalogEntry(String code, String label, ControlFamily family, ControlSeverity severity,
-                               boolean active) {
+                               boolean active, int versionNo, String parameters) {
     }
 
     /**

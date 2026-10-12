@@ -54,3 +54,25 @@ test.describe('Contrôles — opérateur', () => {
     expect(serious).toEqual([]);
   });
 });
+
+test.describe('Contrôles — administrateur métier', () => {
+  test.use({ httpCredentials: USERS.adminAlptis });
+
+  test('édite un contrôle du catalogue et le versionne @screen:controls @req:CTL-01 @req:CTL-04', async ({
+    page,
+  }) => {
+    await page.goto('/controles');
+    await expect(page.getByTestId('catalog-row-DATA-FUTURE')).toBeVisible();
+
+    await page.getByTestId('catalog-edit-DATA-FUTURE').click();
+    await expect(page.getByTestId('catalog-edit-form')).toBeVisible();
+    await page.getByTestId('edit-severity').selectOption('BLOCKING');
+    await page.getByTestId('edit-save').click();
+    await expect(page.getByTestId('ctl-message')).toContainText('versionné');
+
+    await page.getByTestId('catalog-versions-DATA-FUTURE').click();
+    await expect(page.getByTestId('catalog-versions')).toBeVisible();
+    await expect(page.getByTestId('version-row-2')).toBeVisible();
+    await expect(page.getByTestId('version-row-1')).toBeVisible();
+  });
+});

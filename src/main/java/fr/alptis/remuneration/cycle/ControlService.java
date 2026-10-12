@@ -142,6 +142,50 @@ public class ControlService {
     }
 
     /**
+     * Edits a control by creating a new version (CTL-01, CTL-04): the current version is deactivated
+     * and closed, and a new active version carries the edited severity, activation and parameters
+     * (threshold, perimeter). The engine then runs the new version.
+     *
+     * @param entityCode  the entity code
+     * @param code        the control code
+     * @param severity    the new severity
+     * @param active      the new activation
+     * @param parameters  the new parameters JSON (threshold, perimeter), possibly null
+     * @return the new current version as a catalogue entry
+     */
+    @Transactional
+    public CycleQueryService.CatalogEntry editControl(String entityCode, String code, ControlSeverity severity,
+                                                      boolean active, String parameters) {
+        LegalEntity entity = requireEntity(entityCode);
+        ControlDefinition current = null;
+        for (ControlDefinition c : ControlDefinition.<ControlDefinition>list(
+                "entity = ?1 and code = ?2 order by versionNo", entity, code)) {
+            if (current == null || c.version() > current.version()) {
+                current = c;
+            }
+        }
+        if (current == null) {
+            throw new ResourceNotFoundException("Contrôle inconnu : " + code);
+        }
+        current.active = Boolean.FALSE;
+        current.validTo = clock.today();
+        ControlDefinition next = new ControlDefinition();
+        next.entity = entity;
+        next.code = code;
+        next.label = current.label;
+        next.family = current.family;
+        next.severity = severity;
+        next.active = active;
+        next.parameters = parameters;
+        next.versionNo = current.version() + 1;
+        next.validFrom = clock.today();
+        next.setCreatedAt(clock.now());
+        next.persist();
+        return new CycleQueryService.CatalogEntry(next.code, next.label, next.family, next.severity,
+                Boolean.TRUE.equals(next.active), next.version(), next.parameters);
+    }
+
+    /**
      * Finds an entity or fails.
      *
      * @param entityCode the entity code

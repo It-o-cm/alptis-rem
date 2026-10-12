@@ -35,7 +35,15 @@ interface CatalogEntry {
   family: string;
   severity: string;
   active: boolean;
+  versionNo: number;
+  parameters: string | null;
 }
+
+const SEVERITIES = [
+  { value: 'INFO', label: 'Information' },
+  { value: 'WARNING', label: 'Avertissement' },
+  { value: 'BLOCKING', label: 'Bloquant' },
+];
 
 interface ChecklistItem {
   code: string;
@@ -83,7 +91,22 @@ const catalogColumns: Column<CatalogEntry>[] = [
   { key: 'family', label: 'Famille' },
   { key: 'severity', label: 'Gravité' },
   { key: 'active', label: 'Actif', value: (c) => (c.active ? 'Oui' : 'Non') },
+  { key: 'versionNo', label: 'Version', align: 'num', value: (c) => String(c.versionNo) },
 ];
+
+/** Columns of the control-version history table. */
+const versionColumns: Column<CatalogEntry>[] = [
+  { key: 'versionNo', label: 'Version', align: 'num', value: (c) => String(c.versionNo) },
+  { key: 'severity', label: 'Gravité' },
+  { key: 'active', label: 'Actif', value: (c) => (c.active ? 'Oui' : 'Non') },
+  { key: 'parameters', label: 'Paramètres', value: (c) => c.parameters ?? '—' },
+];
+
+/** Whether the current user may edit the control catalog (CTL-01). */
+const canEditCatalog = (): boolean => session.roles.includes('BUSINESS_ADMIN');
+
+const editing = ref<{ code: string; severity: string; active: boolean; parameters: string } | null>(null);
+const versions = ref<{ code: string; rows: CatalogEntry[] } | null>(null);
 
 /** Loads the anomalies and their breakdown for the selected period. */
 async function loadAnomalies(): Promise<void> {
@@ -108,6 +131,42 @@ const familyData = computed(() =>
 /** Loads the control catalog of the selected entity. */
 async function loadCatalog(): Promise<void> {
   catalog.value = await apiGet<CatalogEntry[]>(`/api/ui/v1/controls/${entity.value}/catalog`);
+}
+
+/**
+ * Opens the edit form for a catalog control, pre-filled with its current values.
+ * @param c the control
+ */
+function startEdit(c: CatalogEntry): void {
+  editing.value = { code: c.code, severity: c.severity, active: c.active, parameters: c.parameters ?? '' };
+}
+
+/** Saves the edited control as a new version, then reloads the catalog. */
+async function saveEdit(): Promise<void> {
+  if (!editing.value) return;
+  message.value = '';
+  error.value = '';
+  try {
+    await apiPost(`/api/ui/v1/controls/${entity.value}/catalog/${editing.value.code}`, {
+      severity: editing.value.severity,
+      active: editing.value.active,
+      parameters: editing.value.parameters === '' ? null : editing.value.parameters,
+    });
+    message.value = `Contrôle « ${editing.value.code} » versionné.`;
+    editing.value = null;
+    await loadCatalog();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Édition refusée';
+  }
+}
+
+/**
+ * Loads the version history of a control.
+ * @param c the control
+ */
+async function loadVersions(c: CatalogEntry): Promise<void> {
+  const rows = await apiGet<CatalogEntry[]>(`/api/ui/v1/controls/${entity.value}/catalog/${c.code}/versions`);
+  versions.value = { code: c.code, rows };
 }
 
 /** Loads the manual control checklist of the selected period (CTL-03). */
@@ -280,7 +339,48 @@ onMounted(async () => {
         :row-testid="(c) => `catalog-row-${c.code}`"
       >
         <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
+        <template #actions="{ row }">
+          <AppButton variant="secondary" :data-testid="`catalog-versions-${row.code}`" @click="loadVersions(row)">
+            Versions
+          </AppButton>
+          <AppButton
+            v-if="canEditCatalog()"
+            variant="secondary"
+            :data-testid="`catalog-edit-${row.code}`"
+            @click="startEdit(row)"
+          >
+            Éditer
+          </AppButton>
+        </template>
       </DataTable>
+    </AppCard>
+
+    <AppCard v-if="editing" data-testid="catalog-edit-form" :title="`Éditer le contrôle ${editing.code}`">
+      <div class="ui-bar">
+        <FormField label="Gravité" stacked width="short" v-slot="{ id }">
+          <select :id="id" data-testid="edit-severity" v-model="editing.severity">
+            <option v-for="s in SEVERITIES" :key="s.value" :value="s.value">{{ s.label }}</option>
+          </select>
+        </FormField>
+        <FormField label="Paramètres (JSON)" stacked width="short" v-slot="{ id }">
+          <input :id="id" data-testid="edit-parameters" type="text" v-model="editing.parameters" />
+        </FormField>
+        <FormField label="Actif" stacked width="short" v-slot="{ id }">
+          <input :id="id" type="checkbox" data-testid="edit-active" v-model="editing.active" />
+        </FormField>
+        <AppButton data-testid="edit-save" @click="saveEdit">Enregistrer la version</AppButton>
+      </div>
+    </AppCard>
+
+    <AppCard v-if="versions" data-testid="catalog-versions" :title="`Versions du contrôle ${versions.code}`">
+      <DataTable
+        :columns="versionColumns"
+        :rows="versions.rows"
+        row-key="versionNo"
+        empty="Aucune version."
+        empty-testid="no-version"
+        :row-testid="(c) => `version-row-${c.versionNo}`"
+      />
     </AppCard>
   </div>
 </template>

@@ -30,6 +30,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -161,6 +162,14 @@ class CycleQueryServiceTest {
         e.receivedDate = M;
         e.processingStatus = status;
         e.persist();
+    }
+
+    /** The control-version history guards an unknown entity (CTL-04). */
+    @Test
+    @TestTransaction
+    void control_versions_guards_unknown_entity() {
+        assertThrows(fr.alptis.remuneration.domain.ResourceNotFoundException.class,
+                () -> query.controlVersions("NOPE", "DATA-FUTURE"));
     }
 
     /** Returns the count of a severity in a breakdown. */
