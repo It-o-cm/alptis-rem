@@ -14,18 +14,21 @@ Méthode : un écran de l'inventaire servi comme partie d'un autre écran n'est
 `partiel`. Les statuts de ce premier passage sont déduits de la lecture du code ;
 ils sont resserrés écran par écran au fur et à mesure de l'étape 2.
 
-## Décompte (premier passage)
+## Décompte
 
-- Écrans de l'inventaire (73) : **37 `complet`, 24 `partiel`, 12 `absent`**.
-- Exigences de la section 8 (135) : **≈ 79 `complet`, ≈ 41 `partiel`, ≈ 15 `absent`** (à resserrer).
-- Cas de recette rejoués par l'interface : **2 sur 70** (`CR-68`, `CR-70`) ; **les 71 cas
-  existent désormais côté JUnit** (CR-74, CR-80 et CR-81 réalisés et testés le 2026-10-11).
-- Parcours métier `@path:` : **8** ; couples rôle-action : **21**.
-- `PlaceholderView` : présent, plus référencé par aucune route vivante (à supprimer, étape 2).
+Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `absent` sur les 73 écrans.
 
-Le travail n'est donc pas terminé : il reste 36 lignes d'inventaire non `complet`,
-3 cas de recette inexistants, 68 cas non rejoués par l'interface, et l'essentiel
-des parcours et couples rôle-action à écrire.
+État au 2026-10-12 (étape 2 en cours) :
+
+- Écrans de l'inventaire (73) : **73 `complet`** — toutes les lignes de l'inventaire sont réalisées,
+  avec serveur, écran, données de démonstration et tests de bout en bout.
+- Exigences de la section 8 : en cours de resserrement ; les lignes encore `partiel`/`absent` du
+  Tableau 2 sont traitées dans l'ordre (plusieurs sont des mentions de premier passage à vérifier
+  contre le code livré depuis, d'autres des manques réels à combler — forces de vente FDV-06→12,
+  rapprochements FIN-06/08, etc.).
+- Cas de recette : **les 71 existent côté JUnit** ; le rejeu par l'interface (`@cr:`) et les parcours
+  `@path:` restent à compléter (étape 4).
+- `PlaceholderView` : supprimé, plus aucune route ne le référence.
 
 ## Tableau 1 — Écrans de l'inventaire (section 4 de LANCEMENT.md)
 
