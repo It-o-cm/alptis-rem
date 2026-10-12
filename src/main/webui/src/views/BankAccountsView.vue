@@ -12,6 +12,7 @@ interface BankAccountView {
   bic: string | null;
   validFrom: string | null;
   validTo: string | null;
+  changedSinceLastPayment: boolean;
 }
 
 const rows = ref<BankAccountView[]>([]);
@@ -26,6 +27,7 @@ const columns: Column<BankAccountView>[] = [
   { key: 'iban', label: 'IBAN' },
   { key: 'bic', label: 'BIC', value: (b) => b.bic ?? '—' },
   { key: 'validFrom', label: 'Depuis', value: (b) => b.validFrom ?? '—' },
+  { key: 'changedSinceLastPayment', label: 'À vérifier' },
 ];
 
 /** Loads the bank accounts of the user's entities. */
@@ -63,7 +65,25 @@ onMounted(load);
         :row-testid="() => 'bank-row'"
       >
         <template #cell-iban="{ row }"><span class="mono" data-testid="bank-iban">{{ row.iban }}</span></template>
+        <template #cell-changedSinceLastPayment="{ row }">
+          <span v-if="row.changedSinceLastPayment" class="bank-flag" data-testid="bank-changed">
+            Changé depuis le dernier paiement
+          </span>
+          <span v-else>—</span>
+        </template>
       </DataTable>
     </AppCard>
   </div>
 </template>
+
+<style scoped>
+.bank-flag {
+  display: inline-block;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius);
+  background: var(--warn-soft, #fde68a);
+  color: var(--warn-strong, #92400e);
+  font-weight: 600;
+  font-size: var(--fs-sm, 0.85em);
+}
+</style>

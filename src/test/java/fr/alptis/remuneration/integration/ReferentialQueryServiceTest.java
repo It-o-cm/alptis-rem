@@ -23,6 +23,8 @@ import fr.alptis.remuneration.domain.ExternalCode;
 import fr.alptis.remuneration.domain.Insurer;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.PartnerStatus;
+import fr.alptis.remuneration.domain.PaymentOrder;
+import fr.alptis.remuneration.domain.PaymentOrderStatus;
 import fr.alptis.remuneration.domain.ProductRange;
 import fr.alptis.remuneration.domain.Rule;
 import fr.alptis.remuneration.domain.RuleFamily;
@@ -516,6 +518,72 @@ class ReferentialQueryServiceTest {
         assertEquals(3, accounts.size());
         assertTrue(accounts.stream().anyMatch(a -> a.iban() != null && a.iban().contains("…")));
         assertEquals(3, unrestricted().bankAccounts().size());
+    }
+
+    /**
+     * A bank account coming into force after the holder's last settled payment is flagged for
+     * verification (REF-05); one in force before it, one for a holder never paid, and one with no
+     * validity date are not flagged.
+     */
+    @Test
+    @TestTransaction
+    void flags_a_bank_change_since_the_last_payment() {
+        Distributor paid = new Distributor();
+        paid.partnerCode = "DPAID";
+        paid.legalName = "Payé";
+        paid.persist();
+        DistributorAccount account = new DistributorAccount();
+        account.entity = alptis();
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = paid.getId();
+        account.persist();
+        // Settled orders on 03-15, 03-20 (later) and 03-10 (earlier), plus one with no settled date.
+        settledOrder(account, java.time.OffsetDateTime.of(2026, 3, 15, 0, 0, 0, 0, java.time.ZoneOffset.UTC));
+        settledOrder(account, java.time.OffsetDateTime.of(2026, 3, 20, 0, 0, 0, 0, java.time.ZoneOffset.UTC));
+        settledOrder(account, java.time.OffsetDateTime.of(2026, 3, 10, 0, 0, 0, 0, java.time.ZoneOffset.UTC));
+        settledOrder(account, null);
+
+        bankAccount("CHANGED", PayeeType.DISTRIBUTOR, paid.getId(), LocalDate.of(2026, 4, 1));
+        bankAccount("UNCHANGED", PayeeType.DISTRIBUTOR, paid.getId(), LocalDate.of(2026, 3, 1));
+        bankAccount("NEVER", PayeeType.DISTRIBUTOR, -42L, LocalDate.of(2026, 4, 1));
+        bankAccount("NODATE", PayeeType.DISTRIBUTOR, paid.getId(), null);
+
+        var views = unrestricted().bankAccounts();
+        assertTrue(flag(views, "CHANGED"));
+        assertTrue(!flag(views, "UNCHANGED"));
+        assertTrue(!flag(views, "NEVER"));
+        assertTrue(!flag(views, "NODATE"));
+    }
+
+    /** Reads the change flag of the bank account with the given holder name. */
+    private static boolean flag(List<ReferentialQueryService.BankAccountView> views, String holderName) {
+        return views.stream()
+                .filter(v -> holderName.equals(v.holderName()))
+                .anyMatch(ReferentialQueryService.BankAccountView::changedSinceLastPayment);
+    }
+
+    /** Persists a bank account for a holder, named to identify it. */
+    private static BankAccount bankAccount(String holderName, PayeeType holderType, Long holderId,
+                                           LocalDate validFrom) {
+        BankAccount b = new BankAccount();
+        b.entity = alptis();
+        b.holderType = holderType;
+        b.holderId = holderId;
+        b.holderName = holderName;
+        b.iban = "FR7612345678901234567";
+        b.validFrom = validFrom;
+        b.persist();
+        return b;
+    }
+
+    /** Persists a settled payment order on an account, with an optional settled date. */
+    private static void settledOrder(DistributorAccount account, java.time.OffsetDateTime settledAt) {
+        PaymentOrder order = new PaymentOrder();
+        order.account = account;
+        order.amount = new BigDecimal("1.00");
+        order.status = PaymentOrderStatus.SETTLED;
+        order.settledAt = settledAt;
+        order.persist();
     }
 
     /**

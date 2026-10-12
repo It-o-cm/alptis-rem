@@ -294,8 +294,35 @@ public class ReferentialQueryService {
         return accounts.stream()
                 .map(b -> new BankAccountView(b.entity.code,
                         b.holderType == null ? null : b.holderType.name(),
-                        b.holderName, maskedIban(b.iban), b.bic, string(b.validFrom), string(b.validTo)))
+                        b.holderName, maskedIban(b.iban), b.bic, string(b.validFrom), string(b.validTo),
+                        changedSinceLastPayment(b)))
                 .toList();
+    }
+
+    /**
+     * Tells whether a bank account came into force after the holder's last settled payment (REF-05),
+     * so it must be verified before the next payment.
+     *
+     * @param account the bank account
+     * @return {@code true} when the account's validity started after the last settled payment
+     */
+    private static boolean changedSinceLastPayment(BankAccount account) {
+        if (account.validFrom == null || account.holderType == null || account.holderId == null) {
+            return false;
+        }
+        java.time.OffsetDateTime last = null;
+        for (fr.alptis.remuneration.domain.DistributorAccount da : fr.alptis.remuneration.domain.DistributorAccount
+                .<fr.alptis.remuneration.domain.DistributorAccount>list("entity = ?1 and payeeType = ?2 and payeeId = ?3",
+                        account.entity, account.holderType, account.holderId)) {
+            for (fr.alptis.remuneration.domain.PaymentOrder order : fr.alptis.remuneration.domain.PaymentOrder
+                    .<fr.alptis.remuneration.domain.PaymentOrder>list("account = ?1 and status = ?2", da,
+                            fr.alptis.remuneration.domain.PaymentOrderStatus.SETTLED)) {
+                if (order.settledAt != null && (last == null || order.settledAt.isAfter(last))) {
+                    last = order.settledAt;
+                }
+            }
+        }
+        return last != null && account.validFrom.isAfter(last.toLocalDate());
     }
 
     /**
@@ -645,7 +672,7 @@ public class ReferentialQueryService {
      * @param validTo    the validity end, if any
      */
     public record BankAccountView(String entityCode, String holderType, String holderName, String iban, String bic,
-                                  String validFrom, String validTo) {
+                                  String validFrom, String validTo, boolean changedSinceLastPayment) {
     }
 
     /**

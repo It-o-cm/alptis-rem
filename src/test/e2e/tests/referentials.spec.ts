@@ -58,6 +58,10 @@ test.describe('Référentiels — opérateur', () => {
     await expect(iban).toContainText('FR76');
     await expect(iban).toContainText('0189');
     await expect(iban).toContainText('…');
+    // REF-05: the change-since-last-payment signal column is present; this freshly imported account,
+    // with no prior payment, is not flagged.
+    await expect(page.getByText('À vérifier')).toBeVisible();
+    await expect(page.getByTestId('bank-changed')).toHaveCount(0);
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:products', async ({ page }) => {
