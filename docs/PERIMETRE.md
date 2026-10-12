@@ -111,7 +111,7 @@ d'accès serveur · test de bout en bout · état.
 | 53 | Recherche d'écritures | FIN-01, FIN-05, FIN-07 | `accounting` / AccountingView | GET /accounting/{e}/{m}/entries, /{e}/entries, /{e}/entries/{id}/chain | accounting.spec | complet — recherche transverse d'écritures (tous mois, par compte et exercice) et chaîne d'audit flux→bordereau→ligne→règle→écriture (FIN-07) depuis une écriture |
 | 54 | Extraction comptable du mois et clôture | FIN-03 | `accounting` / AccountingView | POST /accounting/{e}/{m}/extract | accounting.spec | complet |
 | 55 | État de cut-off | FIN-04, FIN-09 | `cutoff` / CutoffView | GET /accounting/{e}/cutoff | cutoff.spec | complet |
-| 56 | Rapprochement des commissions acquises et payées | FIN-06 | — | — | — | absent |
+| 56 | Rapprochement des commissions acquises et payées | FIN-06 | `reconciliation` / ReconciliationView | GET /accounting/{e}/reconciliation | reconciliation.spec | complet — commissions acquises (acquises, payables, payées) rapprochées des payées, par bénéficiaire et au global, avec le reste à payer |
 | 57 | Commissions reçues des assureurs, attendu et marge | FIN-08, REP-08 | `margin` / MarginView | GET /reporting/{e}/margin | reporting.spec | partiel — marge présente ; rapprochement attendu/reçu des assureurs (FIN-08) absent |
 
 ### Documents, restitutions, administration

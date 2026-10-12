@@ -85,6 +85,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     heading: 'Comptabilité',
     items: [
       { name: 'accounting', path: '/comptabilite', label: 'Schéma et écritures' },
+      { name: 'reconciliation', path: '/rapprochement', label: 'Rapprochement acquises/payées' },
       { name: 'cutoff', path: '/cutoff', label: 'État de cut-off' },
     ],
   },

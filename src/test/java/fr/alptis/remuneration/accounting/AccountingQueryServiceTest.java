@@ -233,6 +233,53 @@ class AccountingQueryServiceTest {
     }
 
     /**
+     * The reconciliation sums acquired (earned, payable, paid) and paid lines per beneficiary and
+     * globally (FIN-06); a line with no beneficiary is grouped under a dash.
+     */
+    @Test
+    @TestTransaction
+    void reconciles_acquired_and_paid() {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = M;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        fr.alptis.remuneration.domain.Distributor d1 = new fr.alptis.remuneration.domain.Distributor();
+        d1.partnerCode = "D1";
+        d1.legalName = "D1";
+        d1.persist();
+        reconLine(period, LineStatus.EARNED, "100.00", d1);
+        reconLine(period, LineStatus.PAID, "60.00", d1);
+        reconLine(period, LineStatus.PAYABLE, "40.00", null);
+        // A forecast line is not acquired and must be ignored.
+        reconLine(period, LineStatus.FORECAST, "999.00", d1);
+
+        var recon = query.reconciliation("UNEP");
+        assertEquals(0, recon.acquired().compareTo(new BigDecimal("200.00")));
+        assertEquals(0, recon.paid().compareTo(new BigDecimal("60.00")));
+        assertEquals(0, recon.gap().compareTo(new BigDecimal("140.00")));
+        var d1Row = recon.beneficiaries().stream().filter(b -> "D1".equals(b.distributor())).findFirst().orElseThrow();
+        assertEquals(0, d1Row.acquired().compareTo(new BigDecimal("160.00")));
+        assertEquals(0, d1Row.paid().compareTo(new BigDecimal("60.00")));
+        var noneRow = recon.beneficiaries().stream().filter(b -> "—".equals(b.distributor())).findFirst().orElseThrow();
+        assertEquals(0, noneRow.gap().compareTo(new BigDecimal("40.00")));
+    }
+
+    /** Posts a commission line for the reconciliation, with an optional beneficiary. */
+    private static void reconLine(Period period, LineStatus status, String amount,
+                                  fr.alptis.remuneration.domain.Distributor distributor) {
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = status;
+        line.amount = new BigDecimal(amount);
+        line.originDistributor = distributor;
+        line.persist();
+    }
+
+    /**
      * An unknown entity and an unknown period are reported as not found.
      */
     @Test

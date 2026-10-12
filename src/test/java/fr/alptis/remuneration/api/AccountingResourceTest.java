@@ -122,6 +122,11 @@ class AccountingResourceTest {
         given().auth().preemptive().basic("finance-alptis", "finance-alptis")
                 .when().get("/api/ui/v1/accounting/" + ENTITY + "/cutoff?date=2026-09-30")
                 .then().statusCode(200).body("view", is("ENTITY"));
+
+        // The acquired-versus-paid reconciliation returns the global totals (FIN-06).
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/accounting/" + ENTITY + "/reconciliation")
+                .then().statusCode(200).body("acquired", org.hamcrest.Matchers.notNullValue());
     }
 
     /**

@@ -6,15 +6,19 @@ import fr.alptis.remuneration.domain.AccountingEntry;
 import fr.alptis.remuneration.domain.AccountingEvent;
 import fr.alptis.remuneration.domain.AccountingScheme;
 import fr.alptis.remuneration.domain.AccountingVariant;
+import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
+import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Read model for the accounting screens: the accounting schema and account mapping of an entity
@@ -125,6 +129,39 @@ public class AccountingQueryService {
     }
 
     /**
+     * Reconciles an entity's acquired and paid commissions, by beneficiary and at the global level
+     * (FIN-06): acquired covers every counted line (earned, payable, paid); paid covers the paid
+     * lines; the gap is what remains to pay.
+     *
+     * @param entityCode the entity code
+     * @return the reconciliation view
+     */
+    public Reconciliation reconciliation(String entityCode) {
+        LegalEntity entity = entity(entityCode);
+        Map<String, BigDecimal[]> byBeneficiary = new LinkedHashMap<>();
+        BigDecimal acquiredTotal = BigDecimal.ZERO;
+        BigDecimal paidTotal = BigDecimal.ZERO;
+        for (CommissionLine line : CommissionLine.<CommissionLine>list(
+                "entity = ?1 and status in ?2", entity,
+                List.of(LineStatus.EARNED, LineStatus.PAYABLE, LineStatus.PAID))) {
+            String beneficiary = line.originDistributor == null ? "—" : line.originDistributor.partnerCode;
+            BigDecimal[] totals = byBeneficiary.computeIfAbsent(beneficiary,
+                    k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            totals[0] = totals[0].add(line.amount);
+            acquiredTotal = acquiredTotal.add(line.amount);
+            if (line.status == LineStatus.PAID) {
+                totals[1] = totals[1].add(line.amount);
+                paidTotal = paidTotal.add(line.amount);
+            }
+        }
+        List<BeneficiaryReconciliation> rows = byBeneficiary.entrySet().stream()
+                .map(e -> new BeneficiaryReconciliation(e.getKey(), e.getValue()[0], e.getValue()[1],
+                        e.getValue()[0].subtract(e.getValue()[1])))
+                .toList();
+        return new Reconciliation(acquiredTotal, paidTotal, acquiredTotal.subtract(paidTotal), rows);
+    }
+
+    /**
      * Looks up an entity by code.
      *
      * @param code the entity code
@@ -212,5 +249,30 @@ public class AccountingQueryService {
                             String lineNature, BigDecimal basis, BigDecimal rate, BigDecimal lineAmount,
                             String ruleVersion, String paymentOrder, String debitAccount, String creditAccount,
                             BigDecimal amount) {
+    }
+
+    /**
+     * The reconciliation of acquired and paid commissions (FIN-06): the global totals and the gap,
+     * with a row per beneficiary.
+     *
+     * @param acquired      the total acquired
+     * @param paid          the total paid
+     * @param gap           the acquired-minus-paid gap (still to pay)
+     * @param beneficiaries the per-beneficiary breakdown
+     */
+    public record Reconciliation(BigDecimal acquired, BigDecimal paid, BigDecimal gap,
+                                 List<BeneficiaryReconciliation> beneficiaries) {
+    }
+
+    /**
+     * One beneficiary's acquired-versus-paid reconciliation (FIN-06).
+     *
+     * @param distributor the beneficiary partner code
+     * @param acquired    the acquired total
+     * @param paid        the paid total
+     * @param gap         the gap still to pay
+     */
+    public record BeneficiaryReconciliation(String distributor, BigDecimal acquired, BigDecimal paid,
+                                            BigDecimal gap) {
     }
 }

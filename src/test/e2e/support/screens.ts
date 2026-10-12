@@ -54,6 +54,7 @@ export const SCREENS: readonly Screen[] = [
   { name: 'payeeRules', path: '/regles-versement', user: 'auditor' },
   { name: 'externalCodes', path: '/codes-externes', user: 'auditor' },
   { name: 'accounting', path: '/comptabilite', user: 'auditor' },
+  { name: 'reconciliation', path: '/rapprochement', user: 'auditor' },
   { name: 'cutoff', path: '/cutoff', user: 'auditor' },
   { name: 'dashboards', path: '/tableaux-de-bord', user: 'auditor' },
   { name: 'commissionSearch', path: '/recherche-commissions', user: 'auditor' },

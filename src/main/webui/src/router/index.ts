@@ -33,6 +33,7 @@ import PaymentView from '../views/PaymentView.vue';
 import BordereauxView from '../views/BordereauxView.vue';
 import CutoffView from '../views/CutoffView.vue';
 import AccountingView from '../views/AccountingView.vue';
+import ReconciliationView from '../views/ReconciliationView.vue';
 import FluxView from '../views/FluxView.vue';
 import ExportsView from '../views/ExportsView.vue';
 import FormatsView from '../views/FormatsView.vue';
@@ -60,6 +61,7 @@ const REAL_VIEWS: Record<string, unknown> = {
   statements: BordereauxView,
   cutoff: CutoffView,
   accounting: AccountingView,
+  reconciliation: ReconciliationView,
   flows: FluxView,
   exports: ExportsView,
   formats: FormatsView,

@@ -118,6 +118,21 @@ public class AccountingResource {
     }
 
     /**
+     * Reconciles an entity's acquired and paid commissions, by beneficiary and global (FIN-06).
+     *
+     * @param entityCode the entity code
+     * @return the reconciliation view
+     */
+    @GET
+    @Path("/{entity}/reconciliation")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public AccountingQueryService.Reconciliation reconciliation(@PathParam("entity") String entityCode) {
+        requireScope(entityCode);
+        return query.reconciliation(entityCode);
+    }
+
+    /**
      * Returns the cut-off pilotage state at a date, by a maille (FIN-04/09).
      *
      * @param entityCode the entity code
