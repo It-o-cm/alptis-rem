@@ -86,7 +86,7 @@ d'accès serveur · test de bout en bout · état.
 | 38 | Paramétrage d'une version de règle, approbation par un second administrateur | PAR-01→08, PAR-14 | `rules` / RulesView | POST versions, approve, plausibility | rules.spec | partiel — le formulaire de version ne couvre pas encore barèmes à paliers (PAR-06), conditions (PAR-07) et politique de reprise (PAR-08) par les schémas de famille |
 | 39 | Familles de calcul : un formulaire par famille | PAR-02 | `families` / FamiliesView | GET /families, /{f}/schema | families.spec | complet |
 | 40 | Accords et inscriptions aux règles réservées, à l'unité et en masse | PAR-10 | `enrollments` / EnrollmentsView | GET/POST agreements, enrollments | enrollments.spec | complet |
-| 41 | Simulation : lancement, table de substitution, résultat, historique | PAR-13 | `simulation` / SimulationView | POST /simulation/{e}/{m} | simulation.spec | partiel — historique des simulations absent |
+| 41 | Simulation : lancement, table de substitution, résultat, historique | PAR-13 | `simulation` / SimulationView | POST /simulation/{e}/{m}, GET /simulation/{e}/history | simulation.spec | complet — lancement, table de substitution, résultat comparé, et historique des simulations (table `simulation_history` en ajout seul, cf. DECISIONS 2026-10-12) |
 | 42 | Export et import du paramétrage | PAR-15 | `paramTransfer` / ParameterTransferView | GET export, POST import | parameter-transfer.spec | complet |
 
 ### Référentiels et flux

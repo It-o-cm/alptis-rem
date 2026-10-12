@@ -26,6 +26,9 @@ test('l’administrateur lance une simulation et lit la comparaison @screen:simu
   await expect(page.getByTestId('sim-real')).toBeVisible();
   await expect(page.getByTestId('sim-ecart')).toBeVisible();
   await expect(page.getByTestId('chart-sim')).toBeVisible();
+  // The simulation is kept in the history (PAR-13).
+  await expect(page.getByTestId('sim-history')).toBeVisible();
+  await expect(page.locator('[data-testid="sim-history-row"]').first()).toBeVisible();
   await admin.close();
 });
 

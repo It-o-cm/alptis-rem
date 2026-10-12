@@ -119,6 +119,11 @@ class SimulationResourceTest {
                 .body("{\"ruleCode\":\"SIM-APP\",\"versionNo\":2}")
                 .when().post("/api/ui/v1/simulation/" + ENTITY + "/" + MONTH)
                 .then().statusCode(200).body("linesModified", is(0));
+
+        // The history lists the simulation just run (PAR-13).
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/simulation/" + ENTITY + "/history")
+                .then().statusCode(200).body("ruleCode", org.hamcrest.Matchers.hasItem("SIM-APP"));
     }
 
     /**
@@ -136,5 +141,9 @@ class SimulationResourceTest {
                 .body("{\"ruleCode\":\"SIM-APP\",\"versionNo\":2,\"substitutions\":[]}")
                 .when().post("/api/ui/v1/simulation/" + ENTITY + "/" + MONTH)
                 .then().statusCode(403);
+        // The history is partitioned too: a UNEP user cannot read the Alptis history.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/simulation/" + ENTITY + "/history")
+                .then().statusCode(404);
     }
 }

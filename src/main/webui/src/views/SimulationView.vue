@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { apiPost, ApiError } from '../api/client';
+import { computed, onMounted, ref } from 'vue';
+import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
@@ -41,7 +41,22 @@ const ruleCode = ref('');
 const versionNo = ref(2);
 const scopeDistributor = ref('');
 const substitutions = ref<{ oldRate: string; newRate: string }[]>([{ oldRate: '', newRate: '' }]);
+interface HistoryRow {
+  periodMonth: string | null;
+  ruleCode: string;
+  versionNo: number | null;
+  scopeDistributor: string | null;
+  realTotal: number;
+  simulatedTotal: number;
+  ecart: number;
+  linesReplayed: number | null;
+  linesModified: number | null;
+  held: number | null;
+  runAt: string | null;
+}
+
 const result = ref<Result | null>(null);
+const history = ref<HistoryRow[]>([]);
 const error = ref('');
 
 /** Whether the current user may run a simulation. */
@@ -97,6 +112,25 @@ const distributorColumns: Column<DistributorImpact>[] = [
   { key: 'ecart', label: 'Écart', align: 'num', value: (d) => amount(d.ecart) },
 ];
 
+/** Columns of the simulation history table (PAR-13). */
+const historyColumns: Column<HistoryRow>[] = [
+  { key: 'runAt', label: 'Lancée le', value: (h) => h.runAt ?? '—' },
+  { key: 'periodMonth', label: 'Période', value: (h) => h.periodMonth ?? '—' },
+  { key: 'ruleCode', label: 'Règle', value: (h) => `${h.ruleCode} v${h.versionNo ?? '—'}` },
+  { key: 'scopeDistributor', label: 'Périmètre', value: (h) => h.scopeDistributor ?? 'Tous' },
+  { key: 'ecart', label: 'Écart', align: 'num', value: (h) => amount(h.ecart) },
+  { key: 'linesModified', label: 'Modifiées', align: 'num', value: (h) => h.linesModified ?? '—' },
+];
+
+/** Loads the simulation history of the current entity. */
+async function loadHistory(): Promise<void> {
+  try {
+    history.value = await apiGet<HistoryRow[]>(`/api/ui/v1/simulation/${entity.value}/history`);
+  } catch {
+    history.value = [];
+  }
+}
+
 /** Runs the simulation for the chosen entity, period, rule and version. */
 async function run(): Promise<void> {
   error.value = '';
@@ -110,11 +144,14 @@ async function run(): Promise<void> {
       substitutions: table,
       scopeDistributor: scopeDistributor.value === '' ? null : scopeDistributor.value,
     });
+    await loadHistory();
   } catch (e) {
     result.value = null;
     error.value = e instanceof ApiError ? e.message : 'Simulation impossible';
   }
 }
+
+onMounted(loadHistory);
 </script>
 
 <template>
@@ -203,6 +240,17 @@ async function run(): Promise<void> {
         <DataTable :columns="distributorColumns" :rows="result.topDistributors" :row-testid="distTestid" />
       </AppCard>
     </template>
+
+    <AppCard flush data-testid="sim-history">
+      <h2 class="sim-table-title">Historique des simulations</h2>
+      <DataTable
+        :columns="historyColumns"
+        :rows="history"
+        empty="Aucune simulation enregistrée."
+        empty-testid="sim-history-empty"
+        :row-testid="() => 'sim-history-row'"
+      />
+    </AppCard>
   </div>
 </template>
 

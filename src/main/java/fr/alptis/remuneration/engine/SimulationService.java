@@ -6,6 +6,7 @@ import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.Period;
+import fr.alptis.remuneration.domain.SimulationHistory;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.Rule;
 import fr.alptis.remuneration.domain.RuleVersion;
@@ -134,7 +135,43 @@ public class SimulationService {
         run.finishedAt = clock.now();
         run.counters = "{\"replayed\":" + replayed + ",\"modified\":" + modified + ",\"held\":" + held + "}";
 
-        return result(run, realByNature, simByNature, byDistributor, replayed, modified, held);
+        SimulationResult simResult = result(run, realByNature, simByNature, byDistributor, replayed, modified, held);
+        // Keep an append-only history row so the screen can show past simulations (PAR-13).
+        SimulationHistory history = new SimulationHistory();
+        history.entity = entity;
+        history.period = period;
+        history.ruleCode = ruleCode;
+        history.versionNo = versionNo;
+        history.scopeDistributor = scopeDistributor;
+        history.realTotal = simResult.realTotal();
+        history.simulatedTotal = simResult.simulatedTotal();
+        history.ecart = simResult.ecart();
+        history.linesReplayed = replayed;
+        history.linesModified = modified;
+        history.held = held;
+        history.launchedBy = "simulation";
+        history.runAt = clock.now();
+        history.setCreatedAt(clock.now());
+        history.persist();
+        return simResult;
+    }
+
+    /**
+     * Lists the past simulations of an entity, most recent first (PAR-13).
+     *
+     * @param entityCode the entity code
+     * @return the simulation history views
+     */
+    @Transactional
+    public List<SimulationHistoryView> history(String entityCode) {
+        LegalEntity entity = entity(entityCode);
+        return SimulationHistory.<SimulationHistory>list("entity = ?1 order by runAt desc", entity).stream()
+                .map(h -> new SimulationHistoryView(
+                        h.period == null ? null : h.period.periodMonth.toString(),
+                        h.ruleCode, h.versionNo, h.scopeDistributor, h.realTotal, h.simulatedTotal, h.ecart,
+                        h.linesReplayed, h.linesModified, h.held,
+                        h.runAt == null ? null : h.runAt.toString()))
+                .toList();
     }
 
     /**
@@ -388,5 +425,26 @@ public class SimulationService {
     public record SimulationResult(Long runId, BigDecimal realTotal, BigDecimal simulatedTotal, BigDecimal ecart,
                                    int linesReplayed, int linesModified, int held,
                                    List<NatureComparison> byNature, List<DistributorImpact> topDistributors) {
+    }
+
+    /**
+     * One past simulation of an entity (PAR-13).
+     *
+     * @param periodMonth      the simulated period month (ISO)
+     * @param ruleCode         the simulated rule code
+     * @param versionNo        the simulated version number
+     * @param scopeDistributor the distributor scope, or null
+     * @param realTotal        the real total
+     * @param simulatedTotal   the simulated total
+     * @param ecart            the gap (simulated − real)
+     * @param linesReplayed    the number of replayed lines
+     * @param linesModified    the number of modified lines
+     * @param held             the number of held events
+     * @param runAt            when the simulation ran (ISO)
+     */
+    public record SimulationHistoryView(String periodMonth, String ruleCode, Integer versionNo,
+                                        String scopeDistributor, BigDecimal realTotal, BigDecimal simulatedTotal,
+                                        BigDecimal ecart, Integer linesReplayed, Integer linesModified, Integer held,
+                                        String runAt) {
     }
 }

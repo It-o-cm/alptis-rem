@@ -8,6 +8,7 @@ import fr.alptis.remuneration.security.EntityScope;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -68,6 +69,23 @@ public class SimulationResource {
         }
         return simulation.simulate(entityCode, LocalDate.parse(month), request.ruleCode(), request.versionNo(),
                 table, request.scopeDistributor());
+    }
+
+    /**
+     * Lists the past simulations of an entity (PAR-13).
+     *
+     * @param entityCode the entity code
+     * @return the simulation history
+     */
+    @GET
+    @Path("/{entity}/history")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "OPERATOR"})
+    public List<SimulationService.SimulationHistoryView> history(@PathParam("entity") String entityCode) {
+        if (!scope.canSee(entityCode)) {
+            throw new ResourceNotFoundException("Entité hors périmètre : " + entityCode);
+        }
+        return simulation.history(entityCode);
     }
 
     /**

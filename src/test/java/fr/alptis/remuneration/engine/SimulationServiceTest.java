@@ -31,7 +31,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Acceptance tests of the simulation (PAR-13, CR-69): the reproducibility of a period replayed with
@@ -141,6 +143,35 @@ class SimulationServiceTest {
         assertEquals(0, new BigDecimal("0.00").compareTo(result.ecart()));
         assertEquals(0, new BigDecimal("84300.00").compareTo(result.simulatedTotal()));
         assertEquals(1, CommissionLine.count("run.id = ?1", result.runId()));
+    }
+
+    /**
+     * A simulation records an append-only history row (PAR-13), listed most recent first; an unknown
+     * entity is rejected.
+     */
+    @Test
+    @TestTransaction
+    void records_and_lists_the_simulation_history() {
+        CalculationRun run = scene();
+        Rule apport = rule("APPORT", 1);
+        realLine(run, apport, LineNature.ACQUISITION, "100.00", "0.30", "30.00", distributor("D1"));
+
+        service.simulate("UNEP", M, "APPORT", 1, List.of(), null);
+        // A sparse history row (no period, no run date) to cover the null branches of the view.
+        fr.alptis.remuneration.domain.SimulationHistory sparse =
+                new fr.alptis.remuneration.domain.SimulationHistory();
+        sparse.entity = unep();
+        sparse.ruleCode = "LEGACY";
+        sparse.persist();
+
+        var history = service.history("UNEP");
+        assertEquals(2, history.size());
+        assertTrue(history.stream().anyMatch(h -> "APPORT".equals(h.ruleCode()) && "2026-09-01".equals(h.periodMonth())));
+        var bare = history.stream().filter(h -> "LEGACY".equals(h.ruleCode())).findFirst().orElseThrow();
+        assertNull(bare.periodMonth());
+        assertNull(bare.runAt());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.history("GHOST"));
     }
 
     /**

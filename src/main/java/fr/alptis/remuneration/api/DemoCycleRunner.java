@@ -166,6 +166,7 @@ public class DemoCycleRunner {
         novemberAlptis(world);
         plantHeldEvent(e);
         plantClaim(e);
+        plantSimulation(e);
     }
 
     /**
@@ -180,6 +181,7 @@ public class DemoCycleRunner {
         octoberUnep(world);
         plantHeldEvent(e);
         plantClaim(e);
+        plantSimulation(e);
     }
 
     /**
@@ -204,6 +206,33 @@ public class DemoCycleRunner {
         claimLine.claim = claim;
         claimLine.commissionLine = line;
         claimLine.persist();
+    }
+
+    /**
+     * Records one past simulation per entity (PAR-13), so the simulation screen shows a history. The
+     * row is a representative outcome of replaying September under a project rate; the live simulation
+     * writes the same history when run from the screen.
+     *
+     * @param entityCode the entity code
+     */
+    private void plantSimulation(String entityCode) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        fr.alptis.remuneration.domain.SimulationHistory history =
+                new fr.alptis.remuneration.domain.SimulationHistory();
+        history.entity = entity;
+        history.period = period(entityCode, LocalDate.of(2026, 9, 1));
+        history.ruleCode = "SANTE_SELECT_LINEAR";
+        history.versionNo = 1;
+        history.realTotal = new BigDecimal("1000.00");
+        history.simulatedTotal = new BigDecimal("900.00");
+        history.ecart = new BigDecimal("-100.00");
+        history.linesReplayed = 12;
+        history.linesModified = 4;
+        history.held = 0;
+        history.launchedBy = USER;
+        history.runAt = clock.now();
+        history.setCreatedAt(clock.now());
+        history.persist();
     }
 
     /**
