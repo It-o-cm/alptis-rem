@@ -8,7 +8,8 @@ import { resetDb, seedFdv, USERS } from '../support/helpers';
 // arithmetic is verified by SalesForceServiceTest on the server.
 //
 // @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial @screen:fdvCollaborators @screen:fdvMeasures
-// @req:FDV-01 @req:FDV-02 @req:FDV-04 @req:FDV-13 @req:FDV-14 @req:FDV-15
+// @screen:fdvObjectives
+// @req:FDV-01 @req:FDV-02 @req:FDV-03 @req:FDV-04 @req:FDV-13 @req:FDV-14 @req:FDV-15
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
@@ -108,6 +109,31 @@ test('l’administrateur consulte les mesures reçues @screen:fdvMeasures @req:F
   const row = page.locator('[data-testid^="measure-row-"]').first();
   await expect(row).toBeVisible();
   await expect(page.getByText('Production par marché').first()).toBeVisible();
+  await admin.close();
+});
+
+test('l’administrateur crée un objectif collectif versionné @screen:fdvObjectives @req:FDV-03', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/objectifs');
+  await expect(page.getByTestId('page-title')).toHaveText('Objectifs');
+
+  // A collective objective (no collaborator) at version 1.
+  await page.getByTestId('obj-type').selectOption('COLLECTIVE_QUANTITATIVE');
+  await page.getByTestId('obj-job').selectOption('RR');
+  await page.getByTestId('obj-employee').fill('');
+  await page.getByTestId('obj-target').fill('50000');
+  await page.getByTestId('obj-from').fill('2026-01-01');
+  await page.getByTestId('obj-to').fill('2026-12-31');
+  await page.getByTestId('obj-submit').click();
+  await expect(page.getByTestId('fdvo-message')).toContainText('enregistré');
+  await expect(page.getByTestId('objective-row-collectif-COLLECTIVE_QUANTITATIVE-v1')).toBeVisible();
+
+  // Submitting the same key again creates version 2 (append-only versioning).
+  await page.getByTestId('obj-submit').click();
+  await expect(page.getByTestId('objective-row-collectif-COLLECTIVE_QUANTITATIVE-v2')).toBeVisible();
   await admin.close();
 });
 

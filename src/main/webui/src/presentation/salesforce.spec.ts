@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { jobCodeLabel, JOB_CODES, measureTypeLabel } from './salesforce';
+import { jobCodeLabel, JOB_CODES, measureTypeLabel, objectiveTypeLabel, OBJECTIVE_TYPES } from './salesforce';
 
 describe('sales-force presentation', () => {
   it('labels known job codes and falls back for the rest', () => {
@@ -19,5 +19,14 @@ describe('sales-force presentation', () => {
     expect(measureTypeLabel('SPECIFICATIONS_RECEIVED')).toBe('Cahiers des charges reçus');
     expect(measureTypeLabel('UNKNOWN')).toBe('UNKNOWN');
     expect(measureTypeLabel(null)).toBe('—');
+  });
+
+  it('labels known objective types and falls back for the rest', () => {
+    expect(objectiveTypeLabel('INDIVIDUAL_QUANTITATIVE')).toBe('Individuel quantitatif');
+    expect(objectiveTypeLabel('COLLECTIVE_QUANTITATIVE')).toBe('Collectif quantitatif');
+    expect(objectiveTypeLabel('QUALITATIVE')).toBe('Qualitatif');
+    expect(objectiveTypeLabel('UNKNOWN')).toBe('UNKNOWN');
+    expect(objectiveTypeLabel(null)).toBe('—');
+    expect(OBJECTIVE_TYPES).toContain('COLLECTIVE_QUANTITATIVE');
   });
 });

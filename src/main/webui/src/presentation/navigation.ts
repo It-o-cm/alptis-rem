@@ -121,6 +121,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     items: [
       { name: 'fdvCollaborators', path: '/fdv/collaborateurs', label: 'Collaborateurs' },
       { name: 'fdvMeasures', path: '/fdv/mesures', label: 'Mesures reçues' },
+      { name: 'fdvObjectives', path: '/fdv/objectifs', label: 'Objectifs' },
       { name: 'fdvPlan', path: '/fdv/plan', label: 'Plan de variable' },
       { name: 'fdvValidation', path: '/fdv/validation', label: 'Validation mensuelle' },
       { name: 'fdvCommercial', path: '/fdv/commercial', label: 'Mon variable' },

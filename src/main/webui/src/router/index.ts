@@ -51,6 +51,7 @@ import SupervisionView from '../views/SupervisionView.vue';
 import PurgeView from '../views/PurgeView.vue';
 import FdvCollaboratorsView from '../views/FdvCollaboratorsView.vue';
 import FdvMeasuresView from '../views/FdvMeasuresView.vue';
+import FdvObjectivesView from '../views/FdvObjectivesView.vue';
 import FdvPlanView from '../views/FdvPlanView.vue';
 import FdvValidationView from '../views/FdvValidationView.vue';
 import FdvCommercialView from '../views/FdvCommercialView.vue';
@@ -83,6 +84,7 @@ const REAL_VIEWS: Record<string, unknown> = {
   purge: PurgeView,
   fdvCollaborators: FdvCollaboratorsView,
   fdvMeasures: FdvMeasuresView,
+  fdvObjectives: FdvObjectivesView,
   fdvPlan: FdvPlanView,
   fdvValidation: FdvValidationView,
   fdvCommercial: FdvCommercialView,

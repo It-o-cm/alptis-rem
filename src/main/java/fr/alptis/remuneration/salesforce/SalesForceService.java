@@ -296,6 +296,101 @@ public class SalesForceService {
     }
 
     /**
+     * Creates an objective (FDV-03), individual (an employee is given) or collective (none), by post
+     * and period, versioned append-only: a new objective for the same key takes the next version, the
+     * calculation reading the latest. Qualitative and quantitative types are both accepted.
+     *
+     * @param entityCode the entity code
+     * @param input      the objective fields
+     * @return the created objective
+     */
+    @Transactional
+    public SalesObjective createObjective(String entityCode, ObjectiveInput input) {
+        LegalEntity entity = entity(entityCode);
+        if (input.objectiveType() == null) {
+            throw new ValidationException("Type d'objectif obligatoire");
+        }
+        if (input.periodFrom() == null || input.periodTo() == null) {
+            throw new ValidationException("Période obligatoire");
+        }
+        if (input.periodFrom().isAfter(input.periodTo())) {
+            throw new ValidationException("La fin de période précède le début");
+        }
+        if (input.targetValue() == null) {
+            throw new ValidationException("Valeur cible obligatoire");
+        }
+        Employee employee = resolveEmployee(entity, input.employeeExternalId());
+        SalesObjective objective = new SalesObjective();
+        objective.entity = entity;
+        objective.employee = employee;
+        objective.jobCode = input.jobCode();
+        objective.objectiveType = input.objectiveType();
+        objective.periodFrom = input.periodFrom();
+        objective.periodTo = input.periodTo();
+        objective.targetValue = input.targetValue();
+        objective.versionNo = nextObjectiveVersion(entity, input, employee);
+        objective.persist();
+        return objective;
+    }
+
+    /**
+     * Resolves an employee by external id within an entity; a null or blank id means a collective
+     * objective (no employee).
+     *
+     * @param entity     the entity
+     * @param externalId the employee's external id, possibly null or blank
+     * @return the employee, or null for a collective objective
+     */
+    private Employee resolveEmployee(LegalEntity entity, String externalId) {
+        if (externalId == null || externalId.isBlank()) {
+            return null;
+        }
+        Employee employee = Employee.<Employee>find("entity = ?1 and externalId = ?2", entity, externalId)
+                .firstResult();
+        if (employee == null) {
+            throw new ResourceNotFoundException("Collaborateur inconnu : " + externalId);
+        }
+        return employee;
+    }
+
+    /**
+     * Computes the next version number for an objective's natural key (entity, type, post, period and
+     * target employee), so versions accumulate without overwriting.
+     *
+     * @param entity   the entity
+     * @param input    the objective fields
+     * @param employee the resolved target employee, or null for a collective objective
+     * @return the next version number (1 for the first)
+     */
+    private int nextObjectiveVersion(LegalEntity entity, ObjectiveInput input, Employee employee) {
+        int max = 0;
+        for (SalesObjective existing : SalesObjective.<SalesObjective>list(
+                "entity = ?1 and objectiveType = ?2 and jobCode = ?3 and periodFrom = ?4 and periodTo = ?5",
+                entity, input.objectiveType(), input.jobCode(), input.periodFrom(), input.periodTo())) {
+            String existingTarget = existing.employee == null ? null : existing.employee.externalId;
+            String target = employee == null ? null : employee.externalId;
+            if (java.util.Objects.equals(existingTarget, target)) {
+                max = Math.max(max, existing.versionNo == null ? 0 : existing.versionNo);
+            }
+        }
+        return max + 1;
+    }
+
+    /**
+     * The editable fields of an objective (FDV-03).
+     *
+     * @param employeeExternalId the target employee, or null for a collective objective
+     * @param jobCode            the post the objective applies to
+     * @param objectiveType      the objective type (individual/collective quantitative, qualitative)
+     * @param periodFrom         the period start
+     * @param periodTo           the period end
+     * @param targetValue        the target value
+     */
+    public record ObjectiveInput(String employeeExternalId, JobCode jobCode, ObjectiveType objectiveType,
+                                 LocalDate periodFrom, LocalDate periodTo, BigDecimal targetValue) {
+    }
+
+    /**
      * The editable fields of a managed collaborator (FDV-01).
      *
      * @param externalId        the external id (natural key)

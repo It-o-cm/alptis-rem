@@ -1,6 +1,7 @@
 package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.domain.JobCode;
+import fr.alptis.remuneration.domain.ObjectiveType;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.CollaboratorView;
@@ -173,6 +174,29 @@ public class FdvResource {
     }
 
     /**
+     * Creates an objective (FDV-03), individual or collective, versioned, by the business administrator.
+     *
+     * @param entityCode the entity code
+     * @param request    the objective fields
+     * @return a 201 response with the created objective
+     */
+    @POST
+    @Path("/{entity}/objectives")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public jakarta.ws.rs.core.Response createObjective(@PathParam("entity") String entityCode,
+                                                       ObjectiveRequest request) {
+        requireScope(entityCode);
+        var created = service.createObjective(entityCode, request.toInput());
+        return jakarta.ws.rs.core.Response.status(jakarta.ws.rs.core.Response.Status.CREATED)
+                .entity(new ObjectiveView(created.employee == null ? null : created.employee.externalId,
+                        created.objectiveType.name(), created.periodFrom, created.periodTo, created.targetValue,
+                        created.versionNo))
+                .build();
+    }
+
+    /**
      * Returns the variable results of a period (validation screen, FDV-13).
      *
      * @param entityCode the entity code
@@ -291,6 +315,30 @@ public class FdvResource {
      * @param reason     the adjustment reason
      */
     public record AdjustmentRequest(String externalId, BigDecimal amount, String reason) {
+    }
+
+    /**
+     * An objective create request (FDV-03).
+     *
+     * @param employeeExternalId the target employee, or null for a collective objective
+     * @param jobCode            the post
+     * @param objectiveType      the objective type
+     * @param periodFrom         the period start
+     * @param periodTo           the period end
+     * @param targetValue        the target value
+     */
+    public record ObjectiveRequest(String employeeExternalId, JobCode jobCode, ObjectiveType objectiveType,
+                                   LocalDate periodFrom, LocalDate periodTo, BigDecimal targetValue) {
+
+        /**
+         * Converts this request to a service input.
+         *
+         * @return the objective input
+         */
+        SalesForceService.ObjectiveInput toInput() {
+            return new SalesForceService.ObjectiveInput(employeeExternalId, jobCode, objectiveType, periodFrom,
+                    periodTo, targetValue);
+        }
     }
 
     /**

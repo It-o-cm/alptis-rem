@@ -75,6 +75,7 @@ const SCREEN_ACTORS: Record<string, readonly Role[]> = {
   purge: ['IT_ADMIN'],
   // Forces de vente
   fdvCollaborators: ['BUSINESS_ADMIN'],
+  fdvObjectives: ['BUSINESS_ADMIN'],
   fdvPlan: ['BUSINESS_ADMIN', 'SALES_MANAGER'],
   fdvValidation: ['SALES_MANAGER', 'FINANCE_CONTROLLER', 'BUSINESS_ADMIN'],
 };

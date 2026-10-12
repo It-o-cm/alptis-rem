@@ -176,6 +176,33 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-03: the business administrator creates a versioned objective (a second create of the same key
+     * yields version 2); a sales manager may not write.
+     */
+    @Test
+    void creates_versioned_objectives() {
+        String body = "{\"employeeExternalId\":\"E1\",\"jobCode\":\"CAC\","
+                + "\"objectiveType\":\"INDIVIDUAL_QUANTITATIVE\",\"periodFrom\":\"2026-01-01\","
+                + "\"periodTo\":\"2026-12-31\",\"targetValue\":1500}";
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType(ContentType.JSON).body(body)
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/objectives")
+                .then().statusCode(201).body("versionNo", is(1)).body("employee", is("E1"));
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType(ContentType.JSON).body(body)
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/objectives")
+                .then().statusCode(201).body("versionNo", is(2));
+
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").contentType(ContentType.JSON).body(body)
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/objectives").then().statusCode(403);
+
+        // A collective objective (no employee) comes back with a null employee.
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType(ContentType.JSON)
+                .body("{\"employeeExternalId\":null,\"jobCode\":\"RR\",\"objectiveType\":\"COLLECTIVE_QUANTITATIVE\","
+                        + "\"periodFrom\":\"2026-01-01\",\"periodTo\":\"2026-12-31\",\"targetValue\":50000}")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/objectives")
+                .then().statusCode(201).body("employee", org.hamcrest.Matchers.nullValue()).body("versionNo", is(1));
+    }
+
+    /**
      * A commercial consults its own variable; a UNEP user is out of scope and a viewer may not run.
      */
     @Test

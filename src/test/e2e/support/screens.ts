@@ -70,6 +70,7 @@ export const SCREENS: readonly Screen[] = [
   { name: 'purge', path: '/purge', user: 'itAdmin' },
   { name: 'fdvCollaborators', path: '/fdv/collaborateurs', user: 'adminAlptis' },
   { name: 'fdvMeasures', path: '/fdv/mesures', user: 'auditor' },
+  { name: 'fdvObjectives', path: '/fdv/objectifs', user: 'adminAlptis' },
   { name: 'fdvPlan', path: '/fdv/plan', user: 'auditor' },
   { name: 'fdvValidation', path: '/fdv/validation', user: 'auditor' },
   { name: 'fdvCommercial', path: '/fdv/commercial', user: 'auditor' },

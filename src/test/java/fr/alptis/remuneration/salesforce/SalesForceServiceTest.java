@@ -281,6 +281,72 @@ class SalesForceServiceTest {
     }
 
     /**
+     * FDV-03: objectives are versioned append-only per key; an individual, a second version of it, a
+     * different employee (own version 1) and a collective objective are all created; an existing
+     * version-less objective still advances the next version.
+     */
+    @Test
+    @TestTransaction
+    void manages_versioned_objectives() {
+        employee("E1", JobCode.CAC);
+        employee("E2", JobCode.CAC);
+        SalesObjective v1 = service.createObjective("UNEP", new SalesForceService.ObjectiveInput(
+                "E1", JobCode.CAC, ObjectiveType.INDIVIDUAL_QUANTITATIVE, FROM, TO, new BigDecimal("1000")));
+        assertEquals(1, v1.versionNo);
+        SalesObjective v2 = service.createObjective("UNEP", new SalesForceService.ObjectiveInput(
+                "E1", JobCode.CAC, ObjectiveType.INDIVIDUAL_QUANTITATIVE, FROM, TO, new BigDecimal("1200")));
+        assertEquals(2, v2.versionNo);
+        // A different employee for the same key keeps its own version 1 (target mismatch skipped).
+        SalesObjective other = service.createObjective("UNEP", new SalesForceService.ObjectiveInput(
+                "E2", JobCode.CAC, ObjectiveType.INDIVIDUAL_QUANTITATIVE, FROM, TO, new BigDecimal("900")));
+        assertEquals(1, other.versionNo);
+        // A collective objective (blank employee → none).
+        SalesObjective collective = service.createObjective("UNEP", new SalesForceService.ObjectiveInput(
+                "  ", JobCode.CAC, ObjectiveType.COLLECTIVE_QUANTITATIVE, FROM, TO, new BigDecimal("50000")));
+        assertEquals(null, collective.employee);
+        assertEquals(1, collective.versionNo);
+
+        // An existing version-less objective of the same key still lets the next version advance to 1.
+        SalesObjective legacy = new SalesObjective();
+        legacy.entity = unep();
+        legacy.jobCode = JobCode.RR;
+        legacy.objectiveType = ObjectiveType.QUALITATIVE;
+        legacy.periodFrom = FROM;
+        legacy.periodTo = TO;
+        legacy.targetValue = new BigDecimal("1");
+        legacy.versionNo = null;
+        legacy.persist();
+        SalesObjective qualitative = service.createObjective("UNEP", new SalesForceService.ObjectiveInput(
+                null, JobCode.RR, ObjectiveType.QUALITATIVE, FROM, TO, new BigDecimal("3")));
+        assertEquals(1, qualitative.versionNo);
+    }
+
+    /**
+     * FDV-03: the objective write refuses a missing type, period bound, inverted period, missing target
+     * and an unknown target employee.
+     */
+    @Test
+    @TestTransaction
+    void rejects_invalid_objectives() {
+        assertThrows(ValidationException.class, () -> service.createObjective("UNEP",
+                new SalesForceService.ObjectiveInput(null, JobCode.CAC, null, FROM, TO, BigDecimal.ONE)));
+        assertThrows(ValidationException.class, () -> service.createObjective("UNEP",
+                new SalesForceService.ObjectiveInput(null, JobCode.CAC, ObjectiveType.QUALITATIVE, null, TO,
+                        BigDecimal.ONE)));
+        assertThrows(ValidationException.class, () -> service.createObjective("UNEP",
+                new SalesForceService.ObjectiveInput(null, JobCode.CAC, ObjectiveType.QUALITATIVE, FROM, null,
+                        BigDecimal.ONE)));
+        assertThrows(ValidationException.class, () -> service.createObjective("UNEP",
+                new SalesForceService.ObjectiveInput(null, JobCode.CAC, ObjectiveType.QUALITATIVE, TO, FROM,
+                        BigDecimal.ONE)));
+        assertThrows(ValidationException.class, () -> service.createObjective("UNEP",
+                new SalesForceService.ObjectiveInput(null, JobCode.CAC, ObjectiveType.QUALITATIVE, FROM, TO, null)));
+        assertThrows(ResourceNotFoundException.class, () -> service.createObjective("UNEP",
+                new SalesForceService.ObjectiveInput("GHOST", JobCode.CAC, ObjectiveType.INDIVIDUAL_QUANTITATIVE,
+                        FROM, TO, BigDecimal.ONE)));
+    }
+
+    /**
      * FDV-01: the writes refuse a blank matricule, a duplicate, a missing post or start date, an
      * unknown manager and an unknown collaborator on update.
      */

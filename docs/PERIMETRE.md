@@ -134,7 +134,7 @@ d'accès serveur · test de bout en bout · état.
 | --- | --- | --- | --- | --- | --- | --- |
 | 67 | Collaborateurs | FDV-01 | `fdvCollaborators` / FdvCollaboratorsView | GET/POST /fdv/{e}/collaborators, PUT /fdv/{e}/collaborators/{id} | fdv.spec | complet — écran de gestion dédié : création et mise à jour individuelles (poste, équipe, région, responsable, dates), en plus de l'alimentation en masse par le SI RH ; liste restituant la validité et le poste en clair |
 | 68 | Mesures reçues : absences, production, activité, marge | FDV-02 | `fdvMeasures` / FdvMeasuresView | GET /fdv/{e}/measures | fdv.spec | complet — écran de consultation des mesures reçues (absences, production par marché, activité CRM, marge, cahiers des charges) alimentées par l'import SI RH/CRM ; types de mesure restitués en clair |
-| 69 | Objectifs individuels et collectifs, versionnés | FDV-03 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/objectives | fdv.spec | partiel — objectifs en lecture seule ; versionnement et objectifs collectifs non exposés |
+| 69 | Objectifs individuels et collectifs, versionnés | FDV-03 | `fdvObjectives` / FdvObjectivesView | GET/POST /fdv/{e}/objectives | fdv.spec | complet — écran de gestion : objectifs individuels et collectifs, quantitatifs et qualitatifs, par poste et période, versionnés en ajout seul (nouvel objectif de même clé = version suivante, le calcul lit la dernière) |
 | 70 | Plan de variable par poste | FDV-04, FDV-09→12 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/plans, POST run | fdv.spec | partiel — barèmes animateurs/responsables/vente directe (FDV-09/10) et réduction sur résiliation (FDV-12) absents |
 | 71 | Validation mensuelle par le responsable | FDV-13 | `fdvValidation` / FdvValidationView | GET results, POST validate/adjust | fdv.spec | complet |
 | 72 | Mon variable, mes objectifs, mon historique, simulateur | FDV-15, FDV-16 | `fdvCommercial` / FdvCommercialView | GET /fdv/{e}/my-variable/{id} | fdv.spec | partiel — simulateur (FDV-16) absent |
@@ -343,7 +343,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | --- | --- | --- | --- | --- |
 | FDV-01 | EmployeeImportService, SalesForceService (create/update), SalesForceQueryService | #67 | fdv | complet — gestion des collaborateurs à l'écran (création/mise à jour) et alimentation en masse par le SI RH |
 | FDV-02 | EmployeeImportService (import), SalesForceQueryService (measures) | #68 | fdv | complet — mesures reçues par import SI RH/CRM et consultées à l'écran (absences, production, activité, marge, cahiers des charges) |
-| FDV-03 | SalesForceQueryService | #69 | fdv | partiel — versionnement et objectifs collectifs absents |
+| FDV-03 | SalesForceService (createObjective), SalesForceQueryService | #69 | fdv | complet — objectifs individuels/collectifs, quantitatifs/qualitatifs, par poste et période, versionnés en ajout seul |
 | FDV-04 | SalesForceService | #70 | fdv | partiel — enveloppes/critères des postes animateur/responsable/vente directe absents |
 | FDV-05 | SalesForceService (runMonth) | #71 | cr88 JUnit | complet |
 | FDV-06 | — | #73 | — | absent — régularisation annuelle |
