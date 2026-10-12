@@ -83,6 +83,7 @@ class AccountsResourceTest {
         line.status = LineStatus.EARNED;
         line.nature = LineNature.LINEAR;
         line.amount = new BigDecimal(amount);
+        line.attachmentMonth = period.periodMonth;
         line.persist();
     }
 
@@ -206,6 +207,85 @@ class AccountsResourceTest {
             .contentType(ContentType.JSON).body("{\"reason\":\"litige\"}")
             .when().post("/api/ui/v1/accounts/" + id + "/block")
             .then().statusCode(200).body("blocked", is(true));
+    }
+
+    /**
+     * An operator lists a distributor's commission lines, then blocks one with a reason and a lifting
+     * date and unblocks it (CPT-05).
+     */
+    @Test
+    void lists_and_blocks_a_line() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/DX/lines")
+                .then().statusCode(200).body("size()", is(2)).body("blocked", hasItem(false));
+
+        Integer lineId = given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/DX/lines")
+                .then().extract().path("[0].id");
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON).body("{\"reason\":\"enquête\",\"until\":\"2026-12-31\"}")
+                .when().post("/api/ui/v1/accounts/lines/" + lineId + "/block")
+                .then().statusCode(200).body("blocked", is(true)).body("blockedUntil", is("2026-12-31"));
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().post("/api/ui/v1/accounts/lines/" + lineId + "/unblock")
+                .then().statusCode(200).body("blocked", is(false));
+
+        // A line may also be blocked without a lifting date.
+        Integer otherId = given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/DX/lines")
+                .then().extract().path("[1].id");
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON).body("{\"reason\":\"suspicion\"}")
+                .when().post("/api/ui/v1/accounts/lines/" + otherId + "/block")
+                .then().statusCode(200).body("blocked", is(true)).body("blockedUntil", org.hamcrest.Matchers.nullValue());
+    }
+
+    /**
+     * Listing lines for an unknown distributor, and blocking an unknown or out-of-scope line, are all
+     * reported as not found.
+     */
+    @Test
+    void line_not_found_and_out_of_scope() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/NOPE/lines")
+                .then().statusCode(404);
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON).body("{\"reason\":\"x\"}")
+                .when().post("/api/ui/v1/accounts/lines/999999/block")
+                .then().statusCode(404);
+
+        // A line in UNEP is out of scope for a restricted Alptis operator.
+        long[] lineId = new long[1];
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity unep = LegalEntity.<LegalEntity>find("code", "UNEP").firstResult();
+            Period period = new Period();
+            period.entity = unep;
+            period.periodMonth = LocalDate.parse(MONTH);
+            period.state = PeriodState.CONTROLLED;
+            period.persist();
+            Distributor du = new Distributor();
+            du.partnerCode = "DU";
+            du.legalName = "DU";
+            du.persist();
+            DistributorAccount account = pcAccount(unep, du, "DU-1");
+            CommissionLine line = new CommissionLine();
+            line.entity = unep;
+            line.period = period;
+            line.account = account;
+            line.direction = Direction.OUTBOUND;
+            line.status = LineStatus.EARNED;
+            line.nature = LineNature.LINEAR;
+            line.amount = new BigDecimal("10");
+            line.attachmentMonth = period.periodMonth;
+            line.persist();
+            lineId[0] = line.getId();
+        });
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON).body("{\"reason\":\"x\"}")
+                .when().post("/api/ui/v1/accounts/lines/" + lineId[0] + "/block")
+                .then().statusCode(404);
     }
 
     /**

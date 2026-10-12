@@ -20,6 +20,18 @@ interface AccountView {
   balance: number;
   blocked: boolean;
   blockReason: string | null;
+  blockedUntil: string | null;
+}
+
+interface LineView {
+  id: number;
+  nature: string | null;
+  amount: number;
+  status: string | null;
+  attachmentMonth: string | null;
+  blocked: boolean;
+  blockReason: string | null;
+  blockedUntil: string | null;
 }
 
 interface DistributorView {
@@ -33,7 +45,10 @@ const entity = ref(session.entities.length > 0 ? session.entities[0] : '');
 const month = ref('2026-09-01');
 const partnerCode = ref('');
 const view = ref<DistributorView | null>(null);
+const lines = ref<LineView[]>([]);
 const debtors = ref<AccountView[]>([]);
+const blockReason = ref('Blocage manuel');
+const blockUntil = ref('');
 const error = ref('');
 const message = ref('');
 const loading = ref(false);
@@ -47,6 +62,19 @@ const accountColumns: Column<AccountView>[] = [
   { key: 'account', label: 'Compte', value: (a) => `${a.payeeType} #${a.payeeId}` },
   { key: 'balance', label: 'Solde', align: 'num' },
   { key: 'blocked', label: 'Bloqué' },
+  { key: 'blockReason', label: 'Motif', value: (a) => a.blockReason ?? '—' },
+  { key: 'blockedUntil', label: 'Levée le', value: (a) => a.blockedUntil ?? '—' },
+];
+
+/** Columns of the commission-lines table. */
+const lineColumns: Column<LineView>[] = [
+  { key: 'attachmentMonth', label: 'Mois', value: (l) => l.attachmentMonth ?? '—' },
+  { key: 'nature', label: 'Nature', value: (l) => l.nature ?? '—' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (l) => amount(l.amount) },
+  { key: 'status', label: 'Statut', value: (l) => l.status ?? '—' },
+  { key: 'blocked', label: 'Bloquée', value: (l) => (l.blocked ? 'Oui' : 'Non') },
+  { key: 'blockReason', label: 'Motif', value: (l) => l.blockReason ?? '—' },
+  { key: 'blockedUntil', label: 'Levée le', value: (l) => l.blockedUntil ?? '—' },
 ];
 
 /** Columns of the debtor accounts table. */
@@ -65,11 +93,18 @@ async function search(): Promise<void> {
     view.value = await apiGet<DistributorView>(`/api/ui/v1/accounts/${entity.value}/distributor/${partnerCode.value}`);
     series.value = await apiGet<MonthBalance[]>(
       `/api/ui/v1/accounts/${entity.value}/distributor/${partnerCode.value}/balance-series`);
+    lines.value = await apiGet<LineView[]>(
+      `/api/ui/v1/accounts/${entity.value}/distributor/${partnerCode.value}/lines`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Distributeur introuvable';
   } finally {
     loading.value = false;
   }
+}
+
+/** The block request body from the entered reason and optional lifting date. */
+function blockBody(): { reason: string; until: string | null } {
+  return { reason: blockReason.value, until: blockUntil.value === '' ? null : blockUntil.value };
 }
 
 /** The months shown on the balance chart. */
@@ -101,7 +136,7 @@ async function compensate(): Promise<void> {
  * @param a the account to block
  */
 async function block(a: AccountView): Promise<void> {
-  await apiPost(`/api/ui/v1/accounts/${a.id}/block`, { reason: 'Blocage manuel' });
+  await apiPost(`/api/ui/v1/accounts/${a.id}/block`, blockBody());
   await search();
 }
 
@@ -111,6 +146,24 @@ async function block(a: AccountView): Promise<void> {
  */
 async function unblock(a: AccountView): Promise<void> {
   await apiPost(`/api/ui/v1/accounts/${a.id}/unblock`, {});
+  await search();
+}
+
+/**
+ * Blocks a commission line and refreshes the view.
+ * @param l the line to block
+ */
+async function blockLine(l: LineView): Promise<void> {
+  await apiPost(`/api/ui/v1/accounts/lines/${l.id}/block`, blockBody());
+  await search();
+}
+
+/**
+ * Unblocks a commission line and refreshes the view.
+ * @param l the line to unblock
+ */
+async function unblockLine(l: LineView): Promise<void> {
+  await apiPost(`/api/ui/v1/accounts/lines/${l.id}/unblock`, {});
   await search();
 }
 
@@ -151,8 +204,14 @@ onMounted(loadDebtors);
       <h2 class="ui-detail-title">
         {{ view.partnerCode }} — solde total <span data-testid="account-total">{{ amount(view.total) }}</span>
       </h2>
-      <div v-if="canOperate()">
+      <div v-if="canOperate()" class="ui-block-params">
         <AppButton data-testid="acc-compensate" @click="compensate">Compenser</AppButton>
+        <FormField label="Motif de blocage" stacked width="long" v-slot="{ id }">
+          <input :id="id" data-testid="block-reason" type="text" v-model="blockReason" />
+        </FormField>
+        <FormField label="Date de levée" stacked width="date" v-slot="{ id }">
+          <input :id="id" data-testid="block-until" type="text" v-model="blockUntil" placeholder="AAAA-MM-JJ" />
+        </FormField>
       </div>
       <DataTable
         :columns="accountColumns"
@@ -172,6 +231,27 @@ onMounted(loadDebtors);
               Bloquer
             </AppButton>
             <AppButton v-else variant="secondary" :data-testid="`account-unblock-${row.id}`" @click="unblock(row)">
+              Débloquer
+            </AppButton>
+          </template>
+        </template>
+      </DataTable>
+
+      <h3 class="ui-detail-sub">Lignes de commission</h3>
+      <DataTable
+        :columns="lineColumns"
+        :rows="lines"
+        row-key="id"
+        empty="Aucune ligne de commission."
+        empty-testid="no-lines"
+        :row-testid="(l) => `line-row-${l.id}`"
+      >
+        <template #actions="{ row }">
+          <template v-if="canOperate()">
+            <AppButton v-if="!row.blocked" variant="secondary" :data-testid="`line-block-${row.id}`" @click="blockLine(row)">
+              Bloquer
+            </AppButton>
+            <AppButton v-else variant="secondary" :data-testid="`line-unblock-${row.id}`" @click="unblockLine(row)">
               Débloquer
             </AppButton>
           </template>
@@ -201,5 +281,16 @@ onMounted(loadDebtors);
 .ui-detail-title {
   margin: 0;
   font-size: var(--fs-h2);
+}
+.ui-detail-sub {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.ui-block-params {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
 }
 </style>

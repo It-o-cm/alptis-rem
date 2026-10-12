@@ -166,6 +166,61 @@ public class AccountsResource {
     }
 
     /**
+     * Lists a distributor's commission lines in an entity, with their status and block state (CPT-05,
+     * CPT-06), for the line-blocking screen.
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor partner code
+     * @return the commission-line views
+     */
+    @GET
+    @Path("/{entityCode}/distributor/{partnerCode}/lines")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<LineView> lines(@PathParam("entityCode") String entityCode,
+                                @PathParam("partnerCode") String partnerCode) {
+        LegalEntity entity = requireEntity(entityCode);
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", partnerCode).firstResult();
+        if (distributor == null) {
+            throw new ResourceNotFoundException("Distributeur inconnu : " + partnerCode);
+        }
+        return accounts.linesOfDistributor(entity, distributor).stream().map(AccountsResource::lineView).toList();
+    }
+
+    /**
+     * Blocks a single commission line with a reason and an optional lifting date (CPT-05).
+     *
+     * @param lineId  the commission-line id
+     * @param request the block request
+     * @return the blocked line view
+     */
+    @POST
+    @Path("/lines/{lineId}/block")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public LineView blockLine(@PathParam("lineId") Long lineId, BlockRequest request) {
+        requireLineScope(lineId);
+        LocalDate until = request.until() == null ? null : LocalDate.parse(request.until());
+        return lineView(accounts.blockLine(lineId, request.reason(), until));
+    }
+
+    /**
+     * Lifts the block on a commission line (CPT-05).
+     *
+     * @param lineId the commission-line id
+     * @return the unblocked line view
+     */
+    @POST
+    @Path("/lines/{lineId}/unblock")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public LineView unblockLine(@PathParam("lineId") Long lineId) {
+        requireLineScope(lineId);
+        return lineView(accounts.unblockLine(lineId));
+    }
+
+    /**
      * Returns the entity, checking it is within the caller's partition.
      *
      * @param entityCode the entity code
@@ -198,6 +253,34 @@ public class AccountsResource {
     }
 
     /**
+     * Checks the commission line's entity is within the caller's partition.
+     *
+     * @param lineId the commission-line id
+     */
+    private void requireLineScope(Long lineId) {
+        fr.alptis.remuneration.domain.CommissionLine line =
+                fr.alptis.remuneration.domain.CommissionLine.findById(lineId);
+        if (line == null) {
+            throw new ResourceNotFoundException("Ligne inconnue : " + lineId);
+        }
+        if (!scope.canSee(line.entity.code)) {
+            throw new ResourceNotFoundException("Ligne hors périmètre : " + lineId);
+        }
+    }
+
+    /**
+     * Builds a commission-line view with its status and block state.
+     *
+     * @param line the commission line
+     * @return the line view
+     */
+    private static LineView lineView(fr.alptis.remuneration.domain.CommissionLine line) {
+        return new LineView(line.getId(), line.nature.name(), line.amount, line.status.name(),
+                line.attachmentMonth.toString(), Boolean.TRUE.equals(line.blocked), line.blockReason,
+                line.blockedUntil == null ? null : line.blockedUntil.toString());
+    }
+
+    /**
      * Builds the distributor view from its accounts.
      *
      * @param partnerCode the partner code
@@ -223,7 +306,8 @@ public class AccountsResource {
      */
     private AccountView accountView(DistributorAccount account) {
         return new AccountView(account.getId(), account.payeeType, account.payeeId, accounts.balance(account),
-                Boolean.TRUE.equals(account.blocked), account.blockReason);
+                Boolean.TRUE.equals(account.blocked), account.blockReason,
+                account.blockedUntil == null ? null : account.blockedUntil.toString());
     }
 
     /**
@@ -235,9 +319,10 @@ public class AccountsResource {
      * @param balance     the current balance
      * @param blocked     whether the account is blocked
      * @param blockReason the block reason, possibly null
+     * @param blockedUntil the lifting date (ISO), possibly null
      */
     public record AccountView(Long id, PayeeType payeeType, Long payeeId, BigDecimal balance, boolean blocked,
-                              String blockReason) {
+                              String blockReason, String blockedUntil) {
     }
 
     /**
@@ -251,7 +336,23 @@ public class AccountsResource {
     }
 
     /**
-     * Request body of an account block.
+     * One commission line of a distributor, with its block state (CPT-05, CPT-06).
+     *
+     * @param id              the line id
+     * @param nature          the line nature
+     * @param amount          the amount
+     * @param status          the line status
+     * @param attachmentMonth the attachment month (ISO), possibly null
+     * @param blocked         whether the line is blocked
+     * @param blockReason     the block reason, possibly null
+     * @param blockedUntil    the lifting date (ISO), possibly null
+     */
+    public record LineView(Long id, String nature, BigDecimal amount, String status, String attachmentMonth,
+                           boolean blocked, String blockReason, String blockedUntil) {
+    }
+
+    /**
+     * Request body of an account or line block.
      *
      * @param reason the block reason
      * @param until  the lifting date (ISO), or null

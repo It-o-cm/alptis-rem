@@ -29,9 +29,20 @@ test.describe('Compte distributeur — opérateur', () => {
     await expect(page.getByTestId('acc-message')).toContainText('compensation');
     await expect(page.getByTestId('account-total')).toContainText('400,00');
 
+    // Block an account with a reason and a lifting date (CPT-05).
+    await page.getByTestId('block-reason').fill('Litige en cours');
+    await page.getByTestId('block-until').fill('2026-12-31');
     const block = page.locator('[data-testid^="account-block-"]').first();
     await block.click();
-    await expect(page.locator('[data-testid^="account-blocked-"]').first()).toContainText('Oui');
+    const blockedRow = page.locator('[data-testid^="account-row-"]').filter({ hasText: 'Oui' }).first();
+    await expect(blockedRow).toContainText('Litige en cours');
+    await expect(blockedRow).toContainText('2026-12-31');
+
+    // Block a single commission line with the same reason and date (CPT-05).
+    const lineBlock = page.locator('[data-testid^="line-block-"]').first();
+    await lineBlock.click();
+    await expect(page.locator('[data-testid^="line-row-"]').filter({ hasText: 'Oui' }).first())
+      .toContainText('Litige en cours');
   });
 
   test('liste les comptes débiteurs @screen:distributor-account @req:CPT-07', async ({ page }) => {

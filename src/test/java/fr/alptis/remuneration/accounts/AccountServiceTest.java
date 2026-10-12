@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -293,5 +294,75 @@ class AccountServiceTest {
         PaymentBatch batch = service.proposePayments(unep(), p);
         assertEquals(0, PaymentOrder.count("batch", batch));
         assertEquals(1, PaymentExclusion.count("batch", batch));
+    }
+
+    /**
+     * A manually blocked commission line (CPT-05) is held: the order pays only the unblocked lines,
+     * the blocked line stays {@code EARNED}, and its amount stays at the account balance.
+     */
+    @Test
+    @TestTransaction
+    void blocked_line_is_held_from_payment() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Distributor d = distributor("DH");
+        DistributorAccount a = accountOf(d, "PC-H");
+        Period p = period(LocalDate.of(2026, 3, 1));
+        line(a, p, "500");
+        CommissionLine blocked = blockedLine(a, p, "200");
+
+        PaymentBatch batch = service.proposePayments(unep(), p);
+        assertEquals(1, PaymentOrder.count("batch", batch));
+        PaymentOrder order = PaymentOrder.<PaymentOrder>find("batch", batch).firstResult();
+        assertEquals(0, order.amount.compareTo(new BigDecimal("500")));
+        // The blocked line is not made payable; its amount stays at the account.
+        assertEquals(LineStatus.EARNED, CommissionLine.<CommissionLine>findById(blocked.getId()).status);
+        assertEquals(0, service.balance(a).compareTo(new BigDecimal("700")));
+    }
+
+    /**
+     * Lists a distributor's lines and blocks then unblocks one by id (CPT-05); an unknown line is
+     * reported as not found.
+     */
+    @Test
+    @TestTransaction
+    void blocks_and_unblocks_a_line() {
+        Distributor d = distributor("DL");
+        DistributorAccount a = accountOf(d, "PC-L");
+        Period p = period(LocalDate.of(2026, 3, 1));
+        line(a, p, "120");
+        CommissionLine line = CommissionLine.<CommissionLine>find("account", a).firstResult();
+
+        assertEquals(1, service.linesOfDistributor(unep(), d).size());
+
+        CommissionLine held = service.blockLine(line.getId(), "enquête", LocalDate.of(2026, 6, 1));
+        assertEquals(Boolean.TRUE, held.blocked);
+        assertEquals("enquête", held.blockReason);
+        assertEquals(LocalDate.of(2026, 6, 1), held.blockedUntil);
+
+        CommissionLine freed = service.unblockLine(line.getId());
+        assertEquals(Boolean.FALSE, freed.blocked);
+        assertNull(freed.blockReason);
+        assertNull(freed.blockedUntil);
+
+        assertThrows(fr.alptis.remuneration.domain.ResourceNotFoundException.class,
+                () -> service.blockLine(-1L, "x", null));
+        assertThrows(fr.alptis.remuneration.domain.ResourceNotFoundException.class,
+                () -> service.unblockLine(-1L));
+    }
+
+    /** Posts a blocked earned commission line on an account for a period and returns it. */
+    private static CommissionLine blockedLine(DistributorAccount account, Period period, String amount) {
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.account = account;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = period.periodMonth;
+        line.blocked = Boolean.TRUE;
+        line.persist();
+        return line;
     }
 }

@@ -255,7 +255,15 @@ public class AccountService {
         BigDecimal threshold = entity.minPaymentAmount == null ? BigDecimal.ZERO : entity.minPaymentAmount;
         BigDecimal total = BigDecimal.ZERO;
         for (DistributorAccount account : DistributorAccount.<DistributorAccount>list("entity = ?1", entity)) {
-            BigDecimal net = balance(account);
+            List<CommissionLine> earned = CommissionLine.<CommissionLine>list(
+                    "account = ?1 and status = ?2", account, LineStatus.EARNED);
+            // A manually blocked line (CPT-05) is held: its amount stays at the account and is not
+            // swept into the payment order. With no blocked line the payable equals the full balance.
+            BigDecimal held = earned.stream()
+                    .filter(line -> Boolean.TRUE.equals(line.blocked))
+                    .map(line -> line.amount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal net = balance(account).subtract(held);
             Statement statement = statement(entity, period, account, net);
             PaymentExclusionReason reason = exclusionReason(account, net, threshold);
             if (reason == null) {
@@ -267,9 +275,10 @@ public class AccountService {
                 order.status = PaymentOrderStatus.TO_VALIDATE;
                 order.setCreatedAt(clock.now());
                 order.persist();
-                for (CommissionLine line : CommissionLine.<CommissionLine>list(
-                        "account = ?1 and status = ?2", account, LineStatus.EARNED)) {
-                    line.status = LineStatus.PAYABLE;
+                for (CommissionLine line : earned) {
+                    if (!Boolean.TRUE.equals(line.blocked)) {
+                        line.status = LineStatus.PAYABLE;
+                    }
                 }
                 total = total.add(net);
             } else {
@@ -368,6 +377,61 @@ public class AccountService {
         account.blockReason = reason;
         account.blockedUntil = until;
         return account;
+    }
+
+    /**
+     * Returns a distributor's commission lines in an entity, most recent attachment month first, for
+     * the line-blocking screen (CPT-05, CPT-06).
+     *
+     * @param entity      the entity
+     * @param distributor the distributor
+     * @return the distributor's commission lines
+     */
+    public List<CommissionLine> linesOfDistributor(LegalEntity entity, Distributor distributor) {
+        List<CommissionLine> lines = new ArrayList<>();
+        for (DistributorAccount account : accountsOf(entity, distributor)) {
+            lines.addAll(CommissionLine.<CommissionLine>list("account = ?1 order by attachmentMonth desc, id", account));
+        }
+        return lines;
+    }
+
+    /**
+     * Blocks a single commission line with a reason and an optional lifting date (CPT-05). A blocked
+     * line is held from payment; its amount stays at the account.
+     *
+     * @param lineId the commission-line id
+     * @param reason the block reason
+     * @param until  the lifting date, or null
+     * @return the blocked line
+     */
+    @Transactional
+    public CommissionLine blockLine(Long lineId, String reason, LocalDate until) {
+        CommissionLine line = CommissionLine.findById(lineId);
+        if (line == null) {
+            throw new ResourceNotFoundException("Ligne inconnue : " + lineId);
+        }
+        line.blocked = Boolean.TRUE;
+        line.blockReason = reason;
+        line.blockedUntil = until;
+        return line;
+    }
+
+    /**
+     * Lifts the block on a commission line (CPT-05).
+     *
+     * @param lineId the commission-line id
+     * @return the unblocked line
+     */
+    @Transactional
+    public CommissionLine unblockLine(Long lineId) {
+        CommissionLine line = CommissionLine.findById(lineId);
+        if (line == null) {
+            throw new ResourceNotFoundException("Ligne inconnue : " + lineId);
+        }
+        line.blocked = Boolean.FALSE;
+        line.blockReason = null;
+        line.blockedUntil = null;
+        return line;
     }
 
     /**
