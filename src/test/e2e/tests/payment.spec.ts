@@ -6,7 +6,7 @@ import { resetDb, seedCycle, USERS } from '../support/helpers';
 // Finance validation with the SEPA file, the bank result and the off-cycle lot (PAY-01, PAY-02,
 // PAY-03, PAY-06, PAY-07).
 //
-// @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @req:PAY-07
+// @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-04 @req:PAY-06 @req:PAY-07
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
@@ -45,6 +45,22 @@ test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règ
   // The bank settles the order; re-reading the lot shows it settled (effect seen on reload).
   await financePage.locator('[data-testid^="order-settle-"]').first().click();
   await expect(financePage.locator('[data-testid^="order-status-"]').first()).toContainText('Réglé');
+  await finance.close();
+});
+
+test('la Finance saisit l’émission des chèques @screen:payment @req:PAY-04 @role-action:FINANCE_CONTROLLER-record-cheque-emission', async ({
+  browser,
+}) => {
+  const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
+  const page = await finance.newPage();
+  await page.goto('/paiement');
+  const chequeRow = page.locator('[data-testid^="lot-row-"]', { hasText: 'CHEQUE' });
+  await expect(chequeRow).toHaveCount(1);
+  await chequeRow.getByRole('button', { name: 'Détail' }).click();
+
+  await page.getByTestId('lot-cheque-emission').click();
+  await expect(page.getByTestId('pay-message')).toContainText('Émission des chèques');
+  await expect(chequeRow).toContainText('Réglé');
   await finance.close();
 });
 

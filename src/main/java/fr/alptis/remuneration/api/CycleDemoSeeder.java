@@ -84,6 +84,37 @@ public class CycleDemoSeeder {
         bank.persist();
         // Prepare a cycle lot and the statements so the payment and documents screens have data.
         accounts.proposePayments(entity, period);
+        // A cheque lot with one issued cheque (reusing the creditor account) so the cheque-emission
+        // action (PAY-04) has data without inflating the account/line counts.
+        chequeLot(entity, period, creditor);
+    }
+
+    /**
+     * Creates an issued cheque lot with one issued order for a beneficiary, so the Finance controller
+     * can record its emission (PAY-04).
+     *
+     * @param entity  the entity
+     * @param period  the period
+     * @param account the beneficiary account
+     */
+    private void chequeLot(LegalEntity entity, Period period, DistributorAccount account) {
+        fr.alptis.remuneration.domain.PaymentBatch batch = new fr.alptis.remuneration.domain.PaymentBatch();
+        batch.entity = entity;
+        batch.period = period;
+        batch.batchType = fr.alptis.remuneration.domain.BatchType.CHEQUE;
+        batch.batchReference = "CHEQUE-" + entity.code + "-" + period.periodMonth;
+        batch.status = fr.alptis.remuneration.domain.BatchStatus.ISSUED;
+        batch.totalAmount = new BigDecimal("40.00");
+        batch.setCreatedAt(clock.now());
+        batch.persist();
+        fr.alptis.remuneration.domain.PaymentOrder order = new fr.alptis.remuneration.domain.PaymentOrder();
+        order.batch = batch;
+        order.account = account;
+        order.amount = new BigDecimal("40.00");
+        order.status = fr.alptis.remuneration.domain.PaymentOrderStatus.ISSUED;
+        order.creditorName = "Cabinet Martin";
+        order.setCreatedAt(clock.now());
+        order.persist();
     }
 
     /**

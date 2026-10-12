@@ -159,6 +159,20 @@ async function validate(): Promise<void> {
   }
 }
 
+/** Records the emission of the open cheque lot's cheques (PAY-04), then reloads it. */
+async function chequeEmission(): Promise<void> {
+  if (!detail.value) return;
+  message.value = '';
+  error.value = '';
+  try {
+    detail.value = await apiPost<LotDetail>(`/api/ui/v1/payment/lots/${detail.value.id}/cheque-emission`, {});
+    message.value = 'Émission des chèques enregistrée.';
+    await loadLotsKeepingDetail();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Émission refusée';
+  }
+}
+
 /** Loads the SEPA file of the open lot. */
 async function showSepa(): Promise<void> {
   if (!detail.value) return;
@@ -286,8 +300,16 @@ onMounted(loadLots);
         <AppButton v-if="canFinance() && detail.status === 'DRAFT'" variant="secondary" data-testid="lot-validate" @click="validate">
           Valider (Finance)
         </AppButton>
-        <AppButton v-if="canFinance() && detail.status === 'ISSUED'" variant="secondary" data-testid="lot-sepa" @click="showSepa">
+        <AppButton v-if="canFinance() && detail.status === 'ISSUED' && detail.batchType !== 'CHEQUE'" variant="secondary" data-testid="lot-sepa" @click="showSepa">
           Fichier SEPA
+        </AppButton>
+        <AppButton
+          v-if="canFinance() && detail.status === 'ISSUED' && detail.batchType === 'CHEQUE'"
+          variant="secondary"
+          data-testid="lot-cheque-emission"
+          @click="chequeEmission"
+        >
+          Saisir l'émission des chèques
         </AppButton>
       </div>
 

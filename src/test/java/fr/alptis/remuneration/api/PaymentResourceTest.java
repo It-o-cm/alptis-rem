@@ -123,4 +123,38 @@ class PaymentResourceTest {
                 .when().get("/api/ui/v1/payment/UNEP/" + MONTH + "/lots")
                 .then().statusCode(404);
     }
+
+    /** Returns the seeded cheque lot id of the Alptis period. */
+    private int chequeLotId() {
+        return given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/payment/ALPTIS_ASSURANCES/" + MONTH + "/lots")
+                .then().statusCode(200).body("batchType", hasItem("CHEQUE"))
+                .extract().path("find { it.batchType == 'CHEQUE' }.id");
+    }
+
+    /**
+     * The Finance controller records the emission of the seeded cheque lot (PAY-04); a viewer may not.
+     */
+    @Test
+    void finance_records_cheque_emission() {
+        int chequeId = chequeLotId();
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().post("/api/ui/v1/payment/lots/" + chequeId + "/cheque-emission")
+                .then().statusCode(200).body("status", is("SETTLED"));
+
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().post("/api/ui/v1/payment/lots/" + chequeId + "/cheque-emission")
+                .then().statusCode(403);
+    }
+
+    /**
+     * A Finance controller of another entity cannot record an Alptis cheque emission.
+     */
+    @Test
+    void cheque_emission_out_of_scope_is_not_found() {
+        int chequeId = chequeLotId();
+        given().auth().preemptive().basic("finance-unep", "finance-unep")
+                .when().post("/api/ui/v1/payment/lots/" + chequeId + "/cheque-emission")
+                .then().statusCode(404);
+    }
 }

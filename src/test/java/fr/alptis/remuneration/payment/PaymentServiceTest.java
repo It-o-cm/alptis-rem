@@ -421,4 +421,36 @@ class PaymentServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> service.offCycleLot("UNEP", "NODIST", LocalDate.of(2026, 11, 1)));
     }
+
+    /**
+     * PAY-04: recording a cheque lot's emission settles its issued orders, marks the lot settled, and
+     * moves the period to paid once every order is done.
+     */
+    @Test
+    @TestTransaction
+    void records_cheque_emission() {
+        Period p = period(PeriodState.FINANCE_VALIDATED);
+        PaymentBatch cheque = batch(p, "50.00");
+        cheque.batchType = BatchType.CHEQUE;
+        PaymentOrder order = order(cheque, "50.00");
+        order.status = PaymentOrderStatus.ISSUED;
+
+        service.recordChequeEmission(cheque.getId(), "fin");
+
+        assertEquals(PaymentOrderStatus.SETTLED, PaymentOrder.<PaymentOrder>findById(order.getId()).status);
+        assertEquals(BatchStatus.SETTLED, PaymentBatch.<PaymentBatch>findById(cheque.getId()).status);
+        assertEquals(PeriodState.PAID, Period.<Period>findById(p.getId()).state);
+    }
+
+    /**
+     * The cheque emission refuses a non-cheque lot and an unknown one.
+     */
+    @Test
+    @TestTransaction
+    void cheque_emission_guards_the_lot() {
+        Period p = period(PeriodState.FINANCE_VALIDATED);
+        PaymentBatch cycle = batch(p, "10.00");
+        assertThrows(ValidationException.class, () -> service.recordChequeEmission(cycle.getId(), "fin"));
+        assertThrows(ResourceNotFoundException.class, () -> service.recordChequeEmission(-1L, "fin"));
+    }
 }

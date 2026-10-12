@@ -486,4 +486,37 @@ public class PaymentService {
     private static String nullSafe(String value) {
         return value == null ? "" : value;
     }
+
+    /**
+     * Records the emission of a cheque lot's cheques by the Finance controller (PAY-04, section 7.2
+     * step 10): the issued cheque orders pass to settled (their lines were already paid at Finance
+     * validation), the lot is marked settled, and the period reaches {@code PAID} once every lot is
+     * done.
+     *
+     * @param batchId the cheque batch id
+     * @param userId  the Finance controller
+     * @return the settled cheque batch
+     * @throws ResourceNotFoundException when the batch is unknown
+     * @throws ValidationException       when the batch is not a cheque lot
+     */
+    @Transactional
+    public PaymentBatch recordChequeEmission(Long batchId, String userId) {
+        PaymentBatch batch = PaymentBatch.findById(batchId);
+        if (batch == null) {
+            throw new ResourceNotFoundException("Lot inconnu : " + batchId);
+        }
+        if (batch.batchType != BatchType.CHEQUE) {
+            throw new ValidationException("Ce lot n'est pas un lot de chèques : " + batch.batchReference);
+        }
+        for (PaymentOrder order : PaymentOrder.<PaymentOrder>list("batch = ?1 and status = ?2", batch,
+                PaymentOrderStatus.ISSUED)) {
+            order.status = PaymentOrderStatus.SETTLED;
+            order.settledAt = clock.now();
+        }
+        batch.status = BatchStatus.SETTLED;
+        batch.validatedBy = userId;
+        batch.validatedAt = clock.now();
+        closeIfDone(batch.period);
+        return batch;
+    }
 }

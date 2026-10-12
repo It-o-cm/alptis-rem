@@ -132,6 +132,24 @@ public class PaymentResource {
     }
 
     /**
+     * Records the emission of a cheque lot's cheques (PAY-04): the Finance controller marks the issued
+     * cheques as settled.
+     *
+     * @param batchId the cheque batch id
+     * @return the lot detail after emission
+     */
+    @POST
+    @Path("/lots/{batchId}/cheque-emission")
+    @Produces(MediaType.APPLICATION_JSON)
+    @jakarta.transaction.Transactional
+    @RolesAllowed("FINANCE_CONTROLLER")
+    public LotDetail chequeEmission(@PathParam("batchId") Long batchId) {
+        requireBatchScope(batchId);
+        payment.recordChequeEmission(batchId, currentUser.username());
+        return query.lot(batchId);
+    }
+
+    /**
      * Records the bank result of an order (PAY-06).
      *
      * @param orderId the order id

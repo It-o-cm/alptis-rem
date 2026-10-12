@@ -52,7 +52,7 @@ d'accès serveur · test de bout en bout · état.
 | 14 | Validation métier : totaux, comparaison au mois précédent, second niveau | WKF-02, 7.2 | `validation` / ValidationView | GET /validation/{e}/{m}, POST validate | validation.spec | complet — totaux et ventilation par nature, écart au mois précédent, second niveau de validation sous règles paramétrables (total, écart, ajustements) |
 | 15 | Lots de paiement de la période et détail d'un lot : ordres, exclusions, rapprochement, validation Finance | PAY-01→05 | `payment` / PaymentView | GET lots/detail, POST prepare/validate, GET sepa | payment.spec | complet |
 | 16 | Création d'un lot hors cycle | PAY-07 | `payment` / PaymentView | POST off-cycle | payment.spec | complet |
-| 17 | Résultat bancaire : ordres réglés, rejets, saisie de l'émission des chèques | PAY-04, PAY-06 | `payment` / PaymentView | POST orders/{id}/result | payment.spec | partiel — saisie de l'émission des chèques (PAY-04) absente |
+| 17 | Résultat bancaire : ordres réglés, rejets, saisie de l'émission des chèques | PAY-04, PAY-06 | `payment` / PaymentView | POST orders/{id}/result, POST lots/{id}/cheque-emission | payment.spec | complet — saisie de l'émission des chèques (PAY-04) par la Finance : les ordres du lot de chèques passent réglés |
 | 18 | Bordereaux de la période : liste, aperçu, publication, rectificatif, relevé informatif | BRD-01→07, BRD-11 | `statements` / BordereauxView | GET statements/detail/spreadsheet, POST publish/rectify | bordereaux.spec | partiel — relevé informatif du membre (BRD-11) absent ; rendu « texte + empreinte » au lieu de PDF/tableur réel |
 
 ### Distributeurs et contrats
@@ -275,7 +275,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | PAY-01 | PaymentService | #15 | payment | complet |
 | PAY-02 | PaymentService (exclusions) | #15 | payment | complet |
 | PAY-03 | PaymentService (SEPA pain.001) | #15 | payment | complet |
-| PAY-04 | PaymentService | #17 | payment | partiel — saisie de l'émission des chèques absente |
+| PAY-04 | PaymentService (cheque emission) | #17 | payment | complet — liste des chèques et saisie de leur émission (ordres réglés) |
 | PAY-05 | PaymentService (alignement) | #15 | cr64 JUnit | complet |
 | PAY-06 | PaymentService (résultat bancaire) | #17 | payment | complet |
 | PAY-07 | PaymentService (lot hors cycle) | #16 | payment | complet |
