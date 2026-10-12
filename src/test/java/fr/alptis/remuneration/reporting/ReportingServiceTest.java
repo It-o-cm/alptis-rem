@@ -1,7 +1,11 @@
 package fr.alptis.remuneration.reporting;
 
 import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionPlan;
+import fr.alptis.remuneration.domain.Contract;
+import fr.alptis.remuneration.domain.EventType;
+import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
@@ -39,6 +43,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -409,5 +414,112 @@ class ReportingServiceTest {
     @TestTransaction
     void unknown_entity_is_rejected() {
         assertThrows(ResourceNotFoundException.class, () -> service.dashboard("GHOST", null, null, NONE));
+    }
+
+    /**
+     * The line detail carries every reference and the native explanation when they are set (CAL-10),
+     * reports dashes/nulls when they are not, distinguishes an event with no date, and reports an
+     * unknown line as not found.
+     */
+    @Test
+    @TestTransaction
+    void line_detail_with_and_without_references() {
+        assertThrows(ResourceNotFoundException.class, () -> service.lineDetail(-1L));
+
+        // A bare line: the minimum fields set, every reference null.
+        CommissionLine bare = line(LineNature.LINEAR, null, null, null, null, null, "5.00", null, null);
+        ReportingService.LineDetail bd = service.lineDetail(bare.getId());
+        assertNull(bd.direction());
+        assertNull(bd.status());
+        assertNull(bd.contractNumber());
+        assertNull(bd.coverageCode());
+        assertNull(bd.eventType());
+        assertNull(bd.eventDate());
+        assertNull(bd.ruleVersion());
+        assertNull(bd.attachmentMonth());
+        assertNull(bd.premiumFiscalYear());
+        assertNull(bd.reason());
+        assertNull(bd.statementNumber());
+        assertNull(bd.paymentOrder());
+        assertEquals("—", bd.distributor());
+
+        // A fully-referenced line: every reference and the explanation set.
+        Distributor d = new Distributor();
+        d.partnerCode = "PLD";
+        d.legalName = "Cabinet LD";
+        d.persist();
+        Period sep = period(LocalDate.of(2026, 9, 1));
+        CommissionLine full = line(LineNature.ACQUISITION, LineStatus.PAYABLE, d,
+                coverage("CVLD", option(null)), "100.00", "0.30", "30.00", sep, Direction.OUTBOUND);
+        Contract contract = new Contract();
+        contract.entity = unep();
+        contract.contractNumber = "CT-LD";
+        contract.persist();
+        full.contract = contract;
+        BusinessEvent event = new BusinessEvent();
+        event.eventType = EventType.PREMIUM_COLLECTED;
+        event.eventDate = LocalDate.of(2026, 4, 5);
+        event.persist();
+        full.event = event;
+        CommissionPlan plan = new CommissionPlan();
+        plan.entity = unep();
+        plan.code = "LD-PLAN";
+        plan.label = "Plan";
+        plan.direction = Direction.OUTBOUND;
+        plan.vintage = (short) 2026;
+        plan.persist();
+        Rule rule = new Rule();
+        rule.plan = plan;
+        rule.code = "LD-RULE";
+        rule.label = "Règle";
+        rule.family = RuleFamily.UPFRONT;
+        rule.persist();
+        RuleVersion version = new RuleVersion();
+        version.rule = rule;
+        version.versionNo = 2;
+        version.status = VersionStatus.ACTIVE;
+        version.persist();
+        full.ruleVersion = version;
+        Statement statement = new Statement();
+        statement.entity = unep();
+        statement.period = sep;
+        statement.statementNumber = "ST-LD";
+        statement.persist();
+        full.statement = statement;
+        PaymentOrder order = new PaymentOrder();
+        order.endToEndId = "E2E-LD";
+        order.amount = new BigDecimal("30.00");
+        order.persist();
+        full.paymentOrder = order;
+        full.attachmentMonth = LocalDate.of(2026, 9, 1);
+        full.premiumFiscalYear = (short) 2026;
+        full.reason = "apport";
+        full.explanation = "{\"rate\":0.30,\"amount\":30.00}";
+
+        ReportingService.LineDetail fd = service.lineDetail(full.getId());
+        assertEquals("OUTBOUND", fd.direction());
+        assertEquals("PAYABLE", fd.status());
+        assertEquals("CT-LD", fd.contractNumber());
+        assertEquals("CVLD", fd.coverageCode());
+        assertEquals("PREMIUM_COLLECTED", fd.eventType());
+        assertEquals("2026-04-05", fd.eventDate());
+        assertEquals("LD-RULE v2", fd.ruleVersion());
+        assertEquals("2026-09-01", fd.attachmentMonth());
+        assertEquals("ST-LD", fd.statementNumber());
+        assertEquals("E2E-LD", fd.paymentOrder());
+        assertEquals("apport", fd.reason());
+        assertEquals("PLD", fd.distributor());
+        assertEquals("{\"rate\":0.30,\"amount\":30.00}", fd.explanation());
+
+        // An event with no date: the type is kept, the date is null.
+        CommissionLine evLine = line(LineNature.LINEAR, LineStatus.EARNED, null, null, null, null, "1.00", null,
+                Direction.OUTBOUND);
+        BusinessEvent dateless = new BusinessEvent();
+        dateless.eventType = EventType.PREMIUM_COLLECTED;
+        dateless.persist();
+        evLine.event = dateless;
+        ReportingService.LineDetail ed = service.lineDetail(evLine.getId());
+        assertEquals("PREMIUM_COLLECTED", ed.eventType());
+        assertNull(ed.eventDate());
     }
 }

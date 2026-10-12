@@ -204,9 +204,9 @@ public class ReportingService {
                     || !matches(line, filter)) {
                 continue;
             }
-            rows.add(new SearchRow(distributorCode(line), productCode(line), gamme(line), line.nature.name(),
-                    line.basisAmount, line.rate, line.amount, ruleCode(line), statementNumber(line),
-                    monthOf(line)));
+            rows.add(new SearchRow(line.getId(), distributorCode(line), productCode(line), gamme(line),
+                    line.nature.name(), line.basisAmount, line.rate, line.amount, ruleCode(line),
+                    statementNumber(line), monthOf(line)));
         }
         return rows;
     }
@@ -879,9 +879,71 @@ public class ReportingService {
      * @param statementNumber the bordereau number
      * @param month           the period month
      */
-    public record SearchRow(String distributor, String product, String gamme, String nature, BigDecimal basis,
-                            BigDecimal rate, BigDecimal amount, String rule, String statementNumber,
-                            LocalDate month) {
+    public record SearchRow(Long id, String distributor, String product, String gamme, String nature,
+                            BigDecimal basis, BigDecimal rate, BigDecimal amount, String rule,
+                            String statementNumber, LocalDate month) {
+    }
+
+    /**
+     * Returns the full detail of a commission line with its stored explanation (CAL-10, FIN-07): its
+     * event, rule version, basis and rate, the amount, the related contract, coverage, bordereau and
+     * payment order, and the native explanation the calculation produced (D14).
+     *
+     * @param lineId the commission-line id
+     * @return the line detail
+     * @throws ResourceNotFoundException if the line is unknown
+     */
+    public LineDetail lineDetail(Long lineId) {
+        CommissionLine line = CommissionLine.findById(lineId);
+        if (line == null) {
+            throw new ResourceNotFoundException("Ligne inconnue : " + lineId);
+        }
+        return new LineDetail(line.getId(), line.entity.code, line.nature.name(),
+                line.direction == null ? null : line.direction.name(),
+                line.status == null ? null : line.status.name(),
+                line.contract == null ? null : line.contract.contractNumber,
+                line.coverage == null ? null : line.coverage.coverageCode,
+                line.event == null ? null : line.event.eventType.name(),
+                line.event == null || line.event.eventDate == null ? null : line.event.eventDate.toString(),
+                line.ruleVersion == null ? null : line.ruleVersion.rule.code + " v" + line.ruleVersion.versionNo,
+                line.basisAmount, line.rate, line.amount,
+                line.attachmentMonth == null ? null : line.attachmentMonth.toString(),
+                line.premiumFiscalYear, line.reason,
+                distributorCode(line),
+                line.statement == null ? null : line.statement.statementNumber,
+                line.paymentOrder == null ? null : line.paymentOrder.endToEndId,
+                line.explanation);
+    }
+
+    /**
+     * Full detail of a commission line, with its references and native explanation (CAL-10).
+     *
+     * @param id              the line id
+     * @param entityCode      the entity code
+     * @param nature          the line nature
+     * @param direction       the direction, possibly null
+     * @param status          the status, possibly null
+     * @param contractNumber  the contract number, possibly null
+     * @param coverageCode    the coverage code, possibly null
+     * @param eventType       the source event type, possibly null
+     * @param eventDate       the source event date (ISO), possibly null
+     * @param ruleVersion     the rule code and version, possibly null
+     * @param basis           the basis amount, possibly null
+     * @param rate            the rate, possibly null
+     * @param amount          the amount
+     * @param attachmentMonth the attachment month (ISO), possibly null
+     * @param premiumFiscalYear the premium fiscal year, possibly null
+     * @param reason          the line reason, possibly null
+     * @param distributor     the origin distributor code
+     * @param statementNumber the bordereau number, possibly null
+     * @param paymentOrder    the payment-order end-to-end reference, possibly null
+     * @param explanation     the native explanation as stored (JSON), possibly null
+     */
+    public record LineDetail(Long id, String entityCode, String nature, String direction, String status,
+                             String contractNumber, String coverageCode, String eventType, String eventDate,
+                             String ruleVersion, BigDecimal basis, BigDecimal rate, BigDecimal amount,
+                             String attachmentMonth, Short premiumFiscalYear, String reason, String distributor,
+                             String statementNumber, String paymentOrder, String explanation) {
     }
 
     /**

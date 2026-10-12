@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { resetDb, seedCycle, USERS } from '../support/helpers';
+import { loadDemo, resetDb, seedCycle, USERS } from '../support/helpers';
 
 // Per-screen tests for the restitution screens: dashboards over a range (REP-01), filters (REP-03),
 // commission cross-search (REP-02/03), CSV exports of the lists (REP-04), consolidated group view
@@ -40,6 +40,41 @@ test('le consultant lit les tableaux de bord et la recherche de commissions @scr
   await page.goto('/recherche-commissions');
   await page.getByTestId('cs-search').click();
   await expect(page.locator('[data-testid^="cs-row-"]').first()).toBeVisible();
+  await viewer.close();
+});
+
+test('le consultant ouvre une ligne et lit son explication @screen:commissionSearch @req:CAL-10 @req:FIN-07', async ({
+  browser,
+}) => {
+  const viewer = await browser.newContext({ httpCredentials: USERS.viewerAlptis });
+  const page = await viewer.newPage();
+  // The full demo runs the real engine, so its lines carry a native explanation (D14).
+  await loadDemo(page.request);
+  await page.goto('/recherche-commissions');
+  await page.getByTestId('cs-search').click();
+  await expect(page.locator('[data-testid^="cs-row-"]').first()).toBeVisible();
+
+  // Open lines until one carries a native explanation (every engine-calculated line does).
+  const rows = page.locator('[data-testid^="cs-row-"]');
+  const count = await rows.count();
+  expect(count).toBeGreaterThan(0);
+  let explained = false;
+  for (let i = 0; i < count; i += 1) {
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/api/ui/v1/commission-lines/') && r.ok()),
+      rows.nth(i).click(),
+    ]);
+    // Wait until the explanation area has settled to either entries or the empty message.
+    await expect(
+      page.getByTestId('line-explanation').or(page.getByTestId('no-explanation')),
+    ).toBeVisible();
+    if (await page.getByTestId('line-explanation').isVisible()) {
+      explained = true;
+      break;
+    }
+  }
+  // CAL-10: at least one line shows its stored explanation in clear.
+  expect(explained).toBeTruthy();
   await viewer.close();
 });
 

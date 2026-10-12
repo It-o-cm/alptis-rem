@@ -3,10 +3,11 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface SearchRow {
+  id: number;
   distributor: string;
   product: string;
   gamme: string;
@@ -19,10 +20,34 @@ interface SearchRow {
   month: string | null;
 }
 
+interface LineDetail {
+  id: number;
+  entityCode: string;
+  nature: string;
+  direction: string | null;
+  status: string | null;
+  contractNumber: string | null;
+  coverageCode: string | null;
+  eventType: string | null;
+  eventDate: string | null;
+  ruleVersion: string | null;
+  basis: number | null;
+  rate: number | null;
+  amount: number;
+  attachmentMonth: string | null;
+  premiumFiscalYear: number | null;
+  reason: string | null;
+  distributor: string;
+  statementNumber: string | null;
+  paymentOrder: string | null;
+  explanation: string | null;
+}
+
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 && session.entities[0] !== '*' ? session.entities[0] : 'ALPTIS_ASSURANCES');
 const filters = ref({ product: '', distributor: '', group: '', delegation: '', nature: '', month: '' });
 const rows = ref<SearchRow[]>([]);
+const detail = ref<LineDetail | null>(null);
 const csv = ref('');
 const error = ref('');
 const loading = ref(false);
@@ -72,6 +97,32 @@ async function search(): Promise<void> {
 async function exportCsv(): Promise<void> {
   csv.value = await apiGetText(`/api/ui/v1/reporting/${entity.value}/export/search${query()}`);
 }
+
+/**
+ * Opens a line's detail with its native explanation (CAL-10).
+ * @param row the selected search row
+ */
+async function openDetail(row: SearchRow): Promise<void> {
+  detail.value = await apiGet<LineDetail>(`/api/ui/v1/commission-lines/${row.id}`);
+}
+
+/** The stored explanation parsed into label/value entries for display in clear. */
+const explanationEntries = computed<{ key: string; value: string }[]>(() => {
+  const raw = detail.value?.explanation;
+  if (!raw) {
+    return [];
+  }
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return [{ key: 'explication', value: raw }];
+  }
+  return Object.entries(parsed).map(([key, value]) => ({
+    key,
+    value: typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value),
+  }));
+});
 
 /** Search rows paired with their index, for the per-row test identifier. */
 const indexedRows = computed(() => rows.value.map((r, i) => ({ ...r, i })));
@@ -138,12 +189,46 @@ onMounted(search);
         :loading="loading"
         empty="Aucune ligne."
         empty-testid="no-row"
+        clickable
         :row-testid="(r) => `cs-row-${r.i}`"
+        @row-click="openDetail"
       >
         <template #cell-nature="{ row }">
           <span :data-testid="`cs-nature-${row.i}`">{{ row.nature }}</span>
         </template>
       </DataTable>
+    </AppCard>
+
+    <AppCard v-if="detail" data-testid="line-detail">
+      <h2 class="cs-detail-title">Ligne {{ detail.nature }} — {{ amount(detail.amount) }}</h2>
+      <DetailList>
+        <DetailRow label="Statut">{{ detail.status ?? '—' }}</DetailRow>
+        <DetailRow label="Sens">{{ detail.direction ?? '—' }}</DetailRow>
+        <DetailRow label="Distributeur">{{ detail.distributor }}</DetailRow>
+        <DetailRow label="Contrat">{{ detail.contractNumber ?? '—' }}</DetailRow>
+        <DetailRow label="Garantie">{{ detail.coverageCode ?? '—' }}</DetailRow>
+        <DetailRow label="Événement">
+          {{ detail.eventType ? `${detail.eventType}${detail.eventDate ? ' · ' + detail.eventDate : ''}` : '—' }}
+        </DetailRow>
+        <DetailRow label="Version de règle">{{ detail.ruleVersion ?? '—' }}</DetailRow>
+        <DetailRow label="Assiette">{{ amount(detail.basis) }}</DetailRow>
+        <DetailRow label="Taux">{{ detail.rate ?? '—' }}</DetailRow>
+        <DetailRow label="Mois de rattachement">{{ detail.attachmentMonth ?? '—' }}</DetailRow>
+        <DetailRow label="Exercice de prime">{{ detail.premiumFiscalYear ?? '—' }}</DetailRow>
+        <DetailRow label="Bordereau">{{ detail.statementNumber ?? '—' }}</DetailRow>
+        <DetailRow label="Ordre de paiement">{{ detail.paymentOrder ?? '—' }}</DetailRow>
+        <DetailRow label="Motif">{{ detail.reason ?? '—' }}</DetailRow>
+      </DetailList>
+
+      <h3 class="cs-detail-sub">Explication du calcul</h3>
+      <AppMessage v-if="explanationEntries.length === 0" variant="info" data-testid="no-explanation">
+        Aucune explication enregistrée.
+      </AppMessage>
+      <DetailList v-else data-testid="line-explanation">
+        <DetailRow v-for="entry in explanationEntries" :key="entry.key" :label="entry.key">
+          {{ entry.value }}
+        </DetailRow>
+      </DetailList>
     </AppCard>
   </div>
 </template>
@@ -158,5 +243,14 @@ onMounted(search);
   background: var(--line-soft);
   padding: var(--space-3);
   border-radius: var(--radius);
+}
+.cs-detail-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+.cs-detail-sub {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 600;
 }
 </style>
