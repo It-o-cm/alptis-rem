@@ -102,6 +102,10 @@ class FdvResourceTest {
         given().auth().preemptive().basic("admin-alptis", "admin-alptis")
                 .when().get("/api/ui/v1/fdv/" + ENTITY + "/objectives")
                 .then().statusCode(200).body("type", hasItem("INDIVIDUAL_QUANTITATIVE"));
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/measures")
+                .then().statusCode(200).body("measureType", hasItem("PRODUCTION"))
+                .body("externalId", hasItem("E1"));
     }
 
     /**

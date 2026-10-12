@@ -20,3 +20,20 @@ export function jobCodeLabel(code: string | null): string {
   }
   return JOB_LABELS[code] ?? code;
 }
+
+/** French label of each measure type received for the sales force (FDV-02). */
+const MEASURE_LABELS: Record<string, string> = {
+  ABSENCE: 'Absences (hors congés et RTT)',
+  PRODUCTION: 'Production par marché',
+  ACTIVITY: 'Activité commerciale (CRM)',
+  MARGIN: 'Marge',
+  SPECIFICATIONS_RECEIVED: 'Cahiers des charges reçus',
+};
+
+/** Returns the French label of a measure type, or the code itself when unknown or absent. */
+export function measureTypeLabel(code: string | null): string {
+  if (code === null) {
+    return '—';
+  }
+  return MEASURE_LABELS[code] ?? code;
+}

@@ -4,6 +4,7 @@ import fr.alptis.remuneration.domain.JobCode;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.CollaboratorView;
+import fr.alptis.remuneration.salesforce.SalesForceQueryService.MeasureView;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.ObjectiveView;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.PlanView;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.ResultView;
@@ -139,6 +140,21 @@ public class FdvResource {
         return query.collaborators(entityCode).stream()
                 .filter(c -> c.externalId().equals(externalId)).findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Collaborateur inconnu : " + externalId));
+    }
+
+    /**
+     * Returns the measures received for an entity's collaborators (FDV-02).
+     *
+     * @param entityCode the entity code
+     * @return the measure views
+     */
+    @GET
+    @Path("/{entity}/measures")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "SALES_MANAGER", "AUDITOR"})
+    public List<MeasureView> measures(@PathParam("entity") String entityCode) {
+        requireScope(entityCode);
+        return query.measures(entityCode);
     }
 
     /**

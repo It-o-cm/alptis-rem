@@ -7,8 +7,8 @@ import { resetDb, seedFdv, USERS } from '../support/helpers';
 // (FDV-05/13/14) and a commercial's own variable (FDV-15). The weighting (CR-87) and absence (CR-88)
 // arithmetic is verified by SalesForceServiceTest on the server.
 //
-// @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial @screen:fdvCollaborators
-// @req:FDV-01 @req:FDV-04 @req:FDV-13 @req:FDV-14 @req:FDV-15
+// @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial @screen:fdvCollaborators @screen:fdvMeasures
+// @req:FDV-01 @req:FDV-02 @req:FDV-04 @req:FDV-13 @req:FDV-14 @req:FDV-15
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
@@ -96,6 +96,18 @@ test('l’administrateur crée puis modifie un collaborateur @screen:fdvCollabor
   await expect(page.getByTestId('fdvcol-message')).toContainText('mis à jour');
   await expect(page.getByTestId('collaborator-row-E2E-C1')).toContainText('Équipe Z');
   await expect(page.getByTestId('collaborator-row-E2E-C1')).toContainText('Responsable de secteur');
+  await admin.close();
+});
+
+test('l’administrateur consulte les mesures reçues @screen:fdvMeasures @req:FDV-02', async ({ browser }) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/mesures');
+  await expect(page.getByTestId('page-title')).toHaveText('Mesures reçues');
+  // The demo seeds production and absence measures for the collaborators.
+  const row = page.locator('[data-testid^="measure-row-"]').first();
+  await expect(row).toBeVisible();
+  await expect(page.getByText('Production par marché').first()).toBeVisible();
   await admin.close();
 });
 

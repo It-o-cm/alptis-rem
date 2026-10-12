@@ -1,8 +1,10 @@
 package fr.alptis.remuneration.salesforce;
 
 import fr.alptis.remuneration.domain.Employee;
+import fr.alptis.remuneration.domain.EmployeeMeasure;
 import fr.alptis.remuneration.domain.JobCode;
 import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.MeasureType;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.SalesObjective;
 import fr.alptis.remuneration.domain.VariableComponent;
@@ -62,6 +64,25 @@ public class SalesForceQueryService {
                 .stream()
                 .map(o -> new ObjectiveView(o.employee == null ? null : o.employee.externalId,
                         o.objectiveType.name(), o.periodFrom, o.periodTo, o.targetValue, o.versionNo))
+                .toList();
+    }
+
+    /**
+     * Returns the measures received for an entity's collaborators (FDV-02): absences, production,
+     * commercial activity, margin and received specifications, as fed by the SI-RH/CRM import.
+     *
+     * @param entityCode the entity code
+     * @return the measure views
+     */
+    public List<MeasureView> measures(String entityCode) {
+        LegalEntity entity = entity(entityCode);
+        return EmployeeMeasure.<EmployeeMeasure>list(
+                        "employee.entity = ?1 order by employee.externalId, periodFrom, measureType", entity)
+                .stream()
+                .map(m -> new MeasureView(m.employee.externalId,
+                        (m.employee.lastName == null ? "" : m.employee.lastName)
+                                + (m.employee.firstName == null ? "" : " " + m.employee.firstName),
+                        m.measureType, m.dimension, m.periodFrom, m.periodTo, m.value))
                 .toList();
     }
 
@@ -153,6 +174,21 @@ public class SalesForceQueryService {
     public record CollaboratorView(String externalId, String lastName, String firstName, JobCode jobCode,
                                    String team, String region, String manager, java.time.LocalDate validFrom,
                                    java.time.LocalDate validTo) {
+    }
+
+    /**
+     * A measure received for a collaborator (FDV-02).
+     *
+     * @param externalId   the collaborator's external id
+     * @param collaborator the collaborator's display name
+     * @param measureType  the measure type
+     * @param dimension    the dimension (market or activity detail)
+     * @param periodFrom   the window start
+     * @param periodTo     the window end
+     * @param value        the measured value
+     */
+    public record MeasureView(String externalId, String collaborator, MeasureType measureType, String dimension,
+                              java.time.LocalDate periodFrom, java.time.LocalDate periodTo, BigDecimal value) {
     }
 
     /**

@@ -133,7 +133,7 @@ d'accès serveur · test de bout en bout · état.
 | # | Écran | Exig. | Route / Vue | Points d'accès | Test E2E | État |
 | --- | --- | --- | --- | --- | --- | --- |
 | 67 | Collaborateurs | FDV-01 | `fdvCollaborators` / FdvCollaboratorsView | GET/POST /fdv/{e}/collaborators, PUT /fdv/{e}/collaborators/{id} | fdv.spec | complet — écran de gestion dédié : création et mise à jour individuelles (poste, équipe, région, responsable, dates), en plus de l'alimentation en masse par le SI RH ; liste restituant la validité et le poste en clair |
-| 68 | Mesures reçues : absences, production, activité, marge | FDV-02 | — | — | — | absent |
+| 68 | Mesures reçues : absences, production, activité, marge | FDV-02 | `fdvMeasures` / FdvMeasuresView | GET /fdv/{e}/measures | fdv.spec | complet — écran de consultation des mesures reçues (absences, production par marché, activité CRM, marge, cahiers des charges) alimentées par l'import SI RH/CRM ; types de mesure restitués en clair |
 | 69 | Objectifs individuels et collectifs, versionnés | FDV-03 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/objectives | fdv.spec | partiel — objectifs en lecture seule ; versionnement et objectifs collectifs non exposés |
 | 70 | Plan de variable par poste | FDV-04, FDV-09→12 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/plans, POST run | fdv.spec | partiel — barèmes animateurs/responsables/vente directe (FDV-09/10) et réduction sur résiliation (FDV-12) absents |
 | 71 | Validation mensuelle par le responsable | FDV-13 | `fdvValidation` / FdvValidationView | GET results, POST validate/adjust | fdv.spec | complet |
@@ -342,7 +342,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
 | FDV-01 | EmployeeImportService, SalesForceService (create/update), SalesForceQueryService | #67 | fdv | complet — gestion des collaborateurs à l'écran (création/mise à jour) et alimentation en masse par le SI RH |
-| FDV-02 | — | #68 | — | absent — mesures reçues (absences, production, activité, marge) |
+| FDV-02 | EmployeeImportService (import), SalesForceQueryService (measures) | #68 | fdv | complet — mesures reçues par import SI RH/CRM et consultées à l'écran (absences, production, activité, marge, cahiers des charges) |
 | FDV-03 | SalesForceQueryService | #69 | fdv | partiel — versionnement et objectifs collectifs absents |
 | FDV-04 | SalesForceService | #70 | fdv | partiel — enveloppes/critères des postes animateur/responsable/vente directe absents |
 | FDV-05 | SalesForceService (runMonth) | #71 | cr88 JUnit | complet |

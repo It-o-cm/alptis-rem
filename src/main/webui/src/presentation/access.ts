@@ -55,6 +55,7 @@ const SCREEN_ACCESS: Record<string, readonly Role[]> = {
   supervision: ['IT_ADMIN', 'AUDITOR'],
   purge: ['IT_ADMIN'],
   fdvCollaborators: ['BUSINESS_ADMIN', 'SALES_MANAGER', 'AUDITOR'],
+  fdvMeasures: ['BUSINESS_ADMIN', 'SALES_MANAGER', 'AUDITOR'],
   fdvPlan: ['BUSINESS_ADMIN', 'SALES_MANAGER', 'AUDITOR'],
   fdvValidation: ['SALES_MANAGER', 'BUSINESS_ADMIN', 'FINANCE_CONTROLLER', 'AUDITOR'],
   fdvCommercial: ['SALES_REP', 'SALES_MANAGER', 'BUSINESS_ADMIN', 'AUDITOR'],

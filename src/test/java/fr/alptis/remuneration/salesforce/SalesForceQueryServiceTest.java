@@ -118,6 +118,41 @@ class SalesForceQueryServiceTest {
     }
 
     /**
+     * The measures received for an entity are read (FDV-02), the collaborator name assembled from the
+     * present name parts (both set, and both absent).
+     */
+    @Test
+    @TestTransaction
+    void reads_received_measures() {
+        Employee named = employee("E1", null);
+        measure(named, fr.alptis.remuneration.domain.MeasureType.PRODUCTION, "particulier", "2000");
+        Employee anonymous = employee("E2", null);
+        anonymous.lastName = null;
+        anonymous.firstName = null;
+        measure(anonymous, fr.alptis.remuneration.domain.MeasureType.ABSENCE, "absence", "3");
+
+        var measures = query.measures("UNEP");
+        assertTrue(measures.stream().anyMatch(m -> "E1".equals(m.externalId())
+                && m.collaborator().equals("E1 Jean")
+                && m.measureType() == fr.alptis.remuneration.domain.MeasureType.PRODUCTION));
+        assertTrue(measures.stream().anyMatch(m -> "E2".equals(m.externalId()) && m.collaborator().isEmpty()));
+        assertThrows(ResourceNotFoundException.class, () -> query.measures("GHOST"));
+    }
+
+    /** Creates one measure over September for an employee. */
+    private static void measure(Employee employee, fr.alptis.remuneration.domain.MeasureType type, String dimension,
+                                String value) {
+        fr.alptis.remuneration.domain.EmployeeMeasure measure = new fr.alptis.remuneration.domain.EmployeeMeasure();
+        measure.employee = employee;
+        measure.measureType = type;
+        measure.dimension = dimension;
+        measure.periodFrom = LocalDate.of(2026, 9, 1);
+        measure.periodTo = LocalDate.of(2026, 9, 30);
+        measure.value = new BigDecimal(value);
+        measure.persist();
+    }
+
+    /**
      * An unknown entity and an unknown employee are rejected.
      */
     @Test
