@@ -49,7 +49,7 @@ d'accès serveur · test de bout en bout · état.
 | 11 | Catalogue des contrôles : seuil, gravité, périmètre, activation, versions | CTL-01, CTL-04 | `controls` (onglet) / ControlsView | GET/POST /controls/{e}/catalog/{code}, GET versions | controls.spec | complet — édition par le métier (gravité, activation, paramètres/seuil) créant une nouvelle version, et historique des versions |
 | 12 | Ajustements : liste, saisie, approbation, import en masse | REG-01→05 | `adjustments` / AdjustmentsView | GET/POST adjustments, POST approve, POST bulk | adjustments.spec | complet — import en masse (REG-04, fichier pivot) et contrepassation automatique (REG-05, option + reprise au mois suivant) livrés |
 | 13 | Réclamations : liste, fiche, lignes contestées, suivi | REG-06 | `claims` / ClaimsView | GET /claims/{e}, GET /claims/detail/{id}, POST record/resolve | claims.spec | complet — liste, fiche avec lignes contestées, enregistrement et clôture avec régularisation |
-| 14 | Validation métier : totaux, comparaison au mois précédent, second niveau | WKF-02, 7.2 | — | — | — | absent |
+| 14 | Validation métier : totaux, comparaison au mois précédent, second niveau | WKF-02, 7.2 | `validation` / ValidationView | GET /validation/{e}/{m}, POST validate | validation.spec | complet — totaux et ventilation par nature, écart au mois précédent, second niveau de validation sous règles paramétrables (total, écart, ajustements) |
 | 15 | Lots de paiement de la période et détail d'un lot : ordres, exclusions, rapprochement, validation Finance | PAY-01→05 | `payment` / PaymentView | GET lots/detail, POST prepare/validate, GET sepa | payment.spec | complet |
 | 16 | Création d'un lot hors cycle | PAY-07 | `payment` / PaymentView | POST off-cycle | payment.spec | complet |
 | 17 | Résultat bancaire : ordres réglés, rejets, saisie de l'émission des chèques | PAY-04, PAY-06 | `payment` / PaymentView | POST orders/{id}/result | payment.spec | partiel — saisie de l'émission des chèques (PAY-04) absente |
@@ -251,7 +251,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
 | WKF-01 | PeriodService | #2 | periods | complet |
-| WKF-02 | — | #14 | — | absent — second niveau de validation avec comparaison au mois précédent |
+| WKF-02 | ValidationService, ValidationResource | #14 | validation | complet — totaux, écart au mois précédent et présence d'ajustements déclenchant un second niveau paramétrable |
 | WKF-03 | (trace journal) | — | — | complet — messagerie simulée par une trace (LANCEMENT §6) |
 | WKF-04 | CycleQueryService | #1 | periods | complet |
 

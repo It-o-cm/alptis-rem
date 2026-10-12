@@ -45,4 +45,12 @@ public class Period extends BaseEntity {
     /** The date at which the period's data is frozen. */
     @Column(name = "data_cutoff_date")
     public LocalDate dataCutoffDate;
+
+    /** The first-level business validator, when a second level is required (WKF-02); null otherwise. */
+    @Column(name = "first_level_validated_by")
+    public String firstLevelValidatedBy;
+
+    /** When the first-level business validation was given (WKF-02); null otherwise. */
+    @Column(name = "first_level_validated_at")
+    public java.time.OffsetDateTime firstLevelValidatedAt;
 }
