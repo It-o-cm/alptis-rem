@@ -3,6 +3,7 @@ package fr.alptis.remuneration.integration;
 import fr.alptis.remuneration.domain.AccountEntry;
 import fr.alptis.remuneration.domain.AccountEntryType;
 import fr.alptis.remuneration.domain.AdvanceDebtHandling;
+import fr.alptis.remuneration.domain.AuditEvent;
 import fr.alptis.remuneration.domain.Agreement;
 import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.BankAccount;
@@ -260,6 +261,62 @@ class ReferentialQueryServiceTest {
         var unepAccount = all.accounts().stream().filter(a -> a.entityCode().equals("UNEP")).findFirst().orElseThrow();
         assertEquals("0", unepAccount.balance());
         assertTrue(unepAccount.history().isEmpty());
+    }
+
+    /**
+     * Reads the hierarchy history: the in-scope grouping change and a global (entity-less) entry are
+     * kept, an out-of-scope production-code reassignment is filtered, and a distributor with no
+     * production code still reads its own history.
+     */
+    @Test
+    @TestTransaction
+    void reads_the_hierarchy_history() {
+        Distributor d = seedDistributor();
+        ProductionCode unepCode = ProductionCode.<ProductionCode>find("code", "U-99").firstResult();
+
+        audit("REASSIGN_DISTRIBUTOR_GROUP", "Distributor", d.getId(), alptis(), "\"G0\"", "\"G1\"", 3);
+        audit("REASSIGN_PRODUCTION_CODE", "ProductionCode", unepCode.getId(),
+                LegalEntity.<LegalEntity>find("code", "UNEP").firstResult(), "\"P9\"", "\"P1\"", 2);
+        audit("REASSIGN_DISTRIBUTOR_GROUP", "Distributor", d.getId(), null, null, "\"G1\"", 1);
+
+        // Restricted to Alptis: the Alptis grouping change and the entity-less entry, not the UNEP one.
+        var history = restricted().distributor("P1").history();
+        assertEquals(2, history.size());
+        assertEquals("ALPTIS_ASSURANCES", history.get(0).entityCode());
+        assertNull(history.get(1).entityCode());
+        // Unrestricted sees the UNEP reassignment too.
+        assertEquals(3, unrestricted().distributor("P1").history().size());
+
+        // A distributor with no production code still reads its own (entity-less) history.
+        Distributor bare = new Distributor();
+        bare.partnerCode = "PB";
+        bare.legalName = "Cabinet B";
+        bare.persist();
+        DistributorEntity link = new DistributorEntity();
+        link.distributor = bare;
+        link.entity = alptis();
+        link.validFrom = LocalDate.of(2026, 1, 1);
+        link.status = PartnerStatus.ACTIVE;
+        link.persist();
+        audit("REASSIGN_DISTRIBUTOR_GROUP", "Distributor", bare.getId(), alptis(), null, "\"G1\"", 1);
+        assertEquals(1, restricted().distributor("PB").history().size());
+    }
+
+    /** Persists an audit event, with an hour offset so ordering is deterministic. */
+    private static void audit(String action, String objectType, Long objectId, LegalEntity entity,
+                              String before, String after, int hour) {
+        AuditEvent event = new AuditEvent();
+        event.occurredAt = java.time.OffsetDateTime.of(2026, 6, 1, hour, 0, 0, 0, java.time.ZoneOffset.UTC);
+        event.userId = "import";
+        event.entity = entity;
+        event.action = action;
+        event.objectType = objectType;
+        event.objectId = objectId;
+        event.beforeValue = before;
+        event.afterValue = after;
+        event.previousHash = "p";
+        event.hash = "h" + hour;
+        event.persist();
     }
 
     /**

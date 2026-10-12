@@ -88,6 +88,30 @@ test.describe('Distributeurs — opérateur', () => {
     await expect(page.locator('[data-testid="indicator-row"]').first()).toBeVisible();
     await expect(page.getByTestId('account-ALPTIS_ASSURANCES')).toBeVisible();
   });
+
+  test('la fiche historise un changement de hiérarchie @screen:production-hierarchy @req:REF-03', async ({
+    page,
+  }) => {
+    const post = (flow: string, content: string) =>
+      page.request.post('/api/ui/v1/imports', {
+        headers: { Authorization: OPERATOR_AUTH },
+        data: { entityCode: 'ALPTIS_ASSURANCES', flowCode: flow, sourceSystem: 'SESAME', fileName: `${flow}-${content.length}.csv`, content },
+      });
+    await post('distributor_groups', 'group_code;label;head_partner_code\nGA;Groupe A;\nGB;Groupe B;\n');
+    const dh =
+      'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from;group_code\n';
+    await post('distributors', dh + 'ALPTIS_ASSURANCES;SESAME;P13897;Cabinet Martin;INDEPENDENT;ACTIVE;2026-01-01;GA\n');
+    // A later import moves the distributor to another grouping — this is historised (REF-03).
+    await post('distributors', dh + 'ALPTIS_ASSURANCES;SESAME;P13897;Cabinet Martin;INDEPENDENT;ACTIVE;2026-01-01;GB\n');
+
+    await page.goto('/distributeurs');
+    await page.getByTestId('search-term').fill('P13897');
+    await page.getByTestId('search-button').click();
+    await page.getByTestId('distributor-row-P13897').click();
+    const history = page.getByTestId('history-row').first();
+    await expect(history).toBeVisible();
+    await expect(history).toContainText('Changement de groupement');
+  });
 });
 
 test.describe('Distributeurs — cloisonnement et accès', () => {

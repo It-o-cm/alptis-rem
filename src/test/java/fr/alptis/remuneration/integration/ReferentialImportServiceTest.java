@@ -144,6 +144,43 @@ class ReferentialImportServiceTest {
     }
 
     /**
+     * A change of grouping and a reassignment of a production code are historised in the audit
+     * journal (REF-03), while re-importing an unchanged hierarchy records nothing.
+     */
+    @Test
+    @io.quarkus.test.TestTransaction
+    void hierarchy_changes_are_historised() {
+        service.importGroups("ALPTIS_ASSURANCES", "SESAME", "g.csv",
+                "group_code;label;head_partner_code\nGA;A;\nGB;B;\n");
+        String dh = "entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from;group_code\n";
+        service.importDistributors("ALPTIS_ASSURANCES", "SESAME", "d1.csv",
+                dh + "ALPTIS_ASSURANCES;SESAME;P1;Un;INDEPENDENT;ACTIVE;2026-01-01;GA\n");
+        // Re-import unchanged (same group): nothing historised.
+        service.importDistributors("ALPTIS_ASSURANCES", "SESAME", "d2.csv",
+                dh + "ALPTIS_ASSURANCES;SESAME;P1;Un;INDEPENDENT;ACTIVE;2026-01-01;GA\n");
+        assertEquals(0, fr.alptis.remuneration.domain.AuditEvent.count("objectType", "Distributor"));
+        // Re-import with a different group: a reassignment is recorded.
+        service.importDistributors("ALPTIS_ASSURANCES", "SESAME", "d3.csv",
+                dh + "ALPTIS_ASSURANCES;SESAME;P1;Un;INDEPENDENT;ACTIVE;2026-01-01;GB\n");
+        assertEquals(1, fr.alptis.remuneration.domain.AuditEvent.count(
+                "objectType = ?1 and action = ?2", "Distributor", "REASSIGN_DISTRIBUTOR_GROUP"));
+
+        // A second distributor to receive the production code.
+        service.importDistributors("ALPTIS_ASSURANCES", "SESAME", "d4.csv",
+                dh + "ALPTIS_ASSURANCES;SESAME;P2;Deux;INDEPENDENT;ACTIVE;2026-01-01;GA\n");
+        service.importProductionCodes("ALPTIS_ASSURANCES", "SESAME", "pc1.csv",
+                "entity_code;production_code;partner_code;label;status\nALPTIS_ASSURANCES;PCX;P1;L;ACTIVE\n"
+                        // A code pointing at an unknown distributor keeps no owner.
+                        + "ALPTIS_ASSURANCES;PCY;GHOST;L;ACTIVE\n");
+        assertNull(ProductionCode.<ProductionCode>find("code", "PCY").firstResult().distributor);
+        // Reassign the production code to P2: a reassignment is recorded.
+        service.importProductionCodes("ALPTIS_ASSURANCES", "SESAME", "pc2.csv",
+                "entity_code;production_code;partner_code;label;status\nALPTIS_ASSURANCES;PCX;P2;L;ACTIVE\n");
+        assertEquals(1, fr.alptis.remuneration.domain.AuditEvent.count(
+                "objectType = ?1 and action = ?2", "ProductionCode", "REASSIGN_PRODUCTION_CODE"));
+    }
+
+    /**
      * Importing a groups file for an unknown entity is refused (the journal's entity guard).
      */
     @Test

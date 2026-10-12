@@ -2,6 +2,7 @@ package fr.alptis.remuneration.integration;
 
 import fr.alptis.remuneration.accounts.AccountService;
 import fr.alptis.remuneration.domain.Agreement;
+import fr.alptis.remuneration.domain.AuditEvent;
 import fr.alptis.remuneration.domain.BankAccount;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Coverage;
@@ -129,11 +130,34 @@ public class ReferentialQueryService {
                 .distinct()
                 .map(entity -> accountSummary(entity, distributor))
                 .toList();
+        List<HistoryEntryView> history = hierarchyHistory(distributor);
         return new DistributorDetail(distributor.partnerCode, distributor.legalName,
                 distributor.group == null ? null : distributor.group.code,
                 distributor.group == null ? null : distributor.group.label,
                 distributor.distributorType == null ? null : distributor.distributorType.name(),
-                statuses, codes, agreements, enrollments, indicators, accountSummaries);
+                statuses, codes, agreements, enrollments, indicators, accountSummaries, history);
+    }
+
+    /**
+     * Reads the hierarchy history of a distributor (REF-03): the audit-journal entries recording a
+     * change of its grouping or a reassignment of one of its production codes, most recent first,
+     * within the caller's entity partition.
+     *
+     * @param distributor the distributor
+     * @return the history entries
+     */
+    private List<HistoryEntryView> hierarchyHistory(Distributor distributor) {
+        List<Long> codeIds = ProductionCode.<ProductionCode>list("distributor", distributor).stream()
+                .map(ProductionCode::getId)
+                .toList();
+        List<AuditEvent> events = AuditEvent.<AuditEvent>list(
+                "(objectType = ?1 and objectId = ?2) or (objectType = ?3 and objectId in ?4) order by occurredAt desc",
+                "Distributor", distributor.getId(), "ProductionCode", codeIds.isEmpty() ? List.of(-1L) : codeIds);
+        return events.stream()
+                .filter(e -> e.entity == null || scope.canSee(e.entity.code))
+                .map(e -> new HistoryEntryView(e.occurredAt.toString(), e.userId, e.action,
+                        e.entity == null ? null : e.entity.code, e.beforeValue, e.afterValue))
+                .toList();
     }
 
     /**
@@ -674,12 +698,28 @@ public class ReferentialQueryService {
      * @param enrollments     the reserved-rule enrollments
      * @param indicators      the quality indicators, most recent first
      * @param accounts        the per-entity account balances with their history
+     * @param history         the hierarchy history (groupings and production-code reassignments)
      */
     public record DistributorDetail(String partnerCode, String legalName, String groupCode, String groupLabel,
                                     String distributorType, List<StatusView> statuses,
                                     List<ProductionCodeView> productionCodes, List<AgreementView> agreements,
                                     List<EnrollmentView> enrollments, List<QualityIndicatorView> indicators,
-                                    List<AccountSummaryView> accounts) {
+                                    List<AccountSummaryView> accounts, List<HistoryEntryView> history) {
+    }
+
+    /**
+     * One hierarchy-history entry of a distributor (REF-03, ADM-04): a dated, attributed change of its
+     * grouping or a production-code reassignment, with the before and after values.
+     *
+     * @param occurredAt the moment of the change (ISO)
+     * @param userId     the author
+     * @param action     the action code
+     * @param entityCode the entity code, possibly null
+     * @param before     the value before, possibly null
+     * @param after      the value after, possibly null
+     */
+    public record HistoryEntryView(String occurredAt, String userId, String action, String entityCode,
+                                   String before, String after) {
     }
 
     /**

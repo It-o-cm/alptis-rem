@@ -63,6 +63,15 @@ interface AccountSummaryView {
   history: MonthBalanceView[];
 }
 
+interface HistoryEntryView {
+  occurredAt: string;
+  userId: string;
+  action: string;
+  entityCode: string | null;
+  before: string | null;
+  after: string | null;
+}
+
 interface DistributorDetail {
   partnerCode: string;
   legalName: string;
@@ -75,6 +84,7 @@ interface DistributorDetail {
   enrollments: EnrollmentView[];
   indicators: IndicatorView[];
   accounts: AccountSummaryView[];
+  history: HistoryEntryView[];
 }
 
 const term = ref('');
@@ -140,6 +150,22 @@ const indicatorColumns: Column<IndicatorView>[] = [
 const balanceColumns: Column<MonthBalanceView>[] = [
   { key: 'month', label: 'Mois' },
   { key: 'balance', label: 'Solde' },
+];
+
+/** French label of a hierarchy-history action. */
+function actionLabel(action: string): string {
+  if (action === 'REASSIGN_DISTRIBUTOR_GROUP') return 'Changement de groupement';
+  if (action === 'REASSIGN_PRODUCTION_CODE') return 'Réaffectation d’un code de production';
+  return action;
+}
+
+/** Columns of the hierarchy history table. */
+const historyColumns: Column<HistoryEntryView>[] = [
+  { key: 'occurredAt', label: 'Date' },
+  { key: 'action', label: 'Changement', value: (h) => actionLabel(h.action) },
+  { key: 'before', label: 'Avant', value: (h) => h.before ?? '—' },
+  { key: 'after', label: 'Après', value: (h) => h.after ?? '—' },
+  { key: 'userId', label: 'Par' },
 ];
 
 /** Searches distributors by code or legal name within the user's entities. */
@@ -256,6 +282,15 @@ onMounted(search);
         empty="Aucun indicateur."
         empty-testid="no-indicators"
         :row-testid="() => 'indicator-row'"
+      />
+
+      <h3 class="ui-detail-sub">Historique de la hiérarchie</h3>
+      <DataTable
+        :columns="historyColumns"
+        :rows="detail.history"
+        empty="Aucun changement de hiérarchie."
+        empty-testid="no-history"
+        :row-testid="() => 'history-row'"
       />
 
       <h3 class="ui-detail-sub">Comptes et historique des soldes</h3>

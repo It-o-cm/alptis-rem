@@ -10,6 +10,7 @@ import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.RejectionReasonCode;
+import fr.alptis.remuneration.security.AuditService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -28,14 +29,19 @@ public class ReferentialImportService {
     /** The date/time provider. */
     private final DateTimeProvider clock;
 
+    /** The audit journal, used to historise hierarchy changes (REF-03, ADM-04). */
+    private final AuditService audit;
+
     /**
      * Creates the service.
      *
      * @param clock the application date/time provider
+     * @param audit the audit journal used to historise hierarchy changes
      */
     @Inject
-    public ReferentialImportService(DateTimeProvider clock) {
+    public ReferentialImportService(DateTimeProvider clock, AuditService audit) {
         this.clock = clock;
+        this.audit = audit;
     }
 
     /**
@@ -122,17 +128,26 @@ public class ReferentialImportService {
      * @param entity the importing entity
      * @param row    the parsed line
      */
-    private static void upsertDistributor(LegalEntity entity, Map<String, String> row) {
+    private void upsertDistributor(LegalEntity entity, Map<String, String> row) {
         String partnerCode = value(row, "partner_code");
         Distributor distributor = Distributor.find("partnerCode", partnerCode).firstResult();
-        if (distributor == null) {
+        boolean existed = distributor != null;
+        if (!existed) {
             distributor = new Distributor();
             distributor.partnerCode = partnerCode;
             distributor.persist();
         }
         distributor.legalName = value(row, "legal_name");
         distributor.distributorType = parseType(value(row, "distributor_type"));
-        distributor.group = groupByCode(value(row, "group_code"));
+        String previousGroup = distributor.group == null ? null : distributor.group.code;
+        DistributorGroup newGroup = groupByCode(value(row, "group_code"));
+        String nextGroup = newGroup == null ? null : newGroup.code;
+        // Historise a change of grouping (the distributor's place in the hierarchy, REF-03).
+        if (existed && !java.util.Objects.equals(previousGroup, nextGroup)) {
+            audit.record("import", entity, "REASSIGN_DISTRIBUTOR_GROUP", "Distributor",
+                    distributor.getId(), json(previousGroup), json(nextGroup));
+        }
+        distributor.group = newGroup;
         distributor.commissionable = !"false".equals(value(row, "commissionable"));
         distributor.advanceExcluded = "true".equals(value(row, "advance_excluded"));
 
@@ -173,16 +188,25 @@ public class ReferentialImportService {
      * @param entity the entity
      * @param row    the parsed line
      */
-    private static void upsertProductionCode(LegalEntity entity, Map<String, String> row) {
+    private void upsertProductionCode(LegalEntity entity, Map<String, String> row) {
         String code = value(row, "production_code");
         ProductionCode pc = ProductionCode.find("entity = ?1 and code = ?2", entity, code).firstResult();
-        if (pc == null) {
+        boolean existed = pc != null;
+        if (!existed) {
             pc = new ProductionCode();
             pc.entity = entity;
             pc.code = code;
             pc.persist();
         }
-        pc.distributor = distributorByCode(value(row, "partner_code"));
+        String previousOwner = pc.distributor == null ? null : pc.distributor.partnerCode;
+        Distributor newOwner = distributorByCode(value(row, "partner_code"));
+        String nextOwner = newOwner == null ? null : newOwner.partnerCode;
+        // Historise a reassignment of the production code to another distributor (REF-03).
+        if (existed && !java.util.Objects.equals(previousOwner, nextOwner)) {
+            audit.record("import", entity, "REASSIGN_PRODUCTION_CODE", "ProductionCode",
+                    pc.getId(), json(previousOwner), json(nextOwner));
+        }
+        pc.distributor = newOwner;
         pc.label = emptyToNull(value(row, "label"));
         pc.status = parseStatus(value(row, "status"));
     }
@@ -272,5 +296,15 @@ public class ReferentialImportService {
      */
     private static String emptyToNull(String value) {
         return value.isEmpty() ? null : value;
+    }
+
+    /**
+     * Encodes a code as a JSON string literal for the audit journal's JSON before/after columns.
+     *
+     * @param code the code, possibly null
+     * @return the JSON string literal, or {@code null} when the code is null
+     */
+    private static String json(String code) {
+        return code == null ? null : "\"" + code + "\"";
     }
 }
