@@ -100,6 +100,20 @@ public class AgreementsResource {
     }
 
     /**
+     * Returns the discount synthesis by convention of an entity (BRD-09, CPT-08).
+     *
+     * @param entityCode the entity code
+     * @return the per-convention synthesis
+     */
+    @GET
+    @Path("/discount-summary/{entityCode}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "OPERATOR", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public List<AgreementService.ConventionSummary> discountSummary(@PathParam("entityCode") String entityCode) {
+        return service.discountSummary(entityCode);
+    }
+
+    /**
      * Records a discount convention.
      *
      * @param request the discount-convention request

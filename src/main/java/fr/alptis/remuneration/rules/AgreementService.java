@@ -146,6 +146,45 @@ public class AgreementService {
         }
         List<String> products = AdvanceAgreementProduct.<AdvanceAgreementProduct>list("advanceAgreement", agreement)
                 .stream().map(p -> p.product == null ? "—" : p.product.code).toList();
+        Cumul cumul = cumul(agreement);
+        return new AdvanceDetail(toAdvanceView(agreement), agreement.unpaidRankThreshold, agreement.split, products,
+                cumul.advanced(), cumul.offset(), cumul.outstanding(), cumul.outstanding(), cumul.positions());
+    }
+
+    /**
+     * Produces the discount synthesis by convention for an entity (BRD-09): each convention with its
+     * advanced, offset and outstanding amounts and the detail by discounted guarantee.
+     *
+     * @param entityCode the entity code
+     * @return the per-convention synthesis
+     * @throws ResourceNotFoundException if the entity is out of the caller's partition
+     */
+    @Transactional
+    public List<ConventionSummary> discountSummary(String entityCode) {
+        if (!scope.canSee(entityCode)) {
+            throw new ResourceNotFoundException("Entité hors périmètre : " + entityCode);
+        }
+        List<ConventionSummary> summaries = new java.util.ArrayList<>();
+        for (AdvanceAgreement agreement : AdvanceAgreement.<AdvanceAgreement>list(
+                "entity.code = ?1 order by validFrom desc", entityCode)) {
+            Cumul cumul = cumul(agreement);
+            summaries.add(new ConventionSummary(
+                    agreement.distributor == null ? null : agreement.distributor.partnerCode,
+                    agreement.validFrom == null ? null : agreement.validFrom.toString(),
+                    agreement.validTo == null ? null : agreement.validTo.toString(),
+                    cumul.advanced(), cumul.offset(), cumul.outstanding(), cumul.positions()));
+        }
+        return summaries;
+    }
+
+    /**
+     * Cumulates a convention's discounted positions: the advanced and offset totals, the outstanding
+     * debt (advanced − offset − adjustments), and the per-guarantee detail.
+     *
+     * @param agreement the convention
+     * @return the cumulated amounts and positions
+     */
+    private static Cumul cumul(AdvanceAgreement agreement) {
         List<PositionView> positions = new java.util.ArrayList<>();
         BigDecimal totalAdvanced = BigDecimal.ZERO;
         BigDecimal totalOffset = BigDecimal.ZERO;
@@ -161,9 +200,20 @@ public class AgreementService {
             positions.add(new PositionView(position.coverage == null ? "—" : position.coverage.coverageCode,
                     position.status == null ? null : position.status.name(), advanced, offset));
         }
-        BigDecimal outstanding = totalAdvanced.subtract(totalOffset).subtract(totalAdjustment);
-        return new AdvanceDetail(toAdvanceView(agreement), agreement.unpaidRankThreshold, agreement.split, products,
-                totalAdvanced, totalOffset, outstanding, outstanding, positions);
+        return new Cumul(positions, totalAdvanced, totalOffset,
+                totalAdvanced.subtract(totalOffset).subtract(totalAdjustment));
+    }
+
+    /**
+     * A convention's cumulated discount amounts and per-guarantee detail.
+     *
+     * @param positions   the per-guarantee detail
+     * @param advanced    the total advanced
+     * @param offset      the total offset
+     * @param outstanding the outstanding debt
+     */
+    private record Cumul(List<PositionView> positions, BigDecimal advanced, BigDecimal offset,
+                         BigDecimal outstanding) {
     }
 
     /**
@@ -467,6 +517,21 @@ public class AgreementService {
      * @param offset       the amount offset (apuré) on the guarantee
      */
     public record PositionView(String coverageCode, String status, BigDecimal advanced, BigDecimal offset) {
+    }
+
+    /**
+     * One line of the discount synthesis by convention (BRD-09).
+     *
+     * @param partnerCode the distributor partner code
+     * @param validFrom   the validity start
+     * @param validTo     the validity end
+     * @param advanced    the total advanced (versé)
+     * @param offset      the total offset (apuré)
+     * @param outstanding the outstanding debt (créance)
+     * @param positions   the detail by discounted guarantee (par adhérent)
+     */
+    public record ConventionSummary(String partnerCode, String validFrom, String validTo, BigDecimal advanced,
+                                    BigDecimal offset, BigDecimal outstanding, List<PositionView> positions) {
     }
 
     /**

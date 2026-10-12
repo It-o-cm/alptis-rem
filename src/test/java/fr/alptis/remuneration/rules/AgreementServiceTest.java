@@ -167,6 +167,21 @@ class AgreementServiceTest {
         // Out of scope and unknown distributor.
         assertThrows(ResourceNotFoundException.class, () -> svc.advanceDetail("ALPTIS_ASSURANCES", "D1"));
         assertThrows(ResourceNotFoundException.class, () -> svc.advanceDetail("UNEP", "NOPE"));
+
+        // A convention with no distributor, to cover the null-partner branch of the synthesis.
+        AdvanceAgreement bare = new AdvanceAgreement();
+        bare.entity = unep();
+        bare.persist();
+
+        // The per-convention discount synthesis (BRD-09): the detailed convention and the bare one.
+        var summary = svc.discountSummary("UNEP");
+        assertEquals(2, summary.size());
+        var detailed = summary.stream().filter(s -> "D1".equals(s.partnerCode())).findFirst().orElseThrow();
+        assertEquals(0, detailed.outstanding().compareTo(new BigDecimal("12")));
+        assertEquals(2, detailed.positions().size());
+        assertEquals(1, summary.stream().filter(s -> s.partnerCode() == null).count());
+        // Out of scope.
+        assertThrows(ResourceNotFoundException.class, () -> svc.discountSummary("ALPTIS_ASSURANCES"));
     }
 
     /** Persists a product line of a convention (product may be null). */

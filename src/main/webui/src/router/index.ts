@@ -23,6 +23,7 @@ import ExternalCodesView from '../views/ExternalCodesView.vue';
 import RulesView from '../views/RulesView.vue';
 import FamiliesView from '../views/FamiliesView.vue';
 import AdvanceAgreementsView from '../views/AdvanceAgreementsView.vue';
+import DiscountsView from '../views/DiscountsView.vue';
 import EnrollmentsView from '../views/EnrollmentsView.vue';
 import PeriodsView from '../views/PeriodsView.vue';
 import ControlsView from '../views/ControlsView.vue';
@@ -96,6 +97,7 @@ const REAL_VIEWS: Record<string, unknown> = {
   rules: RulesView,
   families: FamiliesView,
   advance: AdvanceAgreementsView,
+  discounts: DiscountsView,
   enrollments: EnrollmentsView,
   adminEntities: EntityParamsView,
   adminRoleMappings: RoleMappingsView,

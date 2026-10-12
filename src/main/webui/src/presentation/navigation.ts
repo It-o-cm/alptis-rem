@@ -48,6 +48,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'transfers', path: '/cessions', label: 'Cessions et ordres' },
       { name: 'distributor', path: '/distributeur', label: 'Fiche et compte' },
       { name: 'advance', path: '/escompte', label: 'Escompte' },
+      { name: 'discounts', path: '/creances-escompte', label: 'Créances d’escompte' },
     ],
   },
   {
