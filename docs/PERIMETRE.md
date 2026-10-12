@@ -112,7 +112,7 @@ d'accès serveur · test de bout en bout · état.
 | 54 | Extraction comptable du mois et clôture | FIN-03 | `accounting` / AccountingView | POST /accounting/{e}/{m}/extract | accounting.spec | complet |
 | 55 | État de cut-off | FIN-04, FIN-09 | `cutoff` / CutoffView | GET /accounting/{e}/cutoff | cutoff.spec | complet |
 | 56 | Rapprochement des commissions acquises et payées | FIN-06 | `reconciliation` / ReconciliationView | GET /accounting/{e}/reconciliation | reconciliation.spec | complet — commissions acquises (acquises, payables, payées) rapprochées des payées, par bénéficiaire et au global, avec le reste à payer |
-| 57 | Commissions reçues des assureurs, attendu et marge | FIN-08, REP-08 | `margin` / MarginView | GET /reporting/{e}/margin | reporting.spec | partiel — marge présente ; rapprochement attendu/reçu des assureurs (FIN-08) absent |
+| 57 | Commissions reçues des assureurs, attendu et marge | FIN-08, REP-08 | `margin` / MarginView | GET /reporting/{e}/margin, /insurer-reconciliation | reporting.spec | complet — marge (reçu − payé) par produit/assureur/distributeur, et rapprochement des commissions d'assureur attendu (assiette × taux) contre reçu, avec l'écart (FIN-08) |
 
 ### Documents, restitutions, administration
 

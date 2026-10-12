@@ -356,6 +356,70 @@ class ReportingServiceTest {
     }
 
     /**
+     * The insurer reconciliation sums the expected and received amounts recorded by the CAL-13 control
+     * per guarantee and groups them per insurer; a guarantee with no product groups under a dash, and a
+     * blank value counts as zero (FIN-08).
+     */
+    @Test
+    @TestTransaction
+    void reconciles_insurer_commissions() {
+        Product product = new Product();
+        product.entity = unep();
+        product.code = "PRI";
+        product.label = "Produit assuré";
+        product.insurer = insurer();
+        product.persist();
+        Coverage cov = coverage("CVI", option(product));
+        Coverage orphan = coverage("CVO", null);
+        Coverage noProduct = coverage("CVNP", option(null));
+        Product withoutInsurer = new Product();
+        withoutInsurer.entity = unep();
+        withoutInsurer.code = "PRNI";
+        withoutInsurer.label = "Sans assureur";
+        withoutInsurer.persist();
+        Coverage noInsurer = coverage("CVNI", option(withoutInsurer));
+        Period sep = period(SEP);
+        fr.alptis.remuneration.domain.ControlDefinition cd = new fr.alptis.remuneration.domain.ControlDefinition();
+        cd.entity = unep();
+        cd.code = "CAL-13";
+        cd.label = "Commission reçue différente de l'attendu";
+        cd.family = fr.alptis.remuneration.domain.ControlFamily.CALCULATION;
+        cd.persist();
+        // INS: a full value, a blank expected (zero) and a null expected (zero).
+        expectedControl(cd, sep, cov, "100.00", "90.00");
+        expectedControl(cd, sep, cov, "", "10.00");
+        expectedControl(cd, sep, cov, null, "1.00");
+        // "—": option null, product null, insurer null, and a result with no object at all.
+        expectedControl(cd, sep, orphan, "25.00", "25.00");
+        expectedControl(cd, sep, noProduct, "5.00", "5.00");
+        expectedControl(cd, sep, noInsurer, "7.00", "7.00");
+        expectedControl(cd, sep, null, "3.00", "3.00");
+
+        var recon = service.insurerReconciliation("UNEP");
+        var ins = recon.insurers().stream().filter(r -> "INS".equals(r.insurer())).findFirst().orElseThrow();
+        assertEquals(0, ins.expected().compareTo(new BigDecimal("100.00")));
+        assertEquals(0, ins.received().compareTo(new BigDecimal("101.00")));
+        var none = recon.insurers().stream().filter(r -> "—".equals(r.insurer())).findFirst().orElseThrow();
+        assertEquals(0, none.expected().compareTo(new BigDecimal("40.00")));
+        assertEquals(0, none.received().compareTo(new BigDecimal("40.00")));
+    }
+
+    /** Records an expected-vs-received (CAL-13) control result for a guarantee (null for no object). */
+    private static void expectedControl(fr.alptis.remuneration.domain.ControlDefinition cd, Period period,
+                                        Coverage coverage, String expected, String observed) {
+        fr.alptis.remuneration.domain.ControlResult result = new fr.alptis.remuneration.domain.ControlResult();
+        result.control = cd;
+        result.period = period;
+        result.objectType = "COVERAGE";
+        result.objectId = coverage == null ? null : coverage.getId();
+        result.severity = fr.alptis.remuneration.domain.ControlSeverity.WARNING;
+        result.decision = fr.alptis.remuneration.domain.ControlDecision.OPEN;
+        result.expectedValue = expected;
+        result.observedValue = observed;
+        result.persist();
+    }
+
+    /**
      * The cross-search keeps only counted lines, applies every filter and resolves the chain fields.
      */
     @Test

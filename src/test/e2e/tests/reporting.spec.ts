@@ -112,14 +112,20 @@ test('l’auditeur lit la vision consolidée, le consultant en est écarté @scr
   await viewer.close();
 });
 
-test('le contrôleur Finance lit la marge par produit, assureur et distributeur @screen:margin @req:REP-08', async ({
+test('le contrôleur Finance lit la marge et le rapprochement assureurs @screen:margin @req:REP-08 @req:FIN-08', async ({
   browser,
 }) => {
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
   const page = await finance.newPage();
+  // The full demo runs the annual close, which records the expected-vs-received insurer control.
+  await loadDemo(page.request);
   await page.goto('/marge');
   await expect(page.locator('[data-testid^="margin-product-"]').first()).toBeVisible();
   await expect(page.getByTestId('chart-margin-product')).toBeVisible();
+  // FIN-08: the insurer reconciliation (expected vs received) section is shown, with at least one
+  // insurer row recorded by the annual close.
+  await expect(page.getByTestId('insurer-recon')).toBeVisible();
+  await expect(page.locator('[data-testid^="recon-row-"]').first()).toBeVisible();
   await finance.close();
 });
 

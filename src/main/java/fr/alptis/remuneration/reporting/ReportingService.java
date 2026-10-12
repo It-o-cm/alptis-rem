@@ -3,6 +3,7 @@ package fr.alptis.remuneration.reporting;
 import fr.alptis.remuneration.accounts.AccountService;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.ControlResult;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
@@ -231,6 +232,57 @@ public class ReportingService {
             accrue(byDistributor, distributorCode(line), line.amount, inbound);
         }
         return new Margin(marginRows(byProduct), marginRows(byInsurer), marginRows(byDistributor));
+    }
+
+    /**
+     * Reconciles the commissions received from insurers with the expected amount (FIN-08): the engine
+     * records, per guarantee, the expected insurer commission of the twin inbound rule against the
+     * received one, as the {@code CAL-13} control ("received commission different from expected", P17,
+     * section 6.6). This sums those results per insurer: expected, received and the gap.
+     *
+     * @param entityCode the entity code
+     * @return the insurer reconciliation
+     */
+    public InsurerReconciliation insurerReconciliation(String entityCode) {
+        LegalEntity entity = entity(entityCode);
+        Map<String, BigDecimal[]> byInsurer = new LinkedHashMap<>();
+        for (ControlResult result : ControlResult.<ControlResult>list(
+                "control.code = ?1 and period.entity = ?2", "CAL-13", entity)) {
+            Coverage coverage = result.objectId == null ? null : Coverage.findById(result.objectId);
+            BigDecimal[] totals = byInsurer.computeIfAbsent(insurerOfCoverage(coverage),
+                    k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            totals[0] = totals[0].add(parseAmount(result.expectedValue));
+            totals[1] = totals[1].add(parseAmount(result.observedValue));
+        }
+        List<InsurerReconciliationRow> rows = byInsurer.entrySet().stream()
+                .map(e -> new InsurerReconciliationRow(e.getKey(), e.getValue()[0], e.getValue()[1],
+                        e.getValue()[1].subtract(e.getValue()[0])))
+                .toList();
+        return new InsurerReconciliation(rows);
+    }
+
+    /**
+     * Resolves the insurer code of a guarantee through its product, or a dash when unresolved.
+     *
+     * @param coverage the guarantee, possibly null
+     * @return the insurer code, or a dash
+     */
+    private static String insurerOfCoverage(Coverage coverage) {
+        if (coverage == null || coverage.option == null || coverage.option.product == null
+                || coverage.option.product.insurer == null) {
+            return "—";
+        }
+        return coverage.option.product.insurer.code;
+    }
+
+    /**
+     * Parses a stored decimal value, treating a null or blank as zero.
+     *
+     * @param value the stored value, possibly null
+     * @return the amount, or zero
+     */
+    private static BigDecimal parseAmount(String value) {
+        return value == null || value.isBlank() ? BigDecimal.ZERO : new BigDecimal(value);
     }
 
     /**
@@ -957,11 +1009,31 @@ public class ReportingService {
     }
 
     /**
-     * The margin of one key (product, insurer or distributor).
+     * One insurer's received-versus-expected reconciliation (FIN-08).
      *
-     * @param key      the grouping key
-     * @param received the commission received (inbound)
-     * @param paid     the commission paid (outbound)
+     * @param insurer  the insurer code
+     * @param expected the expected commission (Σ basis × rate)
+     * @param received the received commission (Σ amount)
+     * @param gap      the gap (received − expected)
+     */
+    public record InsurerReconciliationRow(String insurer, BigDecimal expected, BigDecimal received,
+                                           BigDecimal gap) {
+    }
+
+    /**
+     * The reconciliation of commissions received from insurers against the expected (FIN-08).
+     *
+     * @param insurers the per-insurer rows
+     */
+    public record InsurerReconciliation(List<InsurerReconciliationRow> insurers) {
+    }
+
+    /**
+     * One margin row on an axis (REP-08).
+     *
+     * @param key      the axis key
+     * @param received the commission received
+     * @param paid     the commission paid
      * @param margin   the margin (received − paid)
      */
     public record MarginRow(String key, BigDecimal received, BigDecimal paid, BigDecimal margin) {

@@ -19,6 +19,16 @@ interface Margin {
   byDistributor: MarginRow[];
 }
 
+interface InsurerReconRow {
+  insurer: string;
+  expected: number;
+  received: number;
+  gap: number;
+}
+interface InsurerReconciliation {
+  insurers: InsurerReconRow[];
+}
+
 /**
  * Maps margin rows to the horizontal-bar chart data.
  * @param rows the margin rows of an axis
@@ -30,6 +40,7 @@ function marginData(rows: MarginRow[]): { label: string; value: number }[] {
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 && session.entities[0] !== '*' ? session.entities[0] : 'ALPTIS_ASSURANCES');
 const data = ref<Margin | null>(null);
+const insurerRecon = ref<InsurerReconRow[]>([]);
 const csv = ref('');
 const error = ref('');
 const loading = ref(false);
@@ -49,6 +60,9 @@ async function load(): Promise<void> {
   loading.value = true;
   try {
     data.value = await apiGet<Margin>(`/api/ui/v1/reporting/${entity.value}/margin`);
+    const recon = await apiGet<InsurerReconciliation>(
+      `/api/ui/v1/reporting/${entity.value}/insurer-reconciliation`);
+    insurerRecon.value = recon.insurers;
   } catch (e) {
     data.value = null;
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
@@ -81,6 +95,14 @@ const columns: Column<MarginRow & { i: number }>[] = [
   { key: 'margin', label: 'Marge', align: 'num', value: (r) => amount(r.margin) },
 ];
 
+/** Columns of the insurer reconciliation table (FIN-08). */
+const reconColumns: Column<InsurerReconRow>[] = [
+  { key: 'insurer', label: 'Assureur' },
+  { key: 'expected', label: 'Attendu', align: 'num', value: (r) => amount(r.expected) },
+  { key: 'received', label: 'Reçu', align: 'num', value: (r) => amount(r.received) },
+  { key: 'gap', label: 'Écart', align: 'num', value: (r) => amount(r.gap) },
+];
+
 onMounted(load);
 </script>
 
@@ -108,6 +130,16 @@ onMounted(load);
 
     <AppCard v-if="csv">
       <pre data-testid="margin-export-content" class="margin-csv">{{ csv }}</pre>
+    </AppCard>
+
+    <AppCard v-if="data" data-testid="insurer-recon" title="Rapprochement assureurs : attendu et reçu (FIN-08)">
+      <DataTable
+        :columns="reconColumns"
+        :rows="insurerRecon"
+        empty="Aucune commission d'assureur."
+        empty-testid="recon-empty"
+        :row-testid="(r) => `recon-row-${r.insurer}`"
+      />
     </AppCard>
 
     <template v-if="data">

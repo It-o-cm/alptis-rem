@@ -154,6 +154,11 @@ class ReportingResourceTest {
         given().auth().preemptive().basic("finance-alptis", "finance-alptis")
                 .when().get("/api/ui/v1/reporting/" + ENTITY + "/margin")
                 .then().statusCode(200).body("byProduct.key", hasItem("PROD-R"));
+
+        // The insurer reconciliation returns its per-insurer rows (FIN-08).
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/reporting/" + ENTITY + "/insurer-reconciliation")
+                .then().statusCode(200).body("insurers", org.hamcrest.Matchers.notNullValue());
     }
 
     /**

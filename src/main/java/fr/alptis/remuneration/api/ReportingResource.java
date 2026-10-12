@@ -128,6 +128,21 @@ public class ReportingResource {
     }
 
     /**
+     * Reconciles the commissions received from insurers with the expected amount (FIN-08).
+     *
+     * @param entityCode the entity code
+     * @return the insurer reconciliation
+     */
+    @GET
+    @Path("/{entity}/insurer-reconciliation")
+    @RolesAllowed({"BUSINESS_ADMIN", "FINANCE_CONTROLLER", "AUDITOR"})
+    public fr.alptis.remuneration.reporting.ReportingService.InsurerReconciliation insurerReconciliation(
+            @PathParam("entity") String entityCode) {
+        requireScope(entityCode);
+        return reporting.insurerReconciliation(entityCode);
+    }
+
+    /**
      * Exports the cross-search as CSV at line grain (REP-04).
      *
      * @param entityCode  the entity code

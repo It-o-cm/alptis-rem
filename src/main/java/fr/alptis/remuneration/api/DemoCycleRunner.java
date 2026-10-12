@@ -167,6 +167,7 @@ public class DemoCycleRunner {
         plantHeldEvent(e);
         plantClaim(e);
         plantSimulation(e);
+        plantInsurerExpected(e);
     }
 
     /**
@@ -182,6 +183,55 @@ public class DemoCycleRunner {
         plantHeldEvent(e);
         plantClaim(e);
         plantSimulation(e);
+        plantInsurerExpected(e);
+    }
+
+    /**
+     * Records one expected-versus-received insurer-commission control per entity (CAL-13, FIN-08), on a
+     * guarantee carried by an insured product, so the insurer reconciliation screen has data. This is
+     * the result the twin inbound rule records when the received commission differs from the expected.
+     *
+     * @param entityCode the entity code
+     */
+    private void plantInsurerExpected(String entityCode) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        // The demo always carries insured products and guarantees for each entity, so no guard is
+        // needed: link one guarantee to an option of an insured product to name the insurer.
+        fr.alptis.remuneration.domain.Product product = fr.alptis.remuneration.domain.Product
+                .<fr.alptis.remuneration.domain.Product>find("entity = ?1 and insurer is not null", entity)
+                .firstResult();
+        fr.alptis.remuneration.domain.ProductOption option = new fr.alptis.remuneration.domain.ProductOption();
+        option.product = product;
+        option.code = "OPT-CAL13-" + entityCode;
+        option.label = "Formule de base";
+        option.optionType = fr.alptis.remuneration.domain.OptionType.BASE;
+        option.setCreatedAt(clock.now());
+        option.persist();
+        Coverage coverage = Coverage.<Coverage>find("contract.entity = ?1", entity).firstResult();
+        coverage.option = option;
+        // The CAL-13 control is not in the demo catalogue; record it fresh for this entity.
+        ControlDefinition control = new ControlDefinition();
+        control.entity = entity;
+        control.code = "CAL-13";
+        control.label = "Commission reçue différente de l'attendu";
+        control.family = fr.alptis.remuneration.domain.ControlFamily.CALCULATION;
+        control.severity = ControlSeverity.WARNING;
+        control.active = Boolean.TRUE;
+        control.versionNo = 1;
+        control.setCreatedAt(clock.now());
+        control.persist();
+        ControlResult result = new ControlResult();
+        result.control = control;
+        result.period = period(entityCode, LocalDate.of(2026, 9, 1));
+        result.objectType = "COVERAGE";
+        result.objectId = coverage.getId();
+        result.severity = ControlSeverity.WARNING;
+        result.decision = ControlDecision.OPEN;
+        result.expectedValue = "500.00";
+        result.observedValue = "450.00";
+        result.justification = "SURCOMMISSION";
+        result.setCreatedAt(clock.now());
+        result.persist();
     }
 
     /**
