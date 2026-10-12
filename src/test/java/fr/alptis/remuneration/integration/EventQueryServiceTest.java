@@ -124,6 +124,20 @@ class EventQueryServiceTest {
     }
 
     /**
+     * A held event whose type was not recognised (null) is still listed, with a null type code: the
+     * search must not fail on it (ING-04 integrates an unrecognised event in the hold queue).
+     */
+    @Test
+    @TestTransaction
+    void search_tolerates_a_typeless_held_event() {
+        event("ALPTIS_ASSURANCES", "K-NOTYPE", null, null, ProcessingStatus.ON_HOLD, HoldReason.UNKNOWN_REFERENCE);
+        EventQueryService alptis = service(List.of("ALPTIS_ASSURANCES"));
+        var page = alptis.search(null, "ON_HOLD", null, 0, 20);
+        assertEquals(1, page.total());
+        assertNull(page.items().get(0).eventType());
+    }
+
+    /**
      * The detail returns the event's produced lines, and guards the missing and out-of-scope ids.
      */
     @Test

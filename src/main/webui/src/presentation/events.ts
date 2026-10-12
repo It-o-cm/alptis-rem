@@ -65,8 +65,9 @@ export function holdReasonLabel(reason: string | null): string {
   return HOLD_REASON_LABELS[reason] ?? reason;
 }
 
-/** French label of an event type, or the raw code when unknown. */
-export function eventTypeLabel(type: string): string {
+/** French label of an event type, or a dash when absent (unrecognised), or the raw code when unknown. */
+export function eventTypeLabel(type: string | null): string {
+  if (type === null) return '—';
   return EVENT_TYPE_LABELS[type] ?? type;
 }
 

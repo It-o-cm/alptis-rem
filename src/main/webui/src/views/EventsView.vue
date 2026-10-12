@@ -17,7 +17,7 @@ interface EventView {
   id: number;
   sourceKey: string;
   sourceSystem: string;
-  eventType: string;
+  eventType: string | null;
   contractNumber: string | null;
   eventDate: string;
   status: string;

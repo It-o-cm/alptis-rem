@@ -14,7 +14,7 @@ interface ReasonCount {
 interface EventView {
   id: number;
   sourceKey: string;
-  eventType: string;
+  eventType: string | null;
   contractNumber: string | null;
   eventDate: string;
   holdReason: string | null;

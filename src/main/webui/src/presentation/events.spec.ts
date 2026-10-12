@@ -28,6 +28,7 @@ describe('event labels', () => {
     expect(eventTypeLabel('SCHEDULED_PAYMENT')).toBe('Versement programmé');
     expect(eventTypeLabel('TERMINATION')).toBe('Résiliation');
     expect(eventTypeLabel('XXX')).toBe('XXX');
+    expect(eventTypeLabel(null)).toBe('—');
   });
 
   it('exposes labelled filter options', () => {

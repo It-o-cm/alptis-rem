@@ -176,7 +176,8 @@ public class EventQueryService {
      * @return the view
      */
     private static EventView toView(BusinessEvent event) {
-        return new EventView(event.getId(), event.sourceKey, event.sourceSystem, event.eventType.name(),
+        return new EventView(event.getId(), event.sourceKey, event.sourceSystem,
+                event.eventType == null ? null : event.eventType.name(),
                 event.contract == null ? null : event.contract.contractNumber,
                 event.eventDate, event.processingStatus.name(),
                 event.holdReason == null ? null : event.holdReason.name(),
