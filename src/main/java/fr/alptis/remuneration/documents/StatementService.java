@@ -105,8 +105,9 @@ public class StatementService {
     }
 
     /**
-     * Publishes a statement: it is rendered, hashed and archived with its reference, and never
-     * modified afterwards (BRD-06).
+     * Publishes a statement: its real PDF is produced and archived under a reference and its SHA-256
+     * hash (BRD-06), its spreadsheet reference is recorded, and it is marked published at the current
+     * time. The archived document is never modified afterwards.
      *
      * @param statementId the statement id
      * @return the published statement
@@ -117,12 +118,35 @@ public class StatementService {
         if (statement == null) {
             throw new ResourceNotFoundException("Bordereau inconnu : " + statementId);
         }
-        String rendered = text(render(statementId));
-        statement.pdfRef = statement.entity.code + "_BORDEREAU_" + statement.statementNumber
-                + "_v" + statement.versionNo + ".pdf";
-        statement.pdfHash = HashUtil.sha256(rendered);
+        byte[] rendered = StatementDocuments.pdf(render(statementId));
+        String base = statement.entity.code + "_BORDEREAU_" + statement.statementNumber + "_v" + statement.versionNo;
+        statement.pdfRef = base + ".pdf";
+        // ISO-8859-1 maps every byte to a char losslessly, so this hashes the exact PDF content.
+        statement.pdfHash = HashUtil.sha256(new String(rendered, java.nio.charset.StandardCharsets.ISO_8859_1));
+        statement.sheetRef = base + ".xlsx";
+        statement.publishedAt = clock.now();
         statement.status = StatementStatus.PUBLISHED;
         return statement;
+    }
+
+    /**
+     * Produces the real PDF of a statement (BRD-01).
+     *
+     * @param statementId the statement id
+     * @return the PDF bytes
+     */
+    public byte[] pdf(Long statementId) {
+        return StatementDocuments.pdf(render(statementId));
+    }
+
+    /**
+     * Produces the real spreadsheet (xlsx) of a statement (BRD-01).
+     *
+     * @param statementId the statement id
+     * @return the workbook bytes
+     */
+    public byte[] workbook(Long statementId) {
+        return StatementDocuments.workbook(render(statementId));
     }
 
     /**
@@ -202,23 +226,6 @@ public class StatementService {
      */
     private static String label(CommissionLine line) {
         return line.coverage == null ? line.nature.name() : line.coverage.coverageCode;
-    }
-
-    /**
-     * Serialises a content to a stable text used to compute the archive hash.
-     *
-     * @param content the content
-     * @return the text
-     */
-    private static String text(StatementContent content) {
-        StringBuilder sb = new StringBuilder(content.statementNumber()).append('|').append(content.versionNo())
-                .append('|').append(content.beneficiary()).append('|').append(content.month());
-        for (Row row : content.rows()) {
-            sb.append('|').append(row.section()).append(':').append(row.label()).append('=').append(plain(row.amount()));
-        }
-        sb.append("|T").append(plain(content.periodTotal())).append("|R").append(plain(content.carried()))
-                .append("|N").append(plain(content.net()));
-        return sb.toString();
     }
 
     /**

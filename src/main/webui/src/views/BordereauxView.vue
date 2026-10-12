@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
+import { apiGet, apiGetText, apiPost, apiDownload, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, paymentStatusLabel } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
@@ -173,6 +173,32 @@ async function showSpreadsheet(id: number): Promise<void> {
   }
 }
 
+/**
+ * Downloads the real PDF of a statement (BRD-01).
+ * @param id the statement id
+ */
+async function downloadPdf(id: number): Promise<void> {
+  error.value = '';
+  try {
+    await apiDownload(`/api/ui/v1/documents/statements/${id}/pdf`, `bordereau-${id}.pdf`);
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'PDF indisponible';
+  }
+}
+
+/**
+ * Downloads the real spreadsheet (xlsx) of a statement (BRD-01).
+ * @param id the statement id
+ */
+async function downloadWorkbook(id: number): Promise<void> {
+  error.value = '';
+  try {
+    await apiDownload(`/api/ui/v1/documents/statements/${id}/workbook`, `bordereau-${id}.xlsx`);
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Classeur indisponible';
+  }
+}
+
 onMounted(loadStatements);
 </script>
 
@@ -228,6 +254,8 @@ onMounted(loadStatements);
         <template #actions="{ row }">
           <AppButton variant="secondary" :data-testid="`statement-open-${row.id}`" @click="openStatement(row.id)">Aperçu</AppButton>
           <AppButton variant="secondary" :data-testid="`statement-csv-${row.id}`" @click="showSpreadsheet(row.id)">Tableur</AppButton>
+          <AppButton variant="secondary" :data-testid="`statement-pdf-${row.id}`" @click="downloadPdf(row.id)">PDF</AppButton>
+          <AppButton variant="secondary" :data-testid="`statement-xlsx-${row.id}`" @click="downloadWorkbook(row.id)">Classeur</AppButton>
           <AppButton
             v-if="canOperate() && row.status === 'DRAFT'"
             variant="secondary"

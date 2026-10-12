@@ -55,6 +55,29 @@ class DocumentsResourceTest {
     }
 
     /**
+     * The statement is downloadable as a real PDF and a real spreadsheet (BRD-01): the bytes begin
+     * with each format's magic signature and carry a download disposition.
+     */
+    @Test
+    void downloads_pdf_and_workbook() {
+        int id = firstStatementId();
+        byte[] pdf = given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/statements/" + id + "/pdf")
+                .then().statusCode(200).contentType("application/pdf")
+                .header("Content-Disposition", containsString(".pdf"))
+                .extract().asByteArray();
+        org.junit.jupiter.api.Assertions.assertEquals("%PDF",
+                new String(pdf, 0, 4, java.nio.charset.StandardCharsets.ISO_8859_1));
+        byte[] xlsx = given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/statements/" + id + "/workbook")
+                .then().statusCode(200)
+                .header("Content-Disposition", containsString(".xlsx"))
+                .extract().asByteArray();
+        org.junit.jupiter.api.Assertions.assertEquals('P', xlsx[0]);
+        org.junit.jupiter.api.Assertions.assertEquals('K', xlsx[1]);
+    }
+
+    /**
      * The business administrator edits a document template (BRD-05); it is then listed, and a
      * non-administrator may not edit it.
      */

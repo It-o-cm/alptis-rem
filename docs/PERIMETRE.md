@@ -53,7 +53,7 @@ d'accès serveur · test de bout en bout · état.
 | 15 | Lots de paiement de la période et détail d'un lot : ordres, exclusions, rapprochement, validation Finance | PAY-01→05 | `payment` / PaymentView | GET lots/detail, POST prepare/validate, GET sepa | payment.spec | complet |
 | 16 | Création d'un lot hors cycle | PAY-07 | `payment` / PaymentView | POST off-cycle | payment.spec | complet |
 | 17 | Résultat bancaire : ordres réglés, rejets, saisie de l'émission des chèques | PAY-04, PAY-06 | `payment` / PaymentView | POST orders/{id}/result, POST lots/{id}/cheque-emission | payment.spec | complet — saisie de l'émission des chèques (PAY-04) par la Finance : les ordres du lot de chèques passent réglés |
-| 18 | Bordereaux de la période : liste, aperçu, publication, rectificatif, relevé informatif | BRD-01→07, BRD-11 | `statements` / BordereauxView | GET statements/detail/spreadsheet/member, POST publish/rectify | bordereaux.spec | partiel — relevé informatif du membre (BRD-11) livré ; reste le rendu « texte + empreinte » au lieu d'un PDF/tableur réel (simplification #14, dépend d'une bibliothèque PDF hors profil dev) |
+| 18 | Bordereaux de la période : liste, aperçu, publication, rectificatif, relevé informatif | BRD-01→07, BRD-11 | `statements` / BordereauxView | GET statements/detail/spreadsheet/pdf/workbook/member, POST publish/rectify | bordereaux.spec | complet — PDF et tableur xlsx réels produits sans dépendance (PDF écrit à la main, xlsx assemblé en ZIP OOXML) ; la publication archive l'empreinte SHA-256 du PDF réel et la référence du tableur ; téléchargements prouvés par bordereaux.spec |
 
 ### Distributeurs et contrats
 
@@ -285,7 +285,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
-| BRD-01 | StatementService | #18 | bordereaux | partiel — rendu « texte + empreinte » au lieu d'un PDF/tableur réel |
+| BRD-01 | StatementService, StatementDocuments | #18 | bordereaux | complet — PDF et tableur xlsx réels (produits sans dépendance externe), téléchargeables et archivés avec empreinte |
 | BRD-02 | StatementService | #18 | bordereaux | partiel — contenu §9.5 à vérifier intégralement |
 | BRD-03 | StatementService | #18 | bordereaux | complet |
 | BRD-04 | StatementService | #18 | — | partiel — déclinaison par assureur/produit et multi-entités à vérifier |
@@ -402,6 +402,9 @@ ligne datée sans effacer l'ancienne) :
 13. Une seule instance d'application partagée par la suite E2E au lieu d'une par
     processus (2026-10-07, TESTS-E2E §1).
 14. Rendu bordereau « texte + empreinte » au lieu de PDF/tableur réel (2026-10-10, §10.6).
+    **Levée** (2026-10-12) : PDF réel écrit à la main (format objets + xref) et tableur xlsx réel
+    assemblé en ZIP OOXML, sans dépendance externe ni lecture d'horloge ; la publication archive
+    l'empreinte SHA-256 du PDF réel et la référence du tableur (`StatementDocuments`).
 15. Montants FDV « à définir » figés en constantes documentées plutôt qu'en paramètres
     du plan renseignés dans le jeu de démonstration (2026-10-09, §8.14).
 

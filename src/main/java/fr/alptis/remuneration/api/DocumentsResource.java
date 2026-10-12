@@ -18,6 +18,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -195,6 +196,38 @@ public class DocumentsResource {
     public String spreadsheet(@PathParam("statementId") Long statementId) {
         requireStatementScope(statementId);
         return statements.spreadsheet(statementId);
+    }
+
+    /**
+     * Returns the real PDF of a statement (BRD-01), as a downloadable attachment.
+     *
+     * @param statementId the statement id
+     * @return the PDF response
+     */
+    @GET
+    @Path("/statements/{statementId}/pdf")
+    @Produces("application/pdf")
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public Response pdf(@PathParam("statementId") Long statementId) {
+        requireStatementScope(statementId);
+        return Response.ok(statements.pdf(statementId))
+                .header("Content-Disposition", "attachment; filename=\"bordereau-" + statementId + ".pdf\"").build();
+    }
+
+    /**
+     * Returns the real spreadsheet (xlsx) of a statement (BRD-01), as a downloadable attachment.
+     *
+     * @param statementId the statement id
+     * @return the workbook response
+     */
+    @GET
+    @Path("/statements/{statementId}/workbook")
+    @Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public Response workbook(@PathParam("statementId") Long statementId) {
+        requireStatementScope(statementId);
+        return Response.ok(statements.workbook(statementId))
+                .header("Content-Disposition", "attachment; filename=\"bordereau-" + statementId + ".xlsx\"").build();
     }
 
     /**

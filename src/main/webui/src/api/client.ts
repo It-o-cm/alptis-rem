@@ -58,6 +58,34 @@ export async function apiGetText(path: string): Promise<string> {
   return response.text();
 }
 
+/**
+ * Downloads a binary response (PDF, spreadsheet) and saves it under the given file name by driving a
+ * transient anchor. Throws an {@link ApiError} with the server's French detail when the request
+ * fails, so callers surface it like any other error.
+ */
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  const response = await fetch(path, { method: 'GET' });
+  if (!response.ok) {
+    let detail = `Erreur ${response.status}`;
+    try {
+      const problem = await response.json();
+      if (problem && typeof problem.detail === 'string') {
+        detail = problem.detail;
+      }
+    } catch {
+      // no JSON body; keep the generic message
+    }
+    throw new ApiError(response.status, detail);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Issues a POST with a JSON body and returns the parsed JSON. */
 export const apiPost = <T>(path: string, body: unknown): Promise<T> => request<T>('POST', path, body);
 

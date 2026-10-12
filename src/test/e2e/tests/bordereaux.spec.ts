@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { readFileSync } from 'fs';
 import { resetDb, seedCycle, USERS } from '../support/helpers';
 
 // Per-screen tests for the bordereaux screen: the statements of a period, the rubric preview with a
@@ -33,6 +34,23 @@ test('l’opérateur consulte un bordereau, l’exporte, le publie puis le recti
   // Its spreadsheet export is downloadable and carries the net footer.
   await page.locator('[data-testid^="statement-csv-"]').first().click();
   await expect(page.getByTestId('spreadsheet-content')).toContainText('Net payé');
+
+  // The real PDF and spreadsheet downloads carry their format's magic signature (BRD-01).
+  const [pdfDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('[data-testid^="statement-pdf-"]').first().click(),
+  ]);
+  expect(pdfDownload.suggestedFilename()).toMatch(/\.pdf$/);
+  const pdfPath = await pdfDownload.path();
+  expect(readFileSync(pdfPath).subarray(0, 4).toString('latin1')).toBe('%PDF');
+
+  const [xlsxDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('[data-testid^="statement-xlsx-"]').first().click(),
+  ]);
+  expect(xlsxDownload.suggestedFilename()).toMatch(/\.xlsx$/);
+  const xlsxPath = await xlsxDownload.path();
+  expect(readFileSync(xlsxPath).subarray(0, 2).toString('latin1')).toBe('PK');
 
   // Publication freezes the statement, then a rectificative version is created.
   await page.locator('[data-testid^="statement-publish-"]').first().click();

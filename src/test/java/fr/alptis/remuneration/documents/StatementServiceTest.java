@@ -152,12 +152,21 @@ class StatementServiceTest {
 
         Statement published = service.publish(statement.getId());
         assertEquals(StatementStatus.PUBLISHED, published.status);
-        assertNotNull(published.pdfHash);
+        assertEquals(64, published.pdfHash.length());
         assertTrue(published.pdfRef.endsWith("_v1.pdf"));
+        assertTrue(published.sheetRef.endsWith("_v1.xlsx"));
+        assertNotNull(published.publishedAt);
 
         String csv = service.spreadsheet(statement.getId());
         assertTrue(csv.contains("rubrique;libelle"));
         assertTrue(csv.contains("Net payé;;;;100.00"));
+
+        // The real documents are produced: a PDF and an xlsx workbook (BRD-01).
+        byte[] pdf = service.pdf(statement.getId());
+        assertEquals("%PDF", new String(pdf, 0, 4, java.nio.charset.StandardCharsets.ISO_8859_1));
+        byte[] workbook = service.workbook(statement.getId());
+        assertEquals('P', workbook[0]);
+        assertEquals('K', workbook[1]);
     }
 
     /**
