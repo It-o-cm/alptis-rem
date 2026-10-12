@@ -111,7 +111,8 @@ public class AdjustmentsResource {
                 request.counterpartPayeeId());
         Adjustment adjustment = adjustments.create(entity, period, AdjustmentType.valueOf(request.type()),
                 request.amount(), account, request.reason(), request.attachmentRef(),
-                Boolean.TRUE.equals(request.autoReverse()), null, counterpart, currentUser.username());
+                Boolean.TRUE.equals(request.autoReverse()), null, counterpart, request.repaymentSchedule(),
+                currentUser.username());
         return Response.status(Response.Status.CREATED)
                 .entity(new AdjustmentResult(adjustment.getId(), adjustment.status)).build();
     }
@@ -175,10 +176,11 @@ public class AdjustmentsResource {
      * @param autoReverse          whether to auto-reverse on the next period
      * @param counterpartPayeeType the transfer counterpart payee type, or null
      * @param counterpartPayeeId   the transfer counterpart payee id, or null
+     * @param repaymentSchedule    the repayment schedule (JSON) for an apurement, or null (CAL-14)
      */
     public record AdjustmentRequest(String type, BigDecimal amount, String payeeType, Long payeeId, String reason,
                                     String attachmentRef, Boolean autoReverse, String counterpartPayeeType,
-                                    Long counterpartPayeeId) {
+                                    Long counterpartPayeeId, String repaymentSchedule) {
     }
 
     /**

@@ -410,6 +410,10 @@ public class DemoCycleRunner {
         adjustments.approve(clawback.getId(), "validator-unep", ALL);
         adjustments.create(world.entity(entity), period(entity, month), AdjustmentType.CORRECTION,
                 new BigDecimal("15.00"), account, "Correction UNEP", null, false, null, null, "operator-unep");
+        // An exceptional advance repaid by instalments: an apurement schedule for the debtor (CAL-14).
+        adjustments.create(world.entity(entity), period(entity, month), AdjustmentType.EXCEPTIONAL_ADVANCE,
+                new BigDecimal("300.00"), account, "Avance exceptionnelle UNEP", null, false, null, null,
+                "\"3 échéances de 100,00 € (300,00 €)\"", "operator-unep");
     }
 
     /**
@@ -544,6 +548,10 @@ public class DemoCycleRunner {
         var draft = adjustments.create(e, period, AdjustmentType.CORRECTION, new BigDecimal("10.00"), account,
                 "Brouillon de correction", null, false, null, null, "operator-demo");
         draft.status = AdjustmentStatus.DRAFT;
+        // An exceptional advance repaid by instalments: an apurement schedule for the debtor (CAL-14).
+        adjustments.create(e, period, AdjustmentType.EXCEPTIONAL_ADVANCE, new BigDecimal("300.00"), account,
+                "Avance exceptionnelle", null, false, null, null, "\"3 échéances de 100,00 € (300,00 €)\"",
+                "operator-demo");
     }
 
     /**

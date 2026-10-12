@@ -98,6 +98,20 @@ class AdjustmentServiceTest {
     }
 
     /**
+     * An exceptional advance can be submitted with a repayment schedule (CAL-14, apurement CPT-07),
+     * which is stored on the adjustment.
+     */
+    @Test
+    @TestTransaction
+    void create_with_a_repayment_schedule() {
+        Period p = period(M);
+        Adjustment advance = service.create(unep(), p, AdjustmentType.EXCEPTIONAL_ADVANCE, new BigDecimal("300"),
+                account(), "avance exceptionnelle", null, false, null, null, "{\"instalments\":3}", "op1");
+        assertEquals("{\"instalments\":3}", advance.repaymentSchedule);
+        assertEquals(AdjustmentStatus.SUBMITTED, advance.status);
+    }
+
+    /**
      * An approval requires a second, distinct user, and refuses an unknown adjustment.
      */
     @Test

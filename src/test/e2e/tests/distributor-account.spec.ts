@@ -50,6 +50,31 @@ test.describe('Compte distributeur — opérateur', () => {
     await expect(page.locator('[data-testid^="debtor-row-"]').first()).toBeVisible();
   });
 
+  test('enregistre et affiche un échéancier d’apurement @screen:distributor-account @req:CPT-07 @req:CAL-14', async ({
+    page,
+  }) => {
+    // Record an exceptional advance with a repayment schedule (CAL-14), an apurement for a debtor.
+    const auth = 'Basic ' + Buffer.from(
+      `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+    const response = await page.request.post('/api/ui/v1/adjustments/ALPTIS_ASSURANCES/2026-09-01', {
+      headers: { Authorization: auth },
+      data: {
+        type: 'EXCEPTIONAL_ADVANCE',
+        amount: 300,
+        payeeType: 'DISTRIBUTOR',
+        payeeId: 1,
+        reason: 'Avance exceptionnelle',
+        repaymentSchedule: JSON.stringify('3 × 100 € mensuels'),
+      },
+    });
+    expect(response.ok(), `${response.status()} ${await response.text()}`).toBeTruthy();
+
+    await page.goto('/distributeur');
+    const schedule = page.getByTestId('schedule-row').first();
+    await expect(schedule).toBeVisible();
+    await expect(schedule).toContainText('3 × 100');
+  });
+
   test('aucune violation d’accessibilité grave ou critique @screen:distributor-account', async ({ page }) => {
     await page.goto('/distributeur');
     const results = await new AxeBuilder({ page }).analyze();

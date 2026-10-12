@@ -44,9 +44,17 @@ const session = useSessionStore();
 const entity = ref(session.entities.length > 0 ? session.entities[0] : '');
 const month = ref('2026-09-01');
 const partnerCode = ref('');
+interface RepaymentScheduleView {
+  holder: string;
+  amount: number;
+  schedule: string;
+  status: string | null;
+}
+
 const view = ref<DistributorView | null>(null);
 const lines = ref<LineView[]>([]);
 const debtors = ref<AccountView[]>([]);
+const schedules = ref<RepaymentScheduleView[]>([]);
 const blockReason = ref('Blocage manuel');
 const blockUntil = ref('');
 const error = ref('');
@@ -83,6 +91,28 @@ const debtorColumns: Column<AccountView>[] = [
   { key: 'balance', label: 'Solde', align: 'num', value: (a) => amount(a.balance) },
 ];
 
+/**
+ * Renders a repayment schedule stored as JSON: a JSON string shows its text, anything else its raw
+ * JSON.
+ * @param raw the stored JSON schedule
+ */
+function scheduleText(raw: string): string {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === 'string' ? parsed : raw;
+  } catch {
+    return raw;
+  }
+}
+
+/** Columns of the apurement (repayment) schedules table. */
+const scheduleColumns: Column<RepaymentScheduleView>[] = [
+  { key: 'holder', label: 'Distributeur' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (s) => amount(s.amount) },
+  { key: 'schedule', label: 'Échéancier', value: (s) => scheduleText(s.schedule) },
+  { key: 'status', label: 'Statut', value: (s) => s.status ?? '—' },
+];
+
 /** Loads a distributor's accounts and its balance series for the current filter. */
 async function search(): Promise<void> {
   error.value = '';
@@ -112,9 +142,10 @@ const balanceMonths = computed(() => series.value.map((p) => p.month));
 /** The single balance series shown on the chart. */
 const balanceSeries = computed(() => [{ key: 'balance', label: 'Solde', values: series.value.map((p) => p.balance) }]);
 
-/** Loads the debtor accounts of the current entity. */
+/** Loads the debtor accounts and the apurement schedules of the current entity. */
 async function loadDebtors(): Promise<void> {
   debtors.value = await apiGet<AccountView[]>(`/api/ui/v1/accounts/${entity.value}/debtors`);
+  schedules.value = await apiGet<RepaymentScheduleView[]>(`/api/ui/v1/accounts/${entity.value}/repayment-schedules`);
 }
 
 /** Writes the compensation lines for the distributor in the selected month. */
@@ -272,6 +303,16 @@ onMounted(loadDebtors);
         empty="Aucun compte débiteur."
         empty-testid="no-debtor"
         :row-testid="(a) => `debtor-row-${a.id}`"
+      />
+    </AppCard>
+
+    <AppCard title="Échéanciers d'apurement" data-testid="schedules">
+      <DataTable
+        :columns="scheduleColumns"
+        :rows="schedules"
+        empty="Aucun échéancier d'apurement."
+        empty-testid="no-schedule"
+        :row-testid="() => 'schedule-row'"
       />
     </AppCard>
   </div>

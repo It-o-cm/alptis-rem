@@ -73,6 +73,33 @@ public class AdjustmentService {
     public Adjustment create(LegalEntity entity, Period period, AdjustmentType type, BigDecimal amount,
                              DistributorAccount account, String reason, String attachmentRef, boolean autoReverse,
                              CommissionLine correctedLine, DistributorAccount counterpart, String submitter) {
+        return create(entity, period, type, amount, account, reason, attachmentRef, autoReverse, correctedLine,
+                counterpart, null, submitter);
+    }
+
+    /**
+     * Submits a manual adjustment carrying a repayment schedule (CAL-14): an exceptional advance
+     * repaid by instalments (an apurement schedule for a debtor, CPT-07).
+     *
+     * @param entity            the entity
+     * @param period            the period
+     * @param type              the adjustment type
+     * @param amount            the signed amount
+     * @param account           the account corrected or credited
+     * @param reason            the mandatory reason
+     * @param attachmentRef     an optional attachment reference
+     * @param autoReverse       whether the adjustment is auto-reversed on the next period
+     * @param correctedLine     the line corrected, possibly null
+     * @param counterpart       the counterpart account of a transfer, possibly null
+     * @param repaymentSchedule the repayment schedule (JSON), possibly null
+     * @param submitter         the submitting user
+     * @return the submitted adjustment
+     */
+    @Transactional
+    public Adjustment create(LegalEntity entity, Period period, AdjustmentType type, BigDecimal amount,
+                             DistributorAccount account, String reason, String attachmentRef, boolean autoReverse,
+                             CommissionLine correctedLine, DistributorAccount counterpart, String repaymentSchedule,
+                             String submitter) {
         if (reason == null || reason.isBlank()) {
             throw new ValidationException("Un motif est exigé pour un ajustement");
         }
@@ -87,6 +114,7 @@ public class AdjustmentService {
         adjustment.reason = reason;
         adjustment.attachmentRef = attachmentRef;
         adjustment.autoReverse = autoReverse;
+        adjustment.repaymentSchedule = repaymentSchedule;
         adjustment.status = AdjustmentStatus.SUBMITTED;
         adjustment.setCreatedBy(submitter);
         adjustment.setCreatedAt(clock.now());

@@ -6,6 +6,7 @@ import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.Period;
+import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.security.EntityScope;
 import jakarta.annotation.security.RolesAllowed;
@@ -163,6 +164,47 @@ public class AccountsResource {
     public AccountView unblock(@PathParam("accountId") Long accountId) {
         requireAccountScope(accountId);
         return accountView(accounts.unblock(accountId));
+    }
+
+    /**
+     * Lists the apurement (repayment) schedules of an entity's debtors (CPT-07, CAL-14): the
+     * adjustments that carry a repayment schedule, with their holder, amount, schedule and status.
+     *
+     * @param entityCode the entity code
+     * @return the repayment-schedule views
+     */
+    @GET
+    @Path("/{entityCode}/repayment-schedules")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<RepaymentScheduleView> repaymentSchedules(@PathParam("entityCode") String entityCode) {
+        LegalEntity entity = requireEntity(entityCode);
+        return fr.alptis.remuneration.domain.Adjustment.<fr.alptis.remuneration.domain.Adjustment>list(
+                        "entity = ?1 and repaymentSchedule is not null order by id", entity).stream()
+                .map(a -> new RepaymentScheduleView(holderOf(a.account), a.amount, a.repaymentSchedule,
+                        a.status == null ? null : a.status.name()))
+                .toList();
+    }
+
+    /**
+     * Resolves the distributor partner code holding an account, for display.
+     *
+     * @param account the account, possibly null
+     * @return the partner code, or a dash when it cannot be resolved
+     */
+    private static String holderOf(DistributorAccount account) {
+        if (account == null) {
+            return "—";
+        }
+        if (account.payeeType == PayeeType.DISTRIBUTOR) {
+            Distributor d = Distributor.findById(account.payeeId);
+            return d == null ? "—" : d.partnerCode;
+        }
+        if (account.payeeType == PayeeType.PRODUCTION_CODE) {
+            ProductionCode pc = ProductionCode.findById(account.payeeId);
+            return pc == null || pc.distributor == null ? "—" : pc.distributor.partnerCode;
+        }
+        return "—";
     }
 
     /**
@@ -349,6 +391,17 @@ public class AccountsResource {
      */
     public record LineView(Long id, String nature, BigDecimal amount, String status, String attachmentMonth,
                            boolean blocked, String blockReason, String blockedUntil) {
+    }
+
+    /**
+     * One debtor apurement (repayment) schedule (CPT-07, CAL-14).
+     *
+     * @param holder   the holder partner code
+     * @param amount   the advance amount
+     * @param schedule the repayment schedule (JSON)
+     * @param status   the adjustment status
+     */
+    public record RepaymentScheduleView(String holder, BigDecimal amount, String schedule, String status) {
     }
 
     /**

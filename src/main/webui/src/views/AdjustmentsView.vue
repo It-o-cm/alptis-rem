@@ -26,7 +26,7 @@ const rows = ref<AdjustmentView[]>([]);
 const error = ref('');
 const message = ref('');
 const loading = ref(false);
-const form = ref({ type: 'CORRECTION', amount: 0, payeeId: 0, reason: '', autoReverse: false });
+const form = ref({ type: 'CORRECTION', amount: 0, payeeId: 0, reason: '', autoReverse: false, repaymentSchedule: '' });
 
 /** Whether the current user may operate the cycle (submit, approve). */
 const canOperate = (): boolean => canOperateCycle(session.roles);
@@ -66,6 +66,7 @@ async function submit(): Promise<void> {
       payeeId: form.value.payeeId,
       reason: form.value.reason,
       autoReverse: form.value.autoReverse,
+      repaymentSchedule: form.value.repaymentSchedule === '' ? null : JSON.stringify(form.value.repaymentSchedule),
     });
     message.value = 'Ajustement soumis.';
     await load();
@@ -167,6 +168,10 @@ onMounted(load);
         </FormField>
         <FormField label="Contrepassation" width="short" v-slot="{ id }">
           <input :id="id" data-testid="adj-reverse" type="checkbox" v-model="form.autoReverse" />
+        </FormField>
+        <FormField label="Échéancier d'apurement" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="adj-schedule" type="text" v-model="form.repaymentSchedule"
+                 placeholder="ex. 3 × 100 € mensuels" />
         </FormField>
         <AppButton type="submit" data-testid="adj-submit">Soumettre</AppButton>
       </AppForm>

@@ -289,6 +289,93 @@ class AccountsResourceTest {
     }
 
     /**
+     * The repayment-schedules endpoint lists the adjustments carrying a schedule, resolving the holder
+     * for a distributor account, a production-code account, and the unresolvable cases (CPT-07).
+     */
+    @Test
+    void lists_repayment_schedules() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity alptis = LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult();
+            Distributor holder = new Distributor();
+            holder.partnerCode = "DREAL";
+            holder.legalName = "Réel";
+            holder.persist();
+            // A distributor account and a production-code account for the same holder.
+            schedule(alptis, distributorAccount(alptis, holder.getId()), "dist");
+            schedule(alptis, pcAccount(alptis, holder, "PC-SCH"), "pc");
+            // A production code with no distributor, an unknown distributor, an unknown production code,
+            // a group account and a null account: all resolve to a dash.
+            ProductionCode orphan = new ProductionCode();
+            orphan.entity = alptis;
+            orphan.code = "PC-ORPH";
+            orphan.persist();
+            schedule(alptis, pcAccountForId(alptis, orphan.getId()), "orphan");
+            schedule(alptis, distributorAccount(alptis, -1L), "unknown-dist");
+            schedule(alptis, pcAccountForId(alptis, -1L), "unknown-pc");
+            // A group account with no status covers the group holder and the null-status leg.
+            fr.alptis.remuneration.domain.Adjustment group = new fr.alptis.remuneration.domain.Adjustment();
+            group.entity = alptis;
+            group.adjustmentType = fr.alptis.remuneration.domain.AdjustmentType.EXCEPTIONAL_ADVANCE;
+            group.amount = new BigDecimal("300.00");
+            group.account = groupAccount(alptis);
+            group.reason = "apurement group";
+            group.repaymentSchedule = "{\"instalments\":3}";
+            group.persist();
+            schedule(alptis, null, "no-account");
+        });
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/repayment-schedules")
+                .then().statusCode(200)
+                .body("size()", is(7))
+                .body("holder", hasItem("DREAL"))
+                .body("holder", hasItem("—"));
+    }
+
+    /** Persists a distributor account by payee id. */
+    private static DistributorAccount distributorAccount(LegalEntity entity, Long payeeId) {
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = payeeId;
+        account.persist();
+        return account;
+    }
+
+    /** Persists a production-code account pointing at the given production-code id. */
+    private static DistributorAccount pcAccountForId(LegalEntity entity, Long pcId) {
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.PRODUCTION_CODE;
+        account.payeeId = pcId;
+        account.persist();
+        return account;
+    }
+
+    /** Persists a group account. */
+    private static DistributorAccount groupAccount(LegalEntity entity) {
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.GROUP;
+        account.payeeId = 1L;
+        account.persist();
+        return account;
+    }
+
+    /** Persists a submitted adjustment carrying a repayment schedule on an account. */
+    private static void schedule(LegalEntity entity, DistributorAccount account, String tag) {
+        fr.alptis.remuneration.domain.Adjustment adjustment = new fr.alptis.remuneration.domain.Adjustment();
+        adjustment.entity = entity;
+        adjustment.adjustmentType = fr.alptis.remuneration.domain.AdjustmentType.EXCEPTIONAL_ADVANCE;
+        adjustment.amount = new BigDecimal("300.00");
+        adjustment.account = account;
+        adjustment.reason = "apurement " + tag;
+        adjustment.repaymentSchedule = "{\"instalments\":3}";
+        adjustment.status = fr.alptis.remuneration.domain.AdjustmentStatus.SUBMITTED;
+        adjustment.persist();
+    }
+
+    /**
      * A viewer may not block an account.
      */
     @Test
