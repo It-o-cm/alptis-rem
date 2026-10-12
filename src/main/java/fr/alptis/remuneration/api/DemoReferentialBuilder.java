@@ -110,7 +110,36 @@ public class DemoReferentialBuilder {
         payeeRules(world);
         mappings(world);
         qualityIndicators(world);
+        documentTemplates(world);
         entityParameters(world);
+    }
+
+    /**
+     * Creates the editable document templates of each entity (BRD-05): the statement, member statement
+     * and tax-certificate models, with a content carrying the logo, mentions, columns and order.
+     *
+     * @param world the shared demo world
+     */
+    private void documentTemplates(DemoWorld world) {
+        fr.alptis.remuneration.domain.DocumentType[] types = {
+                fr.alptis.remuneration.domain.DocumentType.STATEMENT,
+                fr.alptis.remuneration.domain.DocumentType.MEMBER_STATEMENT,
+                fr.alptis.remuneration.domain.DocumentType.TAX_CERTIFICATE,
+        };
+        for (LegalEntity entity : world.entities.values()) {
+            for (fr.alptis.remuneration.domain.DocumentType type : types) {
+                fr.alptis.remuneration.domain.DocumentTemplate template =
+                        new fr.alptis.remuneration.domain.DocumentTemplate();
+                template.entity = entity;
+                template.documentType = type;
+                template.versionNo = 1;
+                template.content = "{\"logo\":\"" + entity.code + "\",\"mentions\":\"Document confidentiel\","
+                        + "\"columns\":[\"garantie\",\"assiette\",\"taux\",\"montant\"],\"order\":\"garantie\"}";
+                template.validFrom = LocalDate.of(2026, 1, 1);
+                stamp(template);
+                template.persist();
+            }
+        }
     }
 
     /**

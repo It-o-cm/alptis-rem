@@ -55,6 +55,27 @@ class DocumentsResourceTest {
     }
 
     /**
+     * The business administrator edits a document template (BRD-05); it is then listed, and a
+     * non-administrator may not edit it.
+     */
+    @Test
+    void edits_and_lists_templates() {
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .contentType(io.restassured.http.ContentType.JSON)
+                .body("{\"documentType\":\"STATEMENT\",\"content\":\"{\\\"logo\\\":\\\"X\\\"}\"}")
+                .when().post("/api/ui/v1/documents/templates/ALPTIS_ASSURANCES")
+                .then().statusCode(200).body("versionNo", is(1));
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/templates/ALPTIS_ASSURANCES")
+                .then().statusCode(200).body("documentType", org.hamcrest.Matchers.hasItem("STATEMENT"));
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(io.restassured.http.ContentType.JSON)
+                .body("{\"documentType\":\"STATEMENT\",\"content\":\"{}\"}")
+                .when().post("/api/ui/v1/documents/templates/ALPTIS_ASSURANCES")
+                .then().statusCode(403);
+    }
+
+    /**
      * A statement is published then rectified into a new version.
      */
     @Test

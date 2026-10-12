@@ -31,6 +31,7 @@ export const SCREENS: readonly Screen[] = [
   { name: 'validation', path: '/validation', user: 'auditor' },
   { name: 'payment', path: '/paiement', user: 'auditor' },
   { name: 'statements', path: '/bordereaux', user: 'auditor' },
+  { name: 'documentTemplates', path: '/modeles-documents', user: 'auditor' },
   { name: 'distributorSearch', path: '/distributeurs', user: 'auditor' },
   { name: 'groupings', path: '/groupements', user: 'auditor' },
   { name: 'contractSearch', path: '/contrats', user: 'auditor' },

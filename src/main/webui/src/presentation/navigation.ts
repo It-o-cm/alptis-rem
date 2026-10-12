@@ -90,6 +90,12 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     ],
   },
   {
+    heading: 'Documents',
+    items: [
+      { name: 'documentTemplates', path: '/modeles-documents', label: 'Modèles de documents' },
+    ],
+  },
+  {
     heading: 'Restitutions',
     items: [
       { name: 'dashboards', path: '/tableaux-de-bord', label: 'Tableaux de bord' },

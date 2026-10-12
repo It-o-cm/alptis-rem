@@ -31,6 +31,7 @@ import AdjustmentsView from '../views/AdjustmentsView.vue';
 import DistributorAccountView from '../views/DistributorAccountView.vue';
 import PaymentView from '../views/PaymentView.vue';
 import BordereauxView from '../views/BordereauxView.vue';
+import DocumentTemplatesView from '../views/DocumentTemplatesView.vue';
 import CutoffView from '../views/CutoffView.vue';
 import AccountingView from '../views/AccountingView.vue';
 import ReconciliationView from '../views/ReconciliationView.vue';
@@ -59,6 +60,7 @@ const REAL_VIEWS: Record<string, unknown> = {
   adjustments: AdjustmentsView,
   payment: PaymentView,
   statements: BordereauxView,
+  documentTemplates: DocumentTemplatesView,
   cutoff: CutoffView,
   accounting: AccountingView,
   reconciliation: ReconciliationView,

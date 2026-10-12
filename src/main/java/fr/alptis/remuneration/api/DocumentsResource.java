@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.documents.DocumentTemplateService;
 import fr.alptis.remuneration.documents.StatementService;
 import fr.alptis.remuneration.documents.StatementService.StatementContent;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
@@ -9,6 +10,7 @@ import fr.alptis.remuneration.payment.PaymentQueryService.StatementView;
 import fr.alptis.remuneration.security.EntityScope;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -29,6 +31,7 @@ public class DocumentsResource {
 
     private final PaymentQueryService query;
     private final StatementService statements;
+    private final DocumentTemplateService templates;
     private final EntityScope scope;
 
     /**
@@ -36,13 +39,56 @@ public class DocumentsResource {
      *
      * @param query      the payment read model
      * @param statements the statement service
+     * @param templates  the document-template service
      * @param scope      the entity partition
      */
     @Inject
-    public DocumentsResource(PaymentQueryService query, StatementService statements, EntityScope scope) {
+    public DocumentsResource(PaymentQueryService query, StatementService statements,
+                             DocumentTemplateService templates, EntityScope scope) {
         this.query = query;
         this.statements = statements;
+        this.templates = templates;
         this.scope = scope;
+    }
+
+    /**
+     * Lists the current document templates of an entity (BRD-05).
+     *
+     * @param entityCode the entity code
+     * @return the template views
+     */
+    @GET
+    @Path("/templates/{entityCode}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "OPERATOR", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<DocumentTemplateService.TemplateView> templates(@PathParam("entityCode") String entityCode) {
+        return templates.list(entityCode);
+    }
+
+    /**
+     * Saves a new version of a document template (BRD-05); reserved to the business administrator.
+     *
+     * @param entityCode the entity code
+     * @param request    the template edit
+     * @return the saved template view
+     */
+    @POST
+    @Path("/templates/{entityCode}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed("BUSINESS_ADMIN")
+    public DocumentTemplateService.TemplateView saveTemplate(@PathParam("entityCode") String entityCode,
+                                                             TemplateRequest request) {
+        return templates.save(entityCode, request.documentType(), request.content());
+    }
+
+    /**
+     * Request body of a document-template edit.
+     *
+     * @param documentType the template type name
+     * @param content      the edited content
+     */
+    public record TemplateRequest(String documentType, String content) {
     }
 
     /**

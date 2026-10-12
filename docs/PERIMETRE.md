@@ -118,7 +118,7 @@ d'accès serveur · test de bout en bout · état.
 
 | # | Écran | Exig. | Route / Vue | Points d'accès | Test E2E | État |
 | --- | --- | --- | --- | --- | --- | --- |
-| 58 | Modèles de documents | BRD-05 | — | — | — | absent |
+| 58 | Modèles de documents | BRD-05 | `documentTemplates` / DocumentTemplatesView | GET/POST /documents/templates/{e} | document-templates.spec | complet — liste des modèles par type et édition par l'administrateur métier (logo, mentions, colonnes, ordre), chaque enregistrement créant une nouvelle version tracée au journal d'audit |
 | 59 | Attestations fiscales annuelles | BRD-08 | — | — | — | absent |
 | 60 | Tableaux de bord : commissions, reprises, escomptes, comptes débiteurs, premiers distributeurs, anomalies | REP-01 | `dashboards` / DashboardsView | GET /reporting/{e}/dashboard | reporting.spec | complet |
 | 61 | Vision consolidée du groupe | REP-07 | `groupView` / GroupView | GET /reporting/consolidated | reporting.spec | complet |
