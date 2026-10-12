@@ -3,7 +3,8 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, DetailList, DetailRow, FormField, PageHeading } from '../components/ui';
+import { formatAmount } from '../presentation/format';
 import type { Column } from '../components/ui';
 
 interface AdvanceView {
@@ -11,11 +12,31 @@ interface AdvanceView {
   anticipationDays: number | null; maxContracts: number | null; status: string | null;
 }
 
+interface PositionView {
+  coverageCode: string;
+  status: string | null;
+  advanced: number;
+  offset: number;
+}
+
+interface AdvanceDetail {
+  convention: AdvanceView;
+  unpaidRankThreshold: number | null;
+  split: string | null;
+  products: string[];
+  totalAdvanced: number;
+  totalOffset: number;
+  outstanding: number;
+  ruptureAmount: number;
+  positions: PositionView[];
+}
+
 const session = useSessionStore();
 const entityCode = (): string => (session.entities.length > 0 ? session.entities[0] : '');
 const canEdit = (): boolean => canEditEntityParameters(session.roles);
 
 const rows = ref<AdvanceView[]>([]);
+const detail = ref<AdvanceDetail | null>(null);
 const error = ref('');
 const message = ref('');
 const loading = ref(false);
@@ -30,6 +51,36 @@ const columns: Column<AdvanceView>[] = [
   { key: 'maxContracts', label: 'Plafond', align: 'num', value: (a) => a.maxContracts ?? '—' },
   { key: 'status', label: 'Statut' },
 ];
+
+/** Columns of the discounted guarantees table. */
+const positionColumns: Column<PositionView>[] = [
+  { key: 'coverageCode', label: 'Garantie' },
+  { key: 'status', label: 'Statut', value: (p) => p.status ?? '—' },
+  { key: 'advanced', label: 'Escompté', align: 'num', value: (p) => formatAmount(p.advanced) },
+  { key: 'offset', label: 'Apuré', align: 'num', value: (p) => formatAmount(p.offset) },
+];
+
+/**
+ * Opens a convention's fiche (parameters, counters, guarantees, rupture simulation).
+ * @param row the selected convention row
+ */
+async function openDetail(row: AdvanceView): Promise<void> {
+  error.value = '';
+  try {
+    detail.value = await apiGet<AdvanceDetail>(
+      `/api/ui/v1/advance-agreements/${row.entityCode}/${row.partnerCode}`);
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Erreur';
+  }
+}
+
+/**
+ * Formats an amount in euros.
+ * @param value the raw amount
+ */
+function amount(value: number): string {
+  return formatAmount(value);
+}
 
 /** Loads the advance agreements of the user's entities. */
 async function load(): Promise<void> {
@@ -81,10 +132,47 @@ onMounted(load);
         :loading="loading"
         empty="Aucune convention."
         empty-testid="advance-empty"
+        clickable
         :row-testid="(a) => `advance-row-${rows.indexOf(a)}`"
+        @row-click="openDetail"
       >
         <template #cell-status="{ row }"><span class="tag ok">{{ row.status ?? '—' }}</span></template>
       </DataTable>
+    </AppCard>
+
+    <AppCard v-if="detail" data-testid="advance-detail">
+      <h2 class="adv-title">Convention — {{ detail.convention.partnerCode ?? '—' }}</h2>
+      <DetailList>
+        <DetailRow label="Validité">
+          {{ (detail.convention.validFrom ?? '—') + ' → ' + (detail.convention.validTo ?? '—') }}
+        </DetailRow>
+        <DetailRow label="Anticipation (jours)">{{ detail.convention.anticipationDays ?? '—' }}</DetailRow>
+        <DetailRow label="Plafond de contrats">{{ detail.convention.maxContracts ?? '—' }}</DetailRow>
+        <DetailRow label="Rang d'impayé">{{ detail.unpaidRankThreshold ?? '—' }}</DetailRow>
+        <DetailRow label="Partage">{{ detail.split ?? '—' }}</DetailRow>
+        <DetailRow label="Produits">{{ detail.products.length > 0 ? detail.products.join(', ') : '—' }}</DetailRow>
+      </DetailList>
+
+      <h3 class="adv-sub">Compteurs</h3>
+      <DetailList>
+        <DetailRow label="Total escompté"><span data-testid="adv-total-advanced">{{ amount(detail.totalAdvanced) }}</span></DetailRow>
+        <DetailRow label="Total apuré">{{ amount(detail.totalOffset) }}</DetailRow>
+        <DetailRow label="Créance d'escompte"><span data-testid="adv-outstanding">{{ amount(detail.outstanding) }}</span></DetailRow>
+      </DetailList>
+
+      <h3 class="adv-sub">Simulation de rupture</h3>
+      <AppMessage variant="info" data-testid="adv-rupture">
+        En cas de rupture aujourd'hui, la créance d'escompte à récupérer serait de {{ amount(detail.ruptureAmount) }}.
+      </AppMessage>
+
+      <h3 class="adv-sub">Garanties escomptées</h3>
+      <DataTable
+        :columns="positionColumns"
+        :rows="detail.positions"
+        empty="Aucune garantie escomptée."
+        empty-testid="adv-no-position"
+        :row-testid="() => 'adv-position-row'"
+      />
     </AppCard>
 
     <AppCard v-if="canEdit()">
@@ -109,3 +197,15 @@ onMounted(load);
     </AppCard>
   </div>
 </template>
+
+<style scoped>
+.adv-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+.adv-sub {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+</style>

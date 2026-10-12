@@ -29,7 +29,7 @@ test.beforeEach(async ({ request }) => {
 test.describe("Conventions d'escompte", () => {
   test.use({ httpCredentials: USERS.adminAlptis });
 
-  test('enregistre et liste une convention d’escompte @screen:advance @req:PAR-09', async ({ page }) => {
+  test('enregistre une convention d’escompte et ouvre sa fiche @screen:advance @req:PAR-09 @req:CPT-08', async ({ page }) => {
     await importDistributor(page);
     await page.goto('/escompte');
     await expect(page.getByTestId('page-title')).toHaveText("Conventions d'escompte");
@@ -40,6 +40,13 @@ test.describe("Conventions d'escompte", () => {
     await page.getByTestId('adv-create').click();
     await expect(page.getByTestId('advance-message')).toContainText('escompte');
     await expect(page.getByTestId('advance-row-0')).toContainText('P13897');
+
+    // Open the convention fiche: parameters, counters, rupture simulation and discounted guarantees.
+    await page.getByTestId('advance-row-0').click();
+    await expect(page.getByTestId('advance-detail')).toBeVisible();
+    await expect(page.getByTestId('adv-outstanding')).toContainText('0,00');
+    await expect(page.getByTestId('adv-rupture')).toContainText('créance');
+    await expect(page.getByTestId('adv-no-position')).toBeVisible();
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:advance', async ({ page }) => {

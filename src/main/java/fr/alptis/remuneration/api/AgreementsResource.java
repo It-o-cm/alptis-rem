@@ -84,6 +84,22 @@ public class AgreementsResource {
     }
 
     /**
+     * Returns the fiche of a distributor's discount convention (PAR-09, CPT-08, §6.4).
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor partner code
+     * @return the convention detail
+     */
+    @GET
+    @Path("/advance-agreements/{entityCode}/{partnerCode}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "OPERATOR", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public AgreementService.AdvanceDetail advanceAgreement(@PathParam("entityCode") String entityCode,
+                                                           @PathParam("partnerCode") String partnerCode) {
+        return service.advanceDetail(entityCode, partnerCode);
+    }
+
+    /**
      * Records a discount convention.
      *
      * @param request the discount-convention request

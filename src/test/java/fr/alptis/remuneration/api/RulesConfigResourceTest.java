@@ -115,6 +115,8 @@ class RulesConfigResourceTest {
                         + "\"unpaidRankThreshold\":2}")
                 .when().post("/api/ui/v1/advance-agreements").then().statusCode(201).body("status", is("VALID"));
         admin().when().get("/api/ui/v1/advance-agreements").then().statusCode(200).body("partnerCode", hasItem("P1"));
+        admin().when().get("/api/ui/v1/advance-agreements/ALPTIS_ASSURANCES/P1")
+                .then().statusCode(200).body("convention.partnerCode", is("P1"));
 
         admin().contentType(ContentType.JSON)
                 .body("{\"entityCode\":\"ALPTIS_ASSURANCES\",\"code\":\"RES\",\"label\":\"Réservée\",\"family\":\"PORTFOLIO\"}")

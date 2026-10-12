@@ -1,10 +1,16 @@
 package fr.alptis.remuneration.rules;
 
+import fr.alptis.remuneration.domain.AdvanceAgreement;
+import fr.alptis.remuneration.domain.AdvanceAgreementProduct;
+import fr.alptis.remuneration.domain.AdvancePosition;
+import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.CommissionPlan;
+import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
@@ -26,7 +32,10 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.util.List;
 
+import java.math.BigDecimal;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -111,6 +120,79 @@ class AgreementServiceTest {
                 LocalDate.of(2026, 1, 1), LocalDate.of(2027, 6, 1), 360, 50, (short) 2));
         assertThrows(ValidationException.class, () -> svc.createAdvanceAgreement("UNEP", "NOPE",
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), 360, 50, (short) 2));
+    }
+
+    /**
+     * The convention fiche cumulates its guarantees' advanced and offset amounts (null amounts count
+     * as zero), lists its products (a null product shows a dash), and computes the outstanding debt
+     * and the rupture amount; an out-of-scope entity and an unknown distributor are not found.
+     */
+    @Test
+    @TestTransaction
+    void reads_the_convention_fiche() {
+        distributor("D1");
+        AgreementService svc = service();
+        svc.createAdvanceAgreement("UNEP", "D1", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), 360, 50,
+                (short) 2);
+        AdvanceAgreement agreement = AdvanceAgreement.<AdvanceAgreement>find("distributor.partnerCode", "D1")
+                .firstResult();
+        agreement.split = "\"FIFTY_FIFTY\"";
+
+        Product product = new Product();
+        product.entity = unep();
+        product.code = "SANTE";
+        product.persist();
+        product(agreement, product);
+        product(agreement, null);
+
+        Coverage coverage = new Coverage();
+        coverage.coverageCode = "CV1";
+        coverage.persist();
+        position(agreement, coverage, AdvanceStatus.ACTIVE, "10", "5", "2", "3", "1", "0", "1");
+        position(agreement, null, null, null, null, null, null, null, null, null);
+
+        AgreementService.AdvanceDetail detail = svc.advanceDetail("UNEP", "D1");
+        assertEquals("\"FIFTY_FIFTY\"", detail.split());
+        assertEquals(2, detail.products().size());
+        assertEquals(2, detail.positions().size());
+        assertEquals(0, detail.totalAdvanced().compareTo(new BigDecimal("17")));
+        assertEquals(0, detail.totalOffset().compareTo(new BigDecimal("4")));
+        // outstanding = 17 advanced − 4 offset − 1 adjustment = 12, recovered on rupture.
+        assertEquals(0, detail.outstanding().compareTo(new BigDecimal("12")));
+        assertEquals(0, detail.ruptureAmount().compareTo(new BigDecimal("12")));
+        assertEquals("CV1", detail.positions().get(0).coverageCode());
+        assertEquals("—", detail.positions().get(1).coverageCode());
+        assertNull(detail.positions().get(1).status());
+
+        // Out of scope and unknown distributor.
+        assertThrows(ResourceNotFoundException.class, () -> svc.advanceDetail("ALPTIS_ASSURANCES", "D1"));
+        assertThrows(ResourceNotFoundException.class, () -> svc.advanceDetail("UNEP", "NOPE"));
+    }
+
+    /** Persists a product line of a convention (product may be null). */
+    private static void product(AdvanceAgreement agreement, Product product) {
+        AdvanceAgreementProduct link = new AdvanceAgreementProduct();
+        link.advanceAgreement = agreement;
+        link.product = product;
+        link.persist();
+    }
+
+    /** Persists an advance position of a convention with its advanced and offset breakdown. */
+    private static void position(AdvanceAgreement agreement, Coverage coverage, AdvanceStatus status,
+                                 String advAcq, String advSrv, String advLin, String offAcq, String offSrv,
+                                 String offLin, String adjustment) {
+        AdvancePosition position = new AdvancePosition();
+        position.advanceAgreement = agreement;
+        position.coverage = coverage;
+        position.status = status;
+        position.advancedAcquisition = advAcq == null ? null : new BigDecimal(advAcq);
+        position.advancedServicing = advSrv == null ? null : new BigDecimal(advSrv);
+        position.advancedLinear = advLin == null ? null : new BigDecimal(advLin);
+        position.offsetAcquisition = offAcq == null ? null : new BigDecimal(offAcq);
+        position.offsetServicing = offSrv == null ? null : new BigDecimal(offSrv);
+        position.offsetLinear = offLin == null ? null : new BigDecimal(offLin);
+        position.adjustmentAmount = adjustment == null ? null : new BigDecimal(adjustment);
+        position.persist();
     }
 
     /**

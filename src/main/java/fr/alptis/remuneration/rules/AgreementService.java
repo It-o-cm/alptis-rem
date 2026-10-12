@@ -3,7 +3,9 @@ package fr.alptis.remuneration.rules;
 import fr.alptis.remuneration.domain.Agreement;
 import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.AdvanceAgreement;
+import fr.alptis.remuneration.domain.AdvanceAgreementProduct;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
+import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.CommissionPlan;
 import fr.alptis.remuneration.domain.ConflictException;
 import fr.alptis.remuneration.domain.DateTimeProvider;
@@ -24,6 +26,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -117,6 +120,60 @@ public class AgreementService {
                 ? AdvanceAgreement.list("order by validFrom desc")
                 : AdvanceAgreement.list("entity.code in ?1 order by validFrom desc", scope.visibleCodes());
         return agreements.stream().map(AgreementService::toAdvanceView).toList();
+    }
+
+    /**
+     * Returns the fiche of a distributor's discount convention (PAR-09, CPT-08, §6.4): its parameters,
+     * the counters cumulated over its discounted guarantees, each guarantee's advanced and offset
+     * amounts, and a rupture simulation (the outstanding discount debt recovered if it were broken
+     * today).
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor partner code
+     * @return the convention detail
+     * @throws ResourceNotFoundException if no convention is found for the distributor in scope
+     */
+    @Transactional
+    public AdvanceDetail advanceDetail(String entityCode, String partnerCode) {
+        if (!scope.canSee(entityCode)) {
+            throw new ResourceNotFoundException("Entité hors périmètre : " + entityCode);
+        }
+        AdvanceAgreement agreement = AdvanceAgreement.<AdvanceAgreement>find(
+                "entity.code = ?1 and distributor.partnerCode = ?2 order by validFrom desc", entityCode, partnerCode)
+                .firstResult();
+        if (agreement == null) {
+            throw new ResourceNotFoundException("Convention d'escompte introuvable : " + partnerCode);
+        }
+        List<String> products = AdvanceAgreementProduct.<AdvanceAgreementProduct>list("advanceAgreement", agreement)
+                .stream().map(p -> p.product == null ? "—" : p.product.code).toList();
+        List<PositionView> positions = new java.util.ArrayList<>();
+        BigDecimal totalAdvanced = BigDecimal.ZERO;
+        BigDecimal totalOffset = BigDecimal.ZERO;
+        BigDecimal totalAdjustment = BigDecimal.ZERO;
+        for (AdvancePosition position : AdvancePosition.<AdvancePosition>list("advanceAgreement", agreement)) {
+            BigDecimal advanced = nz(position.advancedAcquisition).add(nz(position.advancedServicing))
+                    .add(nz(position.advancedLinear));
+            BigDecimal offset = nz(position.offsetAcquisition).add(nz(position.offsetServicing))
+                    .add(nz(position.offsetLinear));
+            totalAdvanced = totalAdvanced.add(advanced);
+            totalOffset = totalOffset.add(offset);
+            totalAdjustment = totalAdjustment.add(nz(position.adjustmentAmount));
+            positions.add(new PositionView(position.coverage == null ? "—" : position.coverage.coverageCode,
+                    position.status == null ? null : position.status.name(), advanced, offset));
+        }
+        BigDecimal outstanding = totalAdvanced.subtract(totalOffset).subtract(totalAdjustment);
+        return new AdvanceDetail(toAdvanceView(agreement), agreement.unpaidRankThreshold, agreement.split, products,
+                totalAdvanced, totalOffset, outstanding, outstanding, positions);
+    }
+
+    /**
+     * Returns the value or zero when null.
+     *
+     * @param value the value, possibly null
+     * @return the value, or zero
+     */
+    private static BigDecimal nz(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     /**
@@ -381,6 +438,35 @@ public class AgreementService {
      */
     public record AdvanceView(String entityCode, String partnerCode, String validFrom, String validTo,
                               Integer anticipationDays, Integer maxContracts, String status) {
+    }
+
+    /**
+     * Fiche of a discount convention (PAR-09, CPT-08, §6.4).
+     *
+     * @param convention          the convention parameters
+     * @param unpaidRankThreshold the unpaid rank triggering the clawback
+     * @param split               the split policy, if any
+     * @param products            the covered product codes
+     * @param totalAdvanced       the total advanced across its guarantees
+     * @param totalOffset         the total offset (apuré) across its guarantees
+     * @param outstanding         the outstanding discount debt (créance)
+     * @param ruptureAmount       the debt recovered if the convention were broken today
+     * @param positions           the discounted guarantees with their advanced and offset amounts
+     */
+    public record AdvanceDetail(AdvanceView convention, Short unpaidRankThreshold, String split, List<String> products,
+                                BigDecimal totalAdvanced, BigDecimal totalOffset, BigDecimal outstanding,
+                                BigDecimal ruptureAmount, List<PositionView> positions) {
+    }
+
+    /**
+     * One discounted guarantee of a convention.
+     *
+     * @param coverageCode the guarantee code
+     * @param status       the advance-position status, if any
+     * @param advanced     the amount advanced on the guarantee
+     * @param offset       the amount offset (apuré) on the guarantee
+     */
+    public record PositionView(String coverageCode, String status, BigDecimal advanced, BigDecimal offset) {
     }
 
     /**
