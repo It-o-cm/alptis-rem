@@ -3,6 +3,7 @@ package fr.alptis.remuneration.salesforce;
 import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Employee;
 import fr.alptis.remuneration.domain.EmployeeMeasure;
+import fr.alptis.remuneration.domain.JobCode;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.MeasureType;
 import fr.alptis.remuneration.domain.ObjectiveType;
@@ -204,6 +205,112 @@ public class SalesForceService {
         result.validatedAt = clock.now();
         result.persist();
         return result;
+    }
+
+    /**
+     * Creates a collaborator managed at the screen (FDV-01), keyed by entity and external id, in
+     * addition to the bulk SI-RH import. Refuses a duplicate external id.
+     *
+     * @param entityCode the entity code
+     * @param input      the collaborator fields
+     * @return the created employee
+     */
+    @Transactional
+    public Employee createCollaborator(String entityCode, CollaboratorInput input) {
+        LegalEntity entity = entity(entityCode);
+        if (input.externalId() == null || input.externalId().isBlank()) {
+            throw new ValidationException("Matricule obligatoire");
+        }
+        if (Employee.find("entity = ?1 and externalId = ?2", entity, input.externalId()).firstResult() != null) {
+            throw new ValidationException("Collaborateur déjà présent : " + input.externalId());
+        }
+        Employee employee = new Employee();
+        employee.entity = entity;
+        employee.externalId = input.externalId();
+        apply(employee, entity, input);
+        employee.persist();
+        return employee;
+    }
+
+    /**
+     * Updates a collaborator's post, team, region, manager and dates (FDV-01).
+     *
+     * @param entityCode the entity code
+     * @param externalId the collaborator's external id
+     * @param input      the new collaborator fields
+     * @return the updated employee
+     */
+    @Transactional
+    public Employee updateCollaborator(String entityCode, String externalId, CollaboratorInput input) {
+        LegalEntity entity = entity(entityCode);
+        Employee employee = Employee.<Employee>find("entity = ?1 and externalId = ?2", entity, externalId)
+                .firstResult();
+        if (employee == null) {
+            throw new ResourceNotFoundException("Collaborateur inconnu : " + externalId);
+        }
+        apply(employee, entity, input);
+        return employee;
+    }
+
+    /**
+     * Applies the editable collaborator fields to an employee, resolving the optional manager.
+     *
+     * @param employee the employee to fill
+     * @param entity   the entity, used to resolve the manager
+     * @param input    the collaborator fields
+     */
+    private void apply(Employee employee, LegalEntity entity, CollaboratorInput input) {
+        if (input.jobCode() == null) {
+            throw new ValidationException("Poste obligatoire");
+        }
+        if (input.validFrom() == null) {
+            throw new ValidationException("Date de début obligatoire");
+        }
+        employee.lastName = input.lastName();
+        employee.firstName = input.firstName();
+        employee.jobCode = input.jobCode();
+        employee.team = input.team();
+        employee.region = input.region();
+        employee.manager = resolveManager(entity, input.managerExternalId());
+        employee.validFrom = input.validFrom();
+        employee.validTo = input.validTo();
+    }
+
+    /**
+     * Resolves a manager by external id within the entity; an absent or blank reference means none.
+     *
+     * @param entity            the entity
+     * @param managerExternalId the manager's external id, possibly null or blank
+     * @return the manager employee, or null when none is referenced
+     */
+    private Employee resolveManager(LegalEntity entity, String managerExternalId) {
+        if (managerExternalId == null || managerExternalId.isBlank()) {
+            return null;
+        }
+        Employee manager = Employee.<Employee>find("entity = ?1 and externalId = ?2", entity, managerExternalId)
+                .firstResult();
+        if (manager == null) {
+            throw new ResourceNotFoundException("Responsable inconnu : " + managerExternalId);
+        }
+        return manager;
+    }
+
+    /**
+     * The editable fields of a managed collaborator (FDV-01).
+     *
+     * @param externalId        the external id (natural key)
+     * @param lastName          the last name
+     * @param firstName         the first name
+     * @param jobCode           the post
+     * @param team              the team
+     * @param region            the region
+     * @param managerExternalId the manager's external id, or null
+     * @param validFrom         the validity start
+     * @param validTo           the validity end, or null
+     */
+    public record CollaboratorInput(String externalId, String lastName, String firstName, JobCode jobCode,
+                                    String team, String region, String managerExternalId, LocalDate validFrom,
+                                    LocalDate validTo) {
     }
 
     /**

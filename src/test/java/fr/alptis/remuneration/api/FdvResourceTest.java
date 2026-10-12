@@ -135,6 +135,43 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-01: the business administrator creates a collaborator and updates it; the listing reflects
+     * the update. A sales manager may not write, and a UNEP administrator is out of the ALPTIS scope.
+     */
+    @Test
+    void creates_and_updates_a_collaborator() {
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType(ContentType.JSON)
+                .body("{\"externalId\":\"E2\",\"lastName\":\"Martin\",\"firstName\":\"Alice\",\"jobCode\":\"CAC\","
+                        + "\"team\":\"Équipe A\",\"region\":\"Sud\",\"managerExternalId\":null,"
+                        + "\"validFrom\":\"2026-01-01\",\"validTo\":null}")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/collaborators")
+                .then().statusCode(201).body("externalId", is("E2")).body("team", is("Équipe A"));
+
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType(ContentType.JSON)
+                .body("{\"lastName\":\"Martin\",\"firstName\":\"Alice\",\"jobCode\":\"RB\",\"team\":\"Équipe B\","
+                        + "\"region\":\"Nord\",\"managerExternalId\":null,\"validFrom\":\"2026-02-01\","
+                        + "\"validTo\":\"2026-12-31\"}")
+                .when().put("/api/ui/v1/fdv/" + ENTITY + "/collaborators/E2")
+                .then().statusCode(200).body("jobCode", is("RB")).body("team", is("Équipe B"));
+
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/collaborators")
+                .then().statusCode(200).body("findAll { it.externalId == 'E2' }.jobCode", hasItem("RB"));
+
+        // A sales manager may not create a collaborator.
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").contentType(ContentType.JSON)
+                .body("{\"externalId\":\"E3\",\"lastName\":\"X\",\"firstName\":\"Y\",\"jobCode\":\"CAC\","
+                        + "\"validFrom\":\"2026-01-01\"}")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/collaborators").then().statusCode(403);
+
+        // A UNEP administrator is out of the ALPTIS partition.
+        given().auth().preemptive().basic("admin-unep", "admin-unep").contentType(ContentType.JSON)
+                .body("{\"externalId\":\"E4\",\"lastName\":\"X\",\"firstName\":\"Y\",\"jobCode\":\"CAC\","
+                        + "\"validFrom\":\"2026-01-01\"}")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/collaborators").then().statusCode(404);
+    }
+
+    /**
      * A commercial consults its own variable; a UNEP user is out of scope and a viewer may not run.
      */
     @Test

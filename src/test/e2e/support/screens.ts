@@ -68,6 +68,7 @@ export const SCREENS: readonly Screen[] = [
   { name: 'adminAudit', path: '/audit', user: 'auditor' },
   { name: 'supervision', path: '/supervision', user: 'auditor' },
   { name: 'purge', path: '/purge', user: 'itAdmin' },
+  { name: 'fdvCollaborators', path: '/fdv/collaborateurs', user: 'adminAlptis' },
   { name: 'fdvPlan', path: '/fdv/plan', user: 'auditor' },
   { name: 'fdvValidation', path: '/fdv/validation', user: 'auditor' },
   { name: 'fdvCommercial', path: '/fdv/commercial', user: 'auditor' },

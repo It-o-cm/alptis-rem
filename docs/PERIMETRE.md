@@ -132,7 +132,7 @@ d'accès serveur · test de bout en bout · état.
 
 | # | Écran | Exig. | Route / Vue | Points d'accès | Test E2E | État |
 | --- | --- | --- | --- | --- | --- | --- |
-| 67 | Collaborateurs | FDV-01 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/collaborators | fdv.spec | partiel — liste en lecture seule intégrée au plan ; pas d'écran de gestion des collaborateurs |
+| 67 | Collaborateurs | FDV-01 | `fdvCollaborators` / FdvCollaboratorsView | GET/POST /fdv/{e}/collaborators, PUT /fdv/{e}/collaborators/{id} | fdv.spec | complet — écran de gestion dédié : création et mise à jour individuelles (poste, équipe, région, responsable, dates), en plus de l'alimentation en masse par le SI RH ; liste restituant la validité et le poste en clair |
 | 68 | Mesures reçues : absences, production, activité, marge | FDV-02 | — | — | — | absent |
 | 69 | Objectifs individuels et collectifs, versionnés | FDV-03 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/objectives | fdv.spec | partiel — objectifs en lecture seule ; versionnement et objectifs collectifs non exposés |
 | 70 | Plan de variable par poste | FDV-04, FDV-09→12 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/plans, POST run | fdv.spec | partiel — barèmes animateurs/responsables/vente directe (FDV-09/10) et réduction sur résiliation (FDV-12) absents |
@@ -341,7 +341,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
-| FDV-01 | EmployeeImportService, SalesForceQueryService | #67 | fdv | partiel — pas d'écran de gestion des collaborateurs |
+| FDV-01 | EmployeeImportService, SalesForceService (create/update), SalesForceQueryService | #67 | fdv | complet — gestion des collaborateurs à l'écran (création/mise à jour) et alimentation en masse par le SI RH |
 | FDV-02 | — | #68 | — | absent — mesures reçues (absences, production, activité, marge) |
 | FDV-03 | SalesForceQueryService | #69 | fdv | partiel — versionnement et objectifs collectifs absents |
 | FDV-04 | SalesForceService | #70 | fdv | partiel — enveloppes/critères des postes animateur/responsable/vente directe absents |

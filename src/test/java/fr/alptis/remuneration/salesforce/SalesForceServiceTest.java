@@ -250,4 +250,65 @@ class SalesForceServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> service.runMonth("UNEP", LocalDate.of(2030, 1, 1)));
     }
+
+    /**
+     * FDV-01: a collaborator is created at the screen with a manager, then updated — post, team and
+     * manager change, the blank manager reference clearing it.
+     */
+    @Test
+    @TestTransaction
+    void creates_and_updates_a_collaborator() {
+        employee("MGR", JobCode.RR);
+        Employee created = service.createCollaborator("UNEP", new SalesForceService.CollaboratorInput(
+                "C-1", "Martin", "Alice", JobCode.CAC, "Équipe A", "Sud", "MGR",
+                LocalDate.of(2026, 1, 1), null));
+        assertEquals("MGR", created.manager.externalId);
+        assertEquals(JobCode.CAC, created.jobCode);
+
+        // Update: new post, new team, manager cleared by a blank reference.
+        Employee updated = service.updateCollaborator("UNEP", "C-1", new SalesForceService.CollaboratorInput(
+                "C-1", "Martin", "Alice", JobCode.RB, "Équipe B", "Nord", "  ",
+                LocalDate.of(2026, 2, 1), LocalDate.of(2026, 12, 31)));
+        assertEquals(JobCode.RB, updated.jobCode);
+        assertEquals("Équipe B", updated.team);
+        assertEquals(null, updated.manager);
+        assertEquals(LocalDate.of(2026, 12, 31), updated.validTo);
+
+        // A null manager reference also leaves no manager.
+        Employee noManager = service.createCollaborator("UNEP", new SalesForceService.CollaboratorInput(
+                "C-2", "Durand", "Bob", JobCode.CAC, null, null, null, LocalDate.of(2026, 1, 1), null));
+        assertEquals(null, noManager.manager);
+    }
+
+    /**
+     * FDV-01: the writes refuse a blank matricule, a duplicate, a missing post or start date, an
+     * unknown manager and an unknown collaborator on update.
+     */
+    @Test
+    @TestTransaction
+    void rejects_invalid_collaborators() {
+        service.createCollaborator("UNEP", new SalesForceService.CollaboratorInput(
+                "C-9", "X", "Y", JobCode.CAC, null, null, null, LocalDate.of(2026, 1, 1), null));
+
+        assertThrows(ValidationException.class, () -> service.createCollaborator("UNEP",
+                new SalesForceService.CollaboratorInput(null, "X", "Y", JobCode.CAC, null, null, null,
+                        LocalDate.of(2026, 1, 1), null)));
+        assertThrows(ValidationException.class, () -> service.createCollaborator("UNEP",
+                new SalesForceService.CollaboratorInput(" ", "X", "Y", JobCode.CAC, null, null, null,
+                        LocalDate.of(2026, 1, 1), null)));
+        assertThrows(ValidationException.class, () -> service.createCollaborator("UNEP",
+                new SalesForceService.CollaboratorInput("C-9", "X", "Y", JobCode.CAC, null, null, null,
+                        LocalDate.of(2026, 1, 1), null)));
+        assertThrows(ValidationException.class, () -> service.createCollaborator("UNEP",
+                new SalesForceService.CollaboratorInput("C-10", "X", "Y", null, null, null, null,
+                        LocalDate.of(2026, 1, 1), null)));
+        assertThrows(ValidationException.class, () -> service.createCollaborator("UNEP",
+                new SalesForceService.CollaboratorInput("C-11", "X", "Y", JobCode.CAC, null, null, null, null, null)));
+        assertThrows(ResourceNotFoundException.class, () -> service.createCollaborator("UNEP",
+                new SalesForceService.CollaboratorInput("C-12", "X", "Y", JobCode.CAC, null, null, "GHOST",
+                        LocalDate.of(2026, 1, 1), null)));
+        assertThrows(ResourceNotFoundException.class, () -> service.updateCollaborator("UNEP", "GHOST",
+                new SalesForceService.CollaboratorInput("GHOST", "X", "Y", JobCode.CAC, null, null, null,
+                        LocalDate.of(2026, 1, 1), null)));
+    }
 }

@@ -7,7 +7,7 @@ import { resetDb, seedFdv, USERS } from '../support/helpers';
 // (FDV-05/13/14) and a commercial's own variable (FDV-15). The weighting (CR-87) and absence (CR-88)
 // arithmetic is verified by SalesForceServiceTest on the server.
 //
-// @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial
+// @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial @screen:fdvCollaborators
 // @req:FDV-01 @req:FDV-04 @req:FDV-13 @req:FDV-14 @req:FDV-15
 
 test.beforeEach(async ({ request }) => {
@@ -64,11 +64,55 @@ test('le commercial consulte son variable @screen:fdvCommercial @req:FDV-15', as
   await rep.close();
 });
 
+test('l’administrateur crée puis modifie un collaborateur @screen:fdvCollaborators @req:FDV-01', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/collaborateurs');
+  await expect(page.getByTestId('page-title')).toHaveText('Collaborateurs');
+
+  // Create a collaborator.
+  await page.getByTestId('collab-external-id').fill('E2E-C1');
+  await page.getByTestId('collab-last-name').fill('Testeur');
+  await page.getByTestId('collab-first-name').fill('Eve');
+  await page.getByTestId('collab-job').selectOption('CAC');
+  await page.getByTestId('collab-team').fill('Équipe A');
+  await page.getByTestId('collab-region').fill('Sud');
+  await page.getByTestId('collab-valid-from').fill('2026-01-01');
+  await page.getByTestId('collab-submit').click();
+  await expect(page.getByTestId('fdvcol-message')).toContainText('créé');
+  const row = page.getByTestId('collaborator-row-E2E-C1');
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('Conseiller');
+  await expect(row).toContainText('Équipe A');
+
+  // Edit it: change the post and the team.
+  await page.getByTestId('collaborator-edit-E2E-C1').click();
+  await expect(page.getByTestId('collab-external-id')).toBeDisabled();
+  await page.getByTestId('collab-job').selectOption('RB');
+  await page.getByTestId('collab-team').fill('Équipe Z');
+  await page.getByTestId('collab-submit').click();
+  await expect(page.getByTestId('fdvcol-message')).toContainText('mis à jour');
+  await expect(page.getByTestId('collaborator-row-E2E-C1')).toContainText('Équipe Z');
+  await expect(page.getByTestId('collaborator-row-E2E-C1')).toContainText('Responsable de secteur');
+  await admin.close();
+});
+
 test.describe('Forces de vente — accessibilité', () => {
   test.use({ httpCredentials: USERS.adminAlptis });
 
   test('aucune violation d’accessibilité grave ou critique @screen:fdvPlan', async ({ page }) => {
     await page.goto('/fdv/plan');
+    const results = await new AxeBuilder({ page }).analyze();
+    const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+    expect(serious).toEqual([]);
+  });
+
+  test('aucune violation d’accessibilité grave ou critique sur les collaborateurs @screen:fdvCollaborators', async ({
+    page,
+  }) => {
+    await page.goto('/fdv/collaborateurs');
     const results = await new AxeBuilder({ page }).analyze();
     const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
     expect(serious).toEqual([]);

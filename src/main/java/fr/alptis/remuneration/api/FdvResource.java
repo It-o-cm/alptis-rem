@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.domain.JobCode;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.CollaboratorView;
@@ -83,6 +84,61 @@ public class FdvResource {
     public List<CollaboratorView> collaborators(@PathParam("entity") String entityCode) {
         requireScope(entityCode);
         return query.collaborators(entityCode);
+    }
+
+    /**
+     * Creates a collaborator managed at the screen (FDV-01), by the business administrator.
+     *
+     * @param entityCode the entity code
+     * @param request    the collaborator fields
+     * @return a 201 response with the created collaborator
+     */
+    @POST
+    @Path("/{entity}/collaborators")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public jakarta.ws.rs.core.Response createCollaborator(@PathParam("entity") String entityCode,
+                                                          CollaboratorRequest request) {
+        requireScope(entityCode);
+        service.createCollaborator(entityCode, request.toInput(request.externalId()));
+        return jakarta.ws.rs.core.Response.status(jakarta.ws.rs.core.Response.Status.CREATED)
+                .entity(collaborator(entityCode, request.externalId())).build();
+    }
+
+    /**
+     * Updates a collaborator's post, team, region, manager and dates (FDV-01), by the business
+     * administrator.
+     *
+     * @param entityCode the entity code
+     * @param externalId the collaborator's external id
+     * @param request    the new collaborator fields
+     * @return the updated collaborator view
+     */
+    @jakarta.ws.rs.PUT
+    @Path("/{entity}/collaborators/{externalId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public CollaboratorView updateCollaborator(@PathParam("entity") String entityCode,
+                                               @PathParam("externalId") String externalId,
+                                               CollaboratorRequest request) {
+        requireScope(entityCode);
+        service.updateCollaborator(entityCode, externalId, request.toInput(externalId));
+        return collaborator(entityCode, externalId);
+    }
+
+    /**
+     * Reads back one collaborator by external id after a write.
+     *
+     * @param entityCode the entity code
+     * @param externalId the collaborator's external id
+     * @return the collaborator view
+     */
+    private CollaboratorView collaborator(String entityCode, String externalId) {
+        return query.collaborators(entityCode).stream()
+                .filter(c -> c.externalId().equals(externalId)).findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Collaborateur inconnu : " + externalId));
     }
 
     /**
@@ -219,6 +275,35 @@ public class FdvResource {
      * @param reason     the adjustment reason
      */
     public record AdjustmentRequest(String externalId, BigDecimal amount, String reason) {
+    }
+
+    /**
+     * A collaborator create/update request (FDV-01).
+     *
+     * @param externalId        the external id (ignored on update, taken from the path)
+     * @param lastName          the last name
+     * @param firstName         the first name
+     * @param jobCode           the post
+     * @param team              the team
+     * @param region            the region
+     * @param managerExternalId the manager's external id, or null
+     * @param validFrom         the validity start
+     * @param validTo           the validity end, or null
+     */
+    public record CollaboratorRequest(String externalId, String lastName, String firstName, JobCode jobCode,
+                                      String team, String region, String managerExternalId, LocalDate validFrom,
+                                      LocalDate validTo) {
+
+        /**
+         * Converts this request to a service input under the given external id.
+         *
+         * @param id the external id to use (the path id on update, the body id on create)
+         * @return the collaborator input
+         */
+        SalesForceService.CollaboratorInput toInput(String id) {
+            return new SalesForceService.CollaboratorInput(id, lastName, firstName, jobCode, team, region,
+                    managerExternalId, validFrom, validTo);
+        }
     }
 
     /**

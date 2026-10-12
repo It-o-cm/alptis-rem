@@ -46,7 +46,7 @@ public class SalesForceQueryService {
         LegalEntity entity = entity(entityCode);
         return Employee.<Employee>list("entity = ?1 order by externalId", entity).stream()
                 .map(e -> new CollaboratorView(e.externalId, e.lastName, e.firstName, e.jobCode, e.team, e.region,
-                        e.manager == null ? null : e.manager.externalId))
+                        e.manager == null ? null : e.manager.externalId, e.validFrom, e.validTo))
                 .toList();
     }
 
@@ -151,7 +151,8 @@ public class SalesForceQueryService {
      * @param manager    the manager's external id, or null
      */
     public record CollaboratorView(String externalId, String lastName, String firstName, JobCode jobCode,
-                                   String team, String region, String manager) {
+                                   String team, String region, String manager, java.time.LocalDate validFrom,
+                                   java.time.LocalDate validTo) {
     }
 
     /**
