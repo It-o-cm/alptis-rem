@@ -27,6 +27,7 @@ export const SCREENS: readonly Screen[] = [
   { name: 'calculations', path: '/calculs', user: 'auditor' },
   { name: 'controls', path: '/controles', user: 'auditor' },
   { name: 'adjustments', path: '/ajustements', user: 'auditor' },
+  { name: 'claims', path: '/reclamations', user: 'auditor' },
   { name: 'payment', path: '/paiement', user: 'auditor' },
   { name: 'statements', path: '/bordereaux', user: 'auditor' },
   { name: 'distributorSearch', path: '/distributeurs', user: 'auditor' },

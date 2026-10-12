@@ -278,5 +278,8 @@ class AdjustmentServiceTest {
         Claim closed = service.resolveClaim(claim.getId(), "ajustement +9 saisi");
         assertEquals(ClaimStatus.CLOSED, closed.status);
         assertThrows(ResourceNotFoundException.class, () -> service.resolveClaim(-1L, "x"));
+        // The fiche of the claim lists its contested line; an unknown claim is a not found.
+        assertEquals(1, service.claimDetail(claim.getId()).lines().size());
+        assertThrows(ResourceNotFoundException.class, () -> service.claimDetail(-1L));
     }
 }

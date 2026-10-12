@@ -48,7 +48,7 @@ d'accès serveur · test de bout en bout · état.
 | 10 | Contrôles et anomalies de la période, décisions, liste de contrôle | CTL-02, CTL-03, CTL-05 | `controls` / ControlsView | GET anomalies/breakdown/catalog/checklist, POST run/decision/checklist | controls.spec | complet — liste de contrôle de la période à cocher (CTL-03) ajoutée, tracée (qui/quand) |
 | 11 | Catalogue des contrôles : seuil, gravité, périmètre, activation, versions | CTL-01, CTL-04 | `controls` (onglet) / ControlsView | GET/POST /controls/{e}/catalog/{code}, GET versions | controls.spec | complet — édition par le métier (gravité, activation, paramètres/seuil) créant une nouvelle version, et historique des versions |
 | 12 | Ajustements : liste, saisie, approbation, import en masse | REG-01→05 | `adjustments` / AdjustmentsView | GET/POST adjustments, POST approve, POST bulk | adjustments.spec | complet — import en masse (REG-04, fichier pivot) et contrepassation automatique (REG-05, option + reprise au mois suivant) livrés |
-| 13 | Réclamations : liste, fiche, lignes contestées, suivi | REG-06 | — | — | — | absent |
+| 13 | Réclamations : liste, fiche, lignes contestées, suivi | REG-06 | `claims` / ClaimsView | GET /claims/{e}, GET /claims/detail/{id}, POST record/resolve | claims.spec | complet — liste, fiche avec lignes contestées, enregistrement et clôture avec régularisation |
 | 14 | Validation métier : totaux, comparaison au mois précédent, second niveau | WKF-02, 7.2 | — | — | — | absent |
 | 15 | Lots de paiement de la période et détail d'un lot : ordres, exclusions, rapprochement, validation Finance | PAY-01→05 | `payment` / PaymentView | GET lots/detail, POST prepare/validate, GET sepa | payment.spec | complet |
 | 16 | Création d'un lot hors cycle | PAY-07 | `payment` / PaymentView | POST off-cycle | payment.spec | complet |
@@ -233,7 +233,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | REG-03 | AdjustmentService (double signature, seuil) | #12 | adjustments | complet |
 | REG-04 | AdjustmentImportService | #12 | adjustments | complet — import en masse d'ajustements depuis un fichier pivot |
 | REG-05 | AdjustmentService (auto-reverse) | #12 | adjustments | complet — option de contrepassation automatique créant la reprise au mois suivant (M+1) |
-| REG-06 | — | #13 | — | absent — réclamations |
+| REG-06 | AdjustmentService (claims), ClaimsResource | #13 | claims | complet — enregistrement, lignes contestées et suivi jusqu'à la régularisation |
 
 ### 8.6 Contrôles (CTL)
 

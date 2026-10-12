@@ -82,6 +82,16 @@ export function batchTypeLabel(type: string): string {
   return labels[type] ?? type;
 }
 
+/** French label of a claim status (REG-06). */
+export function claimStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    OPEN: 'Ouverte',
+    IN_PROGRESS: 'En cours',
+    CLOSED: 'Close',
+  };
+  return labels[status] ?? status;
+}
+
 /** Tag CSS class for an anomaly severity. */
 export function severityTag(severity: string): string {
   if (severity === 'BLOCKING') return 'tag ko';

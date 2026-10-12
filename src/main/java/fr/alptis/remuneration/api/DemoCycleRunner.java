@@ -17,6 +17,11 @@ import fr.alptis.remuneration.domain.ControlResult;
 import fr.alptis.remuneration.domain.ControlSeverity;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.DateTimeProvider;
+import fr.alptis.remuneration.domain.Claim;
+import fr.alptis.remuneration.domain.ClaimLine;
+import fr.alptis.remuneration.domain.ClaimStatus;
+import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.EventType;
 import fr.alptis.remuneration.domain.LegalEntity;
@@ -160,6 +165,7 @@ public class DemoCycleRunner {
         octoberAlptis(world);
         novemberAlptis(world);
         plantHeldEvent(e);
+        plantClaim(e);
     }
 
     /**
@@ -173,6 +179,31 @@ public class DemoCycleRunner {
         showcaseMonth(world, e, LocalDate.of(2026, 9, 5), false);
         octoberUnep(world);
         plantHeldEvent(e);
+        plantClaim(e);
+    }
+
+    /**
+     * Records one open claim per entity (REG-06), linked to a commission line of the entity, so the
+     * claims screen shows a real claim with its contested line.
+     *
+     * @param entityCode the entity code
+     */
+    private void plantClaim(String entityCode) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        CommissionLine line = CommissionLine.<CommissionLine>find("entity = ?1 order by id", entity).firstResult();
+        Claim claim = new Claim();
+        claim.entity = entity;
+        claim.distributor = Distributor.<Distributor>findAll().firstResult();
+        claim.subject = "Taux appliqué inférieur au taux convenu";
+        claim.status = ClaimStatus.OPEN;
+        claim.receivedAt = clock.now();
+        claim.setCreatedAt(clock.now());
+        claim.setCreatedBy(USER);
+        claim.persist();
+        ClaimLine claimLine = new ClaimLine();
+        claimLine.claim = claim;
+        claimLine.commissionLine = line;
+        claimLine.persist();
     }
 
     /**

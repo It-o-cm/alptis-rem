@@ -300,4 +300,90 @@ public class AdjustmentService {
                 .firstResult();
         return parameter == null ? null : new BigDecimal(parameter.paramValue);
     }
+
+    /**
+     * Lists an entity's claims, newest first (REG-06).
+     *
+     * @param entity the entity
+     * @return the claim views
+     */
+    @Transactional
+    public List<ClaimView> claims(LegalEntity entity) {
+        List<ClaimView> views = new java.util.ArrayList<>();
+        for (Claim claim : Claim.<Claim>list("entity = ?1 order by receivedAt desc, id desc", entity)) {
+            views.add(toClaimView(claim));
+        }
+        return views;
+    }
+
+    /**
+     * Returns one claim with the commission lines it contests (REG-06).
+     *
+     * @param claimId the claim id
+     * @return the claim detail
+     * @throws ResourceNotFoundException when the claim is unknown
+     */
+    @Transactional
+    public ClaimDetail claimDetail(Long claimId) {
+        Claim claim = Claim.findById(claimId);
+        if (claim == null) {
+            throw new ResourceNotFoundException("Réclamation inconnue : " + claimId);
+        }
+        List<ContestedLine> lines = new java.util.ArrayList<>();
+        for (ClaimLine claimLine : ClaimLine.<ClaimLine>list("claim = ?1 order by id", claim)) {
+            CommissionLine line = claimLine.commissionLine;
+            lines.add(new ContestedLine(line.getId(), line.nature.name(), line.amount, line.status.name()));
+        }
+        return new ClaimDetail(toClaimView(claim), lines);
+    }
+
+    /**
+     * Maps a claim to its view.
+     *
+     * @param claim the claim
+     * @return the view
+     */
+    private static ClaimView toClaimView(Claim claim) {
+        return new ClaimView(claim.getId(), claim.distributor.partnerCode, claim.distributor.legalName, claim.subject,
+                claim.status.name(), claim.receivedAt, claim.closedAt, claim.resolution,
+                ClaimLine.count("claim = ?1", claim));
+    }
+
+    /**
+     * One row of the claims list (REG-06).
+     *
+     * @param id              the claim id
+     * @param distributorCode the claiming distributor's partner code, possibly null
+     * @param distributorName the claiming distributor's name, possibly null
+     * @param subject         the claim subject
+     * @param status          the claim status code
+     * @param receivedAt      when it was received
+     * @param closedAt        when it was closed, possibly null
+     * @param resolution      the resolution, possibly null
+     * @param lineCount       the number of contested lines
+     */
+    public record ClaimView(Long id, String distributorCode, String distributorName, String subject, String status,
+                            java.time.OffsetDateTime receivedAt, java.time.OffsetDateTime closedAt, String resolution,
+                            long lineCount) {
+    }
+
+    /**
+     * The detail of one claim: its view and the contested commission lines.
+     *
+     * @param claim the claim view
+     * @param lines the contested lines
+     */
+    public record ClaimDetail(ClaimView claim, List<ContestedLine> lines) {
+    }
+
+    /**
+     * One commission line contested by a claim.
+     *
+     * @param lineId the commission line id
+     * @param nature the line nature code
+     * @param amount the line amount
+     * @param status the line status code
+     */
+    public record ContestedLine(Long lineId, String nature, BigDecimal amount, String status) {
+    }
 }

@@ -33,6 +33,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { name: 'calculations', path: '/calculs', label: 'Exécutions de calcul' },
       { name: 'controls', path: '/controles', label: 'Contrôles' },
       { name: 'adjustments', path: '/ajustements', label: 'Ajustements' },
+      { name: 'claims', path: '/reclamations', label: 'Réclamations' },
       { name: 'payment', path: '/paiement', label: 'Paiement' },
       { name: 'statements', path: '/bordereaux', label: 'Bordereaux' },
     ],

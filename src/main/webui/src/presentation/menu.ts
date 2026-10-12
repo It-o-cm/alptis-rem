@@ -43,6 +43,7 @@ const SCREEN_ACTORS: Record<string, readonly Role[]> = {
   calculations: ['OPERATOR', 'BUSINESS_ADMIN'],
   controls: ['OPERATOR', 'BUSINESS_ADMIN'],
   adjustments: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR'],
+  claims: ['OPERATOR', 'BUSINESS_ADMIN'],
   payment: ['OPERATOR', 'FINANCE_CONTROLLER'],
   statements: ['OPERATOR', 'BUSINESS_ADMIN'],
   // Distributeurs

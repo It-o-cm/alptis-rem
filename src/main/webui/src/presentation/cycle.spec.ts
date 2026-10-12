@@ -7,6 +7,7 @@ import {
   canValidateFinance,
   paymentStatusLabel,
   batchTypeLabel,
+  claimStatusLabel,
   severityTag,
   decisionLabel,
 } from './cycle';
@@ -65,6 +66,13 @@ describe('payment status labels', () => {
     expect(batchTypeLabel('OFF_CYCLE')).toBe('Lot hors cycle');
     expect(batchTypeLabel('CHEQUE')).toBe('Lot de chèques');
     expect(batchTypeLabel('XXX')).toBe('XXX');
+  });
+
+  it('labels claim statuses in French and echoes an unknown one', () => {
+    expect(claimStatusLabel('OPEN')).toBe('Ouverte');
+    expect(claimStatusLabel('IN_PROGRESS')).toBe('En cours');
+    expect(claimStatusLabel('CLOSED')).toBe('Close');
+    expect(claimStatusLabel('XXX')).toBe('XXX');
   });
 });
 
