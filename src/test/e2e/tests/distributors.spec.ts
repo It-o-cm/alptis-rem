@@ -1,11 +1,13 @@
 import { test, expect, Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { resetDb, USERS } from '../support/helpers';
+import { loadDemo, resetDb, USERS } from '../support/helpers';
 
 // Per-screen tests for distributor search (REF-02, REP-03) and the hierarchy / production-code
-// detail (REF-03), partitioned by entity.
+// detail (REF-03), partitioned by entity. The consolidated fiche (REF-10, CPT-01, CPT-06) unites
+// identity, hierarchy, statuses, production codes, agreements, enrollments, quality indicators and
+// the per-entity account balances with their history.
 //
-// @screen:distributor-search @screen:production-hierarchy @req:REF-02 @req:REF-03
+// @screen:distributor-search @screen:production-hierarchy @req:REF-02 @req:REF-03 @req:REF-10 @req:CPT-01 @req:CPT-06
 
 const DISTRIBUTORS =
   'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n' +
@@ -61,6 +63,30 @@ test.describe('Distributeurs — opérateur', () => {
     const results = await new AxeBuilder({ page }).analyze();
     const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
     expect(serious, JSON.stringify(serious.map((v) => v.id))).toEqual([]);
+  });
+
+  test('la fiche consolidée réunit accords, inscriptions, indicateurs et comptes @screen:distributor-search @req:REF-10 @req:CPT-01 @req:CPT-06', async ({
+    page,
+  }) => {
+    await loadDemo(page.request);
+    await page.goto('/distributeurs');
+    await page.getByTestId('search-term').fill('P20001');
+    await page.getByTestId('search-button').click();
+
+    await page.getByTestId('distributor-row-P20001').click();
+    const fiche = page.getByTestId('distributor-detail');
+    await expect(fiche).toBeVisible();
+    // Hierarchy: the fiche names the grouping it heads.
+    await expect(fiche).toContainText('GRP-NORD');
+    // Agreements: at least the signed RCD amendment.
+    await expect(page.getByTestId('agreement-row-ACC-RCD-ALPTIS_ASSURANCES')).toBeVisible();
+    // Enrollments: the reserved RCD rule, active.
+    const enrollment = page.locator('[data-testid^="enrollment-row-"]').first();
+    await expect(enrollment).toBeVisible();
+    await expect(enrollment).toContainText('ACTIVE');
+    // Quality indicators and accounts are present in the same fiche.
+    await expect(page.locator('[data-testid="indicator-row"]').first()).toBeVisible();
+    await expect(page.getByTestId('account-ALPTIS_ASSURANCES')).toBeVisible();
   });
 });
 

@@ -1,12 +1,16 @@
 package fr.alptis.remuneration.integration;
 
+import fr.alptis.remuneration.accounts.AccountService;
+import fr.alptis.remuneration.domain.Agreement;
 import fr.alptis.remuneration.domain.BankAccount;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
+import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.ExternalCode;
+import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.PageResult;
 import fr.alptis.remuneration.domain.PayeeRule;
 import fr.alptis.remuneration.domain.PayeeRuleShare;
@@ -36,14 +40,18 @@ public class ReferentialQueryService {
 
     private final EntityScope scope;
 
+    private final AccountService accounts;
+
     /**
      * Creates the service.
      *
-     * @param scope the entity partition
+     * @param scope    the entity partition
+     * @param accounts the account service used to read a distributor's balances for the fiche
      */
     @Inject
-    public ReferentialQueryService(EntityScope scope) {
+    public ReferentialQueryService(EntityScope scope, AccountService accounts) {
         this.scope = scope;
+        this.accounts = accounts;
     }
 
     /**
@@ -95,8 +103,56 @@ public class ReferentialQueryService {
                 .map(pc -> new ProductionCodeView(pc.entity.code, pc.code, pc.label,
                         pc.status == null ? null : pc.status.name()))
                 .toList();
+        List<AgreementView> agreements = Agreement.<Agreement>list("distributor", distributor).stream()
+                .filter(a -> scope.canSee(a.entity.code))
+                .map(a -> new AgreementView(a.entity.code, a.agreementType.name(), a.reference,
+                        string(a.validFrom), string(a.validTo),
+                        a.signatureStatus == null ? null : a.signatureStatus.name()))
+                .toList();
+        List<EnrollmentView> enrollments = Enrollment.<Enrollment>list("distributor", distributor).stream()
+                .filter(e -> scope.canSee(e.rule.plan.entity.code))
+                .map(e -> new EnrollmentView(e.rule.plan.entity.code, e.rule.code, e.rule.label,
+                        e.status == null ? null : e.status.name(), string(e.validFrom), string(e.validTo)))
+                .toList();
+        List<QualityIndicatorView> indicators = QualityIndicator.<QualityIndicator>list(
+                        "distributor = ?1 order by periodTo desc", distributor).stream()
+                .filter(q -> scope.canSee(q.entity.code))
+                .map(q -> new QualityIndicatorView(q.entity.code, distributor.partnerCode,
+                        q.indicatorType == null ? null : q.indicatorType.name(),
+                        q.range == null ? null : q.range.code, string(q.periodTo),
+                        q.value == null ? null : q.value.toPlainString()))
+                .toList();
+        List<AccountSummaryView> accountSummaries = DistributorEntity.<DistributorEntity>list("distributor", distributor)
+                .stream()
+                .filter(de -> scope.canSee(de.entity.code))
+                .map(de -> de.entity)
+                .distinct()
+                .map(entity -> accountSummary(entity, distributor))
+                .toList();
         return new DistributorDetail(distributor.partnerCode, distributor.legalName,
-                distributor.group == null ? null : distributor.group.code, statuses, codes);
+                distributor.group == null ? null : distributor.group.code,
+                distributor.group == null ? null : distributor.group.label,
+                distributor.distributorType == null ? null : distributor.distributorType.name(),
+                statuses, codes, agreements, enrollments, indicators, accountSummaries);
+    }
+
+    /**
+     * Builds the account summary of a distributor in one entity: its running balance history and the
+     * current balance (the last point of the series, or zero when empty).
+     *
+     * @param entity      the entity
+     * @param distributor the distributor
+     * @return the account summary view
+     */
+    private AccountSummaryView accountSummary(LegalEntity entity, Distributor distributor) {
+        List<AccountService.MonthBalance> series = accounts.balanceSeries(entity, distributor);
+        List<MonthBalanceView> history = series.stream()
+                .map(mb -> new MonthBalanceView(string(mb.month()), mb.balance().toPlainString()))
+                .toList();
+        String balance = series.isEmpty()
+                ? java.math.BigDecimal.ZERO.toPlainString()
+                : series.get(series.size() - 1).balance().toPlainString();
+        return new AccountSummaryView(entity.code, balance, history);
     }
 
     /**
@@ -603,16 +659,74 @@ public class ReferentialQueryService {
     }
 
     /**
-     * Detail view of a distributor with its statuses and production codes.
+     * Consolidated fiche of a distributor (REF-10, CPT-01, CPT-06): identity and hierarchy, per-entity
+     * statuses, production codes, reserved-rule agreements and enrollments, quality indicators and the
+     * account balances with their month-by-month history.
      *
      * @param partnerCode     the partner code
      * @param legalName       the legal name
      * @param groupCode       the group code, if any
+     * @param groupLabel      the group label, if any
+     * @param distributorType the distributor type, if any
      * @param statuses        the per-entity statuses
      * @param productionCodes the production codes
+     * @param agreements      the reserved-rule and discount agreements
+     * @param enrollments     the reserved-rule enrollments
+     * @param indicators      the quality indicators, most recent first
+     * @param accounts        the per-entity account balances with their history
      */
-    public record DistributorDetail(String partnerCode, String legalName, String groupCode,
-                                    List<StatusView> statuses, List<ProductionCodeView> productionCodes) {
+    public record DistributorDetail(String partnerCode, String legalName, String groupCode, String groupLabel,
+                                    String distributorType, List<StatusView> statuses,
+                                    List<ProductionCodeView> productionCodes, List<AgreementView> agreements,
+                                    List<EnrollmentView> enrollments, List<QualityIndicatorView> indicators,
+                                    List<AccountSummaryView> accounts) {
+    }
+
+    /**
+     * A reserved-rule or discount agreement founding a distributor's rights (section 5.4).
+     *
+     * @param entityCode      the entity code
+     * @param agreementType   the agreement type
+     * @param reference       the agreement reference
+     * @param validFrom       the validity start
+     * @param validTo         the validity end, if any
+     * @param signatureStatus the signature status, if any
+     */
+    public record AgreementView(String entityCode, String agreementType, String reference,
+                                String validFrom, String validTo, String signatureStatus) {
+    }
+
+    /**
+     * A distributor's enrollment to a reserved rule (section 5.4).
+     *
+     * @param entityCode the entity code of the rule
+     * @param ruleCode   the rule code
+     * @param ruleLabel  the rule label
+     * @param status     the enrollment status, if any
+     * @param validFrom  the validity start
+     * @param validTo    the validity end, if any
+     */
+    public record EnrollmentView(String entityCode, String ruleCode, String ruleLabel, String status,
+                                 String validFrom, String validTo) {
+    }
+
+    /**
+     * A distributor's account balance in one entity, with its month-by-month history (CPT-06).
+     *
+     * @param entityCode the entity code
+     * @param balance    the current running balance
+     * @param history    the running balance per month, ascending
+     */
+    public record AccountSummaryView(String entityCode, String balance, List<MonthBalanceView> history) {
+    }
+
+    /**
+     * One month and the running account balance at the end of it.
+     *
+     * @param month   the month
+     * @param balance the running balance
+     */
+    public record MonthBalanceView(String month, String balance) {
     }
 
     /**

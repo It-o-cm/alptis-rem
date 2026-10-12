@@ -1,18 +1,31 @@
 package fr.alptis.remuneration.integration;
 
+import fr.alptis.remuneration.domain.AccountEntry;
+import fr.alptis.remuneration.domain.AccountEntryType;
 import fr.alptis.remuneration.domain.AdvanceDebtHandling;
+import fr.alptis.remuneration.domain.Agreement;
+import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.BankAccount;
+import fr.alptis.remuneration.domain.CommissionPlan;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.ContractStatus;
 import fr.alptis.remuneration.domain.Coverage;
+import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.DistributorType;
+import fr.alptis.remuneration.domain.Enrollment;
+import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.ExternalCode;
 import fr.alptis.remuneration.domain.Insurer;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.PartnerStatus;
+import fr.alptis.remuneration.domain.ProductRange;
+import fr.alptis.remuneration.domain.Rule;
+import fr.alptis.remuneration.domain.RuleFamily;
+import fr.alptis.remuneration.domain.SignatureStatus;
 import fr.alptis.remuneration.domain.PayeeRule;
 import fr.alptis.remuneration.domain.PayeeRuleShare;
 import fr.alptis.remuneration.domain.PayeeType;
@@ -53,6 +66,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
 class ReferentialQueryServiceTest {
 
+    /** The real account service, used by the consolidated fiche for a distributor's balances. */
+    @jakarta.inject.Inject
+    fr.alptis.remuneration.accounts.AccountService accounts;
+
     /** Builds an entity scope for the given visible codes ({@code *} for unrestricted). */
     private static EntityScope scope(List<String> entities) {
         QuarkusSecurityIdentity identity = QuarkusSecurityIdentity.builder()
@@ -63,13 +80,13 @@ class ReferentialQueryServiceTest {
     }
 
     /** Restricted service, seeing only Alptis. */
-    private static ReferentialQueryService restricted() {
-        return new ReferentialQueryService(scope(List.of("ALPTIS_ASSURANCES")));
+    private ReferentialQueryService restricted() {
+        return new ReferentialQueryService(scope(List.of("ALPTIS_ASSURANCES")), accounts);
     }
 
     /** Unrestricted service, seeing every entity. */
-    private static ReferentialQueryService unrestricted() {
-        return new ReferentialQueryService(scope(List.of("*")));
+    private ReferentialQueryService unrestricted() {
+        return new ReferentialQueryService(scope(List.of("*")), accounts);
     }
 
     /** Returns the seeded Alptis entity. */
@@ -159,6 +176,144 @@ class ReferentialQueryServiceTest {
         // Unrestricted sees the UNEP status and code too.
         assertEquals(2, unrestricted().distributor("P1").statuses().size());
         assertEquals(3, unrestricted().distributor("P1").productionCodes().size());
+    }
+
+    /**
+     * Reads the consolidated fiche: agreements, enrollments, quality indicators and the per-entity
+     * account balances with their history, each partitioned by entity and with the optional-field
+     * branches covered (set and unset signature, status, indicator fields; empty and non-empty
+     * balance series; a bare group with no label).
+     */
+    @Test
+    @TestTransaction
+    void reads_the_consolidated_fiche() {
+        Distributor d = seedDistributor();
+        LegalEntity unep = LegalEntity.<LegalEntity>find("code", "UNEP").firstResult();
+
+        // An Alptis agreement with a reference and a signature; a UNEP one with neither.
+        Agreement signed = new Agreement();
+        signed.entity = alptis();
+        signed.distributor = d;
+        signed.agreementType = AgreementType.PARTNERSHIP;
+        signed.reference = "ACC-1";
+        signed.validFrom = LocalDate.of(2026, 1, 1);
+        signed.signatureStatus = SignatureStatus.NOT_SIGNED;
+        signed.persist();
+        Agreement bare = new Agreement();
+        bare.entity = unep;
+        bare.distributor = d;
+        bare.agreementType = AgreementType.RCD_AMENDMENT;
+        bare.persist();
+
+        // An Alptis plan with a rule, enrolled with an active status; a UNEP plan rule with no status.
+        Enrollment active = enroll(alptis(), "RCD-RULE", d, EnrollmentStatus.ACTIVE);
+        Enrollment statusless = enroll(unep, "U-RULE", d, null);
+        assertNull(statusless.status);
+
+        // Two Alptis indicators (one full, one all-null) and one UNEP indicator.
+        ProductRange range = new ProductRange();
+        range.code = "SANTE";
+        range.label = "Santé";
+        range.persist();
+        indicator(alptis(), d, QualityIndicatorType.COMPLAINT_RATE, range, new BigDecimal("0.10"));
+        indicator(alptis(), d, null, null, null);
+        indicator(unep, d, QualityIndicatorType.UNPAID_RATE, null, new BigDecimal("0.20"));
+
+        // An Alptis account with one entry: a non-empty balance series. UNEP has none (empty → zero).
+        DistributorAccount account = new DistributorAccount();
+        account.entity = alptis();
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = d.getId();
+        account.persist();
+        AccountEntry entry = new AccountEntry();
+        entry.account = account;
+        entry.entryDate = LocalDate.of(2026, 3, 1);
+        entry.entryType = AccountEntryType.PAYMENT;
+        entry.amount = new BigDecimal("12.34");
+        entry.persist();
+
+        // Restricted to Alptis: one of each, the account series non-empty.
+        var restricted = restricted().distributor("P1");
+        assertEquals("G1", restricted.groupCode());
+        assertEquals("Groupe", restricted.groupLabel());
+        assertEquals(1, restricted.agreements().size());
+        assertEquals("ACC-1", restricted.agreements().get(0).reference());
+        assertEquals("NOT_SIGNED", restricted.agreements().get(0).signatureStatus());
+        assertEquals(1, restricted.enrollments().size());
+        assertEquals("ACTIVE", restricted.enrollments().get(0).status());
+        assertEquals(2, restricted.indicators().size());
+        assertEquals(1, restricted.accounts().size());
+        assertEquals("12.34", restricted.accounts().get(0).balance());
+        assertEquals(1, restricted.accounts().get(0).history().size());
+
+        // Unrestricted: the UNEP rows appear too, and UNEP's empty series yields a zero balance.
+        var all = unrestricted().distributor("P1");
+        assertEquals(2, all.agreements().size());
+        var unepAgreement = all.agreements().stream()
+                .filter(a -> a.entityCode().equals("UNEP")).findFirst().orElseThrow();
+        assertNull(unepAgreement.reference());
+        assertNull(unepAgreement.signatureStatus());
+        assertEquals(2, all.enrollments().size());
+        assertEquals(3, all.indicators().size());
+        assertTrue(all.indicators().stream().anyMatch(i -> i.indicatorType() == null));
+        assertEquals(2, all.accounts().size());
+        var unepAccount = all.accounts().stream().filter(a -> a.entityCode().equals("UNEP")).findFirst().orElseThrow();
+        assertEquals("0", unepAccount.balance());
+        assertTrue(unepAccount.history().isEmpty());
+    }
+
+    /**
+     * Seeds an enrollment of a distributor to a freshly-created rule in an entity's plan.
+     *
+     * @param entity      the entity whose plan carries the rule
+     * @param ruleCode    the rule code
+     * @param distributor the enrolled distributor
+     * @param status      the enrollment status, possibly null
+     * @return the persisted enrollment
+     */
+    private static Enrollment enroll(LegalEntity entity, String ruleCode, Distributor distributor,
+                                     EnrollmentStatus status) {
+        CommissionPlan plan = new CommissionPlan();
+        plan.entity = entity;
+        plan.code = ruleCode + "-PLAN";
+        plan.label = "Plan";
+        plan.direction = Direction.INBOUND;
+        plan.vintage = (short) 2026;
+        plan.persist();
+        Rule rule = new Rule();
+        rule.plan = plan;
+        rule.code = ruleCode;
+        rule.label = "Règle " + ruleCode;
+        rule.family = RuleFamily.LINEAR;
+        rule.persist();
+        Enrollment enrollment = new Enrollment();
+        enrollment.rule = rule;
+        enrollment.distributor = distributor;
+        enrollment.status = status;
+        enrollment.validFrom = LocalDate.of(2026, 1, 1);
+        enrollment.persist();
+        return enrollment;
+    }
+
+    /**
+     * Seeds a quality indicator for a distributor in an entity.
+     *
+     * @param entity        the entity
+     * @param distributor   the distributor
+     * @param indicatorType the indicator type, possibly null
+     * @param range         the product range, possibly null
+     * @param value         the value, possibly null
+     */
+    private static void indicator(LegalEntity entity, Distributor distributor, QualityIndicatorType indicatorType,
+                                  ProductRange range, BigDecimal value) {
+        QualityIndicator indicator = new QualityIndicator();
+        indicator.entity = entity;
+        indicator.distributor = distributor;
+        indicator.indicatorType = indicatorType;
+        indicator.range = range;
+        indicator.periodTo = LocalDate.of(2026, 6, 30);
+        indicator.value = value;
+        indicator.persist();
     }
 
     /**
