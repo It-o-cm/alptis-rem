@@ -75,7 +75,7 @@ d'accès serveur · test de bout en bout · état.
 | 32 | Convention d'escompte : paramètres, compteurs, garanties escomptées, simulation de rupture | PAR-09, CPT-08, 6.4 | `advance` / AdvanceAgreementsView | GET/POST /advance-agreements, GET /advance-agreements/{e}/{p} | advance-agreements.spec | complet — fiche convention : paramètres, compteurs (total escompté, apuré, créance), garanties escomptées (par garantie), et simulation de rupture (créance à récupérer si rompue aujourd'hui) |
 | 33 | Créances d'escompte par convention et par distributeur | CPT-08, BRD-09 | `discounts` / DiscountsView | GET /discount-summary/{e} | discounts.spec | complet — synthèse des escomptes par convention (versé, apuré, créance) et détail par adhérent (garanties escomptées) |
 | 34 | Recherche de contrats et de garanties | 5.2 | `contractSearch` / ContractsView | GET /contracts?q= | contracts.spec | complet |
-| 35 | Fiche d'une adhésion et de ses garanties : affectations, choix de rémunération, événements, lignes, position d'escompte | 5.2, 5.5 | — | (ContractsView montre les garanties seules) | contracts.spec | partiel — pas de fiche d'adhésion (affectations, choix de rémunération, événements, lignes, position d'escompte) |
+| 35 | Fiche d'une adhésion et de ses garanties : affectations, choix de rémunération, événements, lignes, position d'escompte | 5.2, 5.5 | `contractSearch` (détail) / ContractsView | GET /contracts/{e}/{n}/coverages/{c} | contracts.spec | complet — fiche d'une garantie ouverte depuis la recherche : affectations (code de production, rôle, part, origine), choix de rémunération, événements reçus, lignes produites et position d'escompte |
 
 ### Règles
 

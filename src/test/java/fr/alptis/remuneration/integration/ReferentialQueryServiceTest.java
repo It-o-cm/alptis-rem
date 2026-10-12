@@ -3,6 +3,8 @@ package fr.alptis.remuneration.integration;
 import fr.alptis.remuneration.domain.AccountEntry;
 import fr.alptis.remuneration.domain.AccountEntryType;
 import fr.alptis.remuneration.domain.AdvanceDebtHandling;
+import fr.alptis.remuneration.domain.AdvancePosition;
+import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.AuditEvent;
 import fr.alptis.remuneration.domain.Agreement;
 import fr.alptis.remuneration.domain.AgreementType;
@@ -56,6 +58,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -427,6 +430,128 @@ class ReferentialQueryServiceTest {
         var page = unrestricted().searchContracts(null, -1, 0);
         assertEquals(1, page.items().size());
         assertEquals(2, page.items().get(0).coverages().size());
+    }
+
+    /**
+     * Reads a guarantee fiche with its affectations, remuneration choices, events, lines and discount
+     * position (a full guarantee), and a bare one (every optional field unset, no position); an
+     * out-of-scope entity, an unknown contract and an unknown guarantee are not found.
+     */
+    @Test
+    @TestTransaction
+    void reads_the_coverage_fiche() {
+        Contract contract = new Contract();
+        contract.entity = alptis();
+        contract.sourceSystem = "CLEVA";
+        contract.contractNumber = "AD-9";
+        contract.status = ContractStatus.IN_FORCE;
+        contract.persist();
+
+        Coverage full = new Coverage();
+        full.contract = contract;
+        full.coverageCode = "CF";
+        full.status = ContractStatus.IN_FORCE;
+        full.effectDate = LocalDate.of(2026, 1, 1);
+        full.endDate = LocalDate.of(2026, 12, 31);
+        full.annualPremium = new BigDecimal("120.00");
+        full.persist();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = alptis();
+        pc.code = "PC-9";
+        pc.persist();
+        fr.alptis.remuneration.domain.CoverageAssignment assignment =
+                new fr.alptis.remuneration.domain.CoverageAssignment();
+        assignment.coverage = full;
+        assignment.productionCode = pc;
+        assignment.role = fr.alptis.remuneration.domain.AssignmentRole.MAIN;
+        assignment.share = new BigDecimal("1.0");
+        assignment.origin = fr.alptis.remuneration.domain.AssignmentOrigin.SUBSCRIPTION;
+        assignment.validFrom = LocalDate.of(2026, 1, 1);
+        assignment.persist();
+        fr.alptis.remuneration.domain.RemunerationChoice choice =
+                new fr.alptis.remuneration.domain.RemunerationChoice();
+        choice.coverage = full;
+        choice.mode = fr.alptis.remuneration.domain.RemunerationMode.UPFRONT;
+        choice.linearRate = new BigDecimal("0.10");
+        choice.acquisitionRate = new BigDecimal("0.30");
+        choice.servicingRate = new BigDecimal("0.05");
+        choice.advanceRequested = Boolean.TRUE;
+        choice.validFrom = LocalDate.of(2026, 1, 1);
+        choice.persist();
+        fr.alptis.remuneration.domain.BusinessEvent event = new fr.alptis.remuneration.domain.BusinessEvent();
+        event.entity = alptis();
+        event.coverage = full;
+        event.eventType = fr.alptis.remuneration.domain.EventType.PREMIUM_COLLECTED;
+        event.eventDate = LocalDate.of(2026, 4, 5);
+        event.processingStatus = fr.alptis.remuneration.domain.ProcessingStatus.PROCESSED;
+        event.persist();
+        fr.alptis.remuneration.domain.CommissionLine line = new fr.alptis.remuneration.domain.CommissionLine();
+        line.entity = alptis();
+        line.coverage = full;
+        line.nature = fr.alptis.remuneration.domain.LineNature.ACQUISITION;
+        line.direction = fr.alptis.remuneration.domain.Direction.OUTBOUND;
+        line.status = fr.alptis.remuneration.domain.LineStatus.EARNED;
+        line.amount = new BigDecimal("30.00");
+        line.persist();
+        AdvancePosition position = new AdvancePosition();
+        position.coverage = full;
+        position.status = AdvanceStatus.ACTIVE;
+        position.advancedAcquisition = new BigDecimal("30.00");
+        position.offsetAcquisition = new BigDecimal("5.00");
+        position.persist();
+
+        Coverage bare = new Coverage();
+        bare.contract = contract;
+        bare.coverageCode = "CB";
+        bare.persist();
+        fr.alptis.remuneration.domain.CoverageAssignment bareAssignment =
+                new fr.alptis.remuneration.domain.CoverageAssignment();
+        bareAssignment.coverage = bare;
+        bareAssignment.persist();
+        fr.alptis.remuneration.domain.RemunerationChoice bareChoice =
+                new fr.alptis.remuneration.domain.RemunerationChoice();
+        bareChoice.coverage = bare;
+        bareChoice.persist();
+        fr.alptis.remuneration.domain.BusinessEvent bareEvent = new fr.alptis.remuneration.domain.BusinessEvent();
+        bareEvent.entity = alptis();
+        bareEvent.coverage = bare;
+        bareEvent.persist();
+        fr.alptis.remuneration.domain.CommissionLine bareLine = new fr.alptis.remuneration.domain.CommissionLine();
+        bareLine.entity = alptis();
+        bareLine.coverage = bare;
+        bareLine.amount = new BigDecimal("1.00");
+        bareLine.persist();
+
+        var full9 = restricted().coverage("ALPTIS_ASSURANCES", "AD-9", "CF");
+        assertEquals("MAIN", full9.assignments().get(0).role());
+        assertEquals("UPFRONT", full9.choices().get(0).mode());
+        assertTrue(full9.choices().get(0).advanceRequested());
+        assertEquals("PREMIUM_COLLECTED", full9.events().get(0).eventType());
+        assertEquals("ACQUISITION", full9.lines().get(0).nature());
+        assertEquals("ACTIVE", full9.position().status());
+        assertEquals("30.00", full9.position().advanced());
+
+        // A guarantee whose discount position carries no status, to cover the null-status leg.
+        Coverage statusless = new Coverage();
+        statusless.contract = contract;
+        statusless.coverageCode = "CS";
+        statusless.persist();
+        AdvancePosition statuslessPosition = new AdvancePosition();
+        statuslessPosition.coverage = statusless;
+        statuslessPosition.persist();
+        assertNull(restricted().coverage("ALPTIS_ASSURANCES", "AD-9", "CS").position().status());
+
+        var bare9 = restricted().coverage("ALPTIS_ASSURANCES", "AD-9", "CB");
+        assertNull(bare9.assignments().get(0).role());
+        assertNull(bare9.choices().get(0).mode());
+        assertFalse(bare9.choices().get(0).advanceRequested());
+        assertNull(bare9.events().get(0).eventType());
+        assertNull(bare9.lines().get(0).nature());
+        assertNull(bare9.position());
+
+        assertThrows(ResourceNotFoundException.class, () -> restricted().coverage("UNEP", "AD-9", "CF"));
+        assertThrows(ResourceNotFoundException.class, () -> restricted().coverage("ALPTIS_ASSURANCES", "NOPE", "CF"));
+        assertThrows(ResourceNotFoundException.class, () -> restricted().coverage("ALPTIS_ASSURANCES", "AD-9", "NOPE"));
     }
 
     /**

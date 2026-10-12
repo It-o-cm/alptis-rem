@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
@@ -46,5 +47,24 @@ public class ContractsResource {
                                            @QueryParam("page") @DefaultValue("0") int page,
                                            @QueryParam("size") @DefaultValue("20") int size) {
         return query.searchContracts(q, page, size);
+    }
+
+    /**
+     * Returns the fiche of a membership's guarantee: its affectations, remuneration choices, events,
+     * commission lines and discount position (sections 5.2, 5.5).
+     *
+     * @param entityCode     the entity code
+     * @param contractNumber the contract (membership) number
+     * @param coverageCode   the guarantee code
+     * @return the guarantee detail
+     */
+    @GET
+    @Path("/{entityCode}/{contractNumber}/coverages/{coverageCode}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public ReferentialQueryService.CoverageDetail coverage(@PathParam("entityCode") String entityCode,
+                                                           @PathParam("contractNumber") String contractNumber,
+                                                           @PathParam("coverageCode") String coverageCode) {
+        return query.coverage(entityCode, contractNumber, coverageCode);
     }
 }

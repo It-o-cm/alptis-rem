@@ -1,8 +1,13 @@
 package fr.alptis.remuneration.integration;
 
 import fr.alptis.remuneration.accounts.AccountService;
+import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.Agreement;
 import fr.alptis.remuneration.domain.AuditEvent;
+import fr.alptis.remuneration.domain.BusinessEvent;
+import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.CoverageAssignment;
+import fr.alptis.remuneration.domain.RemunerationChoice;
 import fr.alptis.remuneration.domain.BankAccount;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Coverage;
@@ -241,6 +246,77 @@ public class ReferentialQueryService {
                 .toList();
         return new ContractView(contract.entity.code, contract.contractNumber, contract.sourceSystem,
                 contract.status == null ? null : contract.status.name(), coverages);
+    }
+
+    /**
+     * Returns the fiche of a membership's guarantee (sections 5.2, 5.5): its affectations, its
+     * remuneration choices, the events received on it, the commission lines it produced, and its
+     * discount position, within the caller's entity partition.
+     *
+     * @param entityCode     the entity code
+     * @param contractNumber the contract (membership) number
+     * @param coverageCode   the guarantee code within the contract
+     * @return the guarantee detail
+     * @throws ResourceNotFoundException if out of scope, or the contract or guarantee is unknown
+     */
+    @Transactional
+    public CoverageDetail coverage(String entityCode, String contractNumber, String coverageCode) {
+        if (!scope.canSee(entityCode)) {
+            throw new ResourceNotFoundException("Entité hors périmètre : " + entityCode);
+        }
+        Contract contract = Contract.<Contract>find("entity.code = ?1 and contractNumber = ?2", entityCode,
+                contractNumber).firstResult();
+        if (contract == null) {
+            throw new ResourceNotFoundException("Contrat introuvable : " + contractNumber);
+        }
+        Coverage coverage = Coverage.<Coverage>find("contract = ?1 and coverageCode = ?2", contract, coverageCode)
+                .firstResult();
+        if (coverage == null) {
+            throw new ResourceNotFoundException("Garantie introuvable : " + coverageCode);
+        }
+        List<AssignmentView> assignments = CoverageAssignment.<CoverageAssignment>list("coverage", coverage).stream()
+                .map(a -> new AssignmentView(a.productionCode == null ? null : a.productionCode.code,
+                        a.role == null ? null : a.role.name(),
+                        a.share == null ? null : a.share.toPlainString(),
+                        a.origin == null ? null : a.origin.name(), string(a.validFrom), string(a.validTo)))
+                .toList();
+        List<ChoiceView> choices = RemunerationChoice.<RemunerationChoice>list("coverage", coverage).stream()
+                .map(c -> new ChoiceView(c.mode == null ? null : c.mode.name(),
+                        c.linearRate == null ? null : c.linearRate.toPlainString(),
+                        c.acquisitionRate == null ? null : c.acquisitionRate.toPlainString(),
+                        c.servicingRate == null ? null : c.servicingRate.toPlainString(),
+                        Boolean.TRUE.equals(c.advanceRequested), string(c.validFrom), string(c.validTo)))
+                .toList();
+        List<EventRefView> events = BusinessEvent.<BusinessEvent>list("coverage = ?1 order by eventDate", coverage)
+                .stream()
+                .map(e -> new EventRefView(e.eventType == null ? null : e.eventType.name(), string(e.eventDate),
+                        e.processingStatus == null ? null : e.processingStatus.name()))
+                .toList();
+        List<LineRefView> lines = CommissionLine.<CommissionLine>list("coverage = ?1 order by id", coverage).stream()
+                .map(l -> new LineRefView(l.nature == null ? null : l.nature.name(), l.amount,
+                        l.status == null ? null : l.status.name()))
+                .toList();
+        AdvancePosition position = AdvancePosition.<AdvancePosition>find("coverage", coverage).firstResult();
+        PositionRefView positionView = position == null ? null
+                : new PositionRefView(position.status == null ? null : position.status.name(),
+                        nz(position.advancedAcquisition).add(nz(position.advancedServicing))
+                                .add(nz(position.advancedLinear)).toPlainString(),
+                        nz(position.offsetAcquisition).add(nz(position.offsetServicing))
+                                .add(nz(position.offsetLinear)).toPlainString());
+        return new CoverageDetail(coverage.coverageCode, contract.contractNumber,
+                coverage.status == null ? null : coverage.status.name(), string(coverage.effectDate),
+                string(coverage.endDate), coverage.annualPremium == null ? null : coverage.annualPremium.toPlainString(),
+                assignments, choices, events, lines, positionView);
+    }
+
+    /**
+     * Returns the value or zero when null.
+     *
+     * @param value the value, possibly null
+     * @return the value, or zero
+     */
+    private static java.math.BigDecimal nz(java.math.BigDecimal value) {
+        return value == null ? java.math.BigDecimal.ZERO : value;
     }
 
     /**
@@ -696,6 +772,86 @@ public class ReferentialQueryService {
      * @param annualPremium the annualised premium
      */
     public record CoverageView(String coverageCode, String status, String annualPremium) {
+    }
+
+    /**
+     * Fiche of a membership's guarantee (sections 5.2, 5.5).
+     *
+     * @param coverageCode   the guarantee code
+     * @param contractNumber the contract (membership) number
+     * @param status         the guarantee status
+     * @param effectDate     the effect date
+     * @param endDate        the end date, if any
+     * @param annualPremium  the annualised premium, if any
+     * @param assignments    the affectations to production codes over time
+     * @param choices        the remuneration choices over time
+     * @param events         the events received on the guarantee
+     * @param lines          the commission lines produced from the guarantee
+     * @param position       the discount position, if any
+     */
+    public record CoverageDetail(String coverageCode, String contractNumber, String status, String effectDate,
+                                 String endDate, String annualPremium, List<AssignmentView> assignments,
+                                 List<ChoiceView> choices, List<EventRefView> events, List<LineRefView> lines,
+                                 PositionRefView position) {
+    }
+
+    /**
+     * One affectation of a guarantee to a production code (section 5.2).
+     *
+     * @param productionCode the production code, if any
+     * @param role           the role, if any
+     * @param share          the share percentage, if any
+     * @param origin         the origin, if any
+     * @param validFrom      the validity start
+     * @param validTo        the validity end, if any
+     */
+    public record AssignmentView(String productionCode, String role, String share, String origin,
+                                 String validFrom, String validTo) {
+    }
+
+    /**
+     * One remuneration choice of a guarantee (section 5.5).
+     *
+     * @param mode            the remuneration mode, if any
+     * @param linearRate      the linear rate, if any
+     * @param acquisitionRate the acquisition rate, if any
+     * @param servicingRate   the servicing rate, if any
+     * @param advanceRequested whether the discount was requested
+     * @param validFrom       the validity start
+     * @param validTo         the validity end, if any
+     */
+    public record ChoiceView(String mode, String linearRate, String acquisitionRate, String servicingRate,
+                             boolean advanceRequested, String validFrom, String validTo) {
+    }
+
+    /**
+     * One event received on a guarantee.
+     *
+     * @param eventType the event type, if any
+     * @param eventDate the event date
+     * @param status    the processing status, if any
+     */
+    public record EventRefView(String eventType, String eventDate, String status) {
+    }
+
+    /**
+     * One commission line produced from a guarantee.
+     *
+     * @param nature the line nature, if any
+     * @param amount the amount
+     * @param status the line status, if any
+     */
+    public record LineRefView(String nature, java.math.BigDecimal amount, String status) {
+    }
+
+    /**
+     * The discount position of a guarantee.
+     *
+     * @param status   the advance-position status, if any
+     * @param advanced the amount advanced
+     * @param offset   the amount offset (apuré)
+     */
+    public record PositionRefView(String status, String advanced, String offset) {
     }
 
     /**
