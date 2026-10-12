@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.engine;
 
+import fr.alptis.remuneration.domain.AssignmentOrigin;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
@@ -19,6 +20,7 @@ import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.RemunerationChoice;
 import fr.alptis.remuneration.domain.RemunerationMode;
+import fr.alptis.remuneration.domain.ReplacementOrder;
 import fr.alptis.remuneration.domain.Rule;
 import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.RuleVersion;
@@ -205,6 +207,61 @@ class CalculationEngineTest {
 
     private static final String BASE_LINEAR_SCOPE =
             "{\"entity\":[\"UNEP\"],\"product\":[\"SANTE_SELECT\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}";
+
+    /**
+     * REF-09: a replacement order reassigns the contract's main garantie to the new production code at
+     * its effect date, so a premium collected after it is commissioned to the new broker; the old
+     * assignment is closed the day before. A rerun reassigns nothing more (idempotent).
+     */
+    @Test
+    @TestTransaction
+    void ref09_replacement_order_reassigns_to_the_new_broker() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("RO", p, null, "P1");
+        linearChoice(c, "0.15", MONTH, null);
+        version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, LocalDate.of(2026, 12, 31));
+        // The new broker's production code.
+        Distributor newBroker = new Distributor();
+        newBroker.partnerCode = "P2";
+        newBroker.legalName = "Nouveau";
+        newBroker.persist();
+        ProductionCode target = new ProductionCode();
+        target.entity = unep();
+        target.code = "PC-NEW";
+        target.distributor = newBroker;
+        target.persist();
+        ProductionCode old = ProductionCode.<ProductionCode>find("code", "PC-RO").firstResult();
+        ReplacementOrder order = new ReplacementOrder();
+        order.contract = c.contract;
+        order.fromProductionCode = old;
+        order.toProductionCode = target;
+        order.receivedDate = MONTH;
+        order.effectDate = MONTH.plusDays(10);
+        order.persist();
+        // The premium is collected after the effect date.
+        premium(c, "E1", MONTH.plusDays(20), "100.00");
+
+        engine.runReal("UNEP", MONTH);
+
+        List<CommissionLine> lines = lines();
+        assertEquals(1, lines.size());
+        assertEquals("PC-NEW", lines.get(0).originProductionCode.code);
+        // The old main assignment is closed the day before the effect date; a replacement-origin one opens.
+        CoverageAssignment closed = CoverageAssignment.<CoverageAssignment>find(
+                "coverage = ?1 and productionCode = ?2", c, old).firstResult();
+        assertEquals(MONTH.plusDays(9), closed.validTo);
+        assertEquals(1, CoverageAssignment.count("coverage = ?1 and origin = ?2 and validTo is null", c,
+                AssignmentOrigin.REPLACEMENT_ORDER));
+
+        // A rerun applies the order again but reassigns nothing more: still a single open replacement
+        // assignment, and the old one stays closed (idempotent, no processed flag needed).
+        engine.runReal("UNEP", MONTH);
+        assertEquals(1, CoverageAssignment.count("coverage = ?1 and origin = ?2 and validTo is null", c,
+                AssignmentOrigin.REPLACEMENT_ORDER));
+        assertEquals(1, CoverageAssignment.count("coverage = ?1 and productionCode = ?2 and validTo = ?3", c, old,
+                MONTH.plusDays(9)));
+    }
 
     /**
      * CR-01: a linear 15% rule on a 100 € premium yields one LINEAR line of 15,00 €.

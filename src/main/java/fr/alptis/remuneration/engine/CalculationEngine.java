@@ -42,6 +42,7 @@ import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.Period;
+import fr.alptis.remuneration.domain.ReplacementOrder;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.ProductionCode;
@@ -145,6 +146,11 @@ public class CalculationEngine {
         // ceded garanties to the transferee, so their later premiums go to it, and settle the discount
         // receivable on the transferor when it repays it.
         applyPortfolioTransfers(entity, period, run);
+
+        // Apply the replacement orders that take effect by this period (REF-09): reassign the contract's
+        // main garanties from the old to the new production code at the effect date, so later premiums
+        // are commissioned to the new broker.
+        applyReplacementOrders(entity, period);
 
         List<BusinessEvent> events = BusinessEvent.list(
                 "entity = ?1 and processingStatus = ?2 order by coverage.id, eventDate, receivedDate, sourceKey",
@@ -824,6 +830,39 @@ public class CalculationEngine {
                 reassignMain(main, transfer);
             }
             transfer.status = TransferStatus.PROCESSED;
+        }
+    }
+
+    /**
+     * Applies the replacement orders that take effect by this period (REF-09): for each order whose
+     * effect date has been reached, the contract's open main assignments still held by the old
+     * production code are closed the day before the effect date and reopened on the new production code
+     * from it, so later premiums are commissioned to the new broker. It is idempotent — an order already
+     * applied finds no open assignment on the old code and does nothing — so a rerun gives the same
+     * state without a processed flag.
+     *
+     * @param entity the entity
+     * @param period the period
+     */
+    private void applyReplacementOrders(LegalEntity entity, Period period) {
+        LocalDate periodEnd = period.periodMonth.plusMonths(1).minusDays(1);
+        List<ReplacementOrder> orders = ReplacementOrder.<ReplacementOrder>list(
+                "fromProductionCode.entity = ?1 and effectDate <= ?2 order by effectDate, id", entity, periodEnd);
+        for (ReplacementOrder order : orders) {
+            for (CoverageAssignment main : CoverageAssignment.<CoverageAssignment>list(
+                    "role = ?1 and validTo is null and productionCode = ?2 and coverage.contract = ?3",
+                    fr.alptis.remuneration.domain.AssignmentRole.MAIN, order.fromProductionCode, order.contract)) {
+                main.validTo = order.effectDate.minusDays(1);
+                CoverageAssignment next = new CoverageAssignment();
+                next.coverage = main.coverage;
+                next.productionCode = order.toProductionCode;
+                next.role = fr.alptis.remuneration.domain.AssignmentRole.MAIN;
+                next.share = main.share;
+                next.origin = fr.alptis.remuneration.domain.AssignmentOrigin.REPLACEMENT_ORDER;
+                next.validFrom = order.effectDate;
+                next.setCreatedAt(clock.now());
+                next.persist();
+            }
         }
     }
 
