@@ -229,6 +229,22 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-16: a commercial simulates a month with a hypothetical production (objective met) and the
+     * measured one; a viewer is refused.
+     */
+    @Test
+    void simulates_the_variable() {
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/simulate/E1?month=" + MONTH + "&production=2000")
+                .then().statusCode(200).body("achieved", is(true)).body("amount", is(146.0f));
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/simulate/E1?month=" + MONTH)
+                .then().statusCode(200).body("weightedProduction", org.hamcrest.Matchers.notNullValue());
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/simulate/E1?month=" + MONTH).then().statusCode(403);
+    }
+
+    /**
      * A commercial consults its own variable; a UNEP user is out of scope and a viewer may not run.
      */
     @Test

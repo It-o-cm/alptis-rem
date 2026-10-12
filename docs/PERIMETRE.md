@@ -137,7 +137,7 @@ d'accès serveur · test de bout en bout · état.
 | 69 | Objectifs individuels et collectifs, versionnés | FDV-03 | `fdvObjectives` / FdvObjectivesView | GET/POST /fdv/{e}/objectives | fdv.spec | complet — écran de gestion : objectifs individuels et collectifs, quantitatifs et qualitatifs, par poste et période, versionnés en ajout seul (nouvel objectif de même clé = version suivante, le calcul lit la dernière) |
 | 70 | Plan de variable par poste | FDV-04, FDV-09→12 | `fdvPlan` / FdvPlanView | GET/POST /fdv/{e}/plans, POST run | fdv.spec | complet — gestion des plans par poste et composante : enveloppe, mensualité, barèmes/critères/règles d'absence en paramètres JSON (dont paliers de croissance FDV-09, vente directe FDV-10, réduction sur résiliation FDV-12) et validité datée ; le calcul des composantes FDV-09/10/12 reste reporté à l'atelier direction commerciale (§8.14 Limites, H-21, voir DECISIONS) |
 | 71 | Validation mensuelle par le responsable | FDV-13 | `fdvValidation` / FdvValidationView | GET results, POST validate/adjust | fdv.spec | complet |
-| 72 | Mon variable, mes objectifs, mon historique, simulateur | FDV-15, FDV-16 | `fdvCommercial` / FdvCommercialView | GET /fdv/{e}/my-variable/{id} | fdv.spec | partiel — simulateur (FDV-16) absent |
+| 72 | Mon variable, mes objectifs, mon historique, simulateur | FDV-15, FDV-16 | `fdvCommercial` / FdvCommercialView | GET /fdv/{e}/my-variable/{id}, GET /fdv/{e}/simulate/{id} | fdv.spec | complet — historique mois par mois (FDV-15) et simulateur (FDV-16) : production pondérée hypothétique ou mesurée, taux d'atteinte, mensualité simulée et alerte de seuil, sans persistance (même règle que le calcul réel) |
 | 73 | Synthèse des variables à payer et export paie | FDV-14 | `fdvValidation` / FdvValidationView | POST /fdv/{e}/{m}/pay-export | fdv.spec | partiel — export paie présent ; écran de synthèse des variables à payer par personne absent |
 
 ## Écrans impliqués par les exigences, hors inventaire
@@ -356,7 +356,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | FDV-13 | SalesForceService (validate/adjust) | #71 | fdv | complet |
 | FDV-14 | SalesForceService (pay-export) | #73 | fdv | partiel — écran de synthèse des variables à payer absent |
 | FDV-15 | SalesForceQueryService | #72 | fdv | complet |
-| FDV-16 | — | #72 | — | absent — simulateur et alertes de seuil |
+| FDV-16 | SalesForceService (simulateMonthly) | #72 | fdv | complet — simulateur de variable (production hypothétique ou mesurée) et alerte d'atteinte de seuil, sans persistance |
 
 ## Cas de recette — état du rejeu
 

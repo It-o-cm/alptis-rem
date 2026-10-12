@@ -281,6 +281,58 @@ class SalesForceServiceTest {
     }
 
     /**
+     * FDV-16: the simulator shares the real rule without persisting — a hypothetical reaching the
+     * objective pays the instalment, a low one raises a shortfall alert, the measured production is used
+     * when none is supplied, and missing plan, missing objective and zero target are handled.
+     */
+    @Test
+    @TestTransaction
+    void simulates_the_monthly_variable() {
+        Employee e1 = employee("E1", JobCode.CAC);
+        plan(JobCode.CAC, "2450", "146");
+        objective(e1, "1000");
+
+        // A hypothetical above the objective pays the instalment.
+        var high = service.simulateMonthly("UNEP", "E1", M, new BigDecimal("2000"));
+        assertTrue(high.achieved());
+        assertEquals(0, new BigDecimal("146").compareTo(high.amount()));
+        assertTrue(high.alert().contains("Objectif atteint"));
+
+        // A low hypothetical raises a shortfall alert and pays nothing.
+        var low = service.simulateMonthly("UNEP", "E1", M, new BigDecimal("500"));
+        assertTrue(!low.achieved());
+        assertEquals(0, BigDecimal.ZERO.compareTo(low.amount()));
+        assertTrue(low.alert().contains("Il manque 500"));
+
+        // With no hypothetical, the measured production is used (2000 particulier → 1400 pondéré ≥ 1000).
+        measure(e1, MeasureType.PRODUCTION, "particulier", "2000");
+        var measured = service.simulateMonthly("UNEP", "E1", M, null);
+        assertTrue(measured.achieved());
+
+        // An employee with a plan but no objective: no target, rate zero.
+        Employee e2 = employee("E2", JobCode.CAC);
+        var noObjective = service.simulateMonthly("UNEP", "E2", M, new BigDecimal("3000"));
+        assertEquals(null, noObjective.target());
+        assertEquals(0, BigDecimal.ZERO.compareTo(noObjective.achievementRate()));
+        assertTrue(noObjective.alert().contains("Aucun objectif"));
+
+        // A zero-target objective: never achieved, rate zero.
+        Employee e3 = employee("E3", JobCode.RR);
+        plan(JobCode.RR, "4200", "300");
+        objective(e3, "0");
+        var zeroTarget = service.simulateMonthly("UNEP", "E3", M, new BigDecimal("100"));
+        assertTrue(!zeroTarget.achieved());
+        assertEquals(0, BigDecimal.ZERO.compareTo(zeroTarget.achievementRate()));
+
+        // An employee with no plan at all.
+        Employee e4 = employee("E4", JobCode.DR);
+        var noPlan = service.simulateMonthly("UNEP", "E4", M, new BigDecimal("100"));
+        assertTrue(noPlan.alert().contains("Aucun plan"));
+
+        assertThrows(ResourceNotFoundException.class, () -> service.simulateMonthly("UNEP", "GHOST", M, null));
+    }
+
+    /**
      * FDV-04: a plan is created with its envelope, instalment and parameters, then updated in place for
      * the same key (post, component, start of validity); a blank parameters payload is accepted.
      */

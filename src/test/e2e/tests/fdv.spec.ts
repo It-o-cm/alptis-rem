@@ -9,7 +9,7 @@ import { resetDb, seedFdv, USERS } from '../support/helpers';
 //
 // @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial @screen:fdvCollaborators @screen:fdvMeasures
 // @screen:fdvObjectives
-// @req:FDV-01 @req:FDV-02 @req:FDV-03 @req:FDV-04 @req:FDV-13 @req:FDV-14 @req:FDV-15
+// @req:FDV-01 @req:FDV-02 @req:FDV-03 @req:FDV-04 @req:FDV-13 @req:FDV-14 @req:FDV-15 @req:FDV-16
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
@@ -47,7 +47,9 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   await finance.close();
 });
 
-test('le commercial consulte son variable @screen:fdvCommercial @req:FDV-15', async ({ browser }) => {
+test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16', async ({
+  browser,
+}) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
   const adminPage = await admin.newPage();
   await adminPage.goto('/fdv/plan');
@@ -62,6 +64,13 @@ test('le commercial consulte son variable @screen:fdvCommercial @req:FDV-15', as
   await page.getByTestId('fdvc-load').click();
   await expect(page.locator('[data-testid^="my-result-"]').first()).toBeVisible();
   await expect(page.locator('[data-testid^="chart-gauge-"]').first()).toBeVisible();
+
+  // The simulator (FDV-16): a hypothetical production above the objective pays the instalment.
+  await page.getByTestId('sim-month').fill('2026-09-01');
+  await page.getByTestId('sim-production').fill('5000');
+  await page.getByTestId('sim-run').click();
+  await expect(page.getByTestId('sim-alert')).toContainText('Objectif atteint');
+  await expect(page.getByTestId('sim-amount')).toContainText('€');
   await rep.close();
 });
 

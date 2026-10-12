@@ -213,6 +213,71 @@ public class SalesForceService {
     }
 
     /**
+     * Simulates a commercial's monthly individual variable (FDV-16) without persisting anything: given
+     * a hypothetical weighted production (or, when none is supplied, the production actually measured),
+     * it tells whether the objective would be met, the achievement rate, the instalment that would be
+     * paid and a threshold alert. The simulation shares the real computation's rule.
+     *
+     * @param entityCode   the entity code
+     * @param externalId   the commercial's external id
+     * @param periodMonth  the month to simulate
+     * @param hypothetical a hypothetical weighted production, or null to use the measured one
+     * @return the simulation result
+     */
+    public SimulationResult simulateMonthly(String entityCode, String externalId, LocalDate periodMonth,
+                                            BigDecimal hypothetical) {
+        LegalEntity entity = entity(entityCode);
+        Employee employee = Employee.<Employee>find("entity = ?1 and externalId = ?2", entity, externalId)
+                .firstResult();
+        if (employee == null) {
+            throw new ResourceNotFoundException("Collaborateur inconnu : " + externalId);
+        }
+        LocalDate from = periodMonth.withDayOfMonth(1);
+        LocalDate to = periodMonth.withDayOfMonth(periodMonth.lengthOfMonth());
+        BigDecimal weighted = hypothetical != null ? hypothetical : weightedProduction(employee, from, to);
+        VariablePlan plan = VariablePlan.<VariablePlan>find(
+                "entity = ?1 and jobCode = ?2 and component = ?3 and validFrom <= ?4"
+                        + " and (validTo is null or validTo >= ?4)",
+                entity, employee.jobCode, VariableComponent.MONTHLY_INDIVIDUAL, periodMonth).firstResult();
+        if (plan == null) {
+            return new SimulationResult(weighted, null, BigDecimal.ZERO, BigDecimal.ZERO, false,
+                    "Aucun plan de variable pour ce poste.");
+        }
+        SalesObjective objective = SalesObjective.<SalesObjective>find(
+                "employee = ?1 and objectiveType = ?2 and periodFrom <= ?3 and periodTo >= ?3 order by versionNo desc",
+                employee, ObjectiveType.INDIVIDUAL_QUANTITATIVE, from).firstResult();
+        BigDecimal target = objective == null ? null : objective.targetValue;
+        boolean achieved = target != null && target.signum() > 0 && weighted.compareTo(target) >= 0;
+        BigDecimal rate = target == null || target.signum() == 0 ? BigDecimal.ZERO
+                : weighted.divide(target, 6, RoundingMode.HALF_UP).min(BigDecimal.ONE);
+        BigDecimal amount = achieved ? plan.instalmentAmount : BigDecimal.ZERO;
+        String alert;
+        if (target == null) {
+            alert = "Aucun objectif défini pour ce mois.";
+        } else if (achieved) {
+            alert = "Objectif atteint : la mensualité de " + plan.instalmentAmount.toPlainString() + " € serait versée.";
+        } else {
+            alert = "Il manque " + target.subtract(weighted).toPlainString()
+                    + " € de production pondérée pour atteindre l'objectif.";
+        }
+        return new SimulationResult(weighted, target, rate, amount, achieved, alert);
+    }
+
+    /**
+     * The result of a variable simulation (FDV-16).
+     *
+     * @param weightedProduction the weighted production used
+     * @param target             the objective target, or null when none
+     * @param achievementRate    the achievement rate (0 to 1)
+     * @param amount             the instalment that would be paid
+     * @param achieved           whether the objective would be met
+     * @param alert              the threshold alert message
+     */
+    public record SimulationResult(BigDecimal weightedProduction, BigDecimal target, BigDecimal achievementRate,
+                                   BigDecimal amount, boolean achieved, String alert) {
+    }
+
+    /**
      * Creates or updates a variable plan of a post (FDV-04): its annual envelope, its monthly
      * instalment, its parameters (criteria, scales and absence rules as JSON) and its validity. A plan
      * is versioned by its validity dates, without status (section 8.14); the natural key is the entity,

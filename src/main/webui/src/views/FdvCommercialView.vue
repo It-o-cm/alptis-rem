@@ -4,8 +4,17 @@ import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
 import GaugeChart from '../components/charts/GaugeChart.vue';
-import { AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
+
+interface Simulation {
+  weightedProduction: number;
+  target: number | null;
+  achievementRate: number;
+  amount: number;
+  achieved: boolean;
+  alert: string;
+}
 
 interface Result {
   id: number;
@@ -44,6 +53,11 @@ const columns: Column<Result>[] = [
   { key: 'adjustmentReason', label: 'Motif', value: (r) => r.adjustmentReason ?? '—' },
 ];
 
+const simMonth = ref('2026-09-01');
+const simProduction = ref<number | null>(null);
+const simulation = ref<Simulation | null>(null);
+const simError = ref('');
+
 /** Loads the commercial's own variable for the given matriculation. */
 async function load(): Promise<void> {
   error.value = '';
@@ -57,6 +71,21 @@ async function load(): Promise<void> {
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
   } finally {
     loading.value = false;
+  }
+}
+
+/** Simulates the monthly variable for the matricule, month and optional hypothetical production (FDV-16). */
+async function simulate(): Promise<void> {
+  simError.value = '';
+  simulation.value = null;
+  const query = simProduction.value === null || simProduction.value === undefined
+    ? '' : `&production=${simProduction.value}`;
+  try {
+    simulation.value = await apiGet<Simulation>(
+      `/api/ui/v1/fdv/${entity.value}/simulate/${externalId.value}?month=${simMonth.value}${query}`,
+    );
+  } catch (e) {
+    simError.value = e instanceof ApiError ? e.message : 'Simulation impossible';
   }
 }
 </script>
@@ -94,6 +123,28 @@ async function load(): Promise<void> {
         :row-testid="(r) => `my-result-${r.id}`"
       />
     </AppCard>
+
+    <AppCard title="Simulateur de variable (FDV-16)" data-testid="fdvc-simulator">
+      <div class="ui-bar">
+        <FormField label="Mois" stacked width="short" v-slot="{ id }">
+          <input :id="id" data-testid="sim-month" type="text" v-model="simMonth" />
+        </FormField>
+        <FormField label="Production pondérée simulée (vide = mesurée)" stacked width="short" v-slot="{ id }">
+          <input :id="id" data-testid="sim-production" type="number" step="any" v-model.number="simProduction" />
+        </FormField>
+        <AppButton variant="secondary" data-testid="sim-run" @click="simulate">Simuler</AppButton>
+      </div>
+
+      <AppMessage v-if="simError" variant="error" data-testid="sim-error">{{ simError }}</AppMessage>
+
+      <AppMessage v-if="simulation" :variant="simulation.achieved ? 'success' : 'info'" data-testid="sim-alert">
+        {{ simulation.alert }}
+      </AppMessage>
+      <p v-if="simulation" data-testid="sim-amount" class="sim-amount">
+        Variable simulé : <strong>{{ amount(simulation.amount) }}</strong>
+        (atteinte {{ (simulation.achievementRate * 100).toFixed(0) }} %)
+      </p>
+    </AppCard>
   </div>
 </template>
 
@@ -102,5 +153,14 @@ async function load(): Promise<void> {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--space-4);
+}
+.ui-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.sim-amount {
+  margin: var(--space-3) 0 0;
 }
 </style>

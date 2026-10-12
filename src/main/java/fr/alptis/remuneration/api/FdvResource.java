@@ -319,6 +319,28 @@ public class FdvResource {
     }
 
     /**
+     * Simulates a commercial's monthly variable for a month, optionally with a hypothetical weighted
+     * production (FDV-16).
+     *
+     * @param entityCode the entity code
+     * @param externalId the commercial's external id
+     * @param month      the month to simulate
+     * @param production a hypothetical weighted production, or null to use the measured one
+     * @return the simulation result
+     */
+    @GET
+    @Path("/{entity}/simulate/{externalId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"SALES_REP", "SALES_MANAGER", "BUSINESS_ADMIN", "AUDITOR"})
+    public SalesForceService.SimulationResult simulate(@PathParam("entity") String entityCode,
+                                                       @PathParam("externalId") String externalId,
+                                                       @jakarta.ws.rs.QueryParam("month") String month,
+                                                       @jakarta.ws.rs.QueryParam("production") BigDecimal production) {
+        requireScope(entityCode);
+        return service.simulateMonthly(entityCode, externalId, LocalDate.parse(month), production);
+    }
+
+    /**
      * Fails with a not-found when the entity is out of the caller's scope.
      *
      * @param entityCode the entity code
