@@ -57,11 +57,71 @@ public class AccountingQueryService {
             throw new ResourceNotFoundException("Période inconnue");
         }
         return AccountingEntry.<AccountingEntry>list("period = ?1 order by id", period).stream()
-                .map(e -> new EntryView(e.getId(), e.accountingEvent, e.journal, e.entryDate, e.debitAccount,
-                        e.creditAccount, e.amount, e.accountingMonth,
-                        e.commissionLine == null ? null : e.commissionLine.getId(),
-                        e.paymentOrder == null ? null : e.paymentOrder.endToEndId))
+                .map(AccountingQueryService::toEntryView)
                 .toList();
+    }
+
+    /**
+     * Searches an entity's accounting entries across every month (FIN-01, FIN-05), optionally filtered
+     * by an account (debit or credit) and a fiscal year.
+     *
+     * @param entityCode  the entity code
+     * @param account     an account number to match on debit or credit, or null/blank for any
+     * @param fiscalYear  a fiscal year to match, or null for any
+     * @return the matching entries, most recent accounting month first
+     */
+    public List<EntryView> searchEntries(String entityCode, String account, Short fiscalYear) {
+        LegalEntity entity = entity(entityCode);
+        String wanted = account == null || account.isBlank() ? null : account;
+        return AccountingEntry.<AccountingEntry>list("entity = ?1 order by accountingMonth desc, id", entity).stream()
+                .filter(e -> wanted == null || wanted.equals(e.debitAccount) || wanted.equals(e.creditAccount))
+                .filter(e -> fiscalYear == null || fiscalYear.equals(e.fiscalYear))
+                .map(AccountingQueryService::toEntryView)
+                .toList();
+    }
+
+    /**
+     * Returns the audit chain of an accounting entry (FIN-07): the source flux (event), the bordereau,
+     * the commission line with its basis, rate and rule version, the payment order, and the entry.
+     *
+     * @param entityCode the entity code
+     * @param entryId    the accounting-entry id
+     * @return the chain view
+     * @throws ResourceNotFoundException if the entry is unknown or out of the entity
+     */
+    public ChainView entryChain(String entityCode, Long entryId) {
+        LegalEntity entity = entity(entityCode);
+        AccountingEntry entry = AccountingEntry.findById(entryId);
+        if (entry == null || entry.entity == null || !entry.entity.code.equals(entity.code)) {
+            throw new ResourceNotFoundException("Écriture introuvable : " + entryId);
+        }
+        var line = entry.commissionLine;
+        return new ChainView(entry.getId(),
+                line == null || line.event == null ? null : line.event.eventType.name(),
+                line == null || line.event == null ? null : line.event.sourceKey,
+                line == null || line.statement == null ? null : line.statement.statementNumber,
+                line == null ? null : line.getId(),
+                line == null || line.nature == null ? null : line.nature.name(),
+                line == null ? null : line.basisAmount,
+                line == null ? null : line.rate,
+                line == null ? null : line.amount,
+                line == null || line.ruleVersion == null ? null
+                        : line.ruleVersion.rule.code + " v" + line.ruleVersion.versionNo,
+                entry.paymentOrder == null ? null : entry.paymentOrder.endToEndId,
+                entry.debitAccount, entry.creditAccount, entry.amount);
+    }
+
+    /**
+     * Maps an accounting entry to its view.
+     *
+     * @param e the entry
+     * @return the view
+     */
+    private static EntryView toEntryView(AccountingEntry e) {
+        return new EntryView(e.getId(), e.accountingEvent, e.journal, e.entryDate, e.debitAccount,
+                e.creditAccount, e.amount, e.accountingMonth,
+                e.commissionLine == null ? null : e.commissionLine.getId(),
+                e.paymentOrder == null ? null : e.paymentOrder.endToEndId);
     }
 
     /**
@@ -127,5 +187,30 @@ public class AccountingQueryService {
     public record EntryView(Long id, AccountingEvent accountingEvent, String journal, LocalDate entryDate,
                             String debitAccount, String creditAccount, BigDecimal amount,
                             LocalDate accountingMonth, Long lineId, String endToEndId) {
+    }
+
+    /**
+     * The FIN-07 audit chain of an accounting entry: flux, bordereau, commission line (basis, rate,
+     * rule), payment order and the entry itself.
+     *
+     * @param entryId       the accounting-entry id
+     * @param eventType     the source event type, or null
+     * @param eventKey      the source event key, or null
+     * @param statement     the bordereau number, or null
+     * @param lineId        the commission-line id, or null
+     * @param lineNature    the commission-line nature, or null
+     * @param basis         the basis amount, or null
+     * @param rate          the rate, or null
+     * @param lineAmount    the commission-line amount, or null
+     * @param ruleVersion   the rule code and version, or null
+     * @param paymentOrder  the payment-order reference, or null
+     * @param debitAccount  the entry's debit account
+     * @param creditAccount the entry's credit account
+     * @param amount        the entry's amount
+     */
+    public record ChainView(Long entryId, String eventType, String eventKey, String statement, Long lineId,
+                            String lineNature, BigDecimal basis, BigDecimal rate, BigDecimal lineAmount,
+                            String ruleVersion, String paymentOrder, String debitAccount, String creditAccount,
+                            BigDecimal amount) {
     }
 }

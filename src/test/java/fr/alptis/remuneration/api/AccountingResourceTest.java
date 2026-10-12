@@ -105,6 +105,15 @@ class AccountingResourceTest {
                 .when().get("/api/ui/v1/accounting/" + ENTITY + "/" + MONTH + "/entries")
                 .then().statusCode(200).body("accountingEvent", hasItem("EARNING"));
 
+        // Cross-month search by account, then the audit chain of one entry (FIN-05, FIN-07).
+        Integer entryId = given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/accounting/" + ENTITY + "/entries?account=428600")
+                .then().statusCode(200).body("accountingEvent", hasItem("EARNING"))
+                .extract().path("[0].id");
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/accounting/" + ENTITY + "/entries/" + entryId + "/chain")
+                .then().statusCode(200).body("debitAccount", is("428600"));
+
         given().auth().preemptive().basic("finance-alptis", "finance-alptis")
                 .when().get("/api/ui/v1/accounting/" + ENTITY + "/cutoff?date=2026-09-30&view=ENTITY")
                 .then().statusCode(200).body("total.forecast", is(180.0f)).body("total.earned", is(15.0f));

@@ -81,6 +81,43 @@ public class AccountingResource {
     }
 
     /**
+     * Searches an entity's accounting entries across every month, optionally by account and fiscal
+     * year (FIN-01, FIN-05).
+     *
+     * @param entityCode the entity code
+     * @param account    an account number to match, or null for any
+     * @param fiscalYear a fiscal year to match, or null for any
+     * @return the matching entries
+     */
+    @GET
+    @Path("/{entity}/entries")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public List<EntryView> searchEntries(@PathParam("entity") String entityCode,
+                                         @QueryParam("account") String account,
+                                         @QueryParam("fiscalYear") Short fiscalYear) {
+        requireScope(entityCode);
+        return query.searchEntries(entityCode, account, fiscalYear);
+    }
+
+    /**
+     * Returns the audit chain of an accounting entry: flux, bordereau, line, rule and entry (FIN-07).
+     *
+     * @param entityCode the entity code
+     * @param entryId    the accounting-entry id
+     * @return the chain view
+     */
+    @GET
+    @Path("/{entity}/entries/{entryId}/chain")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public AccountingQueryService.ChainView entryChain(@PathParam("entity") String entityCode,
+                                                       @PathParam("entryId") Long entryId) {
+        requireScope(entityCode);
+        return query.entryChain(entityCode, entryId);
+    }
+
+    /**
      * Returns the cut-off pilotage state at a date, by a maille (FIN-04/09).
      *
      * @param entityCode the entity code

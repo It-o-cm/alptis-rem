@@ -108,7 +108,7 @@ d'accès serveur · test de bout en bout · état.
 | # | Écran | Exig. | Route / Vue | Points d'accès | Test E2E | État |
 | --- | --- | --- | --- | --- | --- | --- |
 | 52 | Schéma comptable et correspondance des comptes par entité | FIN-02 | `accounting` / AccountingView | GET /accounting/{e}/scheme | accounting.spec | complet |
-| 53 | Recherche d'écritures | FIN-01, FIN-05, FIN-07 | `accounting` / AccountingView | GET /accounting/{e}/{m}/entries | accounting.spec | partiel — consultation par entité/mois seulement ; pas de recherche transverse d'écritures ni de chaîne flux→bordereau→ligne→écriture (FIN-07) |
+| 53 | Recherche d'écritures | FIN-01, FIN-05, FIN-07 | `accounting` / AccountingView | GET /accounting/{e}/{m}/entries, /{e}/entries, /{e}/entries/{id}/chain | accounting.spec | complet — recherche transverse d'écritures (tous mois, par compte et exercice) et chaîne d'audit flux→bordereau→ligne→règle→écriture (FIN-07) depuis une écriture |
 | 54 | Extraction comptable du mois et clôture | FIN-03 | `accounting` / AccountingView | POST /accounting/{e}/{m}/extract | accounting.spec | complet |
 | 55 | État de cut-off | FIN-04, FIN-09 | `cutoff` / CutoffView | GET /accounting/{e}/cutoff | cutoff.spec | complet |
 | 56 | Rapprochement des commissions acquises et payées | FIN-06 | — | — | — | absent |

@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -104,6 +105,131 @@ class AccountingQueryServiceTest {
         assertEquals(2, entries.size());
         assertTrue(entries.stream().anyMatch(e -> e.lineId() != null));
         assertTrue(entries.stream().anyMatch(e -> "E2E-1".equals(e.endToEndId())));
+    }
+
+    /**
+     * The cross-month search filters by account (debit or credit) and fiscal year (FIN-05), and the
+     * audit chain links an entry to its flux, bordereau, line and rule (FIN-07); a bare entry yields a
+     * chain with null line fields, and an unknown or out-of-entity entry is not found.
+     */
+    @Test
+    @TestTransaction
+    void searches_entries_and_reads_the_chain() {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = M;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+
+        fr.alptis.remuneration.domain.BusinessEvent event = new fr.alptis.remuneration.domain.BusinessEvent();
+        event.entity = unep();
+        event.eventType = fr.alptis.remuneration.domain.EventType.PREMIUM_COLLECTED;
+        event.sourceKey = "EVT-1";
+        event.persist();
+        fr.alptis.remuneration.domain.Statement statement = new fr.alptis.remuneration.domain.Statement();
+        statement.entity = unep();
+        statement.period = period;
+        statement.statementNumber = "ST-CHAIN";
+        statement.persist();
+        fr.alptis.remuneration.domain.CommissionPlan plan = new fr.alptis.remuneration.domain.CommissionPlan();
+        plan.entity = unep();
+        plan.code = "CH-PLAN";
+        plan.label = "Plan";
+        plan.direction = Direction.INBOUND;
+        plan.vintage = (short) 2026;
+        plan.persist();
+        fr.alptis.remuneration.domain.Rule rule = new fr.alptis.remuneration.domain.Rule();
+        rule.plan = plan;
+        rule.code = "CH-RULE";
+        rule.label = "Règle";
+        rule.family = fr.alptis.remuneration.domain.RuleFamily.LINEAR;
+        rule.persist();
+        fr.alptis.remuneration.domain.RuleVersion version = new fr.alptis.remuneration.domain.RuleVersion();
+        version.rule = rule;
+        version.versionNo = 1;
+        version.status = fr.alptis.remuneration.domain.VersionStatus.ACTIVE;
+        version.persist();
+
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = LineStatus.EARNED;
+        line.amount = new BigDecimal("15.00");
+        line.basisAmount = new BigDecimal("100.00");
+        line.rate = new BigDecimal("0.15");
+        line.event = event;
+        line.statement = statement;
+        line.ruleVersion = version;
+        line.persist();
+        entry(period, AccountingEvent.EARNING, line, null);
+
+        PaymentOrder order = new PaymentOrder();
+        order.amount = new BigDecimal("15.00");
+        order.status = PaymentOrderStatus.ISSUED;
+        order.endToEndId = "E2E-CHAIN";
+        order.persist();
+        entry(period, AccountingEvent.PAYMENT, null, order);
+
+        // Cross-month search by account (both entries share the debit account), then no match.
+        assertEquals(2, query.searchEntries("UNEP", "428600", null).size());
+        assertEquals(2, query.searchEntries("UNEP", "467200", null).size());
+        assertEquals(0, query.searchEntries("UNEP", "999999", null).size());
+        // By fiscal year, blank account, and a non-matching year.
+        assertEquals(2, query.searchEntries("UNEP", "", (short) 2026).size());
+        assertEquals(0, query.searchEntries("UNEP", null, (short) 2099).size());
+
+        AccountingEntry lineEntry = AccountingEntry.<AccountingEntry>find("commissionLine", line).firstResult();
+        var chain = query.entryChain("UNEP", lineEntry.getId());
+        assertEquals("PREMIUM_COLLECTED", chain.eventType());
+        assertEquals("EVT-1", chain.eventKey());
+        assertEquals("ST-CHAIN", chain.statement());
+        assertEquals("LINEAR", chain.lineNature());
+        assertEquals("CH-RULE v1", chain.ruleVersion());
+        assertEquals(0, chain.basis().compareTo(new BigDecimal("100.00")));
+
+        AccountingEntry orderEntry = AccountingEntry.<AccountingEntry>find("paymentOrder", order).firstResult();
+        var bareChain = query.entryChain("UNEP", orderEntry.getId());
+        assertNull(bareChain.eventType());
+        assertNull(bareChain.statement());
+        assertNull(bareChain.lineNature());
+        assertNull(bareChain.ruleVersion());
+        assertEquals("E2E-CHAIN", bareChain.paymentOrder());
+
+        // A line with no event, bordereau, rule version nor nature: the line is linked but its
+        // attributes are null (covers the middle legs of the chain's conditions).
+        CommissionLine sparse = new CommissionLine();
+        sparse.entity = unep();
+        sparse.period = period;
+        sparse.direction = Direction.OUTBOUND;
+        sparse.status = LineStatus.EARNED;
+        sparse.amount = new BigDecimal("1.00");
+        sparse.persist();
+        entry(period, AccountingEvent.EARNING, sparse, null);
+        AccountingEntry sparseEntry = AccountingEntry.<AccountingEntry>find("commissionLine", sparse).firstResult();
+        var sparseChain = query.entryChain("UNEP", sparseEntry.getId());
+        assertEquals(sparse.getId(), sparseChain.lineId());
+        assertNull(sparseChain.eventType());
+        assertNull(sparseChain.statement());
+        assertNull(sparseChain.lineNature());
+        assertNull(sparseChain.ruleVersion());
+
+        // An entry of another entity, and one with no entity at all, are not found for UNEP.
+        AccountingEntry crossEntity = new AccountingEntry();
+        crossEntity.entity = LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult();
+        crossEntity.period = period;
+        crossEntity.accountingEvent = AccountingEvent.EARNING;
+        crossEntity.amount = new BigDecimal("1.00");
+        crossEntity.persist();
+        assertThrows(ResourceNotFoundException.class, () -> query.entryChain("UNEP", crossEntity.getId()));
+        AccountingEntry noEntity = new AccountingEntry();
+        noEntity.period = period;
+        noEntity.accountingEvent = AccountingEvent.EARNING;
+        noEntity.amount = new BigDecimal("1.00");
+        noEntity.persist();
+        assertThrows(ResourceNotFoundException.class, () -> query.entryChain("UNEP", noEntity.getId()));
+        assertThrows(ResourceNotFoundException.class, () -> query.entryChain("UNEP", -1L));
     }
 
     /**
