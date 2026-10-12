@@ -338,6 +338,50 @@ public class ReferentialQueryService {
     }
 
     /**
+     * Lists the insurers (REF-01). Insurers are a shared referential, visible to every user.
+     *
+     * @return the insurer views
+     */
+    @Transactional
+    public List<InsurerView> insurers() {
+        return fr.alptis.remuneration.domain.Insurer.<fr.alptis.remuneration.domain.Insurer>list("order by code")
+                .stream()
+                .map(i -> new InsurerView(i.code, i.name, i.role == null ? null : i.role.name()))
+                .toList();
+    }
+
+    /**
+     * Lists the product ranges (REF-01). Ranges are a shared referential, visible to every user.
+     *
+     * @return the range views
+     */
+    @Transactional
+    public List<RangeView> ranges() {
+        return fr.alptis.remuneration.domain.ProductRange
+                .<fr.alptis.remuneration.domain.ProductRange>list("order by code").stream()
+                .map(r -> new RangeView(r.code, r.label, r.target == null ? null : r.target.name()))
+                .toList();
+    }
+
+    /**
+     * Lists the product options of the user's entities (REF-01): the options of the products in the
+     * caller's partition.
+     *
+     * @return the option views
+     */
+    @Transactional
+    public List<OptionView> options() {
+        List<fr.alptis.remuneration.domain.ProductOption> options = scope.unrestricted()
+                ? fr.alptis.remuneration.domain.ProductOption.listAll()
+                : fr.alptis.remuneration.domain.ProductOption.list("product.entity.code in ?1", scope.visibleCodes());
+        return options.stream()
+                .filter(o -> o.product != null)
+                .map(o -> new OptionView(o.product.code, o.code, o.label,
+                        o.optionType == null ? null : o.optionType.name()))
+                .toList();
+    }
+
+    /**
      * Lists the quality indicators of the user's entities (REF-07), most recent period first.
      *
      * @return the quality-indicator views
@@ -625,6 +669,37 @@ public class ReferentialQueryService {
      */
     public record ProductView(String entityCode, String code, String label, String rangeCode, String insurerCode,
                               boolean commissionable) {
+    }
+
+    /**
+     * View of an insurer (REF-01).
+     *
+     * @param code the insurer code
+     * @param name the insurer name
+     * @param role the insurer role, if any
+     */
+    public record InsurerView(String code, String name, String role) {
+    }
+
+    /**
+     * View of a product range (REF-01).
+     *
+     * @param code   the range code
+     * @param label  the range label
+     * @param target the range target, if any
+     */
+    public record RangeView(String code, String label, String target) {
+    }
+
+    /**
+     * View of a product option (REF-01).
+     *
+     * @param productCode the product the option belongs to
+     * @param code        the option code
+     * @param label       the option label
+     * @param optionType  the option type, if any
+     */
+    public record OptionView(String productCode, String code, String label, String optionType) {
     }
 
     /**

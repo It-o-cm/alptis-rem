@@ -51,6 +51,45 @@ public class ReferentialReadResource {
     }
 
     /**
+     * Lists the insurers (REF-01).
+     *
+     * @return the insurer views
+     */
+    @GET
+    @Path("/insurers")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<ReferentialQueryService.InsurerView> insurers() {
+        return query.insurers();
+    }
+
+    /**
+     * Lists the product ranges (REF-01).
+     *
+     * @return the range views
+     */
+    @GET
+    @Path("/ranges")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<ReferentialQueryService.RangeView> ranges() {
+        return query.ranges();
+    }
+
+    /**
+     * Lists the product options of the user's entities (REF-01).
+     *
+     * @return the option views
+     */
+    @GET
+    @Path("/options")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<ReferentialQueryService.OptionView> options() {
+        return query.options();
+    }
+
+    /**
      * Lists the distributor groupings (CPT-02, REF-03).
      *
      * @return the grouping views

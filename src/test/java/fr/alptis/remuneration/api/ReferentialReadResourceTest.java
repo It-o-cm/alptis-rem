@@ -37,6 +37,9 @@ class ReferentialReadResourceTest {
     @Test
     void lists_every_referential() {
         get200("/api/ui/v1/products");
+        get200("/api/ui/v1/insurers");
+        get200("/api/ui/v1/ranges");
+        get200("/api/ui/v1/options");
         get200("/api/ui/v1/quality-indicators");
         get200("/api/ui/v1/bank-accounts");
         get200("/api/ui/v1/portfolio-transfers");

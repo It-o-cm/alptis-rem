@@ -25,14 +25,19 @@ test.beforeEach(async ({ request }) => {
 test.describe('Référentiels — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
-  test('liste les produits @screen:products @req:REF-01', async ({ page }) => {
+  test('liste assureurs, gammes, produits et options @screen:products @req:REF-01', async ({ page }) => {
     await importFile(page, 'product_ranges', 'range_code;label;target\nSANTE_IND;Santé individuelle;INDIVIDUAL\n');
     await importFile(page, 'products',
       'entity_code;product_code;label;range_code;insurer_code;commissionable\n'
       + 'ALPTIS_ASSURANCES;SANTE_SELECT;Santé Select;SANTE_IND;;true\n');
     await page.goto('/produits');
-    await expect(page.getByTestId('page-title')).toHaveText('Produits');
+    await expect(page.getByTestId('page-title')).toHaveText('Assureurs, gammes, produits et options');
+    // The ranges and products sections list the imported referential.
+    await expect(page.getByTestId('range-row-SANTE_IND')).toContainText('Santé individuelle');
     await expect(page.getByTestId('product-row-SANTE_SELECT')).toContainText('Santé Select');
+    // The insurers and options sections are present.
+    await expect(page.getByTestId('insurers')).toBeVisible();
+    await expect(page.getByTestId('options')).toBeVisible();
   });
 
   test('liste les indicateurs de qualité @screen:quality-indicators @req:REF-07', async ({ page }) => {

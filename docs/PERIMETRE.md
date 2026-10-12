@@ -94,7 +94,7 @@ d'accès serveur · test de bout en bout · état.
 | # | Écran | Exig. | Route / Vue | Points d'accès | Test E2E | État |
 | --- | --- | --- | --- | --- | --- | --- |
 | 43 | Entités et leurs paramètres : calendrier, seuils, tolérances | REF-01, ADM-05 | `adminEntities` / EntityParamsView | GET/PUT /entities | entity-params.spec | complet |
-| 44 | Assureurs, gammes, produits et options | REF-01 | `products` / ProductsView | GET /products | referentials.spec | partiel — seuls les produits sont listés ; assureurs, gammes et options non gérés |
+| 44 | Assureurs, gammes, produits et options | REF-01 | `products` / ProductsView | GET /products, /insurers, /ranges, /options | referentials.spec | complet — assureurs (rôle), gammes (cible), produits et options (type) listés, les options partitionnées par l'entité de leur produit |
 | 45 | Correspondance des codes externes par système source | REF-04 | `externalCodes` / ExternalCodesView | GET /external-codes | external-codes.spec | complet |
 | 46 | Mappings de fichier : liste et versions | ING-02 | `mapping` / MappingView | GET /mappings | mapping.spec | complet |
 | 47 | Édition et test d'un mapping | ING-02 | `mapping` / MappingView | POST /mappings/test, POST /mappings | mapping.spec | complet |

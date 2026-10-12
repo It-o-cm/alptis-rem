@@ -217,6 +217,14 @@ public class DemoReferentialBuilder {
                 stamp(product);
                 product.persist();
                 world.put(product);
+                // A base option per product, so the product referential screen lists options (REF-01).
+                fr.alptis.remuneration.domain.ProductOption option = new fr.alptis.remuneration.domain.ProductOption();
+                option.product = product;
+                option.code = row[0] + "-BASE";
+                option.label = "Formule de base";
+                option.optionType = fr.alptis.remuneration.domain.OptionType.BASE;
+                stamp(option);
+                option.persist();
             }
         }
     }

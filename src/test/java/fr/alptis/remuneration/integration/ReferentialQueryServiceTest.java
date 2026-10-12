@@ -587,6 +587,70 @@ class ReferentialQueryServiceTest {
     }
 
     /**
+     * Reads insurers, ranges and options (REF-01): insurers and ranges are shared; options are
+     * partitioned by their product's entity, covering the set and unset optional fields.
+     */
+    @Test
+    @TestTransaction
+    void lists_insurers_ranges_and_options() {
+        Insurer full = new Insurer();
+        full.code = "INS-F";
+        full.name = "Assureur";
+        full.role = fr.alptis.remuneration.domain.InsurerRole.RISK_CARRIER;
+        full.persist();
+        Insurer bare = new Insurer();
+        bare.code = "INS-B";
+        bare.name = "Sans rôle";
+        bare.persist();
+        ProductRange rangeFull = new ProductRange();
+        rangeFull.code = "RG-F";
+        rangeFull.label = "Santé";
+        rangeFull.target = fr.alptis.remuneration.domain.ProductTarget.INDIVIDUAL;
+        rangeFull.persist();
+        ProductRange rangeBare = new ProductRange();
+        rangeBare.code = "RG-B";
+        rangeBare.label = "Sans cible";
+        rangeBare.persist();
+
+        Product alptisProduct = new Product();
+        alptisProduct.entity = alptis();
+        alptisProduct.code = "PRA";
+        alptisProduct.label = "Produit A";
+        alptisProduct.persist();
+        Product unepProduct = new Product();
+        unepProduct.entity = LegalEntity.<LegalEntity>find("code", "UNEP").firstResult();
+        unepProduct.code = "PRU";
+        unepProduct.label = "Produit U";
+        unepProduct.persist();
+        option(alptisProduct, "OPT-F", fr.alptis.remuneration.domain.OptionType.BASE);
+        option(alptisProduct, "OPT-B", null);
+        option(unepProduct, "OPT-U", fr.alptis.remuneration.domain.OptionType.BASE);
+        // A dangling option with no product is dropped (covers the product-null filter leg).
+        option(null, "OPT-ORPHAN", fr.alptis.remuneration.domain.OptionType.BASE);
+
+        assertEquals(2, restricted().insurers().size());
+        assertTrue(restricted().insurers().stream().anyMatch(i -> i.role() == null));
+        assertTrue(restricted().insurers().stream().anyMatch(i -> "RISK_CARRIER".equals(i.role())));
+        assertEquals(2, restricted().ranges().size());
+        assertTrue(restricted().ranges().stream().anyMatch(r -> r.target() == null));
+        assertTrue(restricted().ranges().stream().anyMatch(r -> "INDIVIDUAL".equals(r.target())));
+        // Options are partitioned: restricted sees the two Alptis options, unrestricted sees UNEP's too.
+        assertEquals(2, restricted().options().size());
+        assertTrue(restricted().options().stream().anyMatch(o -> o.optionType() == null));
+        assertEquals(3, unrestricted().options().size());
+    }
+
+    /** Persists a product option (type may be null). */
+    private static void option(Product product, String code, fr.alptis.remuneration.domain.OptionType type) {
+        fr.alptis.remuneration.domain.ProductOption option = new fr.alptis.remuneration.domain.ProductOption();
+        option.product = product;
+        option.code = code;
+        option.label = code;
+        option.optionType = type;
+        option.persist();
+    }
+
+    /**
      * Reads quality indicators with and without distributor, range and value.
      */
     @Test
