@@ -12,7 +12,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.Period;
+import fr.alptis.remuneration.domain.ProductionCode;
+
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,6 +65,43 @@ public class StatementService {
         return new StatementContent(statement.statementNumber, statement.versionNo,
                 statement.account.payeeType + " #" + statement.account.payeeId, statement.period.periodMonth,
                 rows, statement.periodTotal, statement.carriedBalance, statement.netAmount);
+    }
+
+    /**
+     * Produces the informative statement of a group member paid by its grouping (BRD-11): the member's
+     * own share, grouped by rubric like a real statement, but never paid (the payment went to the
+     * grouping). The rows are the commission lines carrying the member's production code as origin.
+     *
+     * @param entityCode  the entity code
+     * @param month       the period month
+     * @param memberCode  the member's production code
+     * @return the informative statement content
+     * @throws ResourceNotFoundException when the entity, period or production code is unknown
+     */
+    @Transactional
+    public StatementContent memberStatement(String entityCode, LocalDate month, String memberCode) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        if (entity == null) {
+            throw new ResourceNotFoundException("Entité inconnue : " + entityCode);
+        }
+        Period period = Period.<Period>find("entity = ?1 and periodMonth = ?2", entity, month).firstResult();
+        if (period == null) {
+            throw new ResourceNotFoundException("Période inconnue : " + month);
+        }
+        ProductionCode code = ProductionCode.<ProductionCode>find("entity = ?1 and code = ?2", entity, memberCode)
+                .firstResult();
+        if (code == null) {
+            throw new ResourceNotFoundException("Code de production inconnu : " + memberCode);
+        }
+        List<Row> rows = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (CommissionLine line : CommissionLine.<CommissionLine>list(
+                "originProductionCode = ?1 and period = ?2 and status in ?3 order by id", code, period, SHOWN)) {
+            rows.add(new Row(section(line.nature), label(line), line.basisAmount, line.rate, line.amount, line.reason));
+            total = total.add(line.amount == null ? BigDecimal.ZERO : line.amount);
+        }
+        return new StatementContent("RELEVE-" + memberCode, null, "Code de production " + memberCode,
+                period.periodMonth, rows, total, BigDecimal.ZERO, total);
     }
 
     /**

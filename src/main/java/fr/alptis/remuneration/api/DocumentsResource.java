@@ -62,6 +62,24 @@ public class DocumentsResource {
     }
 
     /**
+     * Returns the informative statement of a group member paid by its grouping (BRD-11).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @param code       the member's production code
+     * @return the informative statement content
+     */
+    @GET
+    @Path("/{entityCode}/{month}/member/{code}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public StatementContent memberStatement(@PathParam("entityCode") String entityCode,
+                                            @PathParam("month") String month, @PathParam("code") String code) {
+        requireScope(entityCode);
+        return statements.memberStatement(entityCode, LocalDate.parse(month), code);
+    }
+
+    /**
      * Returns the rendered content of a statement.
      *
      * @param statementId the statement id

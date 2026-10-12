@@ -185,4 +185,59 @@ class StatementServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> service.publish(-1L));
         assertThrows(ResourceNotFoundException.class, () -> service.rectify(-1L));
     }
+
+    /** Creates a period at month M in a state. */
+    private static Period memberPeriod() {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = M;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        return period;
+    }
+
+    /** Adds a line carrying a member production code as its origin, with a possibly-null amount. */
+    private static void memberLine(Period period, fr.alptis.remuneration.domain.ProductionCode pc,
+                                   LineNature nature, String amount) {
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.originProductionCode = pc;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = nature;
+        line.amount = amount == null ? null : new BigDecimal(amount);
+        line.persist();
+    }
+
+    /**
+     * BRD-11: the informative statement of a group member lists the lines carrying its production code
+     * as origin, summing their amounts (a null amount counting as zero).
+     */
+    @Test
+    @TestTransaction
+    void member_statement_lists_the_members_share() {
+        Period period = memberPeriod();
+        fr.alptis.remuneration.domain.ProductionCode pc = new fr.alptis.remuneration.domain.ProductionCode();
+        pc.entity = unep();
+        pc.code = "PC-M";
+        pc.persist();
+        memberLine(period, pc, LineNature.LINEAR, "30.00");
+        memberLine(period, pc, LineNature.CLAWBACK, null);
+
+        StatementService.StatementContent content = service.memberStatement("UNEP", M, "PC-M");
+        assertEquals(2, content.rows().size());
+        assertEquals(0, content.net().compareTo(new BigDecimal("30.00")));
+        assertTrue(content.beneficiary().contains("PC-M"));
+    }
+
+    /** The member statement guards the unknown entity, period and production code. */
+    @Test
+    @TestTransaction
+    void member_statement_guards() {
+        assertThrows(ResourceNotFoundException.class, () -> service.memberStatement("NOPE", M, "PC-M"));
+        assertThrows(ResourceNotFoundException.class, () -> service.memberStatement("UNEP", M, "PC-M"));
+        memberPeriod();
+        assertThrows(ResourceNotFoundException.class, () -> service.memberStatement("UNEP", M, "NO-CODE"));
+    }
 }

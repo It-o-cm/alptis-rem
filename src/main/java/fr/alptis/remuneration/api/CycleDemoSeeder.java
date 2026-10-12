@@ -143,6 +143,7 @@ public class CycleDemoSeeder {
         line.entity = entity;
         line.period = period;
         line.account = account;
+        line.originProductionCode = pc;
         line.direction = Direction.OUTBOUND;
         line.status = LineStatus.EARNED;
         line.nature = LineNature.LINEAR;

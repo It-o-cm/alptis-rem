@@ -84,4 +84,25 @@ class DocumentsResourceTest {
                 .when().get("/api/ui/v1/documents/GHOST/" + MONTH + "/statements")
                 .then().statusCode(404);
     }
+
+    /**
+     * The informative statement of a group member lists its own share (BRD-11), guards an unknown code
+     * and the entity partition.
+     */
+    @Test
+    void member_statement_lists_share_and_guards() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/ALPTIS_ASSURANCES/" + MONTH + "/member/PC-CREDIT")
+                .then().statusCode(200)
+                .body("beneficiary", containsString("PC-CREDIT"))
+                .body("rows.size()", greaterThanOrEqualTo(1));
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/ALPTIS_ASSURANCES/" + MONTH + "/member/NO-CODE")
+                .then().statusCode(404);
+
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/documents/ALPTIS_ASSURANCES/" + MONTH + "/member/PC-CREDIT")
+                .then().statusCode(404);
+    }
 }

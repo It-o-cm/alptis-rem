@@ -42,6 +42,7 @@ const entity = ref(session.entities.length > 0 && session.entities[0] !== '*' ? 
 const month = ref('2026-09-01');
 const statements = ref<StatementView[]>([]);
 const content = ref<StatementContent | null>(null);
+const memberCode = ref('');
 const spreadsheet = ref('');
 const error = ref('');
 const message = ref('');
@@ -111,6 +112,19 @@ async function openStatement(id: number): Promise<void> {
     content.value = await apiGet<StatementContent>(`/api/ui/v1/documents/statements/${id}`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Bordereau introuvable';
+  }
+}
+
+/** Loads the informative statement of a group member (BRD-11). */
+async function loadMemberStatement(): Promise<void> {
+  error.value = '';
+  spreadsheet.value = '';
+  try {
+    content.value = await apiGet<StatementContent>(
+      `/api/ui/v1/documents/${entity.value}/${month.value}/member/${memberCode.value}`,
+    );
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Relevé introuvable';
   }
 }
 
@@ -187,6 +201,17 @@ onMounted(loadStatements);
     <AppMessage v-if="error" variant="error" data-testid="brd-error">{{ error }}</AppMessage>
     <AppMessage v-if="message" variant="success" data-testid="brd-message">{{ message }}</AppMessage>
 
+    <AppCard title="Relevé informatif d'un membre de groupement (BRD-11)" data-testid="member-statement-form">
+      <div class="ui-bar">
+        <FormField label="Code de production du membre" stacked width="short" v-slot="{ id }">
+          <input :id="id" data-testid="brd-member" type="text" v-model="memberCode" />
+        </FormField>
+        <AppButton variant="secondary" data-testid="brd-member-btn" @click="loadMemberStatement">
+          Relevé informatif
+        </AppButton>
+      </div>
+    </AppCard>
+
     <AppCard flush>
       <DataTable
         :columns="statementColumns"
@@ -224,7 +249,9 @@ onMounted(loadStatements);
     </AppCard>
 
     <AppCard v-if="content" data-testid="statement-detail">
-      <h2 class="ui-detail-title">Bordereau {{ content.statementNumber }} v{{ content.versionNo }}</h2>
+      <h2 class="ui-detail-title">
+        {{ content.statementNumber }}<span v-if="content.versionNo"> v{{ content.versionNo }}</span>
+      </h2>
       <p class="page__subtitle">{{ content.beneficiary }} — {{ content.month }}</p>
       <DataTable
         :columns="rowColumns"
@@ -254,6 +281,12 @@ onMounted(loadStatements);
 </template>
 
 <style scoped>
+.ui-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
 .ui-detail-title {
   margin: 0;
   font-size: var(--fs-h2);

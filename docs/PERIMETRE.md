@@ -53,7 +53,7 @@ d'accès serveur · test de bout en bout · état.
 | 15 | Lots de paiement de la période et détail d'un lot : ordres, exclusions, rapprochement, validation Finance | PAY-01→05 | `payment` / PaymentView | GET lots/detail, POST prepare/validate, GET sepa | payment.spec | complet |
 | 16 | Création d'un lot hors cycle | PAY-07 | `payment` / PaymentView | POST off-cycle | payment.spec | complet |
 | 17 | Résultat bancaire : ordres réglés, rejets, saisie de l'émission des chèques | PAY-04, PAY-06 | `payment` / PaymentView | POST orders/{id}/result, POST lots/{id}/cheque-emission | payment.spec | complet — saisie de l'émission des chèques (PAY-04) par la Finance : les ordres du lot de chèques passent réglés |
-| 18 | Bordereaux de la période : liste, aperçu, publication, rectificatif, relevé informatif | BRD-01→07, BRD-11 | `statements` / BordereauxView | GET statements/detail/spreadsheet, POST publish/rectify | bordereaux.spec | partiel — relevé informatif du membre (BRD-11) absent ; rendu « texte + empreinte » au lieu de PDF/tableur réel |
+| 18 | Bordereaux de la période : liste, aperçu, publication, rectificatif, relevé informatif | BRD-01→07, BRD-11 | `statements` / BordereauxView | GET statements/detail/spreadsheet/member, POST publish/rectify | bordereaux.spec | partiel — relevé informatif du membre (BRD-11) livré ; reste le rendu « texte + empreinte » au lieu d'un PDF/tableur réel (simplification #14, dépend d'une bibliothèque PDF hors profil dev) |
 
 ### Distributeurs et contrats
 
@@ -295,7 +295,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | BRD-08 | — | #59 | — | absent — attestation fiscale annuelle |
 | BRD-09 | — | #33 | — | absent — synthèse des escomptes par convention |
 | BRD-10 | PublicApiService | — | — | partiel — mise à disposition extranets/GED/CRM à confirmer |
-| BRD-11 | — | #18 | — | absent — relevé informatif du membre payé par son groupement |
+| BRD-11 | StatementService (member statement) | #18 | bordereaux | complet — relevé informatif de la part propre d'un membre payé par son groupement |
 | BRD-12 | ExportService | #18 | — | partiel — export éditique (priorité S) à confirmer |
 
 ### 8.11 Comptabilité (FIN)

@@ -6,7 +6,7 @@ import { resetDb, seedCycle, USERS } from '../support/helpers';
 // carried balance, the spreadsheet export, publication and the rectificative version (BRD-01,
 // BRD-02, BRD-06, BRD-07, BRD-12).
 //
-// @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-06 @req:BRD-07 @req:BRD-12
+// @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-06 @req:BRD-07 @req:BRD-11 @req:BRD-12
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
@@ -40,6 +40,20 @@ test('l’opérateur consulte un bordereau, l’exporte, le publie puis le recti
   await page.locator('[data-testid^="statement-rectify-"]').first().click();
   await expect(page.getByTestId('brd-message')).toContainText('rectificative');
   await expect(page.locator('[data-testid^="statement-row-"]', { hasText: 'v2' })).toHaveCount(1);
+  await operator.close();
+});
+
+test('l’opérateur consulte le relevé informatif d’un membre @screen:statements @req:BRD-11', async ({
+  browser,
+}) => {
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const page = await operator.newPage();
+  await page.goto('/bordereaux');
+  await page.getByTestId('brd-member').fill('PC-CREDIT');
+  await page.getByTestId('brd-member-btn').click();
+  await expect(page.getByTestId('statement-detail')).toBeVisible();
+  await expect(page.getByTestId('statement-detail')).toContainText('PC-CREDIT');
+  await expect(page.locator('[data-testid^="statement-line-"]').first()).toBeVisible();
   await operator.close();
 });
 
