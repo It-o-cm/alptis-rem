@@ -36,6 +36,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -91,7 +92,7 @@ public class PaymentService {
         for (PaymentOrder order : PaymentOrder.<PaymentOrder>list("batch = ?1 and status = ?2", batch,
                 PaymentOrderStatus.TO_VALIDATE)) {
             Distributor distributor = resolveDistributor(order.account);
-            if (distributor != null && !payable(distributor, batch.entity)) {
+            if (distributor != null && !payable(distributor, batch.entity, batch.period.periodMonth)) {
                 order.status = PaymentOrderStatus.CANCELLED;
                 exclusion(batch, order.account, PaymentExclusionReason.PAYEE_INACTIVE, order.amount);
                 continue;
@@ -154,7 +155,7 @@ public class PaymentService {
         batch.setCreatedAt(clock.now());
         batch.persist();
         BigDecimal total = BigDecimal.ZERO;
-        if (payable(distributor, entity)) {
+        if (payable(distributor, entity, periodMonth)) {
             for (DistributorAccount account : accounts.accountsOfDistributor(entity, distributor)) {
                 BigDecimal balance = accounts.balance(account);
                 if (balance.signum() > 0) {
@@ -213,19 +214,23 @@ public class PaymentService {
     }
 
     /**
-     * Tells whether a distributor may be paid in an entity: registered with the ORIAS and not
-     * suspended or terminated in that entity.
+     * Tells whether a distributor may be paid in an entity at a given date: registered with the ORIAS
+     * and, for the status link in force on that date, not suspended or terminated (REF-08). The status
+     * change applies from its own effective date: a link that only becomes inactive after the date
+     * still allows the payment, and one inactive by the date blocks it.
      *
      * @param distributor the distributor
      * @param entity      the entity
+     * @param date        the effective date (the paid period's month)
      * @return {@code true} when payable
      */
-    private static boolean payable(Distributor distributor, LegalEntity entity) {
+    private static boolean payable(Distributor distributor, LegalEntity entity, LocalDate date) {
         if (distributor.oriasStatus == OriasStatus.STRUCK_OFF) {
             return false;
         }
-        DistributorEntity link = DistributorEntity.find("distributor = ?1 and entity = ?2", distributor, entity)
-                .firstResult();
+        DistributorEntity link = DistributorEntity.find(
+                "distributor = ?1 and entity = ?2 and validFrom <= ?3 and (validTo is null or validTo >= ?3)",
+                distributor, entity, date).firstResult();
         return link == null || link.status == PartnerStatus.ACTIVE;
     }
 
@@ -295,7 +300,10 @@ public class PaymentService {
         if (batch == null) {
             throw new ResourceNotFoundException("Lot inconnu : " + batchId);
         }
-        List<PaymentOrder> orders = PaymentOrder.list("batch = ?1", batch);
+        // Only the orders still to pay count: an order cancelled at preparation (e.g. an inactive payee,
+        // REF-08) is neither summed into the total nor issued.
+        List<PaymentOrder> orders = PaymentOrder.list("batch = ?1 and status = ?2", batch,
+                PaymentOrderStatus.TO_VALIDATE);
         BigDecimal orderSum = BigDecimal.ZERO;
         for (PaymentOrder order : orders) {
             orderSum = orderSum.add(order.amount);

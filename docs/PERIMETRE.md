@@ -167,7 +167,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | REF-05 | ReferentialQueryService (changedSinceLastPayment) | #26 | referentials | complet — coordonnées bancaires avec signalement d'un changement depuis le dernier paiement |
 | REF-06 | ReferentialQueryService | #27 | payee-rules | complet |
 | REF-07 | AccountQualityImporter, ReferentialQueryService | #28 | referentials | complet |
-| REF-08 | AccountService | #22 | — | partiel — application datée des changements de statut à vérifier |
+| REF-08 | PaymentService (payable, lien daté) | #45 | payment | complet — changement de statut appliqué à sa date d'effet : un distributeur résilié avant la période est exclu du paiement (PAYEE_INACTIVE), un statut prenant effet après la période laisse payer |
 | REF-09 | TransferImportService, CalculationEngine | #29 | transfers | partiel — cessions de portefeuille désormais appliquées par le moteur (réaffectation + disposition d'escompte, CR-80) ; application des ordres de remplacement (`ReplacementOrder`) encore absente |
 | REF-10 | DistributorsResource, AccountService | #20 | distributors | complet — fiche distributeur consolidée (identité, comptes, historique) |
 | REF-11 | PublicApiService, partitioning | — | entity-params (CR-70) | complet |

@@ -82,6 +82,30 @@ public class CycleDemoSeeder {
         bank.holderName = "Cabinet Martin";
         bank.validFrom = LocalDate.of(2020, 1, 1);
         bank.persist();
+        // A distributor terminated in this entity before the period: its positive balance produces a
+        // payment order that preparation excludes as PAYEE_INACTIVE, so REF-08 (status applied at its
+        // effective date) is visible on the payment screen.
+        Distributor terminated = new Distributor();
+        terminated.partnerCode = "P-INACT";
+        terminated.legalName = "Cabinet Clos";
+        terminated.persist();
+        fr.alptis.remuneration.domain.DistributorEntity link = new fr.alptis.remuneration.domain.DistributorEntity();
+        link.distributor = terminated;
+        link.entity = entity;
+        link.status = fr.alptis.remuneration.domain.PartnerStatus.TERMINATED;
+        link.validFrom = month.minusYears(1);
+        link.setCreatedAt(clock.now());
+        link.persist();
+        DistributorAccount closed = account(entity, period, terminated, "PC-CLOS", "200");
+        BankAccount closedBank = new BankAccount();
+        closedBank.entity = entity;
+        closedBank.holderType = closed.payeeType;
+        closedBank.holderId = closed.payeeId;
+        closedBank.iban = "FR7630001007941234567890185";
+        closedBank.bic = "AGRIFRPP";
+        closedBank.holderName = "Cabinet Clos";
+        closedBank.validFrom = LocalDate.of(2020, 1, 1);
+        closedBank.persist();
         // Prepare a cycle lot and the statements so the payment and documents screens have data.
         accounts.proposePayments(entity, period);
         // A cheque lot with one issued cheque (reusing the creditor account) so the cheque-emission

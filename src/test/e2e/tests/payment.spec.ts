@@ -6,17 +6,17 @@ import { resetDb, seedCycle, USERS } from '../support/helpers';
 // Finance validation with the SEPA file, the bank result and the off-cycle lot (PAY-01, PAY-02,
 // PAY-03, PAY-06, PAY-07).
 //
-// @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-04 @req:PAY-06 @req:PAY-07
+// @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-04 @req:PAY-06 @req:PAY-07 @req:REF-08
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
   await seedCycle(request);
 });
 
-test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règle l’ordre @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @role-action:OPERATOR-prepare-lot @role-action:FINANCE_CONTROLLER-validate-lot @role-action:FINANCE_CONTROLLER-record-bank-result', async ({
+test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règle l’ordre @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @req:REF-08 @role-action:OPERATOR-prepare-lot @role-action:FINANCE_CONTROLLER-validate-lot @role-action:FINANCE_CONTROLLER-record-bank-result', async ({
   browser,
 }) => {
-  // The operator prepares the cycle lot: an order gets a resolved IBAN and an exclusion is listed.
+  // The operator prepares the cycle lot: an order gets a resolved IBAN and exclusions are listed.
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
   const operatorPage = await operator.newPage();
   await operatorPage.goto('/paiement');
@@ -25,9 +25,12 @@ test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règ
   await cycleRow.getByRole('button', { name: 'Détail' }).click();
   await operatorPage.getByTestId('lot-prepare').click();
   await expect(operatorPage.locator('[data-testid^="order-iban-"]').first()).toContainText('FR76');
-  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]').first()).toContainText(
-    'NON_POSITIVE_BALANCE',
-  );
+  // The debtor account is excluded for a non-positive balance.
+  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]', { hasText: 'NON_POSITIVE_BALANCE' }))
+    .toHaveCount(1);
+  // REF-08: a distributor terminated before the period is excluded as an inactive payee.
+  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]', { hasText: 'PAYEE_INACTIVE' }))
+    .toHaveCount(1);
   await operator.close();
 
   // The Finance controller validates the lot, which issues its orders, then reads the SEPA file.

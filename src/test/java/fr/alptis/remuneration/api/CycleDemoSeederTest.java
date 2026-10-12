@@ -28,7 +28,8 @@ class CycleDemoSeederTest {
     private static final LocalDate MONTH = LocalDate.of(2026, 9, 1);
 
     /**
-     * Seeding a known entity plants the period, the distributor and its two accounts and lines.
+     * Seeding a known entity plants the period, the distributor with its two accounts and lines, and a
+     * terminated distributor with one account and line (the inactive payee of REF-08).
      */
     @Test
     @TestTransaction
@@ -40,8 +41,9 @@ class CycleDemoSeederTest {
 
         assertNotNull(Period.find("entity.code = ?1 and periodMonth = ?2", "UNEP", MONTH).firstResult());
         assertNotNull(Distributor.find("partnerCode", CycleDemoSeeder.PARTNER).firstResult());
-        assertEquals(accounts + 2, DistributorAccount.count("entity.code = ?1", "UNEP"));
-        assertEquals(lines + 2, CommissionLine.count("entity.code = ?1", "UNEP"));
+        assertNotNull(Distributor.find("partnerCode", "P-INACT").firstResult());
+        assertEquals(accounts + 3, DistributorAccount.count("entity.code = ?1", "UNEP"));
+        assertEquals(lines + 3, CommissionLine.count("entity.code = ?1", "UNEP"));
     }
 
     /**

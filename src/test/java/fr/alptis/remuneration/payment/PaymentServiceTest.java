@@ -296,14 +296,50 @@ class PaymentServiceTest {
         return account;
     }
 
-    /** Links a distributor to UNEP with a status. */
+    /** Links a distributor to UNEP with a status effective since 2020. */
     private static void link(Distributor distributor, fr.alptis.remuneration.domain.PartnerStatus status) {
+        link(distributor, status, LocalDate.of(2020, 1, 1));
+    }
+
+    /** Links a distributor to UNEP with a status effective from a date. */
+    private static void link(Distributor distributor, fr.alptis.remuneration.domain.PartnerStatus status,
+                             LocalDate validFrom) {
         fr.alptis.remuneration.domain.DistributorEntity link = new fr.alptis.remuneration.domain.DistributorEntity();
         link.distributor = distributor;
         link.entity = unep();
         link.status = status;
-        link.validFrom = LocalDate.of(2020, 1, 1);
+        link.validFrom = validFrom;
         link.persist();
+    }
+
+    /**
+     * REF-08: a status change applies from its effective date. A distributor terminated effective
+     * before the period is excluded; one whose termination only takes effect after the period is paid.
+     */
+    @Test
+    @TestTransaction
+    void ref08_status_applies_at_its_effective_date() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Period p = period(PeriodState.CONTROLLED);
+        // Terminated since 2020: inactive at the period, excluded.
+        Distributor past = distributor("PAST", OriasStatus.REGISTERED);
+        link(past, fr.alptis.remuneration.domain.PartnerStatus.TERMINATED);
+        DistributorAccount pastAcct = pcAccount(past, "PC-PAST");
+        earnedLine(p, pastAcct, "40.00");
+        bank(pastAcct.payeeType, pastAcct.payeeId);
+        // Terminated only from two months after the period: still active at the period, paid.
+        Distributor future = distributor("FUT", OriasStatus.REGISTERED);
+        link(future, fr.alptis.remuneration.domain.PartnerStatus.TERMINATED, M.plusMonths(2));
+        DistributorAccount futAcct = pcAccount(future, "PC-FUT");
+        earnedLine(p, futAcct, "70.00");
+        bank(futAcct.payeeType, futAcct.payeeId);
+
+        PaymentBatch cycle = accounts.proposePayments(unep(), p);
+        service.prepareOrderDetails(cycle.getId());
+
+        assertEquals(1, PaymentOrder.count("batch = ?1 and account = ?2 and status = ?3",
+                cycle, pastAcct, PaymentOrderStatus.CANCELLED));
+        assertEquals(0, cycle.totalAmount.compareTo(new BigDecimal("70.00")));
     }
 
     /** Records bank details for a typed account. */
