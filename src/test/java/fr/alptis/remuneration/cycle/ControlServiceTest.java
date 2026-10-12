@@ -23,6 +23,7 @@ import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
+import java.util.List;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -32,7 +33,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests of the control catalogue (section 8.6, step 9): running the active controls over a period,
@@ -245,5 +249,56 @@ class ControlServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> service.run("UNEP", M));
         assertThrows(ResourceNotFoundException.class,
                 () -> service.decide(-1L, ControlDecision.FIXED, "op", "x"));
+    }
+
+    /**
+     * The checklist lists one item per active control with its ticked state, excluding inactive
+     * controls; ticking records the reviewer, un-ticking clears it (CTL-03).
+     */
+    @Test
+    @TestTransaction
+    void checklist_lists_active_controls_and_records_the_tick() {
+        period();
+        control("CTL-A", ControlSeverity.WARNING, true);
+        control("CTL-B", ControlSeverity.WARNING, true);
+        control("CTL-OFF", ControlSeverity.WARNING, false);
+
+        service.check("UNEP", M, "CTL-A", true, "op1");
+
+        List<ControlService.ChecklistItemView> items = service.checklist("UNEP", M);
+        ControlService.ChecklistItemView a = items.stream().filter(i -> i.code().equals("CTL-A")).findFirst()
+                .orElseThrow();
+        assertTrue(a.checked());
+        assertEquals("op1", a.checkedBy());
+        ControlService.ChecklistItemView b = items.stream().filter(i -> i.code().equals("CTL-B")).findFirst()
+                .orElseThrow();
+        assertFalse(b.checked());
+        assertNull(b.checkedBy());
+        // Inactive controls are excluded from the checklist.
+        assertFalse(items.stream().anyMatch(i -> i.code().equals("CTL-OFF")));
+
+        // Re-ticking reuses the row; un-ticking clears the reviewer.
+        service.check("UNEP", M, "CTL-A", true, "op2");
+        ControlService.ChecklistItemView unchecked = service.check("UNEP", M, "CTL-A", false, "op2");
+        assertFalse(unchecked.checked());
+        assertNull(unchecked.checkedBy());
+        // The checklist now shows CTL-A as an existing-but-unchecked item.
+        ControlService.ChecklistItemView aAfter = service.checklist("UNEP", M).stream()
+                .filter(i -> i.code().equals("CTL-A")).findFirst().orElseThrow();
+        assertFalse(aAfter.checked());
+    }
+
+    /**
+     * The checklist and the tick guard the unknown entity, period and control.
+     */
+    @Test
+    @TestTransaction
+    void checklist_and_check_guard_unknowns() {
+        period();
+        control("CTL-A", ControlSeverity.WARNING, true);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.checklist("NOPE", M));
+        assertThrows(ResourceNotFoundException.class, () -> service.checklist("UNEP", LocalDate.of(2099, 1, 1)));
+        assertThrows(ResourceNotFoundException.class, () -> service.check("UNEP", M, "NO-SUCH", true, "op"));
     }
 }

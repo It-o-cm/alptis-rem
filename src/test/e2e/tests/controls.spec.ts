@@ -37,6 +37,16 @@ test.describe('Contrôles — opérateur', () => {
     await expect(page.getByTestId('catalog-row-ACCOUNT-DEBTOR')).toBeVisible();
   });
 
+  test('coche un contrôle dans la liste de contrôle de la période @screen:controls @req:CTL-03', async ({
+    page,
+  }) => {
+    await page.goto('/controles');
+    await expect(page.getByTestId('checklist')).toBeVisible();
+    await expect(page.getByTestId('checklist-state-ACCOUNT-DEBTOR')).toContainText('À faire');
+    await page.getByTestId('checklist-toggle-ACCOUNT-DEBTOR').click();
+    await expect(page.getByTestId('checklist-state-ACCOUNT-DEBTOR')).toContainText('Oui');
+  });
+
   test('aucune violation d’accessibilité grave ou critique @screen:controls', async ({ page }) => {
     await page.goto('/controles');
     const results = await new AxeBuilder({ page }).analyze();

@@ -89,6 +89,7 @@ class DomainModelTest {
             assertEquals(0L, entity.getVersion());
             assertEquals(null, entity.getId());
         }
-        assertEquals(68, entityCount, "the model must hold the 68 tables of section 5.7");
+        assertEquals(69, entityCount,
+                "the 68 tables of section 5.7 plus the control_checklist_item operational table (CTL-03)");
     }
 }

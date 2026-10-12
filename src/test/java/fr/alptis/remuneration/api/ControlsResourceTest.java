@@ -150,4 +150,36 @@ class ControlsResourceTest {
                 .when().post("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/run")
                 .then().statusCode(403);
     }
+
+    /**
+     * The operator reads the period checklist and ticks a control as reviewed (CTL-03).
+     */
+    @Test
+    void operator_reads_and_ticks_the_checklist() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/checklist")
+                .then().statusCode(200).body("code", hasItem("ACCOUNT-DEBTOR"));
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(ContentType.JSON).body("{\"checked\":true}")
+                .when().post("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/checklist/ACCOUNT-DEBTOR")
+                .then().statusCode(200).body("checked", is(true)).body("checkedBy", is("operator-alptis"));
+    }
+
+    /**
+     * A viewer reads the checklist but may not tick it; a UNEP operator is out of scope for Alptis.
+     */
+    @Test
+    void viewer_reads_checklist_but_cannot_tick_and_scope_is_enforced() {
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().get("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/checklist")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .contentType(ContentType.JSON).body("{\"checked\":true}")
+                .when().post("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/checklist/ACCOUNT-DEBTOR")
+                .then().statusCode(403);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/controls/ALPTIS_ASSURANCES/" + MONTH + "/checklist")
+                .then().statusCode(404);
+    }
 }

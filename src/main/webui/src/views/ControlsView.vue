@@ -37,11 +37,19 @@ interface CatalogEntry {
   active: boolean;
 }
 
+interface ChecklistItem {
+  code: string;
+  label: string;
+  checked: boolean;
+  checkedBy: string | null;
+}
+
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 ? session.entities[0] : '');
 const month = ref('2026-09-01');
 const anomalies = ref<AnomalyView[]>([]);
 const catalog = ref<CatalogEntry[]>([]);
+const checklist = ref<ChecklistItem[]>([]);
 const error = ref('');
 const message = ref('');
 const justification = ref<Record<number, string>>({});
@@ -59,6 +67,13 @@ const anomalyColumns: Column<AnomalyView>[] = [
   { key: 'observedValue', label: 'Constaté' },
   { key: 'expectedValue', label: 'Attendu' },
   { key: 'decision', label: 'Décision' },
+];
+
+/** Columns of the control checklist table. */
+const checklistColumns: Column<ChecklistItem>[] = [
+  { key: 'label', label: 'Contrôle' },
+  { key: 'checked', label: 'Revu', value: (c) => (c.checked ? 'Oui' : 'À faire') },
+  { key: 'checkedBy', label: 'Par', value: (c) => c.checkedBy ?? '—' },
 ];
 
 /** Columns of the control catalog table. */
@@ -93,6 +108,30 @@ const familyData = computed(() =>
 /** Loads the control catalog of the selected entity. */
 async function loadCatalog(): Promise<void> {
   catalog.value = await apiGet<CatalogEntry[]>(`/api/ui/v1/controls/${entity.value}/catalog`);
+}
+
+/** Loads the manual control checklist of the selected period (CTL-03). */
+async function loadChecklist(): Promise<void> {
+  checklist.value = await apiGet<ChecklistItem[]>(
+    `/api/ui/v1/controls/${entity.value}/${month.value}/checklist`,
+  );
+}
+
+/**
+ * Ticks or un-ticks a control in the checklist, then reloads it.
+ * @param item the checklist item
+ */
+async function toggleCheck(item: ChecklistItem): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    await apiPost(`/api/ui/v1/controls/${entity.value}/${month.value}/checklist/${item.code}`, {
+      checked: !item.checked,
+    });
+    await loadChecklist();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Action refusée';
+  }
 }
 
 /** Runs the controls of the selected period, then reloads the anomalies. */
@@ -139,6 +178,7 @@ function decided(decision: string): string {
 onMounted(async () => {
   await loadAnomalies();
   await loadCatalog();
+  await loadChecklist();
 });
 </script>
 
@@ -199,6 +239,33 @@ onMounted(async () => {
               Accepter
             </AppButton>
           </template>
+        </template>
+      </DataTable>
+    </AppCard>
+
+    <AppCard title="Liste de contrôle de la période" data-testid="checklist">
+      <DataTable
+        :columns="checklistColumns"
+        :rows="checklist"
+        row-key="code"
+        empty="Aucun contrôle actif."
+        empty-testid="no-checklist"
+        :row-testid="(c) => `checklist-row-${c.code}`"
+      >
+        <template #cell-checked="{ row }">
+          <span :class="row.checked ? 'tag ok' : 'tag mute'" :data-testid="`checklist-state-${row.code}`">
+            {{ row.checked ? 'Oui' : 'À faire' }}
+          </span>
+        </template>
+        <template #actions="{ row }">
+          <AppButton
+            v-if="canOperate()"
+            variant="secondary"
+            :data-testid="`checklist-toggle-${row.code}`"
+            @click="toggleCheck(row)"
+          >
+            {{ row.checked ? 'Annuler' : 'Marquer revu' }}
+          </AppButton>
         </template>
       </DataTable>
     </AppCard>

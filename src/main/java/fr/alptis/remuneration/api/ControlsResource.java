@@ -116,6 +116,46 @@ public class ControlsResource {
     }
 
     /**
+     * Returns the manual control checklist of a period (CTL-03).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the checklist items
+     */
+    @GET
+    @Path("/{entityCode}/{month}/checklist")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<ControlService.ChecklistItemView> checklist(@PathParam("entityCode") String entityCode,
+                                                            @PathParam("month") String month) {
+        requireScope(entityCode);
+        return controls.checklist(entityCode, LocalDate.parse(month));
+    }
+
+    /**
+     * Ticks or un-ticks a control in a period's checklist (CTL-03).
+     *
+     * @param entityCode  the entity code
+     * @param month       the period month
+     * @param controlCode the control code
+     * @param request     the tick request
+     * @return the updated checklist item
+     */
+    @POST
+    @Path("/{entityCode}/{month}/checklist/{controlCode}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public ControlService.ChecklistItemView check(@PathParam("entityCode") String entityCode,
+                                                  @PathParam("month") String month,
+                                                  @PathParam("controlCode") String controlCode,
+                                                  CheckRequest request) {
+        requireScope(entityCode);
+        return controls.check(entityCode, LocalDate.parse(month), controlCode, request.checked(),
+                currentUser.username());
+    }
+
+    /**
      * Records a decision on an anomaly (CTL-05).
      *
      * @param anomalyId the anomaly id
@@ -159,6 +199,14 @@ public class ControlsResource {
      * @param justification the justification
      */
     public record DecisionRequest(String decision, String justification) {
+    }
+
+    /**
+     * Request body of a checklist tick.
+     *
+     * @param checked the new ticked state
+     */
+    public record CheckRequest(boolean checked) {
     }
 
     /**

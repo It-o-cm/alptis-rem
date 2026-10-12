@@ -2,6 +2,7 @@ package fr.alptis.remuneration.cycle;
 
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.ControlChecklistItem;
 import fr.alptis.remuneration.domain.ControlDecision;
 import fr.alptis.remuneration.domain.ControlDefinition;
 import fr.alptis.remuneration.domain.ControlResult;
@@ -22,7 +23,9 @@ import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -60,14 +63,8 @@ public class ControlService {
      */
     @Transactional
     public int run(String entityCode, LocalDate periodMonth) {
-        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
-        if (entity == null) {
-            throw new ResourceNotFoundException("Entité inconnue : " + entityCode);
-        }
-        Period period = Period.find("entity = ?1 and periodMonth = ?2", entity, periodMonth).firstResult();
-        if (period == null) {
-            throw new ResourceNotFoundException("Période inconnue : " + periodMonth);
-        }
+        LegalEntity entity = requireEntity(entityCode);
+        Period period = requirePeriod(entity, periodMonth);
         ControlResult.delete("period = ?1 and decision = ?2", period, ControlDecision.OPEN);
         int count = 0;
         for (ControlDefinition control : ControlDefinition.<ControlDefinition>list(
@@ -82,6 +79,106 @@ public class ControlService {
             };
         }
         return count;
+    }
+
+    /**
+     * Returns the manual control checklist of a period (CTL-03): one item per active control, carrying
+     * whether the operator has ticked it as reviewed and by whom.
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the period month
+     * @return the checklist items, by control code
+     */
+    @Transactional
+    public List<ChecklistItemView> checklist(String entityCode, LocalDate periodMonth) {
+        LegalEntity entity = requireEntity(entityCode);
+        Period period = requirePeriod(entity, periodMonth);
+        List<ChecklistItemView> items = new ArrayList<>();
+        for (ControlDefinition control : ControlDefinition.<ControlDefinition>list(
+                "entity = ?1 and active = true order by code", entity)) {
+            ControlChecklistItem item = ControlChecklistItem.find("period = ?1 and controlCode = ?2", period,
+                    control.code).firstResult();
+            boolean checked = item != null && Boolean.TRUE.equals(item.checked);
+            items.add(new ChecklistItemView(control.code, control.label, checked,
+                    item == null ? null : item.checkedBy));
+        }
+        return items;
+    }
+
+    /**
+     * Ticks or un-ticks a control in a period's checklist (CTL-03), recording who and when.
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the period month
+     * @param controlCode the control code
+     * @param checked     the new ticked state
+     * @param userId      the operator
+     * @return the updated checklist item view
+     */
+    @Transactional
+    public ChecklistItemView check(String entityCode, LocalDate periodMonth, String controlCode, boolean checked,
+                                   String userId) {
+        LegalEntity entity = requireEntity(entityCode);
+        Period period = requirePeriod(entity, periodMonth);
+        ControlDefinition control = ControlDefinition.<ControlDefinition>find("entity = ?1 and code = ?2", entity,
+                controlCode).firstResult();
+        if (control == null) {
+            throw new ResourceNotFoundException("Contrôle inconnu : " + controlCode);
+        }
+        ControlChecklistItem item = ControlChecklistItem.find("period = ?1 and controlCode = ?2", period,
+                controlCode).firstResult();
+        if (item == null) {
+            item = new ControlChecklistItem();
+            item.entity = entity;
+            item.period = period;
+            item.controlCode = controlCode;
+            item.setCreatedAt(clock.now());
+            item.persist();
+        }
+        item.checked = checked;
+        item.checkedBy = checked ? userId : null;
+        item.checkedAt = checked ? clock.now() : null;
+        return new ChecklistItemView(controlCode, control.label, checked, item.checkedBy);
+    }
+
+    /**
+     * Finds an entity or fails.
+     *
+     * @param entityCode the entity code
+     * @return the entity
+     */
+    private static LegalEntity requireEntity(String entityCode) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        if (entity == null) {
+            throw new ResourceNotFoundException("Entité inconnue : " + entityCode);
+        }
+        return entity;
+    }
+
+    /**
+     * Finds an entity's period or fails.
+     *
+     * @param entity      the entity
+     * @param periodMonth the period month
+     * @return the period
+     */
+    private static Period requirePeriod(LegalEntity entity, LocalDate periodMonth) {
+        Period period = Period.find("entity = ?1 and periodMonth = ?2", entity, periodMonth).firstResult();
+        if (period == null) {
+            throw new ResourceNotFoundException("Période inconnue : " + periodMonth);
+        }
+        return period;
+    }
+
+    /**
+     * One control of a period's checklist.
+     *
+     * @param code      the control code
+     * @param label     the control label
+     * @param checked   whether it is ticked as reviewed
+     * @param checkedBy who ticked it, or null
+     */
+    public record ChecklistItemView(String code, String label, boolean checked, String checkedBy) {
     }
 
     /**
