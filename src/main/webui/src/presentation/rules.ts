@@ -75,3 +75,57 @@ export function schemaFields(schemaJson: string): SchemaField[] {
 export function conflictLabel(conflicts: readonly string[]): string {
   return conflicts.length === 0 ? 'Aucun conflit' : conflicts.join(', ');
 }
+
+/** A payment condition carried by a rule version (PAR-07), as served to the interface. */
+export interface ConditionView {
+  /** Quality indicator type, when the condition reads an indicator. */
+  readonly indicatorType: string | null;
+  /** Counter code, when the condition reads a counter. */
+  readonly counterCode: string | null;
+  /** Comparison operator (LT, LE, GT, GE, EQ). */
+  readonly operator: string | null;
+  /** Threshold the measure is compared to. */
+  readonly threshold: number | null;
+  /** Behaviour on failure (FORFEIT, DEFER). */
+  readonly onFailure: string | null;
+}
+
+/** French label of a failure behaviour, defaulting to the raw code. */
+const FAILURE_LABELS: Record<string, string> = {
+  FORFEIT: 'Perte',
+  DEFER: 'Report',
+};
+
+/**
+ * Summarises a version's reprise policy and payment schedule (PAR-08) for the versions table: a dash
+ * when neither is set, else a compact description of what is set.
+ */
+export function repriseLabel(clawbackPolicy: string | null, paymentSchedule: string | null): string {
+  const parts: string[] = [];
+  if (clawbackPolicy) {
+    parts.push(`Reprise ${clawbackPolicy}`);
+  }
+  if (paymentSchedule) {
+    parts.push(`Échéancier ${paymentSchedule}`);
+  }
+  return parts.length === 0 ? '—' : parts.join(' · ');
+}
+
+/**
+ * Summarises a version's payment conditions (PAR-07) for the versions table: a dash when none, else
+ * one short clause per condition (measure, operator, threshold, failure behaviour).
+ */
+export function conditionsLabel(conditions: readonly ConditionView[]): string {
+  if (conditions.length === 0) {
+    return '—';
+  }
+  return conditions
+    .map((c) => {
+      const measure = c.indicatorType ?? c.counterCode ?? '?';
+      const operator = c.operator ?? '?';
+      const threshold = c.threshold ?? '?';
+      const failure = c.onFailure ? FAILURE_LABELS[c.onFailure] ?? c.onFailure : '?';
+      return `${measure} ${operator} ${threshold} → ${failure}`;
+    })
+    .join(' ; ');
+}

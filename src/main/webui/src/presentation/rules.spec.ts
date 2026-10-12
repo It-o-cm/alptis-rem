@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { familyLabel, versionStatusClass, schemaFields, conflictLabel } from './rules';
+import { familyLabel, versionStatusClass, schemaFields, conflictLabel, repriseLabel, conditionsLabel } from './rules';
 
 describe('rules presentation', () => {
   it('labels known families and falls back for the rest', () => {
@@ -44,5 +44,26 @@ describe('rules presentation', () => {
   it('formats a conflict list', () => {
     expect(conflictLabel([])).toBe('Aucun conflit');
     expect(conflictLabel(['R1 v1', 'R2 v1'])).toBe('R1 v1, R2 v1');
+  });
+
+  it('summarises the reprise policy and payment schedule', () => {
+    expect(repriseLabel(null, null)).toBe('—');
+    expect(repriseLabel('{"mode":"PRORATA"}', null)).toBe('Reprise {"mode":"PRORATA"}');
+    expect(repriseLabel(null, '{"months":12}')).toBe('Échéancier {"months":12}');
+    expect(repriseLabel('{"mode":"PRORATA"}', '{"months":12}'))
+      .toBe('Reprise {"mode":"PRORATA"} · Échéancier {"months":12}');
+  });
+
+  it('summarises payment conditions, with labels and fallbacks', () => {
+    expect(conditionsLabel([])).toBe('—');
+    expect(conditionsLabel([
+      { indicatorType: 'UNPAID_RATE', counterCode: null, operator: 'LT', threshold: 0.05, onFailure: 'DEFER' },
+      { indicatorType: null, counterCode: 'NEW_BUSINESS', operator: 'GE', threshold: 10, onFailure: 'FORFEIT' },
+    ])).toBe('UNPAID_RATE LT 0.05 → Report ; NEW_BUSINESS GE 10 → Perte');
+    // Every field missing falls back to its placeholder, including an unknown failure code.
+    expect(conditionsLabel([
+      { indicatorType: null, counterCode: null, operator: null, threshold: null, onFailure: null },
+      { indicatorType: 'X', counterCode: null, operator: 'EQ', threshold: 1, onFailure: 'OTHER' },
+    ])).toBe('? ? ? → ? ; X EQ 1 → OTHER');
   });
 });

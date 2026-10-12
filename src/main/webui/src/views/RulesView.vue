@@ -3,7 +3,8 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
-import { familyLabel, versionStatusClass, conflictLabel } from '../presentation/rules';
+import { familyLabel, versionStatusClass, conflictLabel, schemaFields, repriseLabel, conditionsLabel } from '../presentation/rules';
+import type { SchemaField, ConditionView } from '../presentation/rules';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -11,8 +12,9 @@ interface PlanView { entityCode: string; code: string; label: string; direction:
 interface RuleView { code: string; label: string; family: string | null; }
 interface VersionView {
   versionNo: number; validFrom: string | null; validTo: string | null; status: string | null;
-  priority: number | null; exclusionGroup: string | null; parameters: string | null; approvedBy: string | null;
-  conflicts: string[];
+  priority: number | null; exclusionGroup: string | null; parameters: string | null;
+  clawbackPolicy: string | null; paymentSchedule: string | null; conditions: ConditionView[];
+  approvedBy: string | null; conflicts: string[];
 }
 interface FamilyView { code: string; label: string; }
 
@@ -26,8 +28,12 @@ const rules = ref<RuleView[]>([]);
 const versions = ref<VersionView[]>([]);
 const selectedPlan = ref<string | null>(null);
 const selectedRule = ref<string | null>(null);
+const selectedFamily = ref<string | null>(null);
+const schema = ref<SchemaField[]>([]);
 const error = ref('');
 const message = ref('');
+
+interface ConditionRow { indicatorType: string; counterCode: string; operator: string; threshold: number; measurementPeriod: string; onFailure: string; }
 
 const planForm = ref({ code: '', label: '', direction: 'INBOUND', vintage: 2026 });
 const dupForm = ref({ newCode: '', newVintage: 2027 });
@@ -35,8 +41,24 @@ const ruleForm = ref({ code: '', label: '', family: 'LINEAR' });
 const versionForm = ref({
   validFrom: '', validTo: '', versionAnchor: 'EVENT_DATE', scope: '{"product":[""]}',
   basis: 'COLLECTED_PREMIUM', outputNature: 'LINEAR', parameters: '{"allowedRates":[0.15]}',
-  priority: 10, exclusionGroup: 'BASE',
+  priority: 10, exclusionGroup: 'BASE', clawbackPolicy: '', paymentSchedule: '',
 });
+const conditionRows = ref<ConditionRow[]>([]);
+
+/** Adds an empty payment-condition row to the version form (PAR-07). */
+function addConditionRow(): void {
+  conditionRows.value.push({
+    indicatorType: '', counterCode: '', operator: 'LT', threshold: 0, measurementPeriod: '', onFailure: 'DEFER',
+  });
+}
+
+/**
+ * Removes the payment-condition row at the given index.
+ * @param index the row index to remove
+ */
+function removeConditionRow(index: number): void {
+  conditionRows.value.splice(index, 1);
+}
 
 /** Columns of the remuneration plans table. */
 const planColumns: Column<PlanView>[] = [
@@ -60,6 +82,8 @@ const versionColumns: Column<VersionView>[] = [
   { key: 'status', label: 'Statut' },
   { key: 'priority', label: 'Priorité', align: 'num', value: (v) => v.priority ?? '—' },
   { key: 'exclusionGroup', label: 'Groupe', value: (v) => v.exclusionGroup ?? '—' },
+  { key: 'reprise', label: 'Reprise', value: (v) => repriseLabel(v.clawbackPolicy, v.paymentSchedule) },
+  { key: 'conditions', label: 'Conditions', value: (v) => conditionsLabel(v.conditions) },
   { key: 'conflicts', label: 'Conflits' },
 ];
 
@@ -147,11 +171,23 @@ async function createRule(): Promise<void> {
 }
 
 /**
- * Opens a rule and loads its versions.
+ * Opens a rule, loads its versions and fetches the JSON Schema of its family so the form can guide
+ * the parameters (PAR-02, PAR-06).
  * @param code the rule code to open
  */
 async function openRule(code: string): Promise<void> {
   selectedRule.value = code;
+  const rule = rules.value.find((r) => r.code === code);
+  selectedFamily.value = rule?.family ?? null;
+  schema.value = [];
+  if (selectedFamily.value !== null) {
+    try {
+      const raw = await apiGet<unknown>(`/api/ui/v1/families/${selectedFamily.value}/schema`);
+      schema.value = schemaFields(JSON.stringify(raw));
+    } catch (e) {
+      fail(e);
+    }
+  }
   await loadVersions();
 }
 
@@ -186,10 +222,21 @@ async function addVersion(): Promise<void> {
         basis: versionForm.value.basis,
         outputNature: versionForm.value.outputNature,
         parameters: versionForm.value.parameters,
+        clawbackPolicy: versionForm.value.clawbackPolicy || null,
+        paymentSchedule: versionForm.value.paymentSchedule || null,
+        conditions: conditionRows.value.map((c) => ({
+          indicatorType: c.indicatorType || null,
+          counterCode: c.counterCode || null,
+          operator: c.operator || null,
+          threshold: c.threshold,
+          measurementPeriod: c.measurementPeriod || null,
+          onFailure: c.onFailure || null,
+        })),
         priority: versionForm.value.priority,
         exclusionGroup: versionForm.value.exclusionGroup,
       });
     ok('Version créée (projet).');
+    conditionRows.value = [];
     await loadVersions();
   } catch (e) {
     fail(e);
@@ -312,6 +359,13 @@ onMounted(loadPlans);
         </template>
       </DataTable>
 
+      <p v-if="schema.length > 0" class="schema-hint" data-testid="family-schema">
+        Paramètres attendus de la famille {{ familyLabel(selectedFamily) }} :
+        <span v-for="f in schema" :key="f.name" class="tag" :data-testid="`schema-field-${f.name}`">
+          {{ f.name }} ({{ f.type }}){{ f.required ? ' *' : '' }}
+        </span>
+      </p>
+
       <AppForm v-if="canEdit()" two-column @submit="addVersion">
         <FormField label="Valable du" width="date" v-slot="{ id }">
           <input :id="id" data-testid="v-from" type="date" v-model="versionForm.validFrom" />
@@ -331,8 +385,67 @@ onMounted(loadPlans);
         <FormField label="Groupe d'exclusion" width="short" v-slot="{ id }">
           <input :id="id" data-testid="v-group" v-model="versionForm.exclusionGroup" />
         </FormField>
+        <FormField label="Politique de reprise (JSON)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="v-clawback" v-model="versionForm.clawbackPolicy"
+                 placeholder='{"mode":"PRORATA"}' />
+        </FormField>
+        <FormField label="Échéancier de paiement (JSON)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="v-schedule" v-model="versionForm.paymentSchedule"
+                 placeholder='{"months":12}' />
+        </FormField>
+        <div v-for="(c, i) in conditionRows" :key="i" class="condition-row" :data-testid="`condition-row-${i}`">
+          <FormField label="Indicateur" width="short" v-slot="{ id }">
+            <input :id="id" :data-testid="`c-indicator-${i}`" v-model="c.indicatorType" />
+          </FormField>
+          <FormField label="Compteur" width="short" v-slot="{ id }">
+            <input :id="id" :data-testid="`c-counter-${i}`" v-model="c.counterCode" />
+          </FormField>
+          <FormField label="Opérateur" width="short" v-slot="{ id }">
+            <select :id="id" :data-testid="`c-operator-${i}`" v-model="c.operator">
+              <option value="LT">LT</option><option value="LE">LE</option><option value="GT">GT</option>
+              <option value="GE">GE</option><option value="EQ">EQ</option>
+            </select>
+          </FormField>
+          <FormField label="Seuil" width="short" v-slot="{ id }">
+            <input :id="id" :data-testid="`c-threshold-${i}`" type="number" step="any" v-model.number="c.threshold" />
+          </FormField>
+          <FormField label="Période" width="short" v-slot="{ id }">
+            <input :id="id" :data-testid="`c-period-${i}`" v-model="c.measurementPeriod" />
+          </FormField>
+          <FormField label="En cas d'échec" width="short" v-slot="{ id }">
+            <select :id="id" :data-testid="`c-failure-${i}`" v-model="c.onFailure">
+              <option value="FORFEIT">Perte</option><option value="DEFER">Report</option>
+            </select>
+          </FormField>
+          <AppButton variant="secondary" type="button" :data-testid="`c-remove-${i}`" @click="removeConditionRow(i)">
+            Retirer
+          </AppButton>
+        </div>
+        <AppButton variant="secondary" type="button" data-testid="condition-add" @click="addConditionRow">
+          Ajouter une condition
+        </AppButton>
         <AppButton variant="secondary" type="submit" data-testid="version-create">Ajouter la version</AppButton>
       </AppForm>
     </AppCard>
   </div>
 </template>
+
+<style scoped>
+.schema-hint {
+  margin: var(--space-3) 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.condition-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+  padding: var(--space-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  grid-column: 1 / -1;
+}
+</style>

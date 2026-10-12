@@ -71,11 +71,18 @@ class RulesConfigResourceTest {
                         + "\"versionAnchor\":\"EVENT_DATE\",\"scope\":\"{\\\"product\\\":[\\\"ZZZ\\\"]}\","
                         + "\"triggerEventTypes\":[\"PREMIUM_COLLECTED\"],\"basis\":\"COLLECTED_PREMIUM\","
                         + "\"outputNature\":\"LINEAR\",\"parameters\":\"{\\\"allowedRates\\\":[0.15]}\","
+                        + "\"clawbackPolicy\":\"{\\\"mode\\\":\\\"PRORATA\\\"}\",\"paymentSchedule\":\"{\\\"months\\\":12}\","
+                        + "\"conditions\":[{\"indicatorType\":\"UNPAID_RATE\",\"operator\":\"LT\","
+                        + "\"threshold\":0.05,\"measurementPeriod\":\"MONTH\",\"onFailure\":\"DEFER\"}],"
                         + "\"priority\":10,\"exclusionGroup\":\"TEST\"}")
-                .when().post("/api/ui/v1/plans/P1/rules/R1/versions").then().statusCode(201).body("status", is("DRAFT"));
+                .when().post("/api/ui/v1/plans/P1/rules/R1/versions").then().statusCode(201).body("status", is("DRAFT"))
+                .body("clawbackPolicy", is("{\"mode\":\"PRORATA\"}"))
+                .body("paymentSchedule", is("{\"months\":12}"))
+                .body("conditions[0].onFailure", is("DEFER"));
 
         admin().when().get("/api/ui/v1/plans/P1/rules/R1/versions?entityCode=ALPTIS_ASSURANCES")
-                .then().statusCode(200).body("versionNo", hasItem(1));
+                .then().statusCode(200).body("versionNo", hasItem(1))
+                .body("[0].conditions[0].indicatorType", is("UNPAID_RATE"));
 
         admin2().when().post("/api/ui/v1/plans/P1/rules/R1/versions/1/approve?entityCode=ALPTIS_ASSURANCES")
                 .then().statusCode(200).body("status", is("APPROVED"));

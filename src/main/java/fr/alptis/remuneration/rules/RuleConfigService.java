@@ -10,7 +10,11 @@ import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
+import fr.alptis.remuneration.domain.ConditionFailureMode;
+import fr.alptis.remuneration.domain.ConditionOperator;
+import fr.alptis.remuneration.domain.QualityIndicatorType;
 import fr.alptis.remuneration.domain.Rule;
+import fr.alptis.remuneration.domain.RuleCondition;
 import fr.alptis.remuneration.domain.RuleBasis;
 import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.RuleVersion;
@@ -203,6 +207,22 @@ public class RuleConfigService {
         stamp(version);
         version.setCreatedBy(currentUser.username());
         version.persist();
+        if (input.conditions() != null) {
+            for (ConditionInput condition : input.conditions()) {
+                RuleCondition row = new RuleCondition();
+                row.ruleVersion = version;
+                row.indicatorType = condition.indicatorType() == null ? null
+                        : QualityIndicatorType.valueOf(condition.indicatorType());
+                row.counterCode = condition.counterCode();
+                row.operator = condition.operator() == null ? null
+                        : ConditionOperator.valueOf(condition.operator());
+                row.threshold = condition.threshold();
+                row.measurementPeriod = condition.measurementPeriod();
+                row.onFailure = condition.onFailure() == null ? null
+                        : ConditionFailureMode.valueOf(condition.onFailure());
+                row.persist();
+            }
+        }
         audit.record(currentUser.username(), rule.plan.entity, "CREATE_RULE_VERSION", "RuleVersion",
                 version.getId(), null, "{\"rule\":\"" + ruleCode + "\",\"versionNo\":" + nextVersion + "}");
         return toVersionView(version, List.of());
@@ -498,11 +518,20 @@ public class RuleConfigService {
     private static VersionView toVersionView(RuleVersion version, List<RuleVersion> conflicts) {
         List<String> conflictCodes = conflicts.stream()
                 .map(c -> c.rule.code + " v" + c.versionNo).toList();
+        List<ConditionView> conditions = RuleCondition.<RuleCondition>list("ruleVersion", version).stream()
+                .map(c -> new ConditionView(
+                        c.indicatorType == null ? null : c.indicatorType.name(),
+                        c.counterCode,
+                        c.operator == null ? null : c.operator.name(),
+                        c.threshold,
+                        c.onFailure == null ? null : c.onFailure.name()))
+                .toList();
         return new VersionView(version.versionNo,
                 version.validFrom == null ? null : version.validFrom.toString(),
                 version.validTo == null ? null : version.validTo.toString(),
                 version.status == null ? null : version.status.name(),
                 version.priority, version.exclusionGroup, version.parameters,
+                version.clawbackPolicy, version.paymentSchedule, conditions,
                 version.approvedBy, conflictCodes);
     }
 
@@ -525,7 +554,7 @@ public class RuleConfigService {
     public record VersionInput(LocalDate validFrom, LocalDate validTo, VersionAnchor versionAnchor, String scope,
                                List<String> triggerEventTypes, RuleBasis basis, LineNature outputNature,
                                String parameters, String clawbackPolicy, String paymentSchedule, Integer priority,
-                               String exclusionGroup) {
+                               String exclusionGroup, List<ConditionInput> conditions) {
     }
 
     /**
@@ -564,6 +593,35 @@ public class RuleConfigService {
      * @param conflicts      the codes of detected conflicting versions
      */
     public record VersionView(Integer versionNo, String validFrom, String validTo, String status, Integer priority,
-                              String exclusionGroup, String parameters, String approvedBy, List<String> conflicts) {
+                              String exclusionGroup, String parameters, String clawbackPolicy, String paymentSchedule,
+                              List<ConditionView> conditions, String approvedBy, List<String> conflicts) {
+    }
+
+    /**
+     * One payment condition of a version (PAR-07): an indicator or counter compared to a threshold,
+     * and what a failure does.
+     *
+     * @param indicatorType the quality-indicator type, if any
+     * @param counterCode   the counter code, if any
+     * @param operator      the comparison operator
+     * @param threshold     the threshold
+     * @param onFailure     what a failure does (FORFEIT or DEFER)
+     */
+    public record ConditionView(String indicatorType, String counterCode, String operator, BigDecimal threshold,
+                                String onFailure) {
+    }
+
+    /**
+     * A payment condition supplied by the configuration form (PAR-07).
+     *
+     * @param indicatorType     the quality-indicator type name, or null
+     * @param counterCode       the counter code, or null
+     * @param operator          the comparison operator name
+     * @param threshold         the threshold
+     * @param measurementPeriod the measurement period, or null
+     * @param onFailure         what a failure does (FORFEIT or DEFER)
+     */
+    public record ConditionInput(String indicatorType, String counterCode, String operator, BigDecimal threshold,
+                                 String measurementPeriod, String onFailure) {
     }
 }

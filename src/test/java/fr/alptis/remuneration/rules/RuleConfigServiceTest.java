@@ -74,7 +74,8 @@ class RuleConfigServiceTest {
     /** Builds a LINEAR version input with the given perimeter, dates, group and priority. */
     private static VersionInput linearInput(String scope, LocalDate from, LocalDate to, String group, int priority) {
         return new VersionInput(from, to, VersionAnchor.EVENT_DATE, scope, List.of("PREMIUM_COLLECTED"),
-                RuleBasis.COLLECTED_PREMIUM, LineNature.LINEAR, "{\"allowedRates\":[0.15]}", null, null, priority, group);
+                RuleBasis.COLLECTED_PREMIUM, LineNature.LINEAR, "{\"allowedRates\":[0.15]}", null, null, priority, group,
+                null);
     }
 
     /**
@@ -96,6 +97,38 @@ class RuleConfigServiceTest {
     }
 
     /**
+     * A version carries its reprise policy and payment schedule (PAR-08) and its payment conditions
+     * (PAR-07), all surfaced on the version view.
+     */
+    @Test
+    @TestTransaction
+    void creates_a_version_with_reprise_and_conditions() {
+        RuleConfigService svc = unep();
+        svc.createPlan("UNEP", "PLAN_C", "Plan C", Direction.INBOUND, (short) 2026);
+        svc.createRule("UNEP", "PLAN_C", "RC", "Règle C", RuleFamily.LINEAR);
+        var conditions = List.of(
+                new RuleConfigService.ConditionInput("UNPAID_RATE", null, "LT", new java.math.BigDecimal("0.05"),
+                        "MONTH", "DEFER"),
+                new RuleConfigService.ConditionInput(null, "NEW_BUSINESS", "GE", new java.math.BigDecimal("10"),
+                        "YEAR", "FORFEIT"),
+                // A sparse condition with no operator nor failure mode (covers the null legs).
+                new RuleConfigService.ConditionInput(null, "RAW", null, new java.math.BigDecimal("1"), null, null));
+        VersionView view = svc.addVersion("UNEP", "PLAN_C", "RC", new VersionInput(
+                LocalDate.of(2026, 1, 1), null, VersionAnchor.EVENT_DATE, "{\"product\":[\"X\"]}",
+                List.of("PREMIUM_COLLECTED"), RuleBasis.COLLECTED_PREMIUM, LineNature.LINEAR,
+                "{\"allowedRates\":[0.15]}", "{\"mode\":\"PRORATA\"}", "{\"months\":12}", 10, "BASE", conditions));
+        assertEquals("{\"mode\":\"PRORATA\"}", view.clawbackPolicy());
+        assertEquals("{\"months\":12}", view.paymentSchedule());
+        assertEquals(3, view.conditions().size());
+        var listed = svc.listVersions("UNEP", "PLAN_C", "RC").get(0);
+        assertEquals(3, listed.conditions().size());
+        assertTrue(listed.conditions().stream().anyMatch(c -> "UNPAID_RATE".equals(c.indicatorType())
+                && "LT".equals(c.operator()) && "DEFER".equals(c.onFailure())));
+        assertTrue(listed.conditions().stream().anyMatch(c -> "NEW_BUSINESS".equals(c.counterCode())
+                && "FORFEIT".equals(c.onFailure())));
+    }
+
+    /**
      * Invalid family parameters are refused on version creation.
      */
     @Test
@@ -105,7 +138,7 @@ class RuleConfigServiceTest {
         svc.createPlan("UNEP", "PLAN_A", "Plan A", Direction.INBOUND, (short) 2026);
         svc.createRule("UNEP", "PLAN_A", "R1", "Règle 1", RuleFamily.LINEAR);
         VersionInput bad = new VersionInput(null, null, VersionAnchor.EVENT_DATE, "{}", List.of(),
-                RuleBasis.COLLECTED_PREMIUM, LineNature.LINEAR, "{\"allowedRates\":[5]}", null, null, 10, "BASE");
+                RuleBasis.COLLECTED_PREMIUM, LineNature.LINEAR, "{\"allowedRates\":[5]}", null, null, 10, "BASE", null);
         assertThrows(ValidationException.class, () -> svc.addVersion("UNEP", "PLAN_A", "R1", bad));
     }
 
@@ -187,7 +220,7 @@ class RuleConfigServiceTest {
         svc.createRule("UNEP", "PLAN_A", "R2", "Règle 2", RuleFamily.LINEAR);
         svc.addVersion("UNEP", "PLAN_A", "R2", new VersionInput(LocalDate.of(2026, 1, 1), null, VersionAnchor.EVENT_DATE,
                 "{\"product\":[\"Y\"]}", null, RuleBasis.COLLECTED_PREMIUM, LineNature.LINEAR,
-                "{\"allowedRates\":[0.1]}", null, null, 10, "BASE"));
+                "{\"allowedRates\":[0.1]}", null, null, 10, "BASE", null));
 
         svc.duplicatePlan("UNEP", "PLAN_A", "PLAN_A_2027", (short) 2027);
         List<VersionView> copied = svc.listVersions("UNEP", "PLAN_A_2027", "R1");

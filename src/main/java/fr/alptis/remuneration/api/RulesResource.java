@@ -249,7 +249,8 @@ public class RulesResource {
     public record VersionRequest(String entityCode, LocalDate validFrom, LocalDate validTo, VersionAnchor versionAnchor,
                                  String scope, List<String> triggerEventTypes, RuleBasis basis, LineNature outputNature,
                                  String parameters, String clawbackPolicy, String paymentSchedule, Integer priority,
-                                 String exclusionGroup) {
+                                 String exclusionGroup,
+                                 List<fr.alptis.remuneration.rules.RuleConfigService.ConditionInput> conditions) {
 
         /**
          * Converts this request to the service input.
@@ -258,7 +259,7 @@ public class RulesResource {
          */
         VersionInput toInput() {
             return new VersionInput(validFrom, validTo, versionAnchor, scope, triggerEventTypes, basis, outputNature,
-                    parameters, clawbackPolicy, paymentSchedule, priority, exclusionGroup);
+                    parameters, clawbackPolicy, paymentSchedule, priority, exclusionGroup, conditions);
         }
     }
 

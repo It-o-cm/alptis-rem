@@ -83,7 +83,7 @@ d'accès serveur · test de bout en bout · état.
 | --- | --- | --- | --- | --- | --- | --- |
 | 36 | Plans de rémunération : liste, fiche, duplication annuelle | PAR-01, PAR-12 | `rules` / RulesView | GET/POST /plans, POST duplicate | rules.spec | complet |
 | 37 | Règles et versions d'un plan : liste, statuts, conflits détectés | PAR-03→05 | `rules` / RulesView | GET/POST rules, versions | rules.spec | complet |
-| 38 | Paramétrage d'une version de règle, approbation par un second administrateur | PAR-01→08, PAR-14 | `rules` / RulesView | POST versions, approve, plausibility | rules.spec | partiel — le formulaire de version ne couvre pas encore barèmes à paliers (PAR-06), conditions (PAR-07) et politique de reprise (PAR-08) par les schémas de famille |
+| 38 | Paramétrage d'une version de règle, approbation par un second administrateur | PAR-01→08, PAR-14 | `rules` / RulesView | POST versions, approve, plausibility | rules.spec | complet — le formulaire affiche le schéma de la famille (PAR-02/06), saisit la politique de reprise et l'échéancier (PAR-08) et un éditeur de conditions de versement (PAR-07) ; la table des versions restitue reprise et conditions |
 | 39 | Familles de calcul : un formulaire par famille | PAR-02 | `families` / FamiliesView | GET /families, /{f}/schema | families.spec | complet |
 | 40 | Accords et inscriptions aux règles réservées, à l'unité et en masse | PAR-10 | `enrollments` / EnrollmentsView | GET/POST agreements, enrollments | enrollments.spec | complet |
 | 41 | Simulation : lancement, table de substitution, résultat, historique | PAR-13 | `simulation` / SimulationView | POST /simulation/{e}/{m}, GET /simulation/{e}/history | simulation.spec | complet — lancement, table de substitution, résultat comparé, et historique des simulations (table `simulation_history` en ajout seul, cf. DECISIONS 2026-10-12) |
@@ -194,7 +194,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | PAR-03 | RuleConfigService | #37 | rules | complet |
 | PAR-04 | RuleConfigService | #38 | rules | complet |
 | PAR-05 | RuleConfigService (conflits) | #37 | rules | complet |
-| PAR-06 | TieredFamily, BaremeInitialService | #38 | — | partiel — édition des barèmes à paliers par écran à confirmer |
+| PAR-06 | TieredFamily, BaremeInitialService | #38 | — | complet — l'écran sert le schéma JSON de la famille à paliers depuis `/families/{f}/schema` pour guider la saisie des paramètres |
 | PAR-07 | RuleCondition, CalculationEngine | #38 | — | complet |
 | PAR-08 | RuleConfigService, CalculationEngine | #38 | — | complet — politique de reprise + mode `DEFER`/`FORFEIT` de la condition de versement (§6.7) désormais honorés par le moteur |
 | PAR-09 | AgreementService | #31, #32 | advance-agreements | partiel — fiche convention (compteurs, garanties, simulation de rupture) absente |
