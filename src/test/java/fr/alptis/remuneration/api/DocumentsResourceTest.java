@@ -76,6 +76,29 @@ class DocumentsResourceTest {
     }
 
     /**
+     * The annual tax certificates list answers (current year by default and for an explicit year); an
+     * unknown beneficiary and an out-of-scope entity are not found (BRD-08).
+     */
+    @Test
+    void lists_tax_certificates() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/tax-certificates/ALPTIS_ASSURANCES")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/tax-certificates/ALPTIS_ASSURANCES?year=2026")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/tax-certificates/ALPTIS_ASSURANCES/NOPE?year=2026")
+                .then().statusCode(404);
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/tax-certificates/ALPTIS_ASSURANCES/NOPE")
+                .then().statusCode(404);
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/documents/tax-certificates/UNEP")
+                .then().statusCode(404);
+    }
+
+    /**
      * A statement is published then rectified into a new version.
      */
     @Test

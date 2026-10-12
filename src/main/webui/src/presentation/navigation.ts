@@ -93,6 +93,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     heading: 'Documents',
     items: [
       { name: 'documentTemplates', path: '/modeles-documents', label: 'Modèles de documents' },
+      { name: 'taxCertificates', path: '/attestations-fiscales', label: 'Attestations fiscales' },
     ],
   },
   {

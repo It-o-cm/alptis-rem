@@ -3,6 +3,7 @@ package fr.alptis.remuneration.api;
 import fr.alptis.remuneration.documents.DocumentTemplateService;
 import fr.alptis.remuneration.documents.StatementService;
 import fr.alptis.remuneration.documents.StatementService.StatementContent;
+import fr.alptis.remuneration.documents.TaxCertificateService;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.Statement;
 import fr.alptis.remuneration.payment.PaymentQueryService;
@@ -32,23 +33,64 @@ public class DocumentsResource {
     private final PaymentQueryService query;
     private final StatementService statements;
     private final DocumentTemplateService templates;
+    private final TaxCertificateService taxCertificates;
     private final EntityScope scope;
 
     /**
      * Creates the resource.
      *
-     * @param query      the payment read model
-     * @param statements the statement service
-     * @param templates  the document-template service
-     * @param scope      the entity partition
+     * @param query           the payment read model
+     * @param statements      the statement service
+     * @param templates       the document-template service
+     * @param taxCertificates the tax-certificate service
+     * @param scope           the entity partition
      */
     @Inject
     public DocumentsResource(PaymentQueryService query, StatementService statements,
-                             DocumentTemplateService templates, EntityScope scope) {
+                             DocumentTemplateService templates, TaxCertificateService taxCertificates,
+                             EntityScope scope) {
         this.query = query;
         this.statements = statements;
         this.templates = templates;
+        this.taxCertificates = taxCertificates;
         this.scope = scope;
+    }
+
+    /**
+     * Lists the annual tax certificates of an entity for a fiscal year, defaulting to the current year
+     * (BRD-08).
+     *
+     * @param entityCode the entity code
+     * @param year       the fiscal year, or null for the current year
+     * @return the certificate views
+     */
+    @GET
+    @Path("/tax-certificates/{entityCode}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "OPERATOR", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<TaxCertificateService.CertificateView> taxCertificates(
+            @PathParam("entityCode") String entityCode,
+            @jakarta.ws.rs.QueryParam("year") Integer year) {
+        return taxCertificates.certificates(entityCode, year == null ? taxCertificates.currentYear() : year);
+    }
+
+    /**
+     * Produces the annual tax certificate of one beneficiary (BRD-08).
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the beneficiary partner code
+     * @param year        the fiscal year, or null for the current year
+     * @return the certificate
+     */
+    @GET
+    @Path("/tax-certificates/{entityCode}/{partnerCode}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "OPERATOR", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public TaxCertificateService.CertificateView taxCertificate(
+            @PathParam("entityCode") String entityCode, @PathParam("partnerCode") String partnerCode,
+            @jakarta.ws.rs.QueryParam("year") Integer year) {
+        return taxCertificates.certificate(entityCode, year == null ? taxCertificates.currentYear() : year,
+                partnerCode);
     }
 
     /**

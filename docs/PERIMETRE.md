@@ -119,7 +119,7 @@ d'accès serveur · test de bout en bout · état.
 | # | Écran | Exig. | Route / Vue | Points d'accès | Test E2E | État |
 | --- | --- | --- | --- | --- | --- | --- |
 | 58 | Modèles de documents | BRD-05 | `documentTemplates` / DocumentTemplatesView | GET/POST /documents/templates/{e} | document-templates.spec | complet — liste des modèles par type et édition par l'administrateur métier (logo, mentions, colonnes, ordre), chaque enregistrement créant une nouvelle version tracée au journal d'audit |
-| 59 | Attestations fiscales annuelles | BRD-08 | — | — | — | absent |
+| 59 | Attestations fiscales annuelles | BRD-08 | `taxCertificates` / TaxCertificatesView | GET /documents/tax-certificates/{e}, /{e}/{p} | tax-certificates.spec | complet — total des commissions payées à chaque bénéficiaire pour l'exercice (par défaut l'année courante), et l'attestation d'un bénéficiaire |
 | 60 | Tableaux de bord : commissions, reprises, escomptes, comptes débiteurs, premiers distributeurs, anomalies | REP-01 | `dashboards` / DashboardsView | GET /reporting/{e}/dashboard | reporting.spec | complet |
 | 61 | Vision consolidée du groupe | REP-07 | `groupView` / GroupView | GET /reporting/consolidated | reporting.spec | complet |
 | 62 | Indicateurs de fonctionnement | REP-09 | `indicators` / IndicatorsView | GET /reporting/{e}/indicators | reporting.spec | complet |
