@@ -281,6 +281,47 @@ class SalesForceServiceTest {
     }
 
     /**
+     * FDV-04: a plan is created with its envelope, instalment and parameters, then updated in place for
+     * the same key (post, component, start of validity); a blank parameters payload is accepted.
+     */
+    @Test
+    @TestTransaction
+    void creates_and_updates_a_plan() {
+        VariablePlan created = service.savePlan("UNEP", new SalesForceService.PlanInput(
+                JobCode.RR, VariableComponent.MONTHLY_INDIVIDUAL, new BigDecimal("12000"), new BigDecimal("700"),
+                "{\"absenceDays\":10}", LocalDate.of(2026, 1, 1), null));
+        assertEquals(0, new BigDecimal("12000").compareTo(created.envelopeAmount));
+
+        VariablePlan updated = service.savePlan("UNEP", new SalesForceService.PlanInput(
+                JobCode.RR, VariableComponent.MONTHLY_INDIVIDUAL, new BigDecimal("12500"), new BigDecimal("720"),
+                "", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)));
+        assertEquals(created.getId(), updated.getId());
+        assertEquals(0, new BigDecimal("12500").compareTo(updated.envelopeAmount));
+        assertEquals(LocalDate.of(2026, 12, 31), updated.validTo);
+        assertEquals(1, VariablePlan.count("entity = ?1 and jobCode = ?2 and component = ?3 and validFrom = ?4",
+                unep(), JobCode.RR, VariableComponent.MONTHLY_INDIVIDUAL, LocalDate.of(2026, 1, 1)));
+    }
+
+    /**
+     * FDV-04: the plan write refuses a missing post, component, start date or envelope, and malformed
+     * parameters JSON.
+     */
+    @Test
+    @TestTransaction
+    void rejects_invalid_plans() {
+        assertThrows(ValidationException.class, () -> service.savePlan("UNEP", new SalesForceService.PlanInput(
+                null, VariableComponent.MONTHLY_INDIVIDUAL, BigDecimal.TEN, null, null, FROM, null)));
+        assertThrows(ValidationException.class, () -> service.savePlan("UNEP", new SalesForceService.PlanInput(
+                JobCode.CAC, null, BigDecimal.TEN, null, null, FROM, null)));
+        assertThrows(ValidationException.class, () -> service.savePlan("UNEP", new SalesForceService.PlanInput(
+                JobCode.CAC, VariableComponent.MONTHLY_INDIVIDUAL, BigDecimal.TEN, null, null, null, null)));
+        assertThrows(ValidationException.class, () -> service.savePlan("UNEP", new SalesForceService.PlanInput(
+                JobCode.CAC, VariableComponent.MONTHLY_INDIVIDUAL, null, null, null, FROM, null)));
+        assertThrows(ValidationException.class, () -> service.savePlan("UNEP", new SalesForceService.PlanInput(
+                JobCode.CAC, VariableComponent.MONTHLY_INDIVIDUAL, BigDecimal.TEN, null, "{bad", FROM, null)));
+    }
+
+    /**
      * FDV-03: objectives are versioned append-only per key; an individual, a second version of it, a
      * different employee (own version 1) and a collective objective are all created; an existing
      * version-less objective still advances the next version.

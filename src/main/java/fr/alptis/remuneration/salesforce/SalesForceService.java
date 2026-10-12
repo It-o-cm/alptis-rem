@@ -51,14 +51,19 @@ public class SalesForceService {
     /** The application date/time provider. */
     private final DateTimeProvider clock;
 
+    /** The JSON mapper, to validate a plan's parameters payload. */
+    private final com.fasterxml.jackson.databind.ObjectMapper mapper;
+
     /**
      * Creates the service.
      *
-     * @param clock the application date/time provider
+     * @param clock  the application date/time provider
+     * @param mapper the JSON mapper
      */
     @Inject
-    public SalesForceService(DateTimeProvider clock) {
+    public SalesForceService(DateTimeProvider clock, com.fasterxml.jackson.databind.ObjectMapper mapper) {
         this.clock = clock;
+        this.mapper = mapper;
     }
 
     /**
@@ -205,6 +210,80 @@ public class SalesForceService {
         result.validatedAt = clock.now();
         result.persist();
         return result;
+    }
+
+    /**
+     * Creates or updates a variable plan of a post (FDV-04): its annual envelope, its monthly
+     * instalment, its parameters (criteria, scales and absence rules as JSON) and its validity. A plan
+     * is versioned by its validity dates, without status (section 8.14); the natural key is the entity,
+     * the post, the component and the start of validity, so editing a dated plan replaces it in place
+     * while a new start of validity opens a new version.
+     *
+     * @param entityCode the entity code
+     * @param input      the plan fields
+     * @return the saved plan
+     */
+    @Transactional
+    public VariablePlan savePlan(String entityCode, PlanInput input) {
+        LegalEntity entity = entity(entityCode);
+        if (input.jobCode() == null || input.component() == null) {
+            throw new ValidationException("Poste et composante obligatoires");
+        }
+        if (input.validFrom() == null) {
+            throw new ValidationException("Date de début obligatoire");
+        }
+        if (input.envelopeAmount() == null) {
+            throw new ValidationException("Enveloppe obligatoire");
+        }
+        validateJson(input.parameters());
+        VariablePlan plan = VariablePlan.<VariablePlan>find(
+                "entity = ?1 and jobCode = ?2 and component = ?3 and validFrom = ?4",
+                entity, input.jobCode(), input.component(), input.validFrom()).firstResult();
+        if (plan == null) {
+            plan = new VariablePlan();
+            plan.entity = entity;
+            plan.jobCode = input.jobCode();
+            plan.component = input.component();
+            plan.validFrom = input.validFrom();
+            plan.persist();
+        }
+        plan.envelopeAmount = input.envelopeAmount();
+        plan.instalmentAmount = input.instalmentAmount();
+        // The JSON column holds valid JSON or null — a blank payload is stored as none.
+        plan.parameters = input.parameters() == null || input.parameters().isBlank() ? null : input.parameters();
+        plan.validTo = input.validTo();
+        return plan;
+    }
+
+    /**
+     * Validates that a parameters payload, when present, is well-formed JSON.
+     *
+     * @param parameters the parameters payload, possibly null or blank
+     */
+    private void validateJson(String parameters) {
+        if (parameters == null || parameters.isBlank()) {
+            return;
+        }
+        try {
+            mapper.readTree(parameters);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new ValidationException("Paramètres JSON invalides : " + e.getOriginalMessage());
+        }
+    }
+
+    /**
+     * The editable fields of a variable plan (FDV-04).
+     *
+     * @param jobCode          the post
+     * @param component        the variable component
+     * @param envelopeAmount   the annual envelope
+     * @param instalmentAmount the monthly instalment, or null
+     * @param parameters       the criteria/scales/absence rules (JSON), or null
+     * @param validFrom        the validity start (part of the natural key)
+     * @param validTo          the validity end, or null
+     */
+    public record PlanInput(JobCode jobCode, VariableComponent component, BigDecimal envelopeAmount,
+                            BigDecimal instalmentAmount, String parameters, LocalDate validFrom, LocalDate validTo) {
     }
 
     /**

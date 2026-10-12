@@ -3,6 +3,7 @@ package fr.alptis.remuneration.api;
 import fr.alptis.remuneration.domain.JobCode;
 import fr.alptis.remuneration.domain.ObjectiveType;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
+import fr.alptis.remuneration.domain.VariableComponent;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.CollaboratorView;
 import fr.alptis.remuneration.salesforce.SalesForceQueryService.MeasureView;
@@ -71,6 +72,27 @@ public class FdvResource {
     public List<PlanView> plans(@PathParam("entity") String entityCode) {
         requireScope(entityCode);
         return query.plans(entityCode);
+    }
+
+    /**
+     * Creates or updates a variable plan of a post (FDV-04), by the business administrator.
+     *
+     * @param entityCode the entity code
+     * @param request    the plan fields
+     * @return a 201 response with the saved plan
+     */
+    @POST
+    @Path("/{entity}/plans")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public jakarta.ws.rs.core.Response savePlan(@PathParam("entity") String entityCode, PlanRequest request) {
+        requireScope(entityCode);
+        var saved = service.savePlan(entityCode, request.toInput());
+        return jakarta.ws.rs.core.Response.status(jakarta.ws.rs.core.Response.Status.CREATED)
+                .entity(new PlanView(saved.jobCode, saved.component, saved.envelopeAmount, saved.instalmentAmount,
+                        saved.parameters, saved.validFrom, saved.validTo))
+                .build();
     }
 
     /**
@@ -315,6 +337,31 @@ public class FdvResource {
      * @param reason     the adjustment reason
      */
     public record AdjustmentRequest(String externalId, BigDecimal amount, String reason) {
+    }
+
+    /**
+     * A variable-plan create/update request (FDV-04).
+     *
+     * @param jobCode          the post
+     * @param component        the variable component
+     * @param envelopeAmount   the annual envelope
+     * @param instalmentAmount the monthly instalment, or null
+     * @param parameters       the criteria/scales/absence rules (JSON), or null
+     * @param validFrom        the validity start
+     * @param validTo          the validity end, or null
+     */
+    public record PlanRequest(JobCode jobCode, VariableComponent component, BigDecimal envelopeAmount,
+                              BigDecimal instalmentAmount, String parameters, LocalDate validFrom, LocalDate validTo) {
+
+        /**
+         * Converts this request to a service input.
+         *
+         * @return the plan input
+         */
+        SalesForceService.PlanInput toInput() {
+            return new SalesForceService.PlanInput(jobCode, component, envelopeAmount, instalmentAmount, parameters,
+                    validFrom, validTo);
+        }
     }
 
     /**

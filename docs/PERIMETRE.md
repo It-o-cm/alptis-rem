@@ -135,7 +135,7 @@ d'accès serveur · test de bout en bout · état.
 | 67 | Collaborateurs | FDV-01 | `fdvCollaborators` / FdvCollaboratorsView | GET/POST /fdv/{e}/collaborators, PUT /fdv/{e}/collaborators/{id} | fdv.spec | complet — écran de gestion dédié : création et mise à jour individuelles (poste, équipe, région, responsable, dates), en plus de l'alimentation en masse par le SI RH ; liste restituant la validité et le poste en clair |
 | 68 | Mesures reçues : absences, production, activité, marge | FDV-02 | `fdvMeasures` / FdvMeasuresView | GET /fdv/{e}/measures | fdv.spec | complet — écran de consultation des mesures reçues (absences, production par marché, activité CRM, marge, cahiers des charges) alimentées par l'import SI RH/CRM ; types de mesure restitués en clair |
 | 69 | Objectifs individuels et collectifs, versionnés | FDV-03 | `fdvObjectives` / FdvObjectivesView | GET/POST /fdv/{e}/objectives | fdv.spec | complet — écran de gestion : objectifs individuels et collectifs, quantitatifs et qualitatifs, par poste et période, versionnés en ajout seul (nouvel objectif de même clé = version suivante, le calcul lit la dernière) |
-| 70 | Plan de variable par poste | FDV-04, FDV-09→12 | `fdvPlan` / FdvPlanView | GET /fdv/{e}/plans, POST run | fdv.spec | partiel — barèmes animateurs/responsables/vente directe (FDV-09/10) et réduction sur résiliation (FDV-12) absents |
+| 70 | Plan de variable par poste | FDV-04, FDV-09→12 | `fdvPlan` / FdvPlanView | GET/POST /fdv/{e}/plans, POST run | fdv.spec | complet — gestion des plans par poste et composante : enveloppe, mensualité, barèmes/critères/règles d'absence en paramètres JSON (dont paliers de croissance FDV-09, vente directe FDV-10, réduction sur résiliation FDV-12) et validité datée ; le calcul des composantes FDV-09/10/12 reste reporté à l'atelier direction commerciale (§8.14 Limites, H-21, voir DECISIONS) |
 | 71 | Validation mensuelle par le responsable | FDV-13 | `fdvValidation` / FdvValidationView | GET results, POST validate/adjust | fdv.spec | complet |
 | 72 | Mon variable, mes objectifs, mon historique, simulateur | FDV-15, FDV-16 | `fdvCommercial` / FdvCommercialView | GET /fdv/{e}/my-variable/{id} | fdv.spec | partiel — simulateur (FDV-16) absent |
 | 73 | Synthèse des variables à payer et export paie | FDV-14 | `fdvValidation` / FdvValidationView | POST /fdv/{e}/{m}/pay-export | fdv.spec | partiel — export paie présent ; écran de synthèse des variables à payer par personne absent |
@@ -344,15 +344,15 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | FDV-01 | EmployeeImportService, SalesForceService (create/update), SalesForceQueryService | #67 | fdv | complet — gestion des collaborateurs à l'écran (création/mise à jour) et alimentation en masse par le SI RH |
 | FDV-02 | EmployeeImportService (import), SalesForceQueryService (measures) | #68 | fdv | complet — mesures reçues par import SI RH/CRM et consultées à l'écran (absences, production, activité, marge, cahiers des charges) |
 | FDV-03 | SalesForceService (createObjective), SalesForceQueryService | #69 | fdv | complet — objectifs individuels/collectifs, quantitatifs/qualitatifs, par poste et période, versionnés en ajout seul |
-| FDV-04 | SalesForceService | #70 | fdv | partiel — enveloppes/critères des postes animateur/responsable/vente directe absents |
+| FDV-04 | SalesForceService (savePlan) | #70 | fdv | complet — gestion des plans par poste et composante : enveloppe, mensualité, barèmes/critères/règles d'absence (paramètres JSON) et validité datée |
 | FDV-05 | SalesForceService (runMonth) | #71 | cr88 JUnit | complet |
 | FDV-06 | — | #73 | — | absent — régularisation annuelle |
 | FDV-07 | — | — | — | absent — variable trimestriel qualitatif |
 | FDV-08 | — | — | — | absent — variable annuel collectif |
-| FDV-09 | — | #70 | — | absent — barèmes animateurs et responsables |
-| FDV-10 | — | #70 | — | absent — variable de la vente directe |
+| FDV-09 | SalesForceService (savePlan — barème) | #70 | fdv | partiel — barèmes animateurs/responsables configurables au plan (paliers 15/25/35 %, critères 3/5) ; calcul reporté à l'atelier direction commerciale (§8.14 Limites, H-21) |
+| FDV-10 | SalesForceService (savePlan — barème) | #70 | fdv | partiel — barème vente directe configurable au plan (% marge, dépassement, portefeuille) ; calcul reporté (§8.14 Limites, H-21) |
 | FDV-11 | SalesForceService (pondération) | #70 | cr87 JUnit | complet |
-| FDV-12 | — | #70 | — | absent — réduction sur résiliation |
+| FDV-12 | SalesForceService (savePlan — barème) | #70 | fdv | partiel — règle de réduction sur résiliation configurable au plan (durée paramétrée) ; calcul reporté (§8.14 Limites) |
 | FDV-13 | SalesForceService (validate/adjust) | #71 | fdv | complet |
 | FDV-14 | SalesForceService (pay-export) | #73 | fdv | partiel — écran de synthèse des variables à payer absent |
 | FDV-15 | SalesForceQueryService | #72 | fdv | complet |

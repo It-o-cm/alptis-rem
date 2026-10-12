@@ -4,14 +4,18 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { jobCodeLabel, JOB_CODES, componentLabel, PLAN_COMPONENTS } from '../presentation/salesforce';
+import {
+  AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading,
+} from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface Plan {
   jobCode: string;
   component: string;
   envelope: number;
-  instalment: number;
+  instalment: number | null;
+  parameters: string | null;
   validFrom: string;
   validTo: string | null;
 }
@@ -45,8 +49,15 @@ const error = ref('');
 const message = ref('');
 const loading = ref(false);
 
-/** Whether the current user may launch the variable calculation. */
+/** Whether the current user may launch the variable calculation and manage the plans. */
 const canRun = (): boolean => canEditEntityParameters(session.roles);
+
+const jobCodes = JOB_CODES;
+const planComponents = PLAN_COMPONENTS;
+const planForm = ref({
+  jobCode: 'CAC', component: 'MONTHLY_INDIVIDUAL', envelopeAmount: 2450, instalmentAmount: 146,
+  parameters: '', validFrom: '2026-01-01', validTo: '',
+});
 
 /**
  * Formats a monetary value in euros.
@@ -58,10 +69,11 @@ function amount(value: number): string {
 
 /** Columns of the per-job envelope and instalment table. */
 const planColumns: Column<Plan>[] = [
-  { key: 'jobCode', label: 'Poste' },
-  { key: 'component', label: 'Composante' },
+  { key: 'jobCode', label: 'Poste', value: (p) => jobCodeLabel(p.jobCode) },
+  { key: 'component', label: 'Composante', value: (p) => componentLabel(p.component) },
   { key: 'envelope', label: 'Enveloppe', align: 'num', value: (p) => amount(p.envelope) },
-  { key: 'instalment', label: 'Mensualité', align: 'num', value: (p) => amount(p.instalment) },
+  { key: 'instalment', label: 'Mensualité', align: 'num', value: (p) => (p.instalment === null ? '—' : amount(p.instalment)) },
+  { key: 'parameters', label: 'Barème / critères', value: (p) => (p.parameters ?? '—') },
   { key: 'validFrom', label: 'Validité', value: (p) => `${p.validFrom} → ${p.validTo ?? '—'}` },
 ];
 
@@ -96,6 +108,27 @@ async function load(): Promise<void> {
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
   } finally {
     loading.value = false;
+  }
+}
+
+/** Saves (creates or updates) a variable plan from the plan form (FDV-04). */
+async function savePlan(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    await apiPost(`/api/ui/v1/fdv/${entity.value}/plans`, {
+      jobCode: planForm.value.jobCode,
+      component: planForm.value.component,
+      envelopeAmount: planForm.value.envelopeAmount,
+      instalmentAmount: planForm.value.instalmentAmount,
+      parameters: planForm.value.parameters || null,
+      validFrom: planForm.value.validFrom || null,
+      validTo: planForm.value.validTo || null,
+    });
+    message.value = 'Plan enregistré.';
+    await load();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Enregistrement refusé';
   }
 }
 
@@ -137,7 +170,7 @@ onMounted(load);
       <AppButton variant="secondary" data-testid="fdvp-run" @click="run">Lancer le calcul</AppButton>
     </div>
 
-    <AppCard title="Enveloppes par poste">
+    <AppCard title="Plans de variable par poste">
       <DataTable
         :columns="planColumns"
         :rows="plans"
@@ -145,9 +178,37 @@ onMounted(load);
         empty="Aucun plan."
         empty-testid="no-plan"
         :row-testid="(p) => `plan-row-${plans.indexOf(p)}`"
-      >
-        <template #cell-jobCode="{ row }"><span class="mono">{{ row.jobCode }}</span></template>
-      </DataTable>
+      />
+
+      <AppForm v-if="canRun()" two-column @submit="savePlan">
+        <FormField label="Poste" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="plan-job" v-model="planForm.jobCode">
+            <option v-for="code in jobCodes" :key="code" :value="code">{{ jobCodeLabel(code) }}</option>
+          </select>
+        </FormField>
+        <FormField label="Composante" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="plan-component" v-model="planForm.component">
+            <option v-for="c in planComponents" :key="c" :value="c">{{ componentLabel(c) }}</option>
+          </select>
+        </FormField>
+        <FormField label="Enveloppe annuelle" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="plan-envelope" type="number" step="any" v-model.number="planForm.envelopeAmount" />
+        </FormField>
+        <FormField label="Mensualité" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="plan-instalment" type="number" step="any" v-model.number="planForm.instalmentAmount" />
+        </FormField>
+        <FormField label="Barème / critères / règles d'absence (JSON)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="plan-parameters" v-model="planForm.parameters"
+                 placeholder='{"growthTiers":{"15":1000,"25":2000,"35":3000}}' />
+        </FormField>
+        <FormField label="Valable du" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="plan-from" type="date" v-model="planForm.validFrom" />
+        </FormField>
+        <FormField label="Au" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="plan-to" type="date" v-model="planForm.validTo" />
+        </FormField>
+        <AppButton type="submit" data-testid="plan-save">Enregistrer le plan</AppButton>
+      </AppForm>
     </AppCard>
 
     <AppCard title="Collaborateurs">

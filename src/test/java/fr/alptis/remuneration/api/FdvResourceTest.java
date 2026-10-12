@@ -176,6 +176,32 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-04: the business administrator creates then updates a variable plan (same key, in place); a
+     * sales manager may not write.
+     */
+    @Test
+    void creates_and_updates_a_plan() {
+        String body = "{\"jobCode\":\"DR\",\"component\":\"MONTHLY_INDIVIDUAL\",\"envelopeAmount\":7700,"
+                + "\"instalmentAmount\":458,\"parameters\":\"{\\\"absenceDays\\\":10}\","
+                + "\"validFrom\":\"2026-01-01\",\"validTo\":null}";
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType(ContentType.JSON).body(body)
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/plans")
+                .then().statusCode(201).body("jobCode", is("DR"))
+                .body("parameters", is("{\"absenceDays\":10}"));
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType(ContentType.JSON)
+                .body("{\"jobCode\":\"DR\",\"component\":\"MONTHLY_INDIVIDUAL\",\"envelopeAmount\":7800,"
+                        + "\"instalmentAmount\":460,\"parameters\":null,\"validFrom\":\"2026-01-01\",\"validTo\":null}")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/plans")
+                .then().statusCode(201).body("parameters", org.hamcrest.Matchers.nullValue());
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/plans")
+                .then().statusCode(200).body("findAll { it.jobCode == 'DR' }.size()", is(1));
+
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").contentType(ContentType.JSON).body(body)
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/plans").then().statusCode(403);
+    }
+
+    /**
      * FDV-03: the business administrator creates a versioned objective (a second create of the same key
      * yields version 2); a sales manager may not write.
      */

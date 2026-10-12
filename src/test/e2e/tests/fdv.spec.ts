@@ -112,6 +112,24 @@ test('l’administrateur consulte les mesures reçues @screen:fdvMeasures @req:F
   await admin.close();
 });
 
+test('l’administrateur enregistre un plan de variable par poste @screen:fdvPlan @req:FDV-04', async ({ browser }) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/plan');
+  await page.getByTestId('plan-job').selectOption('DR');
+  await page.getByTestId('plan-component').selectOption('MONTHLY_INDIVIDUAL');
+  await page.getByTestId('plan-envelope').fill('7700');
+  await page.getByTestId('plan-instalment').fill('458');
+  await page.getByTestId('plan-parameters').fill('{"absenceDays":10}');
+  await page.getByTestId('plan-from').fill('2026-01-01');
+  await page.getByTestId('plan-save').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('Plan enregistré');
+  // The new plan appears with its post label and its parameters.
+  await expect(page.getByText('Directeur régional').first()).toBeVisible();
+  await expect(page.getByText('{"absenceDays":10}').first()).toBeVisible();
+  await admin.close();
+});
+
 test('l’administrateur crée un objectif collectif versionné @screen:fdvObjectives @req:FDV-03', async ({
   browser,
 }) => {

@@ -33,8 +33,8 @@ public class SalesForceQueryService {
     public List<PlanView> plans(String entityCode) {
         LegalEntity entity = entity(entityCode);
         return VariablePlan.<VariablePlan>list("entity = ?1 order by jobCode, component", entity).stream()
-                .map(p -> new PlanView(p.jobCode, p.component, p.envelopeAmount, p.instalmentAmount, p.validFrom,
-                        p.validTo))
+                .map(p -> new PlanView(p.jobCode, p.component, p.envelopeAmount, p.instalmentAmount, p.parameters,
+                        p.validFrom, p.validTo))
                 .toList();
     }
 
@@ -153,11 +153,12 @@ public class SalesForceQueryService {
      * @param component  the component
      * @param envelope   the annual envelope
      * @param instalment the monthly instalment
+     * @param parameters the plan parameters, scales and absence rules (JSON)
      * @param validFrom  the start of validity
      * @param validTo    the end of validity
      */
     public record PlanView(JobCode jobCode, VariableComponent component, BigDecimal envelope,
-                           BigDecimal instalment, LocalDate validFrom, LocalDate validTo) {
+                           BigDecimal instalment, String parameters, LocalDate validFrom, LocalDate validTo) {
     }
 
     /**

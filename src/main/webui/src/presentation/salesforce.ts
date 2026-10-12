@@ -59,3 +59,27 @@ export function objectiveTypeLabel(code: string | null): string {
   }
   return OBJECTIVE_LABELS[code] ?? code;
 }
+
+/** French label of each variable component (OUT-06 pay labels). */
+const COMPONENT_LABELS: Record<string, string> = {
+  MONTHLY_INDIVIDUAL: 'Mensuel individuel',
+  QUARTERLY_QUALITATIVE: 'Qualitatif',
+  ANNUAL_COLLECTIVE: 'Collectif',
+  ANNUAL_ADJUSTMENT: 'Régularisation',
+  MANUAL_ADJUSTMENT: 'Ajustement',
+};
+
+/** The variable components a plan may define, in a natural order. */
+export const PLAN_COMPONENTS: readonly string[] = [
+  'MONTHLY_INDIVIDUAL',
+  'QUARTERLY_QUALITATIVE',
+  'ANNUAL_COLLECTIVE',
+];
+
+/** Returns the French label of a variable component, or the code itself when unknown or absent. */
+export function componentLabel(code: string | null): string {
+  if (code === null) {
+    return '—';
+  }
+  return COMPONENT_LABELS[code] ?? code;
+}
