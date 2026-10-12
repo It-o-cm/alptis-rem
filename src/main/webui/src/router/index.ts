@@ -14,6 +14,7 @@ import TransfersView from '../views/TransfersView.vue';
 import ManualEventView from '../views/ManualEventView.vue';
 import EventsView from '../views/EventsView.vue';
 import HeldEventsView from '../views/HeldEventsView.vue';
+import CalculationsView from '../views/CalculationsView.vue';
 import PayeeRulesView from '../views/PayeeRulesView.vue';
 import ExternalCodesView from '../views/ExternalCodesView.vue';
 import RulesView from '../views/RulesView.vue';
@@ -83,6 +84,7 @@ const REAL_VIEWS: Record<string, unknown> = {
   manualEvent: ManualEventView,
   events: EventsView,
   heldEvents: HeldEventsView,
+  calculations: CalculationsView,
   payeeRules: PayeeRulesView,
   externalCodes: ExternalCodesView,
   rules: RulesView,

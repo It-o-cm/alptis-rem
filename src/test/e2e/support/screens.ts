@@ -24,6 +24,7 @@ export const SCREENS: readonly Screen[] = [
   { name: 'manualEvent', path: '/saisie-evenement', user: 'adminAlptis' },
   { name: 'events', path: '/evenements', user: 'auditor' },
   { name: 'heldEvents', path: '/evenements-en-attente', user: 'auditor' },
+  { name: 'calculations', path: '/calculs', user: 'auditor' },
   { name: 'controls', path: '/controles', user: 'auditor' },
   { name: 'adjustments', path: '/ajustements', user: 'auditor' },
   { name: 'payment', path: '/paiement', user: 'auditor' },

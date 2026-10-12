@@ -44,7 +44,7 @@ d'accès serveur · test de bout en bout · état.
 | 6 | Saisie manuelle d'un événement ou d'une donnée complémentaire | ING-07 | `manualEvent` / ManualEventView | POST /events, POST /events/complementary-data | manual-event.spec | complet — saisie d'un événement et d'une donnée complémentaire (garantie pivot), chacune tracée et contrôlée comme un import |
 | 7 | Recherche d'événements et détail d'un événement : statut, motif d'attente, lignes produites | ING-06, 5.3 | `events` / EventsView | GET /events, GET /events/{id} | events.spec | complet — recherche (clé, statut, type), détail avec statut, motif d'attente et lignes produites |
 | 8 | Événements en attente, par motif | P8, ING-06 | `heldEvents` / HeldEventsView | GET /events/held-by-reason, GET /events?status=ON_HOLD | held-events.spec | complet — regroupement par motif et liste des événements en attente (jeu de démonstration en porte un par entité) |
-| 9 | Exécutions de calcul : lancement, suivi, compteurs, unités en échec, recalcul partiel | CAL-01, CAL-12, 12.3 | — | — | — | absent |
+| 9 | Exécutions de calcul : lancement, suivi, compteurs, unités en échec, recalcul partiel | CAL-01, CAL-12, 12.3 | `calculations` / CalculationsView | GET /calculations/{e}/{m}, POST run, POST recalc | calculations.spec | complet — lancement du calcul réel, suivi des exécutions et compteurs, unités en échec (événements en attente) et recalcul partiel par distributeur/produit/règle |
 | 10 | Contrôles et anomalies de la période, décisions, liste de contrôle | CTL-02, CTL-03, CTL-05 | `controls` / ControlsView | GET anomalies/breakdown/catalog, POST run/decision | controls.spec | partiel — liste de contrôle à cocher (CTL-03) absente |
 | 11 | Catalogue des contrôles : seuil, gravité, périmètre, activation, versions | CTL-01, CTL-04 | `controls` (onglet) / ControlsView | GET /controls/{e}/catalog | controls.spec | partiel — catalogue en lecture seule : pas d'édition de seuil/activation, pas de versions (CTL-04) |
 | 12 | Ajustements : liste, saisie, approbation, import en masse | REG-01→05 | `adjustments` / AdjustmentsView | GET/POST adjustments, POST approve | adjustments.spec | partiel — import en masse (REG-04) et contrepassation automatique (REG-05) absents |
@@ -209,7 +209,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
-| CAL-01 | CalculationEngine | #9 | cr* JUnit | partiel — pas d'écran d'exécution/suivi de calcul |
+| CAL-01 | CalculationEngine, CalculationQueryService | #9 | calculations, cr* JUnit | complet — écran de lancement et de suivi des exécutions (compteurs, unités en échec) |
 | CAL-02 | LinearFamily, UpfrontFamily | #24 | cr01–cr04 JUnit | complet |
 | CAL-03 | AdvanceFamily, CalculationEngine | #31 | cr20–cr28 + apurement multi-mois + CR-78/80 JUnit | complet — escomptes, apurements (d'un mois sur l'autre), régularisations, write-off et cession traités par le moteur |
 | CAL-04 | CalculationEngine (reprises) | #24 | cr04–cr07 JUnit | complet |
@@ -220,7 +220,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CAL-09 | CalculationEngine (règles temporaires) | #38 | cr75 JUnit | complet |
 | CAL-10 | CalculationEngine (explication) | #23 | cr* JUnit | partiel — explication produite ; écran « détail d'une ligne » absent |
 | CAL-11 | CalculationEngine, SimulationService | #41 | cr69 JUnit | complet |
-| CAL-12 | CalculationEngine (recalcul partiel) | #9 | JUnit | partiel — pas d'écran de recalcul partiel |
+| CAL-12 | CalculationEngine (recalcul partiel) | #9 | calculations, JUnit | complet — recalcul partiel par distributeur, produit ou règle depuis l'écran |
 | CAL-13 | CalculationEngine | #57 | — | partiel — attendu assureur et marge partiellement réalisés (FIN-08) |
 | CAL-14 | AdjustmentService | #30 | — | partiel — avance à échéancier (échéancier d'apurement) absente |
 

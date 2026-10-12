@@ -40,6 +40,7 @@ const SCREEN_ACTORS: Record<string, readonly Role[]> = {
   periods: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER'],
   imports: ['OPERATOR', 'BUSINESS_ADMIN'],
   manualEvent: ['OPERATOR', 'BUSINESS_ADMIN'],
+  calculations: ['OPERATOR', 'BUSINESS_ADMIN'],
   controls: ['OPERATOR', 'BUSINESS_ADMIN'],
   adjustments: ['OPERATOR', 'BUSINESS_ADMIN', 'BUSINESS_VALIDATOR'],
   payment: ['OPERATOR', 'FINANCE_CONTROLLER'],
