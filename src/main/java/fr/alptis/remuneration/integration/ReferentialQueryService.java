@@ -302,6 +302,55 @@ public class ReferentialQueryService {
     }
 
     /**
+     * Lists the distributor groupings with their head and member count (CPT-02, REF-03).
+     *
+     * @return the grouping views
+     */
+    @Transactional
+    public List<GroupView> groups() {
+        List<GroupView> views = new java.util.ArrayList<>();
+        for (DistributorGroup group : DistributorGroup.<DistributorGroup>list("order by code")) {
+            views.add(groupView(group));
+        }
+        return views;
+    }
+
+    /**
+     * Returns a grouping with its members and each member's production codes (CPT-02, REF-03).
+     *
+     * @param code the grouping code
+     * @return the grouping detail
+     * @throws ResourceNotFoundException when the grouping is unknown
+     */
+    @Transactional
+    public GroupDetail groupDetail(String code) {
+        DistributorGroup group = DistributorGroup.<DistributorGroup>find("code", code).firstResult();
+        if (group == null) {
+            throw new ResourceNotFoundException("Groupement inconnu : " + code);
+        }
+        List<MemberView> members = new java.util.ArrayList<>();
+        for (Distributor member : Distributor.<Distributor>list("group = ?1 order by partnerCode", group)) {
+            List<String> codes = ProductionCode.<ProductionCode>list("distributor = ?1 order by code", member)
+                    .stream().map(pc -> pc.code).toList();
+            members.add(new MemberView(member.partnerCode, member.legalName, codes));
+        }
+        return new GroupDetail(groupView(group), members);
+    }
+
+    /**
+     * Maps a grouping to its view.
+     *
+     * @param group the grouping
+     * @return the view
+     */
+    private static GroupView groupView(DistributorGroup group) {
+        return new GroupView(group.code, group.label,
+                group.headDistributor == null ? null : group.headDistributor.partnerCode,
+                group.headDistributor == null ? null : group.headDistributor.legalName,
+                Distributor.count("group = ?1", group));
+    }
+
+    /**
      * Resolves a payee reference back to its business code for display.
      *
      * @param type the payee type
@@ -393,6 +442,37 @@ public class ReferentialQueryService {
      */
     public record ProductView(String entityCode, String code, String label, String rangeCode, String insurerCode,
                               boolean commissionable) {
+    }
+
+    /**
+     * View of a distributor grouping (CPT-02, REF-03).
+     *
+     * @param code         the grouping code
+     * @param label        the grouping label
+     * @param headCode     the head distributor's partner code, possibly null
+     * @param headName     the head distributor's name, possibly null
+     * @param memberCount  the number of members
+     */
+    public record GroupView(String code, String label, String headCode, String headName, long memberCount) {
+    }
+
+    /**
+     * Detail of a grouping with its members (CPT-02).
+     *
+     * @param group   the grouping view
+     * @param members the member distributors
+     */
+    public record GroupDetail(GroupView group, List<MemberView> members) {
+    }
+
+    /**
+     * One member of a grouping.
+     *
+     * @param partnerCode     the member's partner code
+     * @param legalName       the member's legal name
+     * @param productionCodes the member's production codes
+     */
+    public record MemberView(String partnerCode, String legalName, List<String> productionCodes) {
     }
 
     /**

@@ -43,8 +43,36 @@ class ReferentialReadResourceTest {
         get200("/api/ui/v1/replacement-orders");
         get200("/api/ui/v1/payee-rules");
         get200("/api/ui/v1/external-codes");
+        get200("/api/ui/v1/groups");
         get200("/api/ui/v1/distributors?q=x");
         get200("/api/ui/v1/contracts?q=x");
+    }
+
+    /**
+     * After importing a grouping, its detail is returned with its members (CPT-02, REF-03).
+     */
+    @Test
+    void returns_a_grouping_detail() {
+        String groups = "group_code;label;head_partner_code\nGRP-TEST;Groupement Test;\n";
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .contentType(io.restassured.http.ContentType.JSON)
+                .body("{\"entityCode\":\"ALPTIS_ASSURANCES\",\"flowCode\":\"distributor_groups\",\"sourceSystem\":\"SESAME\","
+                        + "\"fileName\":\"g.csv\",\"content\":\"" + groups.replace("\n", "\\n") + "\"}")
+                .when().post("/api/ui/v1/imports").then().statusCode(201);
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/groups/GRP-TEST")
+                .then().statusCode(200).body("group.code", org.hamcrest.Matchers.is("GRP-TEST"));
+    }
+
+    /**
+     * An unknown grouping detail is reported as not found (CPT-02).
+     */
+    @Test
+    void unknown_group_is_not_found() {
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/groups/NOPE")
+                .then().statusCode(404);
     }
 
     /**

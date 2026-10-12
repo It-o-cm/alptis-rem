@@ -17,6 +17,7 @@ import HeldEventsView from '../views/HeldEventsView.vue';
 import CalculationsView from '../views/CalculationsView.vue';
 import ClaimsView from '../views/ClaimsView.vue';
 import ValidationView from '../views/ValidationView.vue';
+import GroupingsView from '../views/GroupingsView.vue';
 import PayeeRulesView from '../views/PayeeRulesView.vue';
 import ExternalCodesView from '../views/ExternalCodesView.vue';
 import RulesView from '../views/RulesView.vue';
@@ -78,6 +79,7 @@ const REAL_VIEWS: Record<string, unknown> = {
   imports: ImportsView,
   mapping: MappingView,
   distributorSearch: DistributorsView,
+  groupings: GroupingsView,
   contractSearch: ContractsView,
   products: ProductsView,
   qualityIndicators: QualityIndicatorsView,

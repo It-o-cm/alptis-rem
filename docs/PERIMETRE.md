@@ -61,7 +61,7 @@ d'accès serveur · test de bout en bout · état.
 | --- | --- | --- | --- | --- | --- | --- |
 | 19 | Recherche de distributeurs | REF-02, REP-03 | `distributorSearch` / DistributorsView | GET /distributors?q= | distributors.spec | complet |
 | 20 | Fiche distributeur : identité, hiérarchie, statut, accords, inscriptions, comptes, indicateurs, historique | REF-10, CPT-01, CPT-06 | `distributorSearch` + `distributor` / DistributorsView + DistributorAccountView | GET /distributors/{code}, GET /accounts/... | distributors.spec, distributor-account.spec | partiel — fiche éclatée sur deux écrans ; accords, inscriptions, indicateurs et historique non réunis dans une fiche |
-| 21 | Vue d'un groupement et de ses membres | CPT-02, REF-03 | — | — | — | absent |
+| 21 | Vue d'un groupement et de ses membres | CPT-02, REF-03 | `groupings` / GroupingsView | GET /groups, GET /groups/{code} | groupings.spec | complet — liste des groupements (tête, nombre de membres) et détail des membres avec leurs codes de production |
 | 22 | Blocage d'un compte ou d'une ligne, avec motif et date de levée | CPT-05, REF-08 | `distributor` / DistributorAccountView | POST /accounts/{id}/block, unblock | distributor-account.spec | partiel — blocage au niveau compte seulement (pas de ligne) ; motif et date de levée à ajouter |
 | 23 | Détail d'une ligne de commission et de son explication | CAL-10, FIN-07 | — | — | — | absent |
 | 24 | Recherche de lignes de commission : payé à qui, quand, pourquoi | REP-02, REP-03 | `commissionSearch` / CommissionSearchView | GET /reporting/{e}/search, export | reporting.spec | complet |
@@ -260,7 +260,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
 | CPT-01 | AccountService | #20 | distributor-account | complet |
-| CPT-02 | AccountService | #20, #21 | distributor-account | partiel — vue par groupement absente |
+| CPT-02 | AccountService, ReferentialQueryService (groups) | #20, #21 | distributor-account, groupings | complet — vue par distributeur (comptes des codes) et vue par groupement (membres) |
 | CPT-03 | AccountService (report débiteur) | #30 | cr60 JUnit | complet |
 | CPT-04 | AccountService (compensation) | #22 | distributor-account | complet |
 | CPT-05 | AccountService (blocage) | #22 | distributor-account | partiel — blocage de ligne, motif et date de levée absents |

@@ -491,4 +491,24 @@ class ReferentialQueryServiceTest {
         c.externalCode = external;
         c.persist();
     }
+
+    /**
+     * Lists the groupings (a head-less one gives a null head) and one grouping's members with their
+     * production codes; an unknown grouping is not found (CPT-02, REF-03).
+     */
+    @Test
+    @TestTransaction
+    void lists_groupings_and_members() {
+        seedDistributor();
+        ReferentialQueryService service = unrestricted();
+        ReferentialQueryService.GroupView g1 = service.groups().stream()
+                .filter(g -> g.code().equals("G1")).findFirst().orElseThrow();
+        assertNull(g1.headCode());
+        assertEquals(1, g1.memberCount());
+
+        ReferentialQueryService.GroupDetail detail = service.groupDetail("G1");
+        assertEquals(1, detail.members().size());
+        assertTrue(detail.members().get(0).productionCodes().contains("61723"));
+        assertThrows(ResourceNotFoundException.class, () -> service.groupDetail("NOPE"));
+    }
 }

@@ -43,6 +43,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     heading: 'Distributeurs',
     items: [
       { name: 'distributorSearch', path: '/distributeurs', label: 'Recherche distributeurs' },
+      { name: 'groupings', path: '/groupements', label: 'Groupements' },
       { name: 'contractSearch', path: '/contrats', label: 'Recherche contrats' },
       { name: 'transfers', path: '/cessions', label: 'Cessions et ordres' },
       { name: 'distributor', path: '/distributeur', label: 'Fiche et compte' },

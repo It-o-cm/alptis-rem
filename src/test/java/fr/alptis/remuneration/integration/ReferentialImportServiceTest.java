@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests {@link ReferentialImportService}: distributors with their per-entity status, groups and
@@ -140,5 +141,15 @@ class ReferentialImportServiceTest {
                 "entity_code;production_code;partner_code;label;status\n"
                         + "ALPTIS_ASSURANCES;61723;P13897;Agence Lyon 2;ACTIVE\n");
         assertEquals("Agence Lyon 2", ProductionCode.<ProductionCode>find("code", "61723").firstResult().label);
+    }
+
+    /**
+     * Importing a groups file for an unknown entity is refused (the journal's entity guard).
+     */
+    @Test
+    @TestTransaction
+    void refuses_an_unknown_entity() {
+        assertThrows(fr.alptis.remuneration.domain.ConflictException.class,
+                () -> service.importGroups("NOPE", "SESAME", "g.csv", "group_code;label;head_partner_code\n"));
     }
 }

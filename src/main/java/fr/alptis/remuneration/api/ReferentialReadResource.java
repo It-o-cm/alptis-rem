@@ -12,6 +12,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
@@ -47,6 +48,33 @@ public class ReferentialReadResource {
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
     public List<ProductView> products() {
         return query.products();
+    }
+
+    /**
+     * Lists the distributor groupings (CPT-02, REF-03).
+     *
+     * @return the grouping views
+     */
+    @GET
+    @Path("/groups")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<ReferentialQueryService.GroupView> groups() {
+        return query.groups();
+    }
+
+    /**
+     * Returns a grouping and its members (CPT-02).
+     *
+     * @param code the grouping code
+     * @return the grouping detail
+     */
+    @GET
+    @Path("/groups/{code}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public ReferentialQueryService.GroupDetail group(@PathParam("code") String code) {
+        return query.groupDetail(code);
     }
 
     /**

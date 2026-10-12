@@ -32,6 +32,7 @@ export const SCREENS: readonly Screen[] = [
   { name: 'payment', path: '/paiement', user: 'auditor' },
   { name: 'statements', path: '/bordereaux', user: 'auditor' },
   { name: 'distributorSearch', path: '/distributeurs', user: 'auditor' },
+  { name: 'groupings', path: '/groupements', user: 'auditor' },
   { name: 'contractSearch', path: '/contrats', user: 'auditor' },
   { name: 'transfers', path: '/cessions', user: 'auditor' },
   { name: 'distributor', path: '/distributeur', user: 'auditor' },
