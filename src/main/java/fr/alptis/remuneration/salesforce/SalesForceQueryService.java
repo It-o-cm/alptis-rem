@@ -10,6 +10,7 @@ import fr.alptis.remuneration.domain.SalesObjective;
 import fr.alptis.remuneration.domain.VariableComponent;
 import fr.alptis.remuneration.domain.VariablePlan;
 import fr.alptis.remuneration.domain.VariableResult;
+import fr.alptis.remuneration.domain.VariableResultStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.math.BigDecimal;
@@ -84,6 +85,32 @@ public class SalesForceQueryService {
                                 + (m.employee.firstName == null ? "" : " " + m.employee.firstName),
                         m.measureType, m.dimension, m.periodFrom, m.periodTo, m.value))
                 .toList();
+    }
+
+    /**
+     * Returns the per-person synthesis of the variables to pay for a month (FDV-14): the sum of each
+     * collaborator's validated and exported results, so the Finance controller reviews who is paid what
+     * before and after the pay export.
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the pay-summary rows, one per collaborator, ordered by external id
+     */
+    public List<PaySummaryRow> paySummary(String entityCode, LocalDate month) {
+        LegalEntity entity = entity(entityCode);
+        java.util.Map<String, PaySummaryRow> byPerson = new java.util.LinkedHashMap<>();
+        for (VariableResult result : VariableResult.<VariableResult>list(
+                "period.entity = ?1 and period.periodMonth = ?2 and status in ?3 order by employee.externalId",
+                entity, month, List.of(VariableResultStatus.VALIDATED, VariableResultStatus.EXPORTED))) {
+            String key = result.employee.externalId;
+            PaySummaryRow current = byPerson.get(key);
+            BigDecimal running = current == null ? result.amount : current.total().add(result.amount);
+            byPerson.put(key, new PaySummaryRow(key,
+                    (result.employee.lastName == null ? "" : result.employee.lastName)
+                            + (result.employee.firstName == null ? "" : " " + result.employee.firstName),
+                    result.employee.jobCode, running));
+        }
+        return List.copyOf(byPerson.values());
     }
 
     /**
@@ -175,6 +202,17 @@ public class SalesForceQueryService {
     public record CollaboratorView(String externalId, String lastName, String firstName, JobCode jobCode,
                                    String team, String region, String manager, java.time.LocalDate validFrom,
                                    java.time.LocalDate validTo) {
+    }
+
+    /**
+     * One row of the pay synthesis: a collaborator's total variable to pay for the month (FDV-14).
+     *
+     * @param externalId   the collaborator's external id
+     * @param collaborator the collaborator's display name
+     * @param jobCode      the post
+     * @param total        the total amount to pay
+     */
+    public record PaySummaryRow(String externalId, String collaborator, JobCode jobCode, BigDecimal total) {
     }
 
     /**

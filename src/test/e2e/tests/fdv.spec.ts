@@ -36,6 +36,9 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   await expect(managerPage.getByTestId('chart-fdvv')).toBeVisible();
   await managerPage.locator('[data-testid^="result-validate-"]').first().click();
   await expect(managerPage.locator('[data-testid^="result-status-"]').first()).toContainText('VALIDATED');
+  // The per-person pay synthesis (FDV-14) now shows the validated collaborator.
+  await expect(managerPage.getByTestId('fdvv-summary')).toBeVisible();
+  await expect(managerPage.locator('[data-testid^="pay-summary-"]').first()).toBeVisible();
   await manager.close();
 
   // Finance exports the validated variables to pay.

@@ -132,10 +132,20 @@ class FdvResourceTest {
                 .when().post("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/adjust")
                 .then().statusCode(200);
 
+        // Before exporting, the per-person pay synthesis shows E1's total (FDV-14).
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/pay-summary")
+                .then().statusCode(200).body("externalId", hasItem("E1"));
+
         given().auth().preemptive().basic("finance-alptis", "finance-alptis")
                 .when().post("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/pay-export")
                 .then().statusCode(200).body("fileName", is("ALPTIS_ASSURANCES_VAR_202609.csv"))
                 .body("lines", is(2));
+
+        // After exporting, the synthesis still shows the paid variables (validated and exported).
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/pay-summary")
+                .then().statusCode(200).body("externalId", hasItem("E1"));
     }
 
     /**

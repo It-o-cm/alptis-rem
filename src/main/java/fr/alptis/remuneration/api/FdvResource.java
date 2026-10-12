@@ -286,6 +286,23 @@ public class FdvResource {
     }
 
     /**
+     * Returns the per-person synthesis of the variables to pay for a month (FDV-14).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the pay-summary rows
+     */
+    @GET
+    @Path("/{entity}/{month}/pay-summary")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"FINANCE_CONTROLLER", "BUSINESS_ADMIN", "SALES_MANAGER", "AUDITOR"})
+    public List<SalesForceQueryService.PaySummaryRow> paySummary(@PathParam("entity") String entityCode,
+                                                                 @PathParam("month") String month) {
+        requireScope(entityCode);
+        return query.paySummary(entityCode, LocalDate.parse(month));
+    }
+
+    /**
      * Produces the monthly pay export (FDV-14), launched by the Finance controller.
      *
      * @param entityCode the entity code

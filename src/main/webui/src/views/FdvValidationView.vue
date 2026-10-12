@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import { jobCodeLabel, componentLabel } from '../presentation/salesforce';
 import HBarChart from '../components/charts/HBarChart.vue';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
@@ -19,10 +20,18 @@ interface Result {
   adjustmentReason: string | null;
 }
 
+interface PaySummary {
+  externalId: string;
+  collaborator: string;
+  jobCode: string;
+  total: number;
+}
+
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 && session.entities[0] !== '*' ? session.entities[0] : 'ALPTIS_ASSURANCES');
 const month = ref('2026-09-01');
 const rows = ref<Result[]>([]);
+const summary = ref<PaySummary[]>([]);
 const error = ref('');
 const message = ref('');
 const loading = ref(false);
@@ -49,15 +58,28 @@ function total(): number {
 /** Achievement rate per collaborator, feeding the bar chart. */
 const achievementData = computed(() => rows.value.map((r) => ({ label: r.employeeName, value: r.achievementRate })));
 
+/** Sum of the per-person pay synthesis. */
+function summaryTotal(): number {
+  return summary.value.reduce((sum, s) => sum + s.total, 0);
+}
+
 /** Columns of the monthly results table. */
 const columns: Column<Result>[] = [
   { key: 'employeeName', label: 'Collaborateur' },
-  { key: 'jobCode', label: 'Poste' },
-  { key: 'component', label: 'Composante' },
+  { key: 'jobCode', label: 'Poste', value: (r) => jobCodeLabel(r.jobCode) },
+  { key: 'component', label: 'Composante', value: (r) => componentLabel(r.component) },
   { key: 'achievementRate', label: 'Atteinte', align: 'num', value: (r) => `${(r.achievementRate * 100).toFixed(0)} %` },
   { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
   { key: 'status', label: 'Statut' },
   { key: 'adjustmentReason', label: 'Motif', value: (r) => r.adjustmentReason ?? '—' },
+];
+
+/** Columns of the per-person pay synthesis (FDV-14). */
+const summaryColumns: Column<PaySummary>[] = [
+  { key: 'externalId', label: 'Matricule' },
+  { key: 'collaborator', label: 'Collaborateur' },
+  { key: 'jobCode', label: 'Poste', value: (s) => jobCodeLabel(s.jobCode) },
+  { key: 'total', label: 'À payer', align: 'num', value: (s) => amount(s.total) },
 ];
 
 /** Loads the monthly results for the selected entity and month. */
@@ -66,8 +88,10 @@ async function load(): Promise<void> {
   loading.value = true;
   try {
     rows.value = await apiGet<Result[]>(`/api/ui/v1/fdv/${entity.value}/${month.value}/results`);
+    summary.value = await apiGet<PaySummary[]>(`/api/ui/v1/fdv/${entity.value}/${month.value}/pay-summary`);
   } catch (e) {
     rows.value = [];
+    summary.value = [];
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
   } finally {
     loading.value = false;
@@ -188,6 +212,23 @@ onMounted(load);
         </template>
       </DataTable>
       <p class="fdvv-total">Total à payer <span class="mono" data-testid="fdvv-total">{{ amount(total()) }}</span></p>
+    </AppCard>
+
+    <AppCard title="Synthèse des variables à payer par personne (FDV-14)" data-testid="fdvv-summary">
+      <DataTable
+        :columns="summaryColumns"
+        :rows="summary"
+        :loading="loading"
+        row-key="externalId"
+        empty="Aucune variable à payer."
+        empty-testid="no-pay-summary"
+        :row-testid="(s) => `pay-summary-${s.externalId}`"
+      >
+        <template #cell-externalId="{ row }"><span class="mono">{{ row.externalId }}</span></template>
+      </DataTable>
+      <p class="fdvv-total">
+        Total synthèse <span class="mono" data-testid="fdvv-summary-total">{{ amount(summaryTotal()) }}</span>
+      </p>
     </AppCard>
   </div>
 </template>

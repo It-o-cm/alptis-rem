@@ -118,6 +118,52 @@ class SalesForceQueryServiceTest {
     }
 
     /**
+     * The per-person pay synthesis (FDV-14) sums each collaborator's validated and exported results and
+     * ignores the ones still calculated; a collaborator with two results has them added.
+     */
+    @Test
+    @TestTransaction
+    void reads_pay_summary() {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = M;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        Employee e1 = employee("E1", null);
+        Employee e2 = employee("E2", null);
+        payResult(period, e1, "146.00", VariableResultStatus.VALIDATED);
+        payResult(period, e1, "50.00", VariableResultStatus.EXPORTED);
+        payResult(period, e2, "300.00", VariableResultStatus.VALIDATED);
+        // A still-calculated result is not yet to pay and is excluded.
+        payResult(period, e2, "999.00", VariableResultStatus.CALCULATED);
+        // A collaborator with no name parts: the display name assembles to empty.
+        Employee e3 = employee("E3", null);
+        e3.lastName = null;
+        e3.firstName = null;
+        payResult(period, e3, "10.00", VariableResultStatus.VALIDATED);
+
+        var summary = query.paySummary("UNEP", M);
+        assertEquals(3, summary.size());
+        assertTrue(summary.stream().anyMatch(s -> "E3".equals(s.externalId()) && s.collaborator().isEmpty()));
+        assertEquals(0, new BigDecimal("196.00").compareTo(
+                summary.stream().filter(s -> "E1".equals(s.externalId())).findFirst().orElseThrow().total()));
+        assertEquals(0, new BigDecimal("300.00").compareTo(
+                summary.stream().filter(s -> "E2".equals(s.externalId())).findFirst().orElseThrow().total()));
+    }
+
+    /** Persists one variable result for an employee in a period. */
+    private static void payResult(Period period, Employee employee, String amount, VariableResultStatus status) {
+        VariableResult result = new VariableResult();
+        result.period = period;
+        result.employee = employee;
+        result.component = VariableComponent.MONTHLY_INDIVIDUAL;
+        result.amount = new BigDecimal(amount);
+        result.achievementRate = BigDecimal.ONE;
+        result.status = status;
+        result.persist();
+    }
+
+    /**
      * The measures received for an entity are read (FDV-02), the collaborator name assembled from the
      * present name parts (both set, and both absent).
      */
