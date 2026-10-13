@@ -499,6 +499,112 @@ class SalesForceServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> service.runAnnualRegularization("UNEP", 2099));
     }
 
+    /** Creates a quarterly-qualitative plan for a post, with its parameters payload. */
+    private static void quarterlyPlan(JobCode jobCode, String parameters) {
+        VariablePlan plan = new VariablePlan();
+        plan.entity = unep();
+        plan.jobCode = jobCode;
+        plan.component = VariableComponent.QUARTERLY_QUALITATIVE;
+        plan.envelopeAmount = new BigDecimal("2000");
+        plan.parameters = parameters;
+        plan.validFrom = LocalDate.of(2026, 1, 1);
+        plan.validTo = LocalDate.of(2026, 12, 31);
+        plan.persist();
+    }
+
+    /** Creates a qualitative objective covering the whole year for an employee. */
+    private static void qualitativeObjective(Employee employee, String target) {
+        SalesObjective objective = new SalesObjective();
+        objective.entity = unep();
+        objective.employee = employee;
+        objective.jobCode = employee.jobCode;
+        objective.objectiveType = ObjectiveType.QUALITATIVE;
+        objective.periodFrom = LocalDate.of(2026, 1, 1);
+        objective.periodTo = LocalDate.of(2026, 12, 31);
+        objective.targetValue = new BigDecimal(target);
+        objective.versionNo = 1;
+        objective.persist();
+    }
+
+    /** The quarterly-qualitative result of an employee. */
+    private static VariableResult qualitative(Employee employee) {
+        return VariableResult.<VariableResult>find("employee = ?1 and component = ?2", employee,
+                VariableComponent.QUARTERLY_QUALITATIVE).firstResult();
+    }
+
+    /** The full parameters of the reference quarterly plan (criterion 666,67 €, complement 500 €). */
+    private static final String QUALI_PARAMS =
+            "{\"criterionAmount\":666.67,\"developmentComplement\":500,\"developmentOvershoot\":2,"
+                    + "\"absenceDaysBlocking\":30}";
+
+    /**
+     * FDV-07: the quarterly qualitative variable pays the per-criterion amount for each criterion met
+     * over the quarter, plus the new-producer complement when the development criterion clears its
+     * objective by the overshoot. With a 10 threshold, productivity 12 and development 13 are met
+     * (efficiency 8 is not) and development clears 10 + 2, so 2 × 666,67 + 500 = 1 833,34 €; the rate
+     * is 2 / 3.
+     */
+    @Test
+    @TestTransaction
+    void fdv07_computes_the_quarterly_qualitative() {
+        period();
+        Employee cac = employee("CAC1", JobCode.CAC);
+        quarterlyPlan(JobCode.CAC, QUALI_PARAMS);
+        qualitativeObjective(cac, "10");
+        measure(cac, MeasureType.ACTIVITY, "productivite", "12");
+        measure(cac, MeasureType.ACTIVITY, "efficacite", "8");
+        measure(cac, MeasureType.ACTIVITY, "developpement", "13");
+
+        assertEquals(1, service.runQuarterlyQualitative("UNEP", M));
+        assertEquals(0, qualitative(cac).amount.compareTo(new BigDecimal("1833.34")));
+        assertEquals(0, qualitative(cac).achievementRate.compareTo(new BigDecimal("0.666667")));
+
+        // A rerun replaces the calculated result rather than doubling it.
+        assertEquals(1, service.runQuarterlyQualitative("UNEP", M));
+        assertEquals(1, VariableResult.count("component = ?1", VariableComponent.QUARTERLY_QUALITATIVE));
+    }
+
+    /**
+     * FDV-07 edges: six weeks of absence block the pay; no qualitative objective meets no criterion; a
+     * development criterion met but short of the overshoot earns no complement, and a plan without an
+     * absence threshold never blocks; an employee without a quarterly plan is skipped; an unknown period
+     * is rejected.
+     */
+    @Test
+    @TestTransaction
+    void fdv07_qualitative_edges() {
+        period();
+        // All three criteria met but the quarterly absence threshold is reached: nothing is paid.
+        Employee blocked = employee("BLOCK", JobCode.CAC);
+        quarterlyPlan(JobCode.CAC, QUALI_PARAMS);
+        qualitativeObjective(blocked, "10");
+        measure(blocked, MeasureType.ACTIVITY, "productivite", "12");
+        measure(blocked, MeasureType.ACTIVITY, "efficacite", "12");
+        measure(blocked, MeasureType.ACTIVITY, "developpement", "13");
+        measure(blocked, MeasureType.ABSENCE, "absence", "30");
+        // No qualitative objective: no criterion is met and no complement is due.
+        Employee noObjective = employee("NOOBJ", JobCode.RB);
+        quarterlyPlan(JobCode.RB, QUALI_PARAMS);
+        measure(noObjective, MeasureType.ACTIVITY, "productivite", "99");
+        measure(noObjective, MeasureType.ACTIVITY, "developpement", "99");
+        // Development met (11 ≥ 10) but short of the +2 overshoot, and no absence threshold configured.
+        Employee noComplement = employee("NOCOMP", JobCode.DR);
+        quarterlyPlan(JobCode.DR, "{\"criterionAmount\":666.67,\"developmentComplement\":500,\"developmentOvershoot\":2}");
+        qualitativeObjective(noComplement, "10");
+        measure(noComplement, MeasureType.ACTIVITY, "productivite", "10");
+        measure(noComplement, MeasureType.ACTIVITY, "developpement", "11");
+        measure(noComplement, MeasureType.ABSENCE, "absence", "50");
+        // An employee without a quarterly plan is skipped.
+        employee("NOPLAN", JobCode.RR);
+
+        assertEquals(3, service.runQuarterlyQualitative("UNEP", M));
+        assertEquals(0, qualitative(blocked).amount.compareTo(BigDecimal.ZERO));
+        assertEquals(0, qualitative(noObjective).amount.compareTo(BigDecimal.ZERO));
+        assertEquals(0, qualitative(noComplement).amount.compareTo(new BigDecimal("1333.34")));
+
+        assertThrows(ResourceNotFoundException.class, () -> service.runQuarterlyQualitative("UNEP", LocalDate.of(2099, 9, 1)));
+    }
+
     /**
      * FDV-03: objectives are versioned append-only per key; an individual, a second version of it, a
      * different employee (own version 1) and a collective objective are all created; an existing

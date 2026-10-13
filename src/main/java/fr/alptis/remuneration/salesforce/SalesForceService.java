@@ -30,10 +30,10 @@ import java.util.Map;
  * (FDV-05): the production of the month, weighted by market (FDV-11), is compared to the individual
  * objective; when the objective is met and the absence stays under the monthly threshold, the post's
  * instalment is paid, otherwise nothing. A manual adjustment (FDV-13) and the pay export (FDV-14) are
- * also here. The under-specified components — quarterly qualitative, annual collective, the animator,
- * manager and direct-sales scales, the annual regularisation and the résiliation reduction — await
- * the commercial-department workshop the specification calls for (section 8.14 "Limites"); this
- * delivers the CR-87/CR-88 core.
+ * also here. The annual individual regularisation (FDV-06) and the quarterly qualitative variable
+ * (FDV-07) are computed too; the amounts, criteria, scales and absence thresholds the specification
+ * leaves to the commercial-department workshop are driven by the plan's parameters (section 8.14 —
+ * "ce sont des paramètres"), the simplest choice recorded in {@code docs/DECISIONS.md}.
  */
 @ApplicationScoped
 public class SalesForceService {
@@ -239,6 +239,131 @@ public class SalesForceService {
             }
         }
         return months;
+    }
+
+    /** The three qualitative criteria of the quarterly variable (FDV-07), as measure dimensions. */
+    private static final List<String> QUALITATIVE_CRITERIA = List.of("productivite", "efficacite", "developpement");
+
+    /** The development criterion, which carries the "new producers" complement (FDV-07). */
+    private static final String DEVELOPMENT_CRITERION = "developpement";
+
+    /**
+     * Computes the quarterly qualitative variable of every active employee of an entity for the quarter
+     * ending at a month (FDV-07), launched by the business administrator. For each post with a
+     * quarterly-qualitative plan, a configured amount is paid per criterion met over the quarter
+     * (productivity, efficiency, new-producer development), plus a complement when the development
+     * criterion exceeds its objective by the configured overshoot; nothing is paid from the configured
+     * quarterly absence threshold. A criterion is met when its summed activity reaches the post's
+     * qualitative objective. Idempotent: the period's non-validated quarterly-qualitative results are
+     * dropped first. The per-criterion amount, the complement, the overshoot and the absence threshold
+     * are plan parameters (section 8.14 — "ce sont des paramètres", DEC 2026-10-13).
+     *
+     * @param entityCode     the entity code
+     * @param quarterEndMonth the last month of the quarter being paid
+     * @return the number of results written
+     */
+    @Transactional
+    public int runQuarterlyQualitative(String entityCode, LocalDate quarterEndMonth) {
+        LegalEntity entity = entity(entityCode);
+        Period period = period(entity, quarterEndMonth);
+        LocalDate from = quarterEndMonth.minusMonths(2).withDayOfMonth(1);
+        LocalDate to = quarterEndMonth.withDayOfMonth(quarterEndMonth.lengthOfMonth());
+        VariableResult.delete("period = ?1 and component = ?2 and status = ?3", period,
+                VariableComponent.QUARTERLY_QUALITATIVE, VariableResultStatus.CALCULATED);
+        int count = 0;
+        for (Employee employee : activeEmployees(entity, quarterEndMonth)) {
+            VariablePlan plan = planOf(entity, employee, VariableComponent.QUARTERLY_QUALITATIVE, quarterEndMonth);
+            if (plan == null) {
+                continue;
+            }
+            computeQuarterlyQualitative(period, employee, plan, from, to);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Computes and persists one employee's quarterly qualitative result (FDV-07).
+     *
+     * @param period   the quarter-end period the result is booked in
+     * @param employee the employee
+     * @param plan     the quarterly-qualitative plan of the post
+     * @param from     the quarter start
+     * @param to       the quarter end
+     */
+    private void computeQuarterlyQualitative(Period period, Employee employee, VariablePlan plan, LocalDate from,
+                                             LocalDate to) {
+        com.fasterxml.jackson.databind.JsonNode params = readParameters(mapper, plan.parameters);
+        BigDecimal criterionAmount = decimalParam(params, "criterionAmount");
+        BigDecimal complement = decimalParam(params, "developmentComplement");
+        BigDecimal overshoot = decimalParam(params, "developmentOvershoot");
+        BigDecimal absenceBlocking = decimalParam(params, "absenceDaysBlocking");
+        BigDecimal threshold = qualitativeThreshold(employee, from);
+
+        int metCount = 0;
+        boolean complementDue = false;
+        for (String criterion : QUALITATIVE_CRITERIA) {
+            BigDecimal value = activityValue(employee, criterion, from, to);
+            if (threshold.signum() > 0 && value.compareTo(threshold) >= 0) {
+                metCount++;
+            }
+            if (criterion.equals(DEVELOPMENT_CRITERION) && threshold.signum() > 0
+                    && value.compareTo(threshold.add(overshoot)) >= 0) {
+                complementDue = true;
+            }
+        }
+        BigDecimal absence = absenceDays(employee, from, to);
+        boolean blocked = absenceBlocking.signum() > 0 && absence.compareTo(absenceBlocking) >= 0;
+        BigDecimal amount = blocked ? BigDecimal.ZERO
+                : criterionAmount.multiply(BigDecimal.valueOf(metCount))
+                        .add(complementDue ? complement : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal rate = BigDecimal.valueOf(metCount)
+                .divide(BigDecimal.valueOf(QUALITATIVE_CRITERIA.size()), 6, RoundingMode.HALF_UP);
+
+        VariableResult result = new VariableResult();
+        result.period = period;
+        result.employee = employee;
+        result.plan = plan;
+        result.component = VariableComponent.QUARTERLY_QUALITATIVE;
+        result.achievementRate = rate;
+        result.amount = amount;
+        result.status = VariableResultStatus.CALCULATED;
+        result.explanation = "{\"criteriaMet\":" + metCount + ",\"complement\":" + complementDue
+                + ",\"absenceDays\":" + absence.toPlainString() + ",\"blocked\":" + blocked + "}";
+        result.persist();
+    }
+
+    /**
+     * The per-criterion threshold of an employee's qualitative objective in force at a date, or zero.
+     *
+     * @param employee the employee
+     * @param date     the date the objective must be in force at
+     * @return the threshold, or zero when no qualitative objective applies
+     */
+    private BigDecimal qualitativeThreshold(Employee employee, LocalDate date) {
+        SalesObjective objective = SalesObjective.<SalesObjective>find(
+                "employee = ?1 and objectiveType = ?2 and periodFrom <= ?3 and periodTo >= ?3 order by versionNo desc",
+                employee, ObjectiveType.QUALITATIVE, date).firstResult();
+        return objective == null ? BigDecimal.ZERO : objective.targetValue;
+    }
+
+    /**
+     * The summed activity of an employee for a criterion dimension over a window.
+     *
+     * @param employee  the employee
+     * @param criterion the activity dimension
+     * @param from      the window start
+     * @param to        the window end
+     * @return the summed activity value
+     */
+    private BigDecimal activityValue(Employee employee, String criterion, LocalDate from, LocalDate to) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (EmployeeMeasure measure : EmployeeMeasure.<EmployeeMeasure>list(
+                "employee = ?1 and measureType = ?2 and dimension = ?3 and periodFrom >= ?4 and periodFrom <= ?5",
+                employee, MeasureType.ACTIVITY, criterion, from, to)) {
+            total = total.add(measure.value);
+        }
+        return total;
     }
 
     /**
@@ -751,6 +876,55 @@ public class SalesForceService {
      * @param lines    the number of lines
      */
     public record PayExport(String fileName, String content, int lines) {
+    }
+
+    /**
+     * The plan of a post and component in force at a date, or null when none.
+     *
+     * @param entity    the entity
+     * @param employee  the employee whose post selects the plan
+     * @param component the variable component
+     * @param date      the date the plan must be in force at
+     * @return the plan, or null
+     */
+    private VariablePlan planOf(LegalEntity entity, Employee employee, VariableComponent component, LocalDate date) {
+        return VariablePlan.<VariablePlan>find(
+                "entity = ?1 and jobCode = ?2 and component = ?3 and validFrom <= ?4"
+                        + " and (validTo is null or validTo >= ?4)",
+                entity, employee.jobCode, component, date).firstResult();
+    }
+
+    /**
+     * Parses a plan's parameters payload into a JSON node; a null or blank payload yields an empty
+     * object. A malformed payload is rejected (it cannot occur through {@link #savePlan}, which
+     * validates, but is guarded for direct writers).
+     *
+     * @param mapper     the JSON mapper
+     * @param parameters the parameters payload, possibly null or blank
+     * @return the parsed node, never null
+     */
+    static com.fasterxml.jackson.databind.JsonNode readParameters(
+            com.fasterxml.jackson.databind.ObjectMapper mapper, String parameters) {
+        if (parameters == null || parameters.isBlank()) {
+            return mapper.createObjectNode();
+        }
+        try {
+            return mapper.readTree(parameters);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new ValidationException("Paramètres de plan illisibles : " + e.getOriginalMessage());
+        }
+    }
+
+    /**
+     * Reads a decimal parameter from a parsed parameters node, defaulting to zero when absent or null.
+     *
+     * @param params the parsed parameters node
+     * @param field  the field name
+     * @return the decimal value, or zero
+     */
+    static BigDecimal decimalParam(com.fasterxml.jackson.databind.JsonNode params, String field) {
+        com.fasterxml.jackson.databind.JsonNode node = params.get(field);
+        return node == null || node.isNull() ? BigDecimal.ZERO : new BigDecimal(node.asText());
     }
 
     /**

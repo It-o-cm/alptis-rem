@@ -144,6 +144,19 @@ async function run(): Promise<void> {
   }
 }
 
+/** Launches the quarterly qualitative variable for the quarter ending at the selected month (FDV-07). */
+async function runQuarterlyQualitative(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    const result = await apiPost<{ computed: number }>(
+      `/api/ui/v1/fdv/${entity.value}/${month.value}/quarterly-qualitative`, {});
+    message.value = `Variable trimestriel qualitatif lancé : ${result.computed} collaborateur(s).`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Calcul refusé';
+  }
+}
+
 const regYear = ref(2026);
 
 /** Launches the annual individual regularization of January N+1 (FDV-06). */
@@ -183,6 +196,9 @@ onMounted(load);
 
     <div v-if="canRun()" class="fdvp-actions">
       <AppButton variant="secondary" data-testid="fdvp-run" @click="run">Lancer le calcul</AppButton>
+      <AppButton variant="secondary" data-testid="fdvp-quarterly" @click="runQuarterlyQualitative">
+        Variable trimestriel
+      </AppButton>
       <FormField label="Année à régulariser" stacked width="short" v-slot="{ id }">
         <input :id="id" data-testid="fdvp-reg-year" type="number" v-model.number="regYear" />
       </FormField>

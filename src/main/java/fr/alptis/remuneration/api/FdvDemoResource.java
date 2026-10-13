@@ -92,6 +92,53 @@ public class FdvDemoResource {
         measure.periodTo = periodMonth.withDayOfMonth(periodMonth.lengthOfMonth());
         measure.value = new BigDecimal("2000.00");
         measure.persist();
+
+        // A quarterly qualitative plan, objective and criteria measures (FDV-07): productivity and
+        // development are met (12 and 13 against the 10 threshold), efficiency is not (8); development
+        // also clears the +2 overshoot, so the new-producer complement is due.
+        VariablePlan qualitativePlan = new VariablePlan();
+        qualitativePlan.entity = entity;
+        qualitativePlan.jobCode = JobCode.CAC;
+        qualitativePlan.component = VariableComponent.QUARTERLY_QUALITATIVE;
+        qualitativePlan.envelopeAmount = new BigDecimal("2000.00");
+        qualitativePlan.parameters = "{\"criterionAmount\":666.67,\"developmentComplement\":500,"
+                + "\"developmentOvershoot\":2,\"absenceDaysBlocking\":30}";
+        qualitativePlan.validFrom = LocalDate.of(2026, 1, 1);
+        qualitativePlan.validTo = LocalDate.of(2026, 12, 31);
+        qualitativePlan.persist();
+        SalesObjective qualitative = new SalesObjective();
+        qualitative.entity = entity;
+        qualitative.employee = employee;
+        qualitative.jobCode = JobCode.CAC;
+        qualitative.objectiveType = ObjectiveType.QUALITATIVE;
+        qualitative.periodFrom = LocalDate.of(2026, 1, 1);
+        qualitative.periodTo = LocalDate.of(2026, 12, 31);
+        qualitative.targetValue = new BigDecimal("10.00");
+        qualitative.versionNo = 1;
+        qualitative.persist();
+        LocalDate quarterStart = periodMonth.minusMonths(2).withDayOfMonth(1);
+        seedActivity(employee, "productivite", quarterStart, new BigDecimal("12.00"));
+        seedActivity(employee, "efficacite", quarterStart, new BigDecimal("8.00"));
+        seedActivity(employee, "developpement", quarterStart, new BigDecimal("13.00"));
         return Response.noContent().build();
+    }
+
+    /**
+     * Seeds one activity measure for a criterion dimension of the demo collaborator (FDV-07).
+     *
+     * @param employee  the collaborator
+     * @param criterion the activity dimension
+     * @param from      the measure start date
+     * @param value     the measured value
+     */
+    private void seedActivity(Employee employee, String criterion, LocalDate from, BigDecimal value) {
+        EmployeeMeasure activity = new EmployeeMeasure();
+        activity.employee = employee;
+        activity.measureType = MeasureType.ACTIVITY;
+        activity.dimension = criterion;
+        activity.periodFrom = from;
+        activity.periodTo = from.withDayOfMonth(from.lengthOfMonth());
+        activity.value = value;
+        activity.persist();
     }
 }

@@ -85,6 +85,33 @@ class FdvResourceTest {
             measure.periodTo = LocalDate.of(2026, 9, 30);
             measure.value = new BigDecimal("2000.00");
             measure.persist();
+            VariablePlan quarterly = new VariablePlan();
+            quarterly.entity = entity;
+            quarterly.jobCode = JobCode.CAC;
+            quarterly.component = VariableComponent.QUARTERLY_QUALITATIVE;
+            quarterly.envelopeAmount = new BigDecimal("2000.00");
+            quarterly.parameters = "{\"criterionAmount\":666.67,\"developmentComplement\":500}";
+            quarterly.validFrom = LocalDate.of(2026, 1, 1);
+            quarterly.validTo = LocalDate.of(2026, 12, 31);
+            quarterly.persist();
+            SalesObjective qualitative = new SalesObjective();
+            qualitative.entity = entity;
+            qualitative.employee = employee;
+            qualitative.jobCode = JobCode.CAC;
+            qualitative.objectiveType = ObjectiveType.QUALITATIVE;
+            qualitative.periodFrom = LocalDate.of(2026, 1, 1);
+            qualitative.periodTo = LocalDate.of(2026, 12, 31);
+            qualitative.targetValue = new BigDecimal("10.00");
+            qualitative.versionNo = 1;
+            qualitative.persist();
+            EmployeeMeasure activity = new EmployeeMeasure();
+            activity.employee = employee;
+            activity.measureType = MeasureType.ACTIVITY;
+            activity.dimension = "productivite";
+            activity.periodFrom = LocalDate.of(2026, 9, 1);
+            activity.periodTo = LocalDate.of(2026, 9, 30);
+            activity.value = new BigDecimal("12.00");
+            activity.persist();
         });
     }
 
@@ -257,6 +284,19 @@ class FdvResourceTest {
                 .then().statusCode(200).body("regularized", is(1));
         given().auth().preemptive().basic("rep-alptis", "rep-alptis")
                 .when().post("/api/ui/v1/fdv/" + ENTITY + "/2026/annual-regularization").then().statusCode(403);
+    }
+
+    /**
+     * FDV-07: the business administrator launches the quarterly qualitative variable of the quarter
+     * ending at the seeded month; a sales rep may not.
+     */
+    @Test
+    void runs_quarterly_qualitative() {
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/quarterly-qualitative")
+                .then().statusCode(200).body("computed", is(1));
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/quarterly-qualitative").then().statusCode(403);
     }
 
     /**

@@ -138,7 +138,9 @@ function next(): void {
 
 <template>
   <div class="ui-table" data-ui="table">
-    <div class="ui-table__scroll">
+    <!-- tabindex makes the horizontal scroll region reachable by keyboard when a wide
+         table overflows (axe scrollable-region-focusable, WCAG 2.1.1). -->
+    <div class="ui-table__scroll" tabindex="0">
       <table>
         <thead>
           <tr>
@@ -197,6 +199,10 @@ function next(): void {
   /* Containing block so the sr-only action header cannot escape the horizontal
      clip and push the page wider than the viewport on a wide table. */
   position: relative;
+}
+.ui-table__scroll:focus-visible {
+  outline: 2px solid var(--focus, #1a73e8);
+  outline-offset: -2px;
 }
 .ui-table__state {
   color: var(--muted);

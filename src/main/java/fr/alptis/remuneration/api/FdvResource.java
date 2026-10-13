@@ -270,6 +270,24 @@ public class FdvResource {
     }
 
     /**
+     * Computes the quarterly qualitative variable of the quarter ending at a month (FDV-07), launched by
+     * the business administrator.
+     *
+     * @param entityCode the entity code
+     * @param month      the last month of the quarter (ISO date)
+     * @return the number of results written
+     */
+    @POST
+    @Path("/{entity}/{month}/quarterly-qualitative")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public java.util.Map<String, Integer> quarterlyQualitative(@PathParam("entity") String entityCode,
+                                                               @PathParam("month") String month) {
+        requireScope(entityCode);
+        return java.util.Map.of("computed", service.runQuarterlyQualitative(entityCode, LocalDate.parse(month)));
+    }
+
+    /**
      * Validates a result (FDV-13), performed by the regional manager.
      *
      * @param id the result id

@@ -9,14 +9,14 @@ import { resetDb, seedFdv, USERS } from '../support/helpers';
 //
 // @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial @screen:fdvCollaborators @screen:fdvMeasures
 // @screen:fdvObjectives
-// @req:FDV-01 @req:FDV-02 @req:FDV-03 @req:FDV-04 @req:FDV-06 @req:FDV-13 @req:FDV-14 @req:FDV-15 @req:FDV-16
+// @req:FDV-01 @req:FDV-02 @req:FDV-03 @req:FDV-04 @req:FDV-06 @req:FDV-07 @req:FDV-13 @req:FDV-14 @req:FDV-15 @req:FDV-16
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
   await seedFdv(request);
 });
 
-test('l’administrateur lit le plan, lance le calcul et valide, la Finance exporte @screen:fdvPlan @screen:fdvValidation @req:FDV-01 @req:FDV-04 @req:FDV-06 @req:FDV-13 @req:FDV-14 @role-action:SALES_MANAGER-validate-variable @role-action:FINANCE_CONTROLLER-export-pay', async ({
+test('l’administrateur lit le plan, lance le calcul et valide, la Finance exporte @screen:fdvPlan @screen:fdvValidation @req:FDV-01 @req:FDV-04 @req:FDV-06 @req:FDV-07 @req:FDV-13 @req:FDV-14 @role-action:SALES_MANAGER-validate-variable @role-action:FINANCE_CONTROLLER-export-pay', async ({
   browser,
 }) => {
   // The admin reads the plan and the collaborators and launches the monthly calculation.
@@ -27,6 +27,11 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   await expect(adminPage.getByTestId('collab-row-C-DEMO')).toBeVisible();
   await adminPage.getByTestId('fdvp-run').click();
   await expect(adminPage.getByTestId('fdvp-message')).toContainText('lancé');
+
+  // The admin launches the quarterly qualitative variable of the quarter ending at the month (FDV-07).
+  await adminPage.getByTestId('fdvp-quarterly').click();
+  await expect(adminPage.getByTestId('fdvp-message')).toContainText('Variable trimestriel qualitatif lancé');
+  await expect(adminPage.getByTestId('fdvp-message')).toContainText('collaborateur');
 
   // The admin launches the annual individual regularization of January N+1 (FDV-06).
   await adminPage.getByTestId('fdvp-reg-year').fill('2026');
