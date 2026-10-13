@@ -51,14 +51,48 @@ public class ReportingService {
     /** The distributor-account service, for debtor accounts. */
     private final AccountService accounts;
 
+    /** The application date/time provider, to stamp the insurer settlement. */
+    private final fr.alptis.remuneration.domain.DateTimeProvider clock;
+
     /**
      * Creates the service.
      *
      * @param accounts the distributor-account service
+     * @param clock    the application date/time provider
      */
     @Inject
-    public ReportingService(AccountService accounts) {
+    public ReportingService(AccountService accounts, fr.alptis.remuneration.domain.DateTimeProvider clock) {
         this.accounts = accounts;
+        this.clock = clock;
+    }
+
+    /**
+     * Reconciles the insurer's payment advice for a period (FIN-08): the received INSURER lines are
+     * matched against the insurer's settlement and marked paid. A received commission line enters no
+     * payment of its own (section 6.10); this records that the insurer has settled it.
+     *
+     * @param entityCode  the entity code
+     * @param periodMonth the period month
+     * @return the number of INSURER lines settled
+     */
+    @jakarta.transaction.Transactional
+    public int settleInsurerCommissions(String entityCode, java.time.LocalDate periodMonth) {
+        LegalEntity entity = entity(entityCode);
+        fr.alptis.remuneration.domain.Period period = fr.alptis.remuneration.domain.Period
+                .<fr.alptis.remuneration.domain.Period>find("entity = ?1 and periodMonth = ?2", entity, periodMonth)
+                .firstResult();
+        if (period == null) {
+            throw new ResourceNotFoundException("Période inconnue : " + periodMonth);
+        }
+        int settled = 0;
+        for (CommissionLine line : CommissionLine.<CommissionLine>list("period = ?1 and nature = ?2 and status = ?3",
+                period, fr.alptis.remuneration.domain.LineNature.INSURER,
+                fr.alptis.remuneration.domain.LineStatus.EARNED)) {
+            line.status = fr.alptis.remuneration.domain.LineStatus.PAID;
+            line.paidAt = clock.now();
+            settled++;
+        }
+        return settled;
     }
 
     /**

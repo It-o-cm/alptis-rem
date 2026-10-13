@@ -143,6 +143,23 @@ public class ReportingResource {
     }
 
     /**
+     * Records the insurer's payment advice for a period, settling the received INSURER lines (FIN-08).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the number of settled received-commission lines
+     */
+    @jakarta.ws.rs.POST
+    @Path("/{entity}/{month}/insurer-settlement")
+    @RolesAllowed("FINANCE_CONTROLLER")
+    public java.util.Map<String, Integer> settleInsurer(@PathParam("entity") String entityCode,
+                                                        @PathParam("month") String month) {
+        requireScope(entityCode);
+        return java.util.Map.of("settled",
+                reporting.settleInsurerCommissions(entityCode, java.time.LocalDate.parse(month)));
+    }
+
+    /**
      * Exports the cross-search as CSV at line grain (REP-04).
      *
      * @param entityCode  the entity code

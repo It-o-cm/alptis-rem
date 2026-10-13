@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { apiGet, apiGetText, ApiError } from '../api/client';
+import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
 import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
@@ -43,7 +43,26 @@ const data = ref<Margin | null>(null);
 const insurerRecon = ref<InsurerReconRow[]>([]);
 const csv = ref('');
 const error = ref('');
+const message = ref('');
 const loading = ref(false);
+const month = ref('2026-09-01');
+
+/** Whether the current user may record the insurer settlement (Finance). */
+const canSettle = (): boolean => session.roles.includes('FINANCE_CONTROLLER');
+
+/** Records the insurer's payment advice for the month, settling its received commissions (FIN-08). */
+async function settleInsurer(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    const result = await apiPost<{ settled: number }>(
+      `/api/ui/v1/reporting/${entity.value}/${month.value}/insurer-settlement`, {});
+    message.value = `Règlement assureur enregistré : ${result.settled} ligne(s) soldée(s).`;
+    await load();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Règlement refusé';
+  }
+}
 
 /**
  * Formats an amount with the common currency formatting.
@@ -120,13 +139,20 @@ onMounted(load);
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
         <input :id="id" data-testid="margin-entity" type="text" v-model="entity" />
       </FormField>
+      <FormField label="Mois (règlement assureur)" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="margin-month" type="text" v-model="month" />
+      </FormField>
     </FilterBar>
 
     <div class="margin-actions">
       <AppButton variant="secondary" data-testid="margin-export" @click="exportCsv">Exporter CSV</AppButton>
+      <AppButton v-if="canSettle()" variant="secondary" data-testid="margin-settle" @click="settleInsurer">
+        Enregistrer le règlement assureur
+      </AppButton>
     </div>
 
     <AppMessage v-if="error" variant="error" data-testid="margin-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="margin-message">{{ message }}</AppMessage>
 
     <AppCard v-if="csv">
       <pre data-testid="margin-export-content" class="margin-csv">{{ csv }}</pre>

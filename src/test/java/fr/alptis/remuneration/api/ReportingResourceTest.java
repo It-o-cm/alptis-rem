@@ -137,6 +137,34 @@ class ReportingResourceTest {
     }
 
     /**
+     * FIN-08: the Finance controller records the insurer's payment advice, settling the period's
+     * received INSURER lines; another role is refused.
+     */
+    @Test
+    void settles_insurer_commissions() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Period period = Period.<Period>find("entity = ?1 and periodMonth = ?2", entity, LocalDate.parse(MONTH))
+                    .firstResult();
+            CommissionLine insurer = new CommissionLine();
+            insurer.entity = entity;
+            insurer.period = period;
+            insurer.direction = Direction.INBOUND;
+            insurer.nature = LineNature.INSURER;
+            insurer.status = LineStatus.EARNED;
+            insurer.amount = new BigDecimal("451.54");
+            insurer.persist();
+        });
+
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().post("/api/ui/v1/reporting/" + ENTITY + "/" + MONTH + "/insurer-settlement")
+                .then().statusCode(200).body("settled", is(1));
+        given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
+                .when().post("/api/ui/v1/reporting/" + ENTITY + "/" + MONTH + "/insurer-settlement")
+                .then().statusCode(403);
+    }
+
+    /**
      * A dashboard without a range reads the recent months with data.
      */
     @Test

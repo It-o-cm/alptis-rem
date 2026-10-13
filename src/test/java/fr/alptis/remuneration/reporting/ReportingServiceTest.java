@@ -356,6 +356,26 @@ class ReportingServiceTest {
     }
 
     /**
+     * FIN-08 settlement: recording the insurer's payment advice for a period marks its received INSURER
+     * lines paid; an unknown period is rejected.
+     */
+    @Test
+    @TestTransaction
+    void settles_insurer_commissions_on_payment_advice() {
+        Period sep = period(SEP);
+        line(LineNature.INSURER, LineStatus.EARNED, null, null, null, null, "100.00", sep, Direction.INBOUND);
+        line(LineNature.INSURER, LineStatus.EARNED, null, null, null, null, "50.00", sep, Direction.INBOUND);
+
+        assertEquals(2, service.settleInsurerCommissions("UNEP", SEP));
+        assertEquals(0, CommissionLine.count("period = ?1 and nature = ?2 and status = ?3", sep,
+                LineNature.INSURER, LineStatus.EARNED));
+        assertEquals(2, CommissionLine.count("period = ?1 and nature = ?2 and status = ?3", sep,
+                LineNature.INSURER, LineStatus.PAID));
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.settleInsurerCommissions("UNEP", LocalDate.of(2030, 1, 1)));
+    }
+
+    /**
      * The insurer reconciliation sums the expected and received amounts recorded by the CAL-13 control
      * per guarantee and groups them per insurer; a guarantee with no product groups under a dash, and a
      * blank value counts as zero (FIN-08).

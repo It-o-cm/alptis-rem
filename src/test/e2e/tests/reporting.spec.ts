@@ -126,6 +126,10 @@ test('le contrôleur Finance lit la marge et le rapprochement assureurs @screen:
   // insurer row recorded by the annual close.
   await expect(page.getByTestId('insurer-recon')).toBeVisible();
   await expect(page.locator('[data-testid^="recon-row-"]').first()).toBeVisible();
+  // FIN-08 settlement: Finance records the insurer's payment advice for the month.
+  await page.getByTestId('margin-month').fill('2026-09-01');
+  await page.getByTestId('margin-settle').click();
+  await expect(page.getByTestId('margin-message')).toContainText('Règlement assureur enregistré');
   await finance.close();
 });
 

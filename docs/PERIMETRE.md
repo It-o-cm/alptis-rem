@@ -312,7 +312,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | FIN-05 | AccountingService | #53 | accounting | complet |
 | FIN-06 | AccountingQueryService (reconciliation) | #56 | reconciliation | complet — rapprochement des commissions acquises et payées, par bénéficiaire et global |
 | FIN-07 | AccountingQueryService (searchEntries/entryChain) | #53 | accounting | complet — chaîne flux→bordereau→ligne→assiette/taux/règle→écriture exposée à l'écran |
-| FIN-08 | — | #57 | — | absent — rapprochement des commissions reçues des assureurs (attendu + avis) |
+| FIN-08 | ReportingService (insurerReconciliation, settleInsurerCommissions) | #57 | reporting | complet — rapprochement des commissions reçues des assureurs avec l'attendu (CAL-13) par assureur, et règlement de l'avis de paiement par la Finance qui solde (PAID) les lignes `INSURER` reçues de la période |
 | FIN-09 | CutoffService | #55 | cutoff | complet |
 
 ### 8.12 Restitutions (REP)
