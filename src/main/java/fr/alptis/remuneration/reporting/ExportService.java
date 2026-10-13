@@ -72,9 +72,27 @@ public class ExportService {
      */
     @Transactional
     public ExportBatch dataExport(String entityCode, ExportObject object, String user) {
+        return dataExport(entityCode, object, null, user);
+    }
+
+    /**
+     * Feeds the Data platform (REP-05, OUT-05). A full snapshot when {@code since} is null; otherwise an
+     * incremental export of the objects created or modified on or after {@code since}, as the daily feed
+     * requires, relying on the objects' modification date.
+     *
+     * @param entityCode the entity code
+     * @param object     the exported object
+     * @param since      the incremental window start, or null for a full snapshot
+     * @param user       the acting user
+     * @return the export journal row
+     */
+    @Transactional
+    public ExportBatch dataExport(String entityCode, ExportObject object, LocalDate since, String user) {
         LegalEntity entity = entity(entityCode);
-        String fileName = entity.code + "_DATA_" + object.name().toLowerCase() + "_" + fileDate() + ".csv";
-        return journal(entity, "OUT-05:" + object.name(), fileName, build(entity, object, null), user);
+        String tag = since == null ? fileDate() : "INCR_" + since;
+        String fileName = entity.code + "_DATA_" + object.name().toLowerCase() + "_" + tag + ".csv";
+        String flow = "OUT-05:" + object.name() + (since == null ? "" : ":INCR:" + since);
+        return journal(entity, flow, fileName, build(entity, object, null, since), user);
     }
 
     /**
@@ -94,7 +112,7 @@ public class ExportService {
                 + String.format("%02d", periodMonth.getMonthValue());
         String flow = "OUT-04:" + object.name() + (periodMonth == null ? "" : ":" + periodMonth);
         String fileName = entity.code + "_" + object.name() + "_" + suffix + ".csv";
-        return journal(entity, flow, fileName, build(entity, object, periodMonth), user);
+        return journal(entity, flow, fileName, build(entity, object, periodMonth, null), user);
     }
 
     /**
@@ -110,8 +128,11 @@ public class ExportService {
         }
         String[] parts = batch.flowCode.split(":");
         ExportObject object = ExportObject.valueOf(parts[1]);
-        LocalDate month = parts.length > 2 ? LocalDate.parse(parts[2]) : null;
-        return build(batch.entity, object, month).content();
+        // OUT-05:OBJECT:INCR:<date> is an incremental Data export; OUT-04:OBJECT:<month> is a period list.
+        boolean incremental = parts.length > 2 && "INCR".equals(parts[2]);
+        LocalDate since = incremental ? LocalDate.parse(parts[3]) : null;
+        LocalDate month = !incremental && parts.length > 2 ? LocalDate.parse(parts[2]) : null;
+        return build(batch.entity, object, month, since).content();
     }
 
     /**
@@ -159,14 +180,26 @@ public class ExportService {
      * @param entity the entity
      * @param object the object
      * @param month  the period month, or null
+     * @param since  the incremental window start, or null
      * @return the built content
      */
-    private Built build(LegalEntity entity, ExportObject object, LocalDate month) {
+    private Built build(LegalEntity entity, ExportObject object, LocalDate month, LocalDate since) {
         return switch (object) {
-            case COMMISSION_LINES -> commissionLines(entity, month);
-            case ACCOUNTS -> accountsCsv(entity);
-            case CONTROL_RESULTS -> controlResultsCsv(entity, month);
+            case COMMISSION_LINES -> commissionLines(entity, month, since);
+            case ACCOUNTS -> accountsCsv(entity, since);
+            case CONTROL_RESULTS -> controlResultsCsv(entity, month, since);
         };
+    }
+
+    /**
+     * The start-of-day timestamp of a window date, in the application clock's offset, used as the lower
+     * bound of an incremental export.
+     *
+     * @param since the window date
+     * @return the start-of-day timestamp
+     */
+    private java.time.OffsetDateTime startOf(LocalDate since) {
+        return since.atStartOfDay().atOffset(clock.now().getOffset());
     }
 
     /**
@@ -178,13 +211,20 @@ public class ExportService {
      * @param month  the period month, or null for every period
      * @return the built content
      */
-    private Built controlResultsCsv(LegalEntity entity, LocalDate month) {
-        List<fr.alptis.remuneration.domain.ControlResult> results = month == null
-                ? fr.alptis.remuneration.domain.ControlResult.list(
-                        "period.entity = ?1 and control.severity in ?2 order by id", entity, LEVEL_2_3)
-                : fr.alptis.remuneration.domain.ControlResult.list(
-                        "period.entity = ?1 and period.periodMonth = ?2 and control.severity in ?3 order by id",
-                        entity, month, LEVEL_2_3);
+    private Built controlResultsCsv(LegalEntity entity, LocalDate month, LocalDate since) {
+        List<fr.alptis.remuneration.domain.ControlResult> results;
+        if (month != null) {
+            results = fr.alptis.remuneration.domain.ControlResult.list(
+                    "period.entity = ?1 and period.periodMonth = ?2 and control.severity in ?3 order by id",
+                    entity, month, LEVEL_2_3);
+        } else if (since != null) {
+            results = fr.alptis.remuneration.domain.ControlResult.list(
+                    "period.entity = ?1 and control.severity in ?2 and (updatedAt >= ?3 or (updatedAt is null "
+                            + "and createdAt >= ?3)) order by id", entity, LEVEL_2_3, startOf(since));
+        } else {
+            results = fr.alptis.remuneration.domain.ControlResult.list(
+                    "period.entity = ?1 and control.severity in ?2 order by id", entity, LEVEL_2_3);
+        }
         StringBuilder csv = new StringBuilder(
                 "control_code;severity;object_type;object_id;observed;expected;decision\n");
         for (fr.alptis.remuneration.domain.ControlResult r : results) {
@@ -211,10 +251,16 @@ public class ExportService {
      * @param month  the period month, or null
      * @return the built content
      */
-    private Built commissionLines(LegalEntity entity, LocalDate month) {
-        List<CommissionLine> lines = month == null
-                ? CommissionLine.list("entity = ?1 order by id", entity)
-                : CommissionLine.list("entity = ?1 and period.periodMonth = ?2 order by id", entity, month);
+    private Built commissionLines(LegalEntity entity, LocalDate month, LocalDate since) {
+        List<CommissionLine> lines;
+        if (month != null) {
+            lines = CommissionLine.list("entity = ?1 and period.periodMonth = ?2 order by id", entity, month);
+        } else if (since != null) {
+            lines = CommissionLine.list("entity = ?1 and (updatedAt >= ?2 or (updatedAt is null "
+                    + "and createdAt >= ?2)) order by id", entity, startOf(since));
+        } else {
+            lines = CommissionLine.list("entity = ?1 order by id", entity);
+        }
         StringBuilder csv = new StringBuilder("line_id;nature;status;basis;rate;amount;payee_type;payee_id\n");
         BigDecimal total = BigDecimal.ZERO;
         for (CommissionLine line : lines) {
@@ -236,10 +282,14 @@ public class ExportService {
      * Builds the accounts-and-balances CSV of an entity.
      *
      * @param entity the entity
+     * @param since  the incremental window start, or null for every account
      * @return the built content
      */
-    private Built accountsCsv(LegalEntity entity) {
-        List<DistributorAccount> list = DistributorAccount.list("entity = ?1 order by id", entity);
+    private Built accountsCsv(LegalEntity entity, LocalDate since) {
+        List<DistributorAccount> list = since == null
+                ? DistributorAccount.list("entity = ?1 order by id", entity)
+                : DistributorAccount.list("entity = ?1 and (updatedAt >= ?2 or (updatedAt is null "
+                        + "and createdAt >= ?2)) order by id", entity, startOf(since));
         StringBuilder csv = new StringBuilder("payee_type;payee_id;blocked;balance\n");
         BigDecimal total = BigDecimal.ZERO;
         for (DistributorAccount account : list) {

@@ -152,6 +152,73 @@ class ExportServiceTest {
     }
 
     /**
+     * REP-05: the Data export is incremental when a window is given — only the objects created or
+     * modified on or after the window are fed, across commission lines, accounts and control results.
+     */
+    @Test
+    @TestTransaction
+    void data_export_is_incremental_since_a_window() {
+        Period p = period(M);
+        java.time.ZoneOffset off = java.time.OffsetDateTime.now().getOffset();
+        // Commission lines: one created in the window, one before it, one modified in the window.
+        stampLine(p, "100.00", LocalDate.of(2026, 9, 15), null);
+        stampLine(p, "50.00", LocalDate.of(2026, 1, 10), null);
+        stampLine(p, "70.00", LocalDate.of(2026, 1, 10), LocalDate.of(2026, 9, 20));
+        // An account created in the window and one before it.
+        stampAccount(LocalDate.of(2026, 9, 12));
+        stampAccount(LocalDate.of(2026, 1, 5));
+        // A control result created in the window.
+        stampControlResult(p, LocalDate.of(2026, 9, 18));
+        stampControlResult(p, LocalDate.of(2026, 1, 8));
+
+        ExportBatch lines = service.dataExport("UNEP", ExportObject.COMMISSION_LINES, LocalDate.of(2026, 9, 1), "fin");
+        assertEquals("OUT-05:COMMISSION_LINES:INCR:2026-09-01", lines.flowCode);
+        assertEquals(2, lines.linesWritten);
+        String csv = service.content(lines.getId());
+        assertTrue(csv.contains(";100.00;") && csv.contains(";70.00;") && !csv.contains(";50.00;"));
+
+        assertEquals(1, service.dataExport("UNEP", ExportObject.ACCOUNTS, LocalDate.of(2026, 9, 1), "fin")
+                .linesWritten);
+        assertEquals(1, service.dataExport("UNEP", ExportObject.CONTROL_RESULTS, LocalDate.of(2026, 9, 1), "fin")
+                .linesWritten);
+        // The offset is read from the clock, aligning the stored timestamps.
+        assertEquals(java.time.OffsetDateTime.now().getOffset(), off);
+    }
+
+    /** A commission line stamped with explicit created/updated dates. */
+    private void stampLine(Period period, String amount, LocalDate createdOn, LocalDate updatedOn) {
+        java.time.ZoneOffset off = java.time.OffsetDateTime.now().getOffset();
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = LineStatus.EARNED;
+        line.amount = new BigDecimal(amount);
+        line.setCreatedAt(createdOn.atStartOfDay().atOffset(off));
+        if (updatedOn != null) {
+            line.setUpdatedAt(updatedOn.atStartOfDay().atOffset(off));
+        }
+        line.persist();
+    }
+
+    /** An account stamped with an explicit creation date. */
+    private void stampAccount(LocalDate createdOn) {
+        DistributorAccount account = account();
+        account.setCreatedAt(createdOn.atStartOfDay().atOffset(java.time.OffsetDateTime.now().getOffset()));
+    }
+
+    /** A warning control result stamped with an explicit creation date. */
+    private void stampControlResult(Period period, LocalDate createdOn) {
+        controlResult(period, "CALC-VAR-" + createdOn.getDayOfYear(),
+                fr.alptis.remuneration.domain.ControlSeverity.WARNING, "COVERAGE", 1L, "x", "y");
+        fr.alptis.remuneration.domain.ControlResult r = fr.alptis.remuneration.domain.ControlResult
+                .<fr.alptis.remuneration.domain.ControlResult>find("control.code = ?1",
+                        "CALC-VAR-" + createdOn.getDayOfYear()).firstResult();
+        r.setCreatedAt(createdOn.atStartOfDay().atOffset(java.time.OffsetDateTime.now().getOffset()));
+    }
+
+    /**
      * CTL-06: the control-results export lists the level-2 (warning) and level-3 (blocking) results of
      * the period, excluding the level-1 (information) ones.
      */

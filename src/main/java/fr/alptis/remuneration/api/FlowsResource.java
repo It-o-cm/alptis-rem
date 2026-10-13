@@ -110,12 +110,17 @@ public class FlowsResource {
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "FINANCE_CONTROLLER"})
     public ExportView produce(@PathParam("entity") String entityCode, @QueryParam("object") String object,
-                              @QueryParam("period") String period) {
+                              @QueryParam("period") String period, @QueryParam("since") String since) {
         requireScope(entityCode);
         ExportObject target = ExportObject.valueOf(object);
-        ExportBatch batch = period == null
-                ? exports.dataExport(entityCode, target, currentUser.username())
-                : exports.listExport(entityCode, LocalDate.parse(period), target, currentUser.username());
+        ExportBatch batch;
+        if (period != null) {
+            batch = exports.listExport(entityCode, LocalDate.parse(period), target, currentUser.username());
+        } else {
+            // A Data export (REP-05): incremental when a "since" window is given, else a full snapshot.
+            batch = exports.dataExport(entityCode, target, since == null ? null : LocalDate.parse(since),
+                    currentUser.username());
+        }
         return new ExportView(batch.getId(), batch.flowCode, batch.fileName, batch.fileHash, batch.generatedBy,
                 batch.linesWritten, batch.totalAmount, batch.status);
     }

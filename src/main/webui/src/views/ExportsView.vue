@@ -25,7 +25,7 @@ const content = ref('');
 const error = ref('');
 const message = ref('');
 const loading = ref(false);
-const form = ref({ object: 'COMMISSION_LINES', period: '2026-09-01', data: false });
+const form = ref({ object: 'COMMISSION_LINES', period: '2026-09-01', data: false, since: '' });
 
 const canProduce = () => canProduceExport(session.roles);
 
@@ -76,7 +76,13 @@ async function produce(): Promise<void> {
   message.value = '';
   error.value = '';
   try {
-    const q = form.value.data ? '' : `&period=${form.value.period}`;
+    let q: string;
+    if (form.value.data) {
+      // A Data export: incremental when a "since" window is given (REP-05), else a full snapshot.
+      q = form.value.since ? `&since=${form.value.since}` : '';
+    } else {
+      q = `&period=${form.value.period}`;
+    }
     await apiPost(`/api/ui/v1/flows/${entity.value}/exports?object=${form.value.object}${q}`, {});
     message.value = 'Export produit.';
     await load();
@@ -137,6 +143,9 @@ onMounted(load);
         </FormField>
         <FormField label="Export Data (sans période)" width="short" v-slot="{ id }">
           <input :id="id" data-testid="exports-data" type="checkbox" v-model="form.data" />
+        </FormField>
+        <FormField label="Depuis (export Data incrémental)" width="date" v-slot="{ id }">
+          <input :id="id" data-testid="exports-since" type="text" v-model="form.since" :disabled="!form.data" />
         </FormField>
         <AppButton type="submit" data-testid="exports-produce">Produire</AppButton>
       </AppForm>

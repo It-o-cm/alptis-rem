@@ -323,7 +323,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | REP-02 | ReportingService | #24 | reporting | complet |
 | REP-03 | ReportingService | #24 | reporting | complet |
 | REP-04 | ExportService | #49 | reporting, exports | complet |
-| REP-05 | ExportService (export Data) | #49 | — | partiel — export complet à chaque fois, non incrémental (pas de `updated_at`) |
+| REP-05 | ExportService (dataExport incrémental) | #49 | exports | complet — alimentation Data incrémentale : un export Data avec une date « depuis » ne renvoie que les objets créés ou modifiés à partir de cette date (`coalesce(updatedAt, createdAt)`), l'export complet restant pour l'initialisation |
 | REP-06 | PublicApiService | — | — | complet |
 | REP-07 | ReportingService | #61 | reporting | complet |
 | REP-08 | ReportingService | #57 | reporting | complet |
@@ -400,6 +400,10 @@ ligne datée sans effacer l'ancienne) :
    évaluation mensuelle de la condition de versement, rattrapage du mois reporté).
 7. FIN-06, FIN-08, REP-08 (marge et rapprochements) reportés/approchés (2026-10-09).
 8. Export Data complet au lieu d'incrémental (2026-10-09, REP-04/05).
+   **Levée** (2026-10-13) : l'export Data accepte une date « depuis » et ne renvoie alors que les objets
+   créés ou modifiés à partir de cette date (`coalesce(updatedAt, createdAt)`, REP-05) ; prouvé par
+   `ExportServiceTest.data_export_is_incremental_since_a_window`. L'export complet reste disponible pour
+   l'initialisation.
 9. CR-72 mesuré par extrapolation depuis 60 bénéficiaires (2026-10-09, §11).
 10. FDV-06/07/08/09/10/12/16 reportés (2026-10-09, §8.14).
 11. `ConfirmDialog` construit mais non raccordé aux actions irréversibles (2026-10-10, ERGONOMIE §3).

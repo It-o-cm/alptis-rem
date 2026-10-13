@@ -93,13 +93,17 @@ class FlowsResourceTest {
     }
 
     /**
-     * A Data export without a period is produced for an object.
+     * A Data export without a period is produced for an object, as a full snapshot or, with a window,
+     * incrementally (REP-05).
      */
     @Test
     void data_export_without_period() {
         given().auth().preemptive().basic("finance-alptis", "finance-alptis")
                 .when().post("/api/ui/v1/flows/" + ENTITY + "/exports?object=ACCOUNTS")
                 .then().statusCode(200).body("flowCode", is("OUT-05:ACCOUNTS"));
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().post("/api/ui/v1/flows/" + ENTITY + "/exports?object=COMMISSION_LINES&since=2026-09-01")
+                .then().statusCode(200).body("flowCode", is("OUT-05:COMMISSION_LINES:INCR:2026-09-01"));
     }
 
     /**
