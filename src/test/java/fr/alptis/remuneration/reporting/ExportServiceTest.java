@@ -152,6 +152,60 @@ class ExportServiceTest {
     }
 
     /**
+     * CTL-06: the control-results export lists the level-2 (warning) and level-3 (blocking) results of
+     * the period, excluding the level-1 (information) ones.
+     */
+    @Test
+    @TestTransaction
+    void control_results_export_lists_level_2_and_3() {
+        Period p = period(M);
+        controlResult(p, "CALC-VAR", fr.alptis.remuneration.domain.ControlSeverity.WARNING, "COVERAGE", 7L, "3100",
+                "2000");
+        controlResult(p, "PAY-BAL", fr.alptis.remuneration.domain.ControlSeverity.BLOCKING, "BATCH", 9L, "100", "90");
+        controlResult(p, "CALC-TREND", fr.alptis.remuneration.domain.ControlSeverity.INFO, "ENTITY", null, "x", null);
+        // A warning result whose object, observed and expected are all absent (empty cells in the CSV).
+        controlResult(p, "COMPL-FLOW", fr.alptis.remuneration.domain.ControlSeverity.WARNING, null, null, null, null);
+
+        ExportBatch batch = service.listExport("UNEP", M, ExportObject.CONTROL_RESULTS, "fin");
+        assertEquals(3, batch.linesWritten);
+        String csv = service.content(batch.getId());
+        assertTrue(csv.startsWith("control_code;severity;object_type;object_id;observed;expected;decision\n"));
+        assertTrue(csv.contains("CALC-VAR;WARNING;COVERAGE;7;3100;2000;"));
+        assertTrue(csv.contains("PAY-BAL;BLOCKING;BATCH;9;100;90;"));
+        assertTrue(csv.contains("COMPL-FLOW;WARNING;;;;;"));
+        assertTrue(!csv.contains("CALC-TREND"));
+
+        // The all-periods Data export (no month) also lists the level-2/3 results.
+        ExportBatch all = service.dataExport("UNEP", ExportObject.CONTROL_RESULTS, "fin");
+        assertEquals(3, all.linesWritten);
+    }
+
+    /** Persists a control definition and one result of the given severity in a period. */
+    private void controlResult(Period period, String code, fr.alptis.remuneration.domain.ControlSeverity severity,
+                               String objectType, Long objectId, String observed, String expected) {
+        fr.alptis.remuneration.domain.ControlDefinition def = new fr.alptis.remuneration.domain.ControlDefinition();
+        def.entity = unep();
+        def.code = code;
+        def.label = code;
+        def.family = fr.alptis.remuneration.domain.ControlFamily.CALCULATION;
+        def.severity = severity;
+        def.active = Boolean.TRUE;
+        def.versionNo = 1;
+        def.validFrom = M;
+        def.persist();
+        fr.alptis.remuneration.domain.ControlResult r = new fr.alptis.remuneration.domain.ControlResult();
+        r.period = period;
+        r.control = def;
+        r.severity = severity;
+        r.objectType = objectType;
+        r.objectId = objectId;
+        r.observedValue = observed;
+        r.expectedValue = expected;
+        r.decision = fr.alptis.remuneration.domain.ControlDecision.OPEN;
+        r.persist();
+    }
+
+    /**
      * The journal lists an entity's exports newest first.
      */
     @Test

@@ -129,6 +129,7 @@ onMounted(load);
           <select :id="id" data-testid="exports-object" v-model="form.object">
             <option value="COMMISSION_LINES">Lignes de commission</option>
             <option value="ACCOUNTS">Comptes et soldes</option>
+            <option value="CONTROL_RESULTS">Données des contrôles (niveaux 2 et 3)</option>
           </select>
         </FormField>
         <FormField label="Période" width="date" v-slot="{ id }">

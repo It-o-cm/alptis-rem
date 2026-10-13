@@ -34,7 +34,9 @@ public class ExportService {
         /** The commission lines. */
         COMMISSION_LINES,
         /** The distributor accounts and their balances. */
-        ACCOUNTS
+        ACCOUNTS,
+        /** The level-2 and level-3 control results (warnings and blocking), for CTL-06. */
+        CONTROL_RESULTS
     }
 
     /** The application date/time provider. */
@@ -163,8 +165,44 @@ public class ExportService {
         return switch (object) {
             case COMMISSION_LINES -> commissionLines(entity, month);
             case ACCOUNTS -> accountsCsv(entity);
+            case CONTROL_RESULTS -> controlResultsCsv(entity, month);
         };
     }
+
+    /**
+     * Builds the CSV of the level-2 and level-3 control results (warnings and blocking controls) of an
+     * entity, optionally restricted to a period (CTL-06): one row per result with its control, severity,
+     * checked object, observed and expected values and decision.
+     *
+     * @param entity the entity
+     * @param month  the period month, or null for every period
+     * @return the built content
+     */
+    private Built controlResultsCsv(LegalEntity entity, LocalDate month) {
+        List<fr.alptis.remuneration.domain.ControlResult> results = month == null
+                ? fr.alptis.remuneration.domain.ControlResult.list(
+                        "period.entity = ?1 and control.severity in ?2 order by id", entity, LEVEL_2_3)
+                : fr.alptis.remuneration.domain.ControlResult.list(
+                        "period.entity = ?1 and period.periodMonth = ?2 and control.severity in ?3 order by id",
+                        entity, month, LEVEL_2_3);
+        StringBuilder csv = new StringBuilder(
+                "control_code;severity;object_type;object_id;observed;expected;decision\n");
+        for (fr.alptis.remuneration.domain.ControlResult r : results) {
+            csv.append(r.control.code).append(';')
+                    .append(r.severity).append(';')
+                    .append(r.objectType == null ? "" : r.objectType).append(';')
+                    .append(r.objectId == null ? "" : r.objectId).append(';')
+                    .append(r.observedValue == null ? "" : r.observedValue).append(';')
+                    .append(r.expectedValue == null ? "" : r.expectedValue).append(';')
+                    .append(r.decision).append('\n');
+        }
+        return new Built(csv.toString(), results.size(), BigDecimal.ZERO);
+    }
+
+    /** The level-2 (warning) and level-3 (blocking) control severities (CTL-06). */
+    private static final List<fr.alptis.remuneration.domain.ControlSeverity> LEVEL_2_3 = List.of(
+            fr.alptis.remuneration.domain.ControlSeverity.WARNING,
+            fr.alptis.remuneration.domain.ControlSeverity.BLOCKING);
 
     /**
      * Builds the commission-lines CSV, optionally restricted to a period.

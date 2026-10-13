@@ -247,7 +247,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CTL-03 | ControlService (checklist) | #10 | controls | complet — liste de contrôle par période, à cocher, tracée |
 | CTL-04 | ControlService (edit → version), CycleQueryService (versions) | #11 | controls | complet — versionnement des contrôles (nouvelle version à chaque édition, historique consultable) |
 | CTL-05 | ControlService (décision tracée) | #10 | controls | complet |
-| CTL-06 | ExportService | #49 | — | partiel — export des données de contrôle N2/N3 à confirmer |
+| CTL-06 | ExportService (CONTROL_RESULTS) | #49 | exports | complet — export CSV des données des contrôles de niveau 2 (avertissement) et 3 (bloquant) d'une période, hors contrôles de niveau 1 (information) |
 
 ### 8.7 Pilotage du cycle (WKF)
 
