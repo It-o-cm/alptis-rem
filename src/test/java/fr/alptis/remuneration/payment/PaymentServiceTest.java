@@ -286,6 +286,75 @@ class PaymentServiceTest {
         assertEquals(0, cheque.totalAmount.compareTo(new BigDecimal("50.00")));
     }
 
+    /**
+     * PAY-08: a distributor common to several entities is paid by one order per debtor entity. Payment
+     * is proposed per entity, so a shared distributor with a payable balance in two entities yields two
+     * distinct lots — one per entity — each with its own order on that entity's account.
+     */
+    @Test
+    @TestTransaction
+    void pay08_one_order_per_entity_for_a_common_distributor() {
+        LegalEntity unep = unep();
+        LegalEntity alptis = LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult();
+        unep.minPaymentAmount = BigDecimal.ZERO;
+        alptis.minPaymentAmount = BigDecimal.ZERO;
+        Distributor shared = distributor("P-MULTI", OriasStatus.REGISTERED);
+        Period pU = payableScene(unep, shared, "PC-U", "100.00");
+        Period pA = payableScene(alptis, shared, "PC-A", "60.00");
+
+        PaymentBatch lotU = accounts.proposePayments(unep, pU);
+        PaymentBatch lotA = accounts.proposePayments(alptis, pA);
+
+        assertTrue(!lotU.getId().equals(lotA.getId()), "one lot per entity");
+        assertEquals(unep.getId(), lotU.entity.getId());
+        assertEquals(alptis.getId(), lotA.entity.getId());
+        assertEquals(1, PaymentOrder.count("batch", lotU));
+        assertEquals(1, PaymentOrder.count("batch", lotA));
+        // Each entity's order carries only its own account's amount.
+        PaymentOrder orderU = PaymentOrder.<PaymentOrder>find("batch", lotU).firstResult();
+        PaymentOrder orderA = PaymentOrder.<PaymentOrder>find("batch", lotA).firstResult();
+        assertEquals(0, orderU.amount.compareTo(new BigDecimal("100.00")));
+        assertEquals(0, orderA.amount.compareTo(new BigDecimal("60.00")));
+    }
+
+    /** Creates a period, a payable production-code account and its bank for a distributor in an entity. */
+    private Period payableScene(LegalEntity entity, Distributor distributor, String code, String amount) {
+        Period period = new Period();
+        period.entity = entity;
+        period.periodMonth = M;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = entity;
+        pc.code = code;
+        pc.distributor = distributor;
+        pc.persist();
+        DistributorAccount acct = new DistributorAccount();
+        acct.entity = entity;
+        acct.payeeType = PayeeType.PRODUCTION_CODE;
+        acct.payeeId = pc.getId();
+        acct.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.account = acct;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal(amount);
+        line.persist();
+        BankAccount b = new BankAccount();
+        b.entity = entity;
+        b.holderType = acct.payeeType;
+        b.holderId = acct.payeeId;
+        b.iban = "FR7630001007941234567890185";
+        b.bic = "AGRIFRPP";
+        b.holderName = "Titulaire";
+        b.validFrom = LocalDate.of(2020, 1, 1);
+        b.persist();
+        return period;
+    }
+
     /** Creates a typed account. */
     private static DistributorAccount account(PayeeType type, Long id) {
         DistributorAccount account = new DistributorAccount();

@@ -282,7 +282,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | PAY-05 | PaymentService (alignement) | #15 | cr64 JUnit | complet |
 | PAY-06 | PaymentService (résultat bancaire) | #17 | payment | complet |
 | PAY-07 | PaymentService (lot hors cycle) | #16 | payment | complet |
-| PAY-08 | PaymentService | #15 | — | partiel — un ordre par entité débitrice à vérifier |
+| PAY-08 | AccountService (proposePayments par entité) | #15 | pay08 JUnit | complet — le paiement est proposé par entité : un distributeur commun à plusieurs entités reçoit un lot et un ordre par entité débitrice, prouvé par `PaymentServiceTest.pay08_one_order_per_entity_for_a_common_distributor` |
 
 ### 8.10 Bordereaux et documents (BRD)
 
