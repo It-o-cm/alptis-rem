@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
-import { AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface CertificateView {
@@ -62,7 +62,7 @@ onMounted(load);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="tax-refresh" :resettable="false" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="tax-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="tax-entity" v-model="entity" />
       </FormField>
       <FormField label="Exercice" stacked width="short" v-slot="{ id }">
         <input :id="id" data-testid="tax-year" type="text" v-model="year" placeholder="année courante" />

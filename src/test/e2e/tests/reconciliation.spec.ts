@@ -14,6 +14,8 @@ test.describe('Rapprochement — contrôleur Finance', () => {
     await loadDemo(page.request);
     await page.goto('/rapprochement');
     await expect(page.getByTestId('page-title')).toHaveText('Rapprochement des commissions acquises et payées');
+    // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+    await expect(page.getByTestId('rec-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
 
     // The global totals are shown, and at least one beneficiary row.
     await expect(page.getByTestId('rec-acquired')).toBeVisible();

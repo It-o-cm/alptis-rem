@@ -389,10 +389,8 @@ p.ex. `en-plan`/`en-rule` d'EnrollmentsView, `v-scope` de RulesView) :
 - BordereauxView : `brd-entity`, `brd-month`, `brd-member`.
 - ClaimsView : `claim-distributor`.
 - ControlsView : `ctl-entity`, `ctl-month`.
-- CutoffView : `cutoff-entity`.
 - DashboardsView : `dash-entity`, `dash-product`, `dash-distributor`.
 - DistributorAccountView : `acc-entity`, `acc-month`.
-- DocumentTemplatesView : `tpl-entity`.
 - EnrollmentsView : `en-plan`, `en-rule`.
 - ExportsView : `exports-entity`, `exports-period`.
 - FdvCollaboratorsView : `fdvcol-entity`.
@@ -401,18 +399,16 @@ p.ex. `en-plan`/`en-rule` d'EnrollmentsView, `v-scope` de RulesView) :
 - FdvObjectivesView : `fdvo-entity`.
 - FdvPlanView : `fdvp-entity`, `fdvp-month`.
 - FdvValidationView : `fdvv-entity`, `fdvv-month`.
-- IndicatorsView : `ind-entity`.
 - ManualEventView : `field-coverage`, `cov-coverage`, `cov-product`, `cov-production`, `cov-source`, `cov-contract`, `cov-holder`.
 - MarginView : `margin-entity`, `margin-month`.
 - ParameterTransferView : `pt-entity`, `pt-plan` (`pt-newcode` reste libre : nouveau code).
 - PaymentView : `pay-entity`, `pay-month`.
-- ReconciliationView : `rec-entity`.
-- RepriseView : `reprise-entity`.
 - SimulationView : `sim-entity`, `sim-month`, `sim-rule`, `sim-scope`.
-- TaxCertificatesView : `tax-entity`.
 
-Écrans déjà convertis : #24 CommissionSearchView (entité/mois/distributeur/produit/nature) et
-RoleMappingsView (entité ; rôle et entité affichés par leur libellé dans le formulaire et le tableau).
+Écrans déjà convertis : #24 CommissionSearchView (entité/mois/distributeur/produit/nature) ;
+RoleMappingsView (entité ; rôle et entité au libellé dans le formulaire et le tableau) ;
+CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, RepriseView, IndicatorsView
+(entité), chacun avec l'assertion ADM-03 ajoutée à son test de bout en bout.
 
 **Affichages d'énum bruts encore en clair** (à remplacer par le libellé FR du glossaire) :
 

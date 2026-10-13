@@ -14,6 +14,8 @@ test.describe('Attestations fiscales — opérateur', () => {
     await loadDemo(page.request);
     await page.goto('/attestations-fiscales');
     await expect(page.getByTestId('page-title')).toHaveText('Attestations fiscales annuelles');
+    // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+    await expect(page.getByTestId('tax-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
     // The full demo settles payments, so at least one beneficiary has a certificate for the year.
     await expect(page.locator('[data-testid^="tax-row-"]').first()).toBeVisible();
   });

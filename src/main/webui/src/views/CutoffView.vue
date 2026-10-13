@@ -5,7 +5,7 @@ import { useSessionStore } from '../stores/session';
 import { cutoffViewLabel } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
 import BarChart from '../components/charts/BarChart.vue';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface Row {
@@ -126,7 +126,7 @@ onMounted(load);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="cutoff-refresh" :resettable="false" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="cutoff-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="cutoff-entity" v-model="entity" />
       </FormField>
       <FormField label="Date d'arrêté" stacked width="date" v-slot="{ id }">
         <input :id="id" data-testid="cutoff-date" type="text" v-model="date" />

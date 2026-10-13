@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount, formatPercent } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 import LineChart from '../components/charts/LineChart.vue';
 
@@ -109,7 +109,7 @@ onMounted(load);
       @search="load"
     >
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="ind-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="ind-entity" v-model="entity" />
       </FormField>
       <FormField label="Du mois" stacked width="date" v-slot="{ id }">
         <input :id="id" data-testid="ind-from" type="text" v-model="from" placeholder="2026-06-01" />

@@ -18,6 +18,8 @@ test('le contrôleur Finance lit le cut-off et change de maille @screen:cutoff @
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
   const page = await finance.newPage();
   await page.goto('/cutoff');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('cutoff-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(page.getByTestId('cutoff-total-earned')).not.toBeEmpty();
   // Reading by distributor gives the accrued-versus-paid reconciliation (FIN-06).
   await page.getByTestId('cutoff-view-DISTRIBUTOR').click();

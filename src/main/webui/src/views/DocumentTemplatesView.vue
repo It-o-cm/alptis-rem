@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface TemplateView {
@@ -73,7 +73,7 @@ onMounted(load);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="tpl-refresh" :resettable="false" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="tpl-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="tpl-entity" v-model="entity" />
       </FormField>
     </FilterBar>
 

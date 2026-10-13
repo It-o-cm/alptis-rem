@@ -19,6 +19,8 @@ test('l’opérateur dépose un fichier d’ouverture et lit les compteurs @scre
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
   const page = await operator.newPage();
   await page.goto('/reprise');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('reprise-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await page.getByTestId('reprise-content').fill(
     'payee_type;payee_code;opening_balance\nPRODUCTION_CODE;PC-DEBIT;-200.00\n',
   );

@@ -152,6 +152,8 @@ test('le consultant lit les indicateurs de fonctionnement mois par mois @screen:
   const viewer = await browser.newContext({ httpCredentials: USERS.viewerAlptis });
   const page = await viewer.newPage();
   await page.goto('/indicateurs-fonctionnement');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('ind-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(page.locator('[data-testid^="ind-rules-"]').first()).toBeVisible();
   await expect(page.locator('[data-testid^="ind-clawback-"]').first()).toBeVisible();
   await expect(page.getByTestId('chart-ind-rules')).toBeVisible();

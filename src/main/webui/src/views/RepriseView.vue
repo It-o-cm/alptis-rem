@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateImports } from '../presentation/access';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface UploadResponse {
@@ -67,7 +67,7 @@ async function upload(): Promise<void> {
     <AppCard v-if="canUpload()" data-testid="reprise-form">
       <AppForm @submit="upload">
         <FormField label="Entité" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="reprise-entity" type="text" v-model="entity" />
+          <EntitySelect :id="id" data-testid="reprise-entity" v-model="entity" />
         </FormField>
         <FormField label="Système source" width="short" v-slot="{ id }">
           <input :id="id" data-testid="reprise-source" type="text" v-model="sourceSystem" />

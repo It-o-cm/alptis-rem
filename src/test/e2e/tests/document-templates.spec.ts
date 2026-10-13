@@ -14,6 +14,8 @@ test.describe('Modèles de documents — administrateur métier', () => {
     await loadDemo(page.request);
     await page.goto('/modeles-documents');
     await expect(page.getByTestId('page-title')).toHaveText('Modèles de documents');
+    // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+    await expect(page.getByTestId('tpl-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
     // The demo seeds the statement, member-statement and tax-certificate models.
     await expect(page.getByTestId('tpl-row-STATEMENT')).toBeVisible();
 

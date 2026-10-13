@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
-import { AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppCard, AppMessage, DataTable, DetailList, DetailRow, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface BeneficiaryRow {
@@ -67,7 +67,7 @@ onMounted(load);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="rec-refresh" :resettable="false" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="rec-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="rec-entity" v-model="entity" />
       </FormField>
     </FilterBar>
 
