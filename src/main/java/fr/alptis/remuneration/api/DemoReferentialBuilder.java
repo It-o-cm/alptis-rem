@@ -76,6 +76,9 @@ public class DemoReferentialBuilder {
     /** The first day the demonstration referential is valid. */
     private static final LocalDate FROM = LocalDate.of(2025, 1, 1);
 
+    /** The sales delegations spread over the demonstration distributors (ADM-03). */
+    private static final String[] DELEGATIONS = {"SUD-EST", "NORD", "OUEST", "ILE-DE-FRANCE"};
+
     /** The application date/time provider. */
     private final DateTimeProvider clock;
 
@@ -329,6 +332,9 @@ public class DemoReferentialBuilder {
         distributor.commissionable = Boolean.TRUE;
         distributor.advanceExcluded = Boolean.FALSE;
         distributor.statementGrouping = StatementGrouping.NONE;
+        // Every distributor carries a sales delegation, deterministically spread over a few regions, so
+        // the delegation selector (ADM-03) offers known values on every entity's filters.
+        distributor.salesDelegation = DELEGATIONS[Math.floorMod(partner.hashCode(), DELEGATIONS.length)];
         stamp(distributor);
         distributor.persist();
         return distributor;

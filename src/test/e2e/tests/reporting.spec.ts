@@ -24,6 +24,13 @@ test('le consultant lit les tableaux de bord et la recherche de commissions @scr
   await expect(page.getByTestId('dash-reprises')).toBeVisible();
   await expect(page.locator('[data-testid^="dash-nature-"]').first()).toBeVisible();
 
+  // ADM-03: the dashboard filters are chosen from lists shown by their French labels, never typed as
+  // codes. The entity reads as a name; the grouping, delegation and nature read as labels.
+  await expect(page.getByTestId('dash-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(page.getByTestId('dash-group').locator('option', { hasText: 'Groupement Sud (GRP-SUD)' })).toHaveCount(1);
+  await expect(page.getByTestId('dash-delegation').locator('option', { hasText: 'SUD-EST' })).toHaveCount(1);
+  await expect(page.getByTestId('dash-nature-filter').locator('option', { hasText: 'Acquisition' })).toHaveCount(1);
+
   // The charts render the data: the stacked bars, the nature donut and the top-distributor bars.
   await expect(page.getByTestId('chart-month-nature')).toBeVisible();
   await expect(page.locator('[data-testid^="chart-month-nature-bar-"]').first()).toBeVisible();
@@ -32,16 +39,19 @@ test('le consultant lit les tableaux de bord et la recherche de commissions @scr
   await expect(bar).toBeVisible();
   await expect(bar).toHaveAttribute('aria-label', /\d/);
 
-  // A filter that matches nothing redraws the chart to its empty state.
-  await page.getByTestId('dash-product').fill('PRODUIT-INEXISTANT');
+  // A filter that matches nothing redraws the chart to its empty state: the seeded lines are all
+  // linear, so filtering on the acquisition nature (a known value picked from the list) empties it.
+  await page.getByTestId('dash-nature-filter').selectOption('ACQUISITION');
   await page.getByTestId('dash-refresh').click();
   await expect(page.getByTestId('chart-month-nature-empty')).toBeVisible();
 
   await page.goto('/recherche-commissions');
-  // ADM-03: the entity, nature and month are chosen from lists shown by their French labels,
-  // never typed as codes. The entity option reads as a name, the nature option as a glossary label.
+  // ADM-03: the entity, nature, grouping, delegation and month are chosen from lists shown by their
+  // French labels, never typed as codes.
   await expect(page.getByTestId('cs-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(page.getByTestId('cs-nature-filter').locator('option', { hasText: 'Linéaire' })).toHaveCount(1);
+  await expect(page.getByTestId('cs-group').locator('option', { hasText: 'Groupement Sud (GRP-SUD)' })).toHaveCount(1);
+  await expect(page.getByTestId('cs-delegation').locator('option', { hasText: 'SUD-EST' })).toHaveCount(1);
   await page.getByTestId('cs-search').click();
   await expect(page.locator('[data-testid^="cs-row-"]').first()).toBeVisible();
   // The nature cell shows its French label, not the raw enum code (ADM-03).

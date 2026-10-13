@@ -962,6 +962,77 @@ class ReferentialQueryServiceTest {
     }
 
     /**
+     * Lists the distinct sales delegations and the production codes, each partitioned by entity and
+     * covering the null/blank delegation legs, the deduplication and the sort (ADM-03, REP-03, BRD-11).
+     */
+    @Test
+    @TestTransaction
+    void lists_delegations_and_production_codes() {
+        Distributor d = seedDistributor();
+        d.salesDelegation = "SUD-EST";
+        d.persist();
+        // A second Alptis distributor with the same delegation (deduplicated) and a blank one (dropped).
+        Distributor same = new Distributor();
+        same.partnerCode = "P2";
+        same.legalName = "Cabinet Deux";
+        same.salesDelegation = "SUD-EST";
+        same.persist();
+        linkActive(same, alptis());
+        Distributor blank = new Distributor();
+        blank.partnerCode = "P3";
+        blank.legalName = "Cabinet Trois";
+        blank.salesDelegation = "   ";
+        blank.persist();
+        linkActive(blank, alptis());
+        // An Alptis distributor with no delegation at all, covering the null-delegation leg.
+        Distributor none = new Distributor();
+        none.partnerCode = "P4";
+        none.legalName = "Cabinet Quatre";
+        none.persist();
+        linkActive(none, alptis());
+        // A UNEP-only distributor with its own delegation, hidden from an Alptis-restricted user.
+        Distributor unepOnly = new Distributor();
+        unepOnly.partnerCode = "PU";
+        unepOnly.legalName = "Cabinet UNEP";
+        unepOnly.salesDelegation = "NORD";
+        unepOnly.persist();
+        linkActive(unepOnly, LegalEntity.<LegalEntity>find("code", "UNEP").firstResult());
+
+        // Restricted to Alptis: one distinct delegation (blank/null dropped, duplicate merged, UNEP hidden).
+        assertEquals(List.of("SUD-EST"), restricted().delegations());
+        // Unrestricted: both delegations, sorted.
+        assertEquals(List.of("NORD", "SUD-EST"), unrestricted().delegations());
+
+        // A production code with neither entity nor distributor, covering the null legs of the view.
+        ProductionCode orphan = new ProductionCode();
+        orphan.code = "PC-ORPHAN";
+        orphan.persist();
+
+        // Production codes: restricted sees the two Alptis codes with the distributor name; the UNEP
+        // code and the entity-less orphan are hidden.
+        var codes = restricted().productionCodes();
+        assertEquals(2, codes.size());
+        assertTrue(codes.stream()
+                .anyMatch(c -> c.code().equals("61723") && "Cabinet Un".equals(c.distributorName())));
+        // Unrestricted sees all four, the orphan carrying a null entity code and distributor name.
+        var all = unrestricted().productionCodes();
+        assertEquals(4, all.size());
+        var orphanView = all.stream().filter(c -> c.code().equals("PC-ORPHAN")).findFirst().orElseThrow();
+        assertNull(orphanView.entityCode());
+        assertNull(orphanView.distributorName());
+    }
+
+    /** Links a distributor to an entity with an active status from the start of 2026. */
+    private static void linkActive(Distributor distributor, LegalEntity entity) {
+        DistributorEntity link = new DistributorEntity();
+        link.distributor = distributor;
+        link.entity = entity;
+        link.validFrom = LocalDate.of(2026, 1, 1);
+        link.status = PartnerStatus.ACTIVE;
+        link.persist();
+    }
+
+    /**
      * Lists the groupings (a head-less one gives a null head) and one grouping's members with their
      * production codes; an unknown grouping is not found (CPT-02, REF-03).
      */

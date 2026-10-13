@@ -47,6 +47,8 @@ class ReferentialReadResourceTest {
         get200("/api/ui/v1/payee-rules");
         get200("/api/ui/v1/external-codes");
         get200("/api/ui/v1/groups");
+        get200("/api/ui/v1/delegations");
+        get200("/api/ui/v1/production-codes");
         get200("/api/ui/v1/distributors?q=x");
         get200("/api/ui/v1/contracts?q=x");
     }

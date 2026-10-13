@@ -210,3 +210,31 @@ lier la date du serveur telle quelle dans `MonthSelect`, et convertir Adjustment
 MarginView qui changent réellement de mois par la liste (prouvé par `adjustments.spec` —
 bascule sur octobre après contrepassation — et `reporting.spec` — marge). `monthLabel`
 accepte les deux formes par prudence d'affichage.
+
+## 2026-10-13 — ADM-03 : groupement, délégation et membre en liste
+
+Section / sujet : ADM-03 (sélecteurs en liste), REP-03, BRD-11.
+
+Conversion des dernières saisies libres de code des écrans de restitution et de bordereaux :
+
+- Groupement (`cs-group`, `dash-group`) → `GroupSelect` (magasin `groupings`, `GET /groups`).
+- Délégation (`cs-delegation`, `dash-delegation`) → `DelegationSelect`. Aucune liste de
+  délégations n'existait : ajout de `GET /api/ui/v1/delegations`
+  (`ReferentialQueryService.delegations()`, délégations distinctes des distributeurs visibles,
+  partitionnées par entité, triées, sans blanc ni doublon), testé JUnit.
+- Membre de groupement (`brd-member`, code de production) → `MemberSelect`. Le relevé informatif
+  (BRD-11) attend un **code de production** : ajout de `GET /api/ui/v1/production-codes`
+  (`ReferentialQueryService.productionCodes()`, partitionné), testé JUnit.
+- DashboardsView : entité, mois (du/au), produit, distributeur convertis en même temps.
+
+Jeu de démonstration : le défaut de `DemoVisibilityTest` (toute liste visible non vide par
+utilisateur) imposait des délégations réelles — `DemoReferentialBuilder` dote chaque distributeur
+d'une délégation répartie sur quatre régions, et `seedCycle` porte un groupement (`GRP-SUD`) et une
+délégation (`SUD-EST`) sur son distributeur pour que les filtres aient une valeur connue sur chaque
+entité.
+
+Chemin d'échec du tableau de bord : l'ancien test saisissait `dash-product=PRODUIT-INEXISTANT` pour
+vider le graphe. La liste interdit la saisie libre ; l'état vide est désormais reproduit en
+sélectionnant une **nature sans donnée** (les lignes de `seedCycle` sont toutes linéaires, filtrer
+sur « Acquisition » vide le graphe) — une valeur connue choisie dans la liste, sans affaiblir
+l'assertion métier (`reporting.spec`).

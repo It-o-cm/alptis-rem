@@ -4,8 +4,10 @@ import { apiGet, apiGetText, apiPost, apiDownload, ApiError } from '../api/clien
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, paymentStatusLabel } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
+import { monthLabel } from '../presentation/months';
 import {
-  AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading,
+  AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, EntitySelect, FilterBar, FormField,
+  MemberSelect, MonthSelect, PageHeading,
 } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -220,10 +222,10 @@ onMounted(loadStatements);
       @search="loadStatements"
     >
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="brd-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="brd-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="brd-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="brd-month" v-model="month" :entity="entity" />
       </FormField>
     </FilterBar>
 
@@ -233,7 +235,7 @@ onMounted(loadStatements);
     <AppCard title="Relevé informatif d'un membre de groupement (BRD-11)" data-testid="member-statement-form">
       <div class="ui-bar">
         <FormField label="Code de production du membre" stacked width="short" v-slot="{ id }">
-          <input :id="id" data-testid="brd-member" type="text" v-model="memberCode" />
+          <MemberSelect :id="id" data-testid="brd-member" v-model="memberCode" allow-empty />
         </FormField>
         <AppButton variant="secondary" data-testid="brd-member-btn" @click="loadMemberStatement">
           Relevé informatif
@@ -283,7 +285,7 @@ onMounted(loadStatements);
       <h2 class="ui-detail-title">
         {{ content.statementNumber }}<span v-if="content.versionNo"> v{{ content.versionNo }}</span>
       </h2>
-      <p class="page__subtitle">{{ content.beneficiary }} — {{ content.month }}</p>
+      <p class="page__subtitle">{{ content.beneficiary }} — {{ monthLabel(content.month) }}</p>
       <DataTable
         :columns="rowColumns"
         :rows="content.rows"

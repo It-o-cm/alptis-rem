@@ -3,7 +3,23 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { NATURE_OPTIONS } from '../presentation/lines';
+import {
+  AppButton,
+  AppCard,
+  AppMessage,
+  CodeSelect,
+  DataTable,
+  DelegationSelect,
+  DistributorSelect,
+  EntitySelect,
+  FilterBar,
+  FormField,
+  GroupSelect,
+  MonthSelect,
+  PageHeading,
+  ProductSelect,
+} from '../components/ui';
 import type { Column } from '../components/ui';
 import BarChart from '../components/charts/BarChart.vue';
 import DonutChart from '../components/charts/DonutChart.vue';
@@ -208,28 +224,28 @@ onMounted(load);
       @search="load"
     >
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="dash-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="dash-entity" v-model="entity" />
       </FormField>
       <FormField label="Du mois" stacked width="date" v-slot="{ id }">
-        <input :id="id" data-testid="dash-from" type="text" v-model="from" placeholder="2026-06-01" />
+        <MonthSelect :id="id" data-testid="dash-from" v-model="from" :entity="entity" allow-empty />
       </FormField>
       <FormField label="Au mois" stacked width="date" v-slot="{ id }">
-        <input :id="id" data-testid="dash-to" type="text" v-model="to" placeholder="2026-11-01" />
+        <MonthSelect :id="id" data-testid="dash-to" v-model="to" :entity="entity" allow-empty />
       </FormField>
       <FormField label="Produit" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="dash-product" type="text" v-model="product" />
+        <ProductSelect :id="id" data-testid="dash-product" v-model="product" allow-empty />
       </FormField>
       <FormField label="Distributeur" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="dash-distributor" type="text" v-model="distributor" />
+        <DistributorSelect :id="id" data-testid="dash-distributor" v-model="distributor" allow-empty />
       </FormField>
       <FormField label="Groupement" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="dash-group" type="text" v-model="group" />
+        <GroupSelect :id="id" data-testid="dash-group" v-model="group" allow-empty />
       </FormField>
       <FormField label="Délégation" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="dash-delegation" type="text" v-model="delegation" />
+        <DelegationSelect :id="id" data-testid="dash-delegation" v-model="delegation" allow-empty />
       </FormField>
       <FormField label="Nature" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="dash-nature-filter" type="text" v-model="nature" />
+        <CodeSelect :id="id" data-testid="dash-nature-filter" v-model="nature" :options="NATURE_OPTIONS" allow-empty />
       </FormField>
     </FilterBar>
 

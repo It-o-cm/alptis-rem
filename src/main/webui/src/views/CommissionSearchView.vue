@@ -12,12 +12,14 @@ import {
   AppMessage,
   CodeSelect,
   DataTable,
+  DelegationSelect,
   DetailList,
   DetailRow,
   DistributorSelect,
   EntitySelect,
   FilterBar,
   FormField,
+  GroupSelect,
   MonthSelect,
   PageHeading,
   ProductSelect,
@@ -177,10 +179,10 @@ onMounted(search);
         <DistributorSelect :id="id" data-testid="cs-distributor" v-model="filters.distributor" allow-empty />
       </FormField>
       <FormField label="Groupement" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="cs-group" type="text" v-model="filters.group" />
+        <GroupSelect :id="id" data-testid="cs-group" v-model="filters.group" allow-empty />
       </FormField>
       <FormField label="Délégation" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="cs-delegation" type="text" v-model="filters.delegation" />
+        <DelegationSelect :id="id" data-testid="cs-delegation" v-model="filters.delegation" allow-empty />
       </FormField>
       <FormField label="Nature" stacked width="short" v-slot="{ id }">
         <CodeSelect :id="id" data-testid="cs-nature-filter" v-model="filters.nature" :options="NATURE_OPTIONS" allow-empty />

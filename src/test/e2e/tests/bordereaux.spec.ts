@@ -69,7 +69,12 @@ test('l’opérateur consulte le relevé informatif d’un membre @screen:statem
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
   const page = await operator.newPage();
   await page.goto('/bordereaux');
-  await page.getByTestId('brd-member').fill('PC-CREDIT');
+  // ADM-03: the entity, month and member are chosen from lists shown by their French labels, never
+  // typed as codes. The entity reads as a name, the month as a French label, the member by its code.
+  await expect(page.getByTestId('brd-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(page.getByTestId('brd-month').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
+  await expect(page.getByTestId('brd-member').locator('option', { hasText: 'PC-CREDIT — Cabinet Martin' })).toHaveCount(1);
+  await page.getByTestId('brd-member').selectOption('PC-CREDIT');
   await page.getByTestId('brd-member-btn').click();
   await expect(page.getByTestId('statement-detail')).toBeVisible();
   await expect(page.getByTestId('statement-detail')).toContainText('PC-CREDIT');

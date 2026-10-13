@@ -117,6 +117,34 @@ public class ReferentialReadResource {
     }
 
     /**
+     * Lists the distinct sales delegations the user may see, so a delegation filter is picked from a
+     * list instead of typed (REP-03, ADM-03).
+     *
+     * @return the sales-delegation codes
+     */
+    @GET
+    @Path("/delegations")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<String> delegations() {
+        return query.delegations();
+    }
+
+    /**
+     * Lists the production codes the user may see, so a member statement is requested from a list
+     * instead of typing a code (BRD-11, ADM-03).
+     *
+     * @return the production-code views
+     */
+    @GET
+    @Path("/production-codes")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public List<ReferentialQueryService.ProductionCodeOption> productionCodes() {
+        return query.productionCodes();
+    }
+
+    /**
      * Lists the quality indicators of the user's entities.
      *
      * @return the quality-indicator views

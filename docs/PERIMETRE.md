@@ -33,11 +33,17 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
 État au 2026-10-13 (ADM-03 en cours) :
 
 - **Socle « liste / sélection » d'ADM-03 livré** : composants `CodeSelect`, `EntitySelect`, `MonthSelect`,
-  `DistributorSelect`, `ProductSelect` ; magasins Pinia `periods`, `distributors`, `products` ; aide de
+  `DistributorSelect`, `ProductSelect`, `GroupSelect`, `DelegationSelect`, `MemberSelect` ; magasins Pinia
+  `periods`, `distributors`, `products`, `groupings`, `delegations`, `productionCodes` ; aide de
   présentation `months.ts` (`monthLabel`) ; `entities.ts` (`ALL_ENTITY_CODES`, `visibleEntities`) ;
-  `lines.ts` (`NATURE_OPTIONS`). Tout est couvert à 100 % (vitest) et appliqué à l'écran #24 (recherche
-  de commissions), prouvé de bout en bout par `reporting.spec`. ADM-03 reste `partiel` : la conversion
+  `lines.ts` (`NATURE_OPTIONS`). Tout est couvert à 100 % (vitest). ADM-03 reste `partiel` : la conversion
   des autres écrans est détaillée dans « ADM-03 — reste à faire ».
+- **Conversion groupement/délégation/membre (2026-10-13)** : CommissionSearchView (groupement + délégation),
+  DashboardsView (tous les filtres en liste) et BordereauxView (entité/mois/membre + mois au libellé FR)
+  convertis ; points d'accès serveur `GET /delegations` et `GET /production-codes` ajoutés (partitionnés,
+  testés JUnit) ; jeu de démonstration doté de délégations ; `reporting.spec` et `bordereaux.spec` adaptés
+  (sélection au libellé, chemin d'échec du tableau de bord reproduit par la nature) et repassés verts
+  (10/10). `mvn verify` vert (724 tests, JaCoCo 100 %).
 - **Correctif suite vitest** : `navigation.spec.ts` était rouge dans `HEAD` (il attendait 42 entrées et 9
   rubriques alors que la navigation livrée en porte 55 et 10, rubrique « Documents » comprise). Le test est
   réaligné sur la navigation réelle — la suite vitest repasse verte (128 tests, 100 % de couverture).
@@ -381,18 +387,27 @@ laisser la suite rouge. Ne pas marquer ADM-03 `complet` tant qu'il reste une lig
 
 **Saisies libres de code à remplacer par une liste / recherche** (relevé des `type="text"`
 liés à une valeur connue, audit à élargir — certains écrans en portent d'autres que ceux-ci,
-p.ex. `en-plan`/`en-rule` d'EnrollmentsView, `v-scope` de RulesView) :
+p.ex. `v-scope` de RulesView) :
 
-- CommissionSearchView : `cs-group`, `cs-delegation` (groupement, délégation).
-- BordereauxView : `brd-entity`, `brd-month`, `brd-member`.
-- DashboardsView : `dash-entity`, `dash-product`, `dash-distributor`.
 - EnrollmentsView : `en-plan`, `en-rule`.
-- ExportsView : `exports-entity`, `exports-period`.
-- ManualEventView : `field-coverage`, `cov-coverage`, `cov-product`, `cov-production`, `cov-source`, `cov-contract`, `cov-holder`.
+- ExportsView : `exports-entity`, `exports-period` (`exports-since` reste une date libre : fenêtre de modification).
+- ManualEventView : `field-source`/`cov-source` (système source, en liste), `cov-product` (produit, en liste),
+  et les énumérations `field-type`/`cov-mode`/`cov-status` à afficher au libellé FR ;
+  `field-coverage`/`field-contract`/`cov-coverage`/`cov-contract`/`cov-holder`/`cov-production` restent
+  libres (identifiants d'une garantie/adhésion/souscripteur créés à la saisie, comme `pt-newcode`).
 - ParameterTransferView : `pt-entity`, `pt-plan` (`pt-newcode` reste libre : nouveau code).
 - SimulationView : `sim-entity`, `sim-month`, `sim-rule`, `sim-scope`.
 
-Écrans déjà convertis : #24 CommissionSearchView (entité/mois/distributeur/produit/nature) ;
+Socle « liste / sélection » complété le 2026-10-13 : stores Pinia `groupings`, `delegations`,
+`productionCodes` (100 % vitest) ; composants `GroupSelect`, `DelegationSelect`, `MemberSelect` ;
+points d'accès serveur `GET /delegations` et `GET /production-codes` (partitionnés, testés JUnit) ;
+le jeu de démonstration porte une délégation sur chaque distributeur (DemoReferentialBuilder) et un
+groupement + délégation sur le distributeur de `seedCycle`.
+
+Écrans déjà convertis : #24 CommissionSearchView (entité/mois/distributeur/produit/nature **+
+groupement `GroupSelect` + délégation `DelegationSelect`**) ; DashboardsView (entité/mois Du-Au/
+produit/distributeur/groupement/délégation/nature, tous en liste) ; BordereauxView (entité + mois +
+membre `MemberSelect` sur code de production, et mois du détail au libellé FR) ;
 RoleMappingsView (entité ; rôle et entité au libellé dans le formulaire et le tableau) ;
 CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, RepriseView, IndicatorsView
 (entité) ; AccountingView, ControlsView, PaymentView, FdvPlanView, FdvValidationView (entité + mois
@@ -411,7 +426,7 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 
 **Affichages d'énum bruts encore en clair** (à remplacer par le libellé FR du glossaire) :
 
-- SupervisionView:51 `status` ; BordereauxView:286 `month` ; ImportsView:299 `status`.
+- SupervisionView:51 `status` ; ImportsView:299 `status`. (BordereauxView mois désormais au libellé FR via `monthLabel`.)
   (ControlsView `severity`, FdvValidationView `status`, PaymentView `reason` et AdjustmentsView `status`
   sont désormais au libellé FR, cf. `severityLabel`/`exclusionReasonLabel`/`variableStatusLabel`/`adjustmentStatusLabel`.)
 

@@ -6,6 +6,7 @@ import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
+import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
@@ -67,9 +68,19 @@ public class CycleDemoSeeder {
         period.state = PeriodState.CALCULATED;
         period.setCreatedAt(clock.now());
         period.persist();
+        // A grouping and a sales delegation so the grouping and delegation selectors (ADM-03) offer a
+        // known value on the dashboard and commission-search filters, and the group/delegation filters
+        // actually match the seeded distributor.
+        DistributorGroup grouping = new DistributorGroup();
+        grouping.code = "GRP-SUD";
+        grouping.label = "Groupement Sud";
+        grouping.setCreatedAt(clock.now());
+        grouping.persist();
         Distributor distributor = new Distributor();
         distributor.partnerCode = PARTNER;
         distributor.legalName = "Cabinet Martin";
+        distributor.group = grouping;
+        distributor.salesDelegation = "SUD-EST";
         distributor.persist();
         // Link the distributor to the entity so it is reachable from the entity-scoped distributor
         // search that feeds the distributor selector (ADM-03): the account screen picks it from a list.

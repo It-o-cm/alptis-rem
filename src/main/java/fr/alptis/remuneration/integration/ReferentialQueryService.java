@@ -565,6 +565,43 @@ public class ReferentialQueryService {
     }
 
     /**
+     * Lists the distinct sales delegations of the distributors the user may see (REP-03). A delegation
+     * is a known value picked from a list, never typed (ADM-03).
+     *
+     * @return the sales-delegation codes, sorted, without blanks or duplicates
+     */
+    @Transactional
+    public List<String> delegations() {
+        List<Distributor> distributors = scope.unrestricted()
+                ? Distributor.listAll()
+                : Distributor.list("id in (select de.distributor.id from DistributorEntity de "
+                        + "where de.entity.code in ?1)", scope.visibleCodes());
+        return distributors.stream()
+                .map(d -> d.salesDelegation)
+                .filter(d -> d != null && !d.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    /**
+     * Lists the production codes the user may see, with their distributor (BRD-11, REF-03). A member
+     * statement is requested by a production code picked from this list, never typed (ADM-03).
+     *
+     * @return the production-code views, sorted by code
+     */
+    @Transactional
+    public List<ProductionCodeOption> productionCodes() {
+        List<ProductionCode> codes = scope.unrestricted()
+                ? ProductionCode.list("order by code")
+                : ProductionCode.list("entity.code in ?1 order by code", scope.visibleCodes());
+        return codes.stream()
+                .map(pc -> new ProductionCodeOption(pc.entity == null ? null : pc.entity.code, pc.code,
+                        pc.distributor == null ? null : pc.distributor.legalName))
+                .toList();
+    }
+
+    /**
      * Maps a grouping to its view.
      *
      * @param group the grouping
@@ -712,6 +749,16 @@ public class ReferentialQueryService {
      * @param memberCount  the number of members
      */
     public record GroupView(String code, String label, String headCode, String headName, long memberCount) {
+    }
+
+    /**
+     * A production code offered for selection (BRD-11, ADM-03).
+     *
+     * @param entityCode       the owning entity code
+     * @param code             the production code
+     * @param distributorName  the distributor's legal name, possibly null
+     */
+    public record ProductionCodeOption(String entityCode, String code, String distributorName) {
     }
 
     /**
