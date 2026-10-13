@@ -2,8 +2,26 @@
 import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
-import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading } from '../components/ui';
+import { formatAmount, formatDate } from '../presentation/format';
+import { monthLabel } from '../presentation/months';
+import { lineNatureLabel, lineStatusLabel, directionLabel, NATURE_OPTIONS } from '../presentation/lines';
+import { eventTypeLabel } from '../presentation/events';
+import {
+  AppButton,
+  AppCard,
+  AppMessage,
+  CodeSelect,
+  DataTable,
+  DetailList,
+  DetailRow,
+  DistributorSelect,
+  EntitySelect,
+  FilterBar,
+  FormField,
+  MonthSelect,
+  PageHeading,
+  ProductSelect,
+} from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface SearchRow {
@@ -138,7 +156,7 @@ const columns: Column<SearchRow & { i: number }>[] = [
   { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
   { key: 'rule', label: 'Règle' },
   { key: 'statementNumber', label: 'Bordereau' },
-  { key: 'month', label: 'Mois', value: (r) => r.month ?? '—' },
+  { key: 'month', label: 'Mois', value: (r) => monthLabel(r.month) },
 ];
 
 onMounted(search);
@@ -150,13 +168,13 @@ onMounted(search);
 
     <FilterBar :loading="loading" search-testid="cs-search" :resettable="false" @search="search">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="cs-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="cs-entity" v-model="entity" />
       </FormField>
       <FormField label="Produit" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="cs-product" type="text" v-model="filters.product" />
+        <ProductSelect :id="id" data-testid="cs-product" v-model="filters.product" allow-empty />
       </FormField>
       <FormField label="Distributeur" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="cs-distributor" type="text" v-model="filters.distributor" />
+        <DistributorSelect :id="id" data-testid="cs-distributor" v-model="filters.distributor" allow-empty />
       </FormField>
       <FormField label="Groupement" stacked width="short" v-slot="{ id }">
         <input :id="id" data-testid="cs-group" type="text" v-model="filters.group" />
@@ -165,10 +183,10 @@ onMounted(search);
         <input :id="id" data-testid="cs-delegation" type="text" v-model="filters.delegation" />
       </FormField>
       <FormField label="Nature" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="cs-nature-filter" type="text" v-model="filters.nature" />
+        <CodeSelect :id="id" data-testid="cs-nature-filter" v-model="filters.nature" :options="NATURE_OPTIONS" allow-empty />
       </FormField>
       <FormField label="Mois" stacked width="date" v-slot="{ id }">
-        <input :id="id" data-testid="cs-month" type="text" v-model="filters.month" />
+        <MonthSelect :id="id" data-testid="cs-month" v-model="filters.month" allow-empty />
       </FormField>
     </FilterBar>
 
@@ -194,26 +212,26 @@ onMounted(search);
         @row-click="openDetail"
       >
         <template #cell-nature="{ row }">
-          <span :data-testid="`cs-nature-${row.i}`">{{ row.nature }}</span>
+          <span :data-testid="`cs-nature-${row.i}`">{{ lineNatureLabel(row.nature) }}</span>
         </template>
       </DataTable>
     </AppCard>
 
     <AppCard v-if="detail" data-testid="line-detail">
-      <h2 class="cs-detail-title">Ligne {{ detail.nature }} — {{ amount(detail.amount) }}</h2>
+      <h2 class="cs-detail-title">Ligne {{ lineNatureLabel(detail.nature) }} — {{ amount(detail.amount) }}</h2>
       <DetailList>
-        <DetailRow label="Statut">{{ detail.status ?? '—' }}</DetailRow>
-        <DetailRow label="Sens">{{ detail.direction ?? '—' }}</DetailRow>
+        <DetailRow label="Statut">{{ lineStatusLabel(detail.status) }}</DetailRow>
+        <DetailRow label="Sens">{{ directionLabel(detail.direction) }}</DetailRow>
         <DetailRow label="Distributeur">{{ detail.distributor }}</DetailRow>
         <DetailRow label="Contrat">{{ detail.contractNumber ?? '—' }}</DetailRow>
         <DetailRow label="Garantie">{{ detail.coverageCode ?? '—' }}</DetailRow>
         <DetailRow label="Événement">
-          {{ detail.eventType ? `${detail.eventType}${detail.eventDate ? ' · ' + detail.eventDate : ''}` : '—' }}
+          {{ detail.eventType ? `${eventTypeLabel(detail.eventType)}${detail.eventDate ? ' · ' + formatDate(detail.eventDate) : ''}` : '—' }}
         </DetailRow>
         <DetailRow label="Version de règle">{{ detail.ruleVersion ?? '—' }}</DetailRow>
         <DetailRow label="Assiette">{{ amount(detail.basis) }}</DetailRow>
         <DetailRow label="Taux">{{ detail.rate ?? '—' }}</DetailRow>
-        <DetailRow label="Mois de rattachement">{{ detail.attachmentMonth ?? '—' }}</DetailRow>
+        <DetailRow label="Mois de rattachement">{{ monthLabel(detail.attachmentMonth) }}</DetailRow>
         <DetailRow label="Exercice de prime">{{ detail.premiumFiscalYear ?? '—' }}</DetailRow>
         <DetailRow label="Bordereau">{{ detail.statementNumber ?? '—' }}</DetailRow>
         <DetailRow label="Ordre de paiement">{{ detail.paymentOrder ?? '—' }}</DetailRow>

@@ -30,6 +30,18 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   `@path:` restent à compléter (étape 4).
 - `PlaceholderView` : supprimé, plus aucune route ne le référence.
 
+État au 2026-10-13 (ADM-03 en cours) :
+
+- **Socle « liste / sélection » d'ADM-03 livré** : composants `CodeSelect`, `EntitySelect`, `MonthSelect`,
+  `DistributorSelect`, `ProductSelect` ; magasins Pinia `periods`, `distributors`, `products` ; aide de
+  présentation `months.ts` (`monthLabel`) ; `entities.ts` (`ALL_ENTITY_CODES`, `visibleEntities`) ;
+  `lines.ts` (`NATURE_OPTIONS`). Tout est couvert à 100 % (vitest) et appliqué à l'écran #24 (recherche
+  de commissions), prouvé de bout en bout par `reporting.spec`. ADM-03 reste `partiel` : la conversion
+  des autres écrans est détaillée dans « ADM-03 — reste à faire ».
+- **Correctif suite vitest** : `navigation.spec.ts` était rouge dans `HEAD` (il attendait 42 entrées et 9
+  rubriques alors que la navigation livrée en porte 55 et 10, rubrique « Documents » comprise). Le test est
+  réaligné sur la navigation réelle — la suite vitest repasse verte (128 tests, 100 % de couverture).
+
 ## Tableau 1 — Écrans de l'inventaire (section 4 de LANCEMENT.md)
 
 Colonnes : écran (libellé de l'inventaire) · exigences · route / vue · points
@@ -335,7 +347,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | --- | --- | --- | --- | --- |
 | ADM-01 | RoleMappingAdminService, partitioning | #63 | role-mappings (ADM-01) | complet |
 | ADM-02 | EntityAdminService | #43 | entity-params | complet |
-| ADM-03 | (interface française) | tous | — | partiel — énumérations et codes techniques encore affichés en clair à l'écran |
+| ADM-03 | (interface française) ; socle `CodeSelect`/`EntitySelect`/`MonthSelect`/`DistributorSelect`/`ProductSelect` + magasins `periods`/`distributors`/`products` + `months.ts` | tous | reporting.spec (ADM-03 : libellés d'énum, entité/mois/distributeur/produit/nature en liste) | partiel — socle « liste / sélection » livré et testé à 100 % (vitest) et appliqué à l'écran #24 (recherche de commissions) : entité, mois, distributeur, produit et nature choisis dans une liste ; nature, statut, sens, type d'événement, mois et dates affichés par leur libellé FR. **Reste à convertir** les saisies libres de code et les affichages d'énum bruts des autres écrans — liste précise dans la rubrique « ADM-03 — reste à faire » ci-dessous. |
 | ADM-04 | AuditService (chaîne de hachage) | #64 | audit | complet |
 | ADM-05 | EntityAdminService | #43 | entity-params | complet |
 | ADM-06 | PurgeService | #66 | admin-supervision | complet |
@@ -360,6 +372,63 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | FDV-14 | SalesForceQueryService (paySummary), SalesForceService (pay-export) | #73 | fdv | complet — synthèse des variables à payer par personne et export paie (OUT-06) |
 | FDV-15 | SalesForceQueryService | #72 | fdv | complet |
 | FDV-16 | SalesForceService (simulateMonthly) | #72 | fdv | complet — simulateur de variable (production hypothétique ou mesurée) et alerte d'atteinte de seuil, sans persistance |
+
+## ADM-03 — reste à faire (conversion écran par écran)
+
+Le socle est posé et prouvé sur l'écran #24. La conversion des autres écrans se fait
+écran par écran, chacun avec l'adaptation de son test de bout en bout, pour ne jamais
+laisser la suite rouge. Ne pas marquer ADM-03 `complet` tant qu'il reste une ligne ici.
+
+**Saisies libres de code à remplacer par une liste / recherche** (relevé des `type="text"`
+liés à une valeur connue, audit à élargir — certains écrans en portent d'autres que ceux-ci,
+p.ex. `en-plan`/`en-rule` d'EnrollmentsView, `v-scope` de RulesView) :
+
+- CommissionSearchView : `cs-group`, `cs-delegation` (groupement, délégation).
+- AccountingView : `acc-entity`, `acc-month`.
+- AdjustmentsView : `adj-entity`, `adj-month`.
+- BordereauxView : `brd-entity`, `brd-month`, `brd-member`.
+- ClaimsView : `claim-distributor`.
+- ControlsView : `ctl-entity`, `ctl-month`.
+- CutoffView : `cutoff-entity`.
+- DashboardsView : `dash-entity`, `dash-product`, `dash-distributor`.
+- DistributorAccountView : `acc-entity`, `acc-month`.
+- DocumentTemplatesView : `tpl-entity`.
+- EnrollmentsView : `en-plan`, `en-rule`.
+- ExportsView : `exports-entity`, `exports-period`.
+- FdvCollaboratorsView : `fdvcol-entity`.
+- FdvCommercialView : `fdvc-entity`.
+- FdvMeasuresView : `fdvm-entity`.
+- FdvObjectivesView : `fdvo-entity`.
+- FdvPlanView : `fdvp-entity`, `fdvp-month`.
+- FdvValidationView : `fdvv-entity`, `fdvv-month`.
+- IndicatorsView : `ind-entity`.
+- ManualEventView : `field-coverage`, `cov-coverage`, `cov-product`, `cov-production`, `cov-source`, `cov-contract`, `cov-holder`.
+- MarginView : `margin-entity`, `margin-month`.
+- ParameterTransferView : `pt-entity`, `pt-plan` (`pt-newcode` reste libre : nouveau code).
+- PaymentView : `pay-entity`, `pay-month`.
+- ReconciliationView : `rec-entity`.
+- RepriseView : `reprise-entity`.
+- SimulationView : `sim-entity`, `sim-month`, `sim-rule`, `sim-scope`.
+- TaxCertificatesView : `tax-entity`.
+
+Écrans déjà convertis : #24 CommissionSearchView (entité/mois/distributeur/produit/nature) et
+RoleMappingsView (entité ; rôle et entité affichés par leur libellé dans le formulaire et le tableau).
+
+**Affichages d'énum bruts encore en clair** (à remplacer par le libellé FR du glossaire) :
+
+- ControlsView:285 `severity` ; FdvValidationView:202 `status` ; AdjustmentsView:214 `status` ;
+  SupervisionView:51 `status` ; BordereauxView:286 `month` ; PaymentView:347 `reason` ;
+  ImportsView:299 `status`.
+
+**Points de méthode repérés** (à traiter avec la spécification, pas à contourner) :
+
+- Certains tests saisissent volontairement un code inconnu pour prouver le rejet serveur
+  (`cov-product=P-UNKNOWN` dans manual-event.spec, `dash-product=PRODUIT-INEXISTANT` dans
+  reporting.spec) : la liste empêche la saisie libre, donc le chemin d'échec se reprouve
+  autrement (sélection d'une valeur connue sans donnée, et contrôle serveur conservé).
+- Plusieurs champs « mois » reçoivent une date (`margin-month=2026-09-01`,
+  `adj-month=2026-10-01`, `sim-month=2026-09-01`) : le `MonthSelect` impose le format mois
+  `AAAA-MM`, la vue et le test sont alignés en conséquence.
 
 ## Cas de recette — état du rejeu
 

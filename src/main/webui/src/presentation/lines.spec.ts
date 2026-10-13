@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lineNatureLabel, lineStatusLabel, directionLabel } from './lines';
+import { lineNatureLabel, lineStatusLabel, directionLabel, NATURE_OPTIONS } from './lines';
 
 describe('commission line labels', () => {
   it('labels natures, a dash for none, and echoes an unknown one', () => {
@@ -24,5 +24,12 @@ describe('commission line labels', () => {
     expect(directionLabel('OUTBOUND')).toBe('Sortant');
     expect(directionLabel(null)).toBe('—');
     expect(directionLabel('XXX')).toBe('XXX');
+  });
+
+  it('offers every nature as a filter option with its label', () => {
+    expect(NATURE_OPTIONS).toContainEqual({ value: 'LINEAR', label: 'Linéaire' });
+    expect(NATURE_OPTIONS).toContainEqual({ value: 'INSURER', label: 'Commission reçue' });
+    expect(NATURE_OPTIONS.every((o) => o.value.length > 0 && o.label.length > 0)).toBe(true);
+    expect(NATURE_OPTIONS).toHaveLength(17);
   });
 });

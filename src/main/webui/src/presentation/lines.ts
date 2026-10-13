@@ -55,3 +55,8 @@ export function directionLabel(direction: string | null): string {
   if (direction === null) return '—';
   return DIRECTION_LABELS[direction] ?? direction;
 }
+
+/** The commission-line natures offered as a filter, with their French labels (ADM-03). */
+export const NATURE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = Object.entries(
+  NATURE_LABELS,
+).map(([value, label]) => ({ value, label }));

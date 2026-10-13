@@ -1,0 +1,64 @@
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { useProductsStore } from './products';
+
+function okResponse(body: unknown) {
+  return { ok: true, status: 200, json: async () => body } as Response;
+}
+
+function errorResponse(status: number) {
+  return { ok: false, status, json: async () => ({ detail: 'refus' }) } as unknown as Response;
+}
+
+describe('products store', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('starts empty and unloaded', () => {
+    const products = useProductsStore();
+    expect(products.loaded).toBe(false);
+    expect(products.options).toEqual([]);
+  });
+
+  it('loads the catalogue and offers label-first options', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        okResponse([
+          { code: 'SANTE-PART', label: 'Santé Particuliers' },
+          { code: 'PREV-TNS', label: 'Prévoyance TNS' },
+        ]),
+      ),
+    );
+    const products = useProductsStore();
+    await products.ensure();
+
+    expect(products.loaded).toBe(true);
+    expect(products.options).toEqual([
+      { value: 'SANTE-PART', label: 'Santé Particuliers (SANTE-PART)' },
+      { value: 'PREV-TNS', label: 'Prévoyance TNS (PREV-TNS)' },
+    ]);
+  });
+
+  it('loads only once', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse([]));
+    vi.stubGlobal('fetch', fetchMock);
+    const products = useProductsStore();
+    await products.ensure();
+    await products.ensure();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('degrades to an empty catalogue when the load fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse(403)));
+    const products = useProductsStore();
+    await products.ensure();
+    expect(products.loaded).toBe(true);
+    expect(products.options).toEqual([]);
+  });
+});

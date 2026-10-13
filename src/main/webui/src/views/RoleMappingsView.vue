@@ -3,8 +3,9 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, apiDelete, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canManageRoleMappings } from '../presentation/access';
-import { ROLES } from '../presentation/roles';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import { ROLES, roleLabel } from '../presentation/roles';
+import { entityName } from '../presentation/entities';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface RoleMappingView {
@@ -27,8 +28,8 @@ const canManage = () => canManageRoleMappings(session.roles);
 /** Columns of the role-mappings table. */
 const columns: Column<RoleMappingView>[] = [
   { key: 'directoryGroup', label: "Groupe d'annuaire" },
-  { key: 'role', label: 'Rôle' },
-  { key: 'entityCode', label: 'Entité', value: (m) => m.entityCode ?? 'Toutes' },
+  { key: 'role', label: 'Rôle', value: (m) => roleLabel(m.role) },
+  { key: 'entityCode', label: 'Entité', value: (m) => (m.entityCode ? entityName(m.entityCode) : 'Toutes') },
 ];
 
 /** Loads the directory-group to role mappings. */
@@ -125,11 +126,11 @@ onMounted(reload);
         </FormField>
         <FormField label="Rôle" width="short" v-slot="{ id }">
           <select :id="id" data-testid="field-role" v-model="form.role">
-            <option v-for="r in ROLES" :key="r" :value="r">{{ r }}</option>
+            <option v-for="r in ROLES" :key="r" :value="r">{{ roleLabel(r) }}</option>
           </select>
         </FormField>
         <FormField label="Entité (vide = toutes)" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="field-entity" type="text" v-model="form.entityCode" />
+          <EntitySelect :id="id" data-testid="field-entity" v-model="form.entityCode" allow-empty />
         </FormField>
         <AppButton type="submit" data-testid="create-mapping">Ajouter</AppButton>
       </AppForm>

@@ -38,8 +38,16 @@ test('le consultant lit les tableaux de bord et la recherche de commissions @scr
   await expect(page.getByTestId('chart-month-nature-empty')).toBeVisible();
 
   await page.goto('/recherche-commissions');
+  // ADM-03: the entity, nature and month are chosen from lists shown by their French labels,
+  // never typed as codes. The entity option reads as a name, the nature option as a glossary label.
+  await expect(page.getByTestId('cs-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(page.getByTestId('cs-nature-filter').locator('option', { hasText: 'Linéaire' })).toHaveCount(1);
   await page.getByTestId('cs-search').click();
   await expect(page.locator('[data-testid^="cs-row-"]').first()).toBeVisible();
+  // The nature cell shows its French label, not the raw enum code (ADM-03).
+  const natureText = (await page.locator('[data-testid^="cs-nature-"]').first().textContent())?.trim() ?? '';
+  expect(natureText.length).toBeGreaterThan(0);
+  expect(natureText).not.toMatch(/^[A-Z][A-Z_]+$/);
   await viewer.close();
 });
 
@@ -75,6 +83,11 @@ test('le consultant ouvre une ligne et lit son explication @screen:commissionSea
   }
   // CAL-10: at least one line shows its stored explanation in clear.
   expect(explained).toBeTruthy();
+  // ADM-03: the detail shows statuses and directions by their French labels, never the raw enum.
+  const detailText = (await page.getByTestId('line-detail').textContent()) ?? '';
+  for (const code of ['FORECAST', 'EARNED', 'PAYABLE', 'OFFSET', 'CANCELLED', 'INBOUND', 'OUTBOUND']) {
+    expect(detailText).not.toContain(code);
+  }
   await viewer.close();
 });
 
