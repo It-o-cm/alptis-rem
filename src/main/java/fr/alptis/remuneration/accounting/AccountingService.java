@@ -155,6 +155,12 @@ public class AccountingService {
             emit(entity, period, AccountingEvent.EARNING, earningVariant(line), line, month, entryDate, false);
             emit(entity, period, AccountingEvent.ADVANCE_OFFSETTING, AccountingVariant.STANDARD, line, month,
                     entryDate, false);
+        } else if (line.nature == LineNature.INSURER) {
+            // A received insurer commission (INBOUND, section 6.10, FIN-01): its receivable entry is
+            // booked at validation — insurer receivable against commission income — and it enters no
+            // payment; it is settled when the insurer's payment is reconciled (FIN-08).
+            emit(entity, period, AccountingEvent.INSURER_RECEIVABLE, AccountingVariant.STANDARD, line, month,
+                    entryDate, false);
         } else if (FLUX.contains(line.nature)) {
             boolean reversal = line.originLine != null && line.amount.signum() < 0;
             emit(entity, period, AccountingEvent.EARNING, earningVariant(line), line, month, entryDate, reversal);

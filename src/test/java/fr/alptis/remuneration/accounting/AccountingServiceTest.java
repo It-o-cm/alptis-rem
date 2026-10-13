@@ -193,6 +193,23 @@ class AccountingServiceTest {
     }
 
     /**
+     * FIN-01 / section 6.10: a received insurer commission (INSURER line) books an INSURER_RECEIVABLE
+     * entry at validation — insurer receivable (467100) against commission income (706000) — and no
+     * payable or payment entry.
+     */
+    @Test
+    @TestTransaction
+    void insurer_line_books_a_receivable() {
+        Period p = period(PeriodState.CONTROLLED);
+        line(p, LineNature.INSURER, LineStatus.EARNED, "451.54");
+        service.generateForValidation(unep(), p);
+
+        assertEntry(p, AccountingEvent.INSURER_RECEIVABLE, "451.54", "467100", "706000");
+        assertEquals(0, AccountingEntry.count("period = ?1 and accountingEvent = ?2", p,
+                AccountingEvent.PAYABLE_RECOGNITION));
+    }
+
+    /**
      * A reversal flux line (a cancelled collection) swaps the debit and the credit of its earning and
      * payable recognition; a non-reversal line with a positive amount and an origin line does not.
      */
