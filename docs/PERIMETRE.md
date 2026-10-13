@@ -44,6 +44,13 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   testés JUnit) ; jeu de démonstration doté de délégations ; `reporting.spec` et `bordereaux.spec` adaptés
   (sélection au libellé, chemin d'échec du tableau de bord reproduit par la nature) et repassés verts
   (10/10). `mvn verify` vert (724 tests, JaCoCo 100 %).
+- **Conversion plan/règle + exports/paramétrage/simulation/inscriptions (2026-10-13)** : stores `plans`/`rules`
+  + composants `PlanSelect`/`RuleSelect` + point d'accès `GET /rules` (partitionné, testé JUnit) ;
+  ParameterTransferView, ExportsView, SimulationView, EnrollmentsView convertis (entité/mois/plan/règle/
+  distributeur/accord en liste) ; ImportsView et SupervisionView affichent leurs statuts au libellé FR
+  (`importStatusLabel`/`healthLabel`). Specs adaptés (fill→selectOption, assertions au libellé) : exports,
+  parameter-transfer, simulation, enrollments, imports, admin-supervision — 18/18 verts ; Java 725 tests +
+  JaCoCo 100 % verts.
 - **Correctif suite vitest** : `navigation.spec.ts` était rouge dans `HEAD` (il attendait 42 entrées et 9
   rubriques alors que la navigation livrée en porte 55 et 10, rubrique « Documents » comprise). Le test est
   réaligné sur la navigation réelle — la suite vitest repasse verte (128 tests, 100 % de couverture).
@@ -386,28 +393,39 @@ Le socle est posé et prouvé sur l'écran #24. La conversion des autres écrans
 laisser la suite rouge. Ne pas marquer ADM-03 `complet` tant qu'il reste une ligne ici.
 
 **Saisies libres de code à remplacer par une liste / recherche** (relevé des `type="text"`
-liés à une valeur connue, audit à élargir — certains écrans en portent d'autres que ceux-ci,
-p.ex. `v-scope` de RulesView) :
+liés à une valeur connue, audit à élargir — certains écrans en portent d'autres, p.ex. `v-scope`
+de RulesView) :
 
-- EnrollmentsView : `en-plan`, `en-rule`.
-- ExportsView : `exports-entity`, `exports-period` (`exports-since` reste une date libre : fenêtre de modification).
 - ManualEventView : `field-source`/`cov-source` (système source, en liste), `cov-product` (produit, en liste),
   et les énumérations `field-type`/`cov-mode`/`cov-status` à afficher au libellé FR ;
   `field-coverage`/`field-contract`/`cov-coverage`/`cov-contract`/`cov-holder`/`cov-production` restent
   libres (identifiants d'une garantie/adhésion/souscripteur créés à la saisie, comme `pt-newcode`).
-- ParameterTransferView : `pt-entity`, `pt-plan` (`pt-newcode` reste libre : nouveau code).
-- SimulationView : `sim-entity`, `sim-month`, `sim-rule`, `sim-scope`.
+- FdvCommercialView : `sim-month` (mois du simulateur) à passer en `MonthSelect`.
+
+**Balayage des libellés d'énum restant** (affichage d'un code technique dans un tableau/une fiche,
+à remplacer par le libellé FR du glossaire — audit en cours) :
+
+- EnrollmentsView : signature (`SIGNED`/`NOT_SIGNED`), type d'accord, statut d'inscription (`ACTIVE`).
+- DistributorsView : `agreementType`, `signatureStatus`.
+- (poursuivre l'audit des autres tableaux : statuts, natures, sens encore affichés bruts.)
 
 Socle « liste / sélection » complété le 2026-10-13 : stores Pinia `groupings`, `delegations`,
-`productionCodes` (100 % vitest) ; composants `GroupSelect`, `DelegationSelect`, `MemberSelect` ;
-points d'accès serveur `GET /delegations` et `GET /production-codes` (partitionnés, testés JUnit) ;
-le jeu de démonstration porte une délégation sur chaque distributeur (DemoReferentialBuilder) et un
-groupement + délégation sur le distributeur de `seedCycle`.
+`productionCodes`, `plans`, `rules` (100 % vitest) ; composants `GroupSelect`, `DelegationSelect`,
+`MemberSelect`, `PlanSelect`, `RuleSelect` ; points d'accès serveur `GET /delegations`,
+`GET /production-codes` et `GET /rules` (partitionnés, testés JUnit) ; le jeu de démonstration porte une
+délégation sur chaque distributeur (DemoReferentialBuilder) et un groupement + délégation sur le
+distributeur de `seedCycle`.
 
 Écrans déjà convertis : #24 CommissionSearchView (entité/mois/distributeur/produit/nature **+
 groupement `GroupSelect` + délégation `DelegationSelect`**) ; DashboardsView (entité/mois Du-Au/
 produit/distributeur/groupement/délégation/nature, tous en liste) ; BordereauxView (entité + mois +
 membre `MemberSelect` sur code de production, et mois du détail au libellé FR) ;
+ExportsView (entité + période ; `exports-since` reste une date native) ; ParameterTransferView
+(entité + plan `PlanSelect`, nouveau code libre) ; SimulationView (entité + mois + règle `RuleSelect` +
+distributeur `DistributorSelect`) ; EnrollmentsView (plan `PlanSelect`, règle `RuleSelect` filtrée par le
+plan, distributeurs `DistributorSelect`, accord choisi dans la liste des accords ; référence d'accord
+nouvelle restant libre) ; ImportsView (statut d'import au libellé FR) ; SupervisionView (statut de santé
+au libellé FR) ;
 RoleMappingsView (entité ; rôle et entité au libellé dans le formulaire et le tableau) ;
 CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, RepriseView, IndicatorsView
 (entité) ; AccountingView, ControlsView, PaymentView, FdvPlanView, FdvValidationView (entité + mois
@@ -426,7 +444,8 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 
 **Affichages d'énum bruts encore en clair** (à remplacer par le libellé FR du glossaire) :
 
-- SupervisionView:51 `status` ; ImportsView:299 `status`. (BordereauxView mois désormais au libellé FR via `monthLabel`.)
+- Voir « Balayage des libellés d'énum restant » ci-dessus. (SupervisionView statut, ImportsView statut et
+  BordereauxView mois désormais au libellé FR via `healthLabel`/`importStatusLabel`/`monthLabel`.)
   (ControlsView `severity`, FdvValidationView `status`, PaymentView `reason` et AdjustmentsView `status`
   sont désormais au libellé FR, cf. `severityLabel`/`exclusionReasonLabel`/`variableStatusLabel`/`adjustmentStatusLabel`.)
 

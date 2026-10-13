@@ -100,6 +100,26 @@ public class RuleConfigService {
     }
 
     /**
+     * Lists every rule of the user's entities with its plan, so a rule is picked from a list instead
+     * of typed (ADM-03, PAR-13, PAR-10). Used by the simulation and enrollment selectors.
+     *
+     * @return the rule options, ordered by plan then rule code
+     */
+    @Transactional
+    public List<RuleOption> listAllRules() {
+        List<CommissionPlan> plans = scope.unrestricted()
+                ? CommissionPlan.list("order by code")
+                : CommissionPlan.list("entity.code in ?1 order by code", scope.visibleCodes());
+        List<RuleOption> options = new java.util.ArrayList<>();
+        for (CommissionPlan plan : plans) {
+            for (Rule rule : Rule.<Rule>list("plan = ?1 order by code", plan)) {
+                options.add(new RuleOption(plan.entity.code, plan.code, rule.code, rule.label));
+            }
+        }
+        return options;
+    }
+
+    /**
      * Creates a plan in an entity.
      *
      * @param entityCode the entity code
@@ -639,6 +659,17 @@ public class RuleConfigService {
      * @param family the calculation family
      */
     public record RuleView(String code, String label, String family) {
+    }
+
+    /**
+     * A rule offered for selection, with its plan (ADM-03).
+     *
+     * @param entityCode the owning entity code
+     * @param planCode   the plan code
+     * @param code       the rule code
+     * @param label      the rule label
+     */
+    public record RuleOption(String entityCode, String planCode, String code, String label) {
     }
 
     /**

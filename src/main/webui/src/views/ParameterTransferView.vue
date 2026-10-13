@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
-import { AppButton, AppCard, AppForm, AppMessage, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppForm, AppMessage, EntitySelect, FormField, PageHeading, PlanSelect } from '../components/ui';
 
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 && session.entities[0] !== '*' ? session.entities[0] : 'ALPTIS_ASSURANCES');
@@ -58,10 +58,10 @@ async function importPlan(): Promise<void> {
     <AppCard>
       <AppForm @submit="exportPlan">
         <FormField label="Entité" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="pt-entity" type="text" v-model="entity" />
+          <EntitySelect :id="id" data-testid="pt-entity" v-model="entity" />
         </FormField>
         <FormField label="Plan à exporter" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="pt-plan" type="text" v-model="planCode" />
+          <PlanSelect :id="id" data-testid="pt-plan" v-model="planCode" />
         </FormField>
         <AppButton type="submit" data-testid="pt-export">Exporter</AppButton>
       </AppForm>

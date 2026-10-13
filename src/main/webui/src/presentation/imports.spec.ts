@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flowLabel } from './imports';
+import { flowLabel, importStatusLabel, healthLabel } from './imports';
 
 describe('flow labels', () => {
   it('labels every pivot flow code in French', () => {
@@ -22,5 +22,30 @@ describe('flow labels', () => {
 
   it('echoes an unknown code', () => {
     expect(flowLabel('mystery')).toBe('mystery');
+  });
+});
+
+describe('import status labels', () => {
+  it('labels every import batch status in French', () => {
+    expect(importStatusLabel('RECEIVED')).toBe('Reçu');
+    expect(importStatusLabel('LOADED')).toBe('Intégré');
+    expect(importStatusLabel('PARTIALLY_LOADED')).toBe('Intégré partiellement');
+    expect(importStatusLabel('REFUSED')).toBe('Refusé');
+  });
+
+  it('echoes an unknown status', () => {
+    expect(importStatusLabel('MYSTERY')).toBe('MYSTERY');
+  });
+});
+
+describe('health labels', () => {
+  it('labels every supervision health status in French', () => {
+    expect(healthLabel('UP')).toBe('Opérationnel');
+    expect(healthLabel('DEGRADED')).toBe('Dégradé');
+    expect(healthLabel('DOWN')).toBe('Hors service');
+  });
+
+  it('echoes an unknown status', () => {
+    expect(healthLabel('MYSTERY')).toBe('MYSTERY');
   });
 });

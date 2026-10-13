@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
+import { healthLabel } from '../presentation/imports';
 import { AppCard, AppMessage, DetailList, DetailRow, PageHeading } from '../components/ui';
 
 interface Health {
@@ -48,7 +49,7 @@ onMounted(load);
     <AppMessage v-if="error" variant="error" data-testid="sup-error">{{ error }}</AppMessage>
 
     <template v-if="data">
-      <p><span class="tag ok" data-testid="sup-status">{{ data.status }}</span></p>
+      <p><span class="tag ok" data-testid="sup-status">{{ healthLabel(data.status) }}</span></p>
 
       <div class="sup-tiles">
         <AppCard>

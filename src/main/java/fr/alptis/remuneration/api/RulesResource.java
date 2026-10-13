@@ -59,6 +59,20 @@ public class RulesResource {
     }
 
     /**
+     * Lists every rule of the user's entities with its plan, so a rule is picked from a list instead
+     * of typed (ADM-03). Feeds the simulation and enrollment rule selectors.
+     *
+     * @return the rule options
+     */
+    @GET
+    @Path("/rules")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN", "OPERATOR", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public List<RuleConfigService.RuleOption> allRules() {
+        return service.listAllRules();
+    }
+
+    /**
      * Creates a plan.
      *
      * @param request the plan request

@@ -25,3 +25,28 @@ const FLOW_LABELS: Record<string, string> = {
 export function flowLabel(code: string): string {
   return FLOW_LABELS[code] ?? code;
 }
+
+/** French labels of the import batch statuses (section 5.7). */
+const IMPORT_STATUS_LABELS: Record<string, string> = {
+  RECEIVED: 'Reçu',
+  LOADED: 'Intégré',
+  PARTIALLY_LOADED: 'Intégré partiellement',
+  REFUSED: 'Refusé',
+};
+
+/** French label of an import batch status, or the raw code when unknown. */
+export function importStatusLabel(status: string): string {
+  return IMPORT_STATUS_LABELS[status] ?? status;
+}
+
+/** French labels of the supervision health statuses (OUT-07). */
+const HEALTH_LABELS: Record<string, string> = {
+  UP: 'Opérationnel',
+  DEGRADED: 'Dégradé',
+  DOWN: 'Hors service',
+};
+
+/** French label of a supervision health status, or the raw code when unknown. */
+export function healthLabel(status: string): string {
+  return HEALTH_LABELS[status] ?? status;
+}

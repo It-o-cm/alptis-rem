@@ -3,7 +3,7 @@ import { onMounted, ref, computed } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateImports } from '../presentation/access';
-import { flowLabel } from '../presentation/imports';
+import { flowLabel, importStatusLabel } from '../presentation/imports';
 import { formatDate } from '../presentation/format';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
@@ -296,7 +296,7 @@ onMounted(async () => {
       >
         <template #cell-fileName="{ row }"><span class="mono">{{ row.fileName }}</span></template>
         <template #cell-status="{ row }">
-          <span :class="stateClass(row.status)" data-testid="batch-state">{{ row.status }}</span>
+          <span :class="stateClass(row.status)" data-testid="batch-state">{{ importStatusLabel(row.status) }}</span>
         </template>
       </DataTable>
       <p class="page__subtitle">Lues = filtrées + intégrées + rejetées + en attente.</p>

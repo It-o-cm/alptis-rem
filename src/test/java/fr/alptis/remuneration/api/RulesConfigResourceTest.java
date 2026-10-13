@@ -65,6 +65,9 @@ class RulesConfigResourceTest {
                 .when().post("/api/ui/v1/plans/P1/rules").then().statusCode(201);
         admin().when().get("/api/ui/v1/plans/P1/rules?entityCode=ALPTIS_ASSURANCES")
                 .then().statusCode(200).body("code", hasItem("R1"));
+        // The flat rule list (ADM-03) carries the rule with its plan.
+        admin().when().get("/api/ui/v1/rules")
+                .then().statusCode(200).body("code", hasItem("R1")).body("planCode", hasItem("P1"));
 
         admin().contentType(ContentType.JSON)
                 .body("{\"entityCode\":\"ALPTIS_ASSURANCES\",\"validFrom\":\"2026-01-01\",\"validTo\":\"2026-12-31\","

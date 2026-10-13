@@ -36,10 +36,11 @@ test.describe('Imports — opérateur', () => {
     await page.getByTestId('upload-submit').click();
     await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 1 rejetée(s)');
 
-    // Journal shows the batch with the PARTIALLY_LOADED state; the flow reads as its French label.
+    // Journal shows the batch with the partially-loaded state at its French label (ADM-03); the flow
+    // reads as its French label too.
     const batchRow = page.locator('[data-testid^="batch-row-"]').first();
     await expect(batchRow).toContainText('Distributeurs');
-    await expect(batchRow.getByTestId('batch-state')).toHaveText('PARTIALLY_LOADED');
+    await expect(batchRow.getByTestId('batch-state')).toHaveText('Intégré partiellement');
 
     // Open the batch, correct the rejected line.
     await batchRow.click();

@@ -238,3 +238,27 @@ vider le graphe. La liste interdit la saisie libre ; l'état vide est désormais
 sélectionnant une **nature sans donnée** (les lignes de `seedCycle` sont toutes linéaires, filtrer
 sur « Acquisition » vide le graphe) — une valeur connue choisie dans la liste, sans affaiblir
 l'assertion métier (`reporting.spec`).
+
+## 2026-10-13 — ADM-03 : plan, règle et statuts d'import/supervision en liste et au libellé
+
+Section / sujet : ADM-03, PAR-13, PAR-10, PAR-15, ING, OUT-07.
+
+- Plan (`pt-plan`, `en-plan`) → `PlanSelect` (magasin `plans`, `GET /plans`).
+- Règle (`sim-rule`, `en-rule`) → `RuleSelect`. Aucune liste plate de règles n'existait : ajout de
+  `GET /api/ui/v1/rules` (`RuleConfigService.listAllRules()`, règles des entités visibles avec leur plan,
+  partitionné), testé JUnit. `RuleSelect` peut filtrer sur un plan (EnrollmentsView lie la règle au plan
+  choisi).
+- ExportsView (entité + période en liste ; `exports-since` reste une date native, fenêtre de
+  modification), SimulationView (entité/mois/distributeur) et EnrollmentsView (distributeurs en liste,
+  accord choisi parmi les accords chargés) convertis.
+- ImportsView et SupervisionView affichaient un statut brut (`PARTIALLY_LOADED`, `UP`) : ajout des libellés
+  `importStatusLabel`/`healthLabel` dans `presentation/imports.ts` (couverts vitest), écrans et tests de
+  bout en bout alignés.
+
+Tests de bout en bout : `sim-rule` utilise la règle de barème initial `SANTE_EQUILIBRE_LINEAR` (réelle,
+avec sa version 1) choisie dans la liste, au lieu d'un code fictif saisi ; les POST d'API dans les specs
+portent l'en-tête `Authorization` basic explicite (le contexte navigateur ne propage pas les
+`httpCredentials` à `page.request`). `pt-plan` sélectionne le plan de base `GUIDE_2026` du socle.
+
+Reste pour ADM-03 : ManualEventView (système source/produit en liste, énumérations au libellé) et le
+balayage des libellés d'énum restant (signature/type/statut d'inscription, agrément distributeur).

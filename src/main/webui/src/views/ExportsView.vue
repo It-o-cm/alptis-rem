@@ -4,7 +4,9 @@ import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canProduceExport, exportStatusLabel } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import {
+  AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading,
+} from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface ExportRow {
@@ -122,7 +124,7 @@ onMounted(load);
       @search="load"
     >
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="exports-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="exports-entity" v-model="entity" />
       </FormField>
     </FilterBar>
 
@@ -139,13 +141,13 @@ onMounted(load);
           </select>
         </FormField>
         <FormField label="Période" width="date" v-slot="{ id }">
-          <input :id="id" data-testid="exports-period" type="text" v-model="form.period" :disabled="form.data" />
+          <MonthSelect :id="id" data-testid="exports-period" v-model="form.period" :entity="entity" />
         </FormField>
         <FormField label="Export Data (sans période)" width="short" v-slot="{ id }">
           <input :id="id" data-testid="exports-data" type="checkbox" v-model="form.data" />
         </FormField>
         <FormField label="Depuis (export Data incrémental)" width="date" v-slot="{ id }">
-          <input :id="id" data-testid="exports-since" type="text" v-model="form.since" :disabled="!form.data" />
+          <input :id="id" data-testid="exports-since" type="date" v-model="form.since" :disabled="!form.data" />
         </FormField>
         <AppButton type="submit" data-testid="exports-produce">Produire</AppButton>
       </AppForm>

@@ -18,6 +18,9 @@ test('l’opérateur produit un export, le journal l’inscrit et il se téléch
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
   const page = await operator.newPage();
   await page.goto('/exports');
+  // ADM-03: the entity and period are chosen from lists shown by their French labels, never typed.
+  await expect(page.getByTestId('exports-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(page.getByTestId('exports-period').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
   await page.getByTestId('exports-object').selectOption('COMMISSION_LINES');
   await page.getByTestId('exports-produce').click();
   await expect(page.getByTestId('exports-message')).toContainText('produit');

@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import {
+  AppButton, AppCard, AppForm, AppMessage, CodeSelect, DataTable, DistributorSelect, FormField, PageHeading,
+  PlanSelect, RuleSelect,
+} from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface AgreementView {
@@ -38,6 +41,11 @@ const enrollmentColumns: Column<EnrollmentView>[] = [
   { key: 'agreementRef', label: 'Accord', value: (e) => e.agreementRef ?? '—' },
   { key: 'status', label: 'Statut' },
 ];
+
+/** The loaded agreements as reference options, so an enrollment picks a signed accord from a list (ADM-03). */
+const agreementRefOptions = computed(() =>
+  agreements.value.map((a) => ({ value: a.reference, label: a.reference })),
+);
 
 /**
  * Records a failure, showing its message and clearing any success.
@@ -141,7 +149,7 @@ onMounted(loadAgreements);
           <input :id="id" data-testid="ag-ref" v-model="agForm.reference" />
         </FormField>
         <FormField label="Distributeur" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="ag-partner" v-model="agForm.partnerCode" />
+          <DistributorSelect :id="id" data-testid="ag-partner" v-model="agForm.partnerCode" allow-empty />
         </FormField>
         <FormField label="Du" width="date" v-slot="{ id }">
           <input :id="id" data-testid="ag-from" type="date" v-model="agForm.validFrom" />
@@ -156,16 +164,16 @@ onMounted(loadAgreements);
     <AppCard v-if="canEdit()" data-testid="enroll-section" title="Inscription à une règle réservée">
       <AppForm @submit="enroll">
         <FormField label="Plan" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="en-plan" v-model="enForm.planCode" />
+          <PlanSelect :id="id" data-testid="en-plan" v-model="enForm.planCode" allow-empty empty-label="Choisir un plan" />
         </FormField>
         <FormField label="Règle" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="en-rule" v-model="enForm.ruleCode" />
+          <RuleSelect :id="id" data-testid="en-rule" v-model="enForm.ruleCode" :plan="enForm.planCode" allow-empty empty-label="Choisir une règle" />
         </FormField>
         <FormField label="Distributeur" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="en-partner" v-model="enForm.partnerCode" />
+          <DistributorSelect :id="id" data-testid="en-partner" v-model="enForm.partnerCode" allow-empty />
         </FormField>
         <FormField label="Accord" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="en-ref" v-model="enForm.agreementRef" />
+          <CodeSelect :id="id" data-testid="en-ref" v-model="enForm.agreementRef" :options="agreementRefOptions" allow-empty empty-label="Aucun" />
         </FormField>
         <FormField label="Du" width="date" v-slot="{ id }">
           <input :id="id" data-testid="en-from" type="date" v-model="enForm.validFrom" />

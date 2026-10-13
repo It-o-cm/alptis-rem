@@ -5,7 +5,10 @@ import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
 import BarChart from '../components/charts/BarChart.vue';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import {
+  AppButton, AppCard, AppForm, AppMessage, DataTable, DistributorSelect, EntitySelect, FormField, MonthSelect,
+  PageHeading, RuleSelect,
+} from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface NatureComparison {
@@ -164,19 +167,19 @@ onMounted(loadHistory);
     <AppCard>
       <AppForm @submit="run">
         <FormField label="Entité" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="sim-entity" type="text" v-model="entity" />
+          <EntitySelect :id="id" data-testid="sim-entity" v-model="entity" />
         </FormField>
         <FormField label="Période rejouée" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="sim-month" type="text" v-model="month" />
+          <MonthSelect :id="id" data-testid="sim-month" v-model="month" :entity="entity" />
         </FormField>
         <FormField label="Règle" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="sim-rule" type="text" v-model="ruleCode" />
+          <RuleSelect :id="id" data-testid="sim-rule" v-model="ruleCode" allow-empty empty-label="Choisir une règle" />
         </FormField>
         <FormField label="Version" width="short" v-slot="{ id }">
           <input :id="id" data-testid="sim-version" type="number" v-model.number="versionNo" />
         </FormField>
         <FormField label="Distributeur (optionnel)" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="sim-scope" type="text" v-model="scopeDistributor" />
+          <DistributorSelect :id="id" data-testid="sim-scope" v-model="scopeDistributor" allow-empty />
         </FormField>
       </AppForm>
 

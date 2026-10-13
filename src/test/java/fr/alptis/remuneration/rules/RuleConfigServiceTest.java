@@ -132,6 +132,35 @@ class RuleConfigServiceTest {
     }
 
     /**
+     * Lists every rule of the user's entities with its plan (ADM-03): a UNEP-restricted user sees only
+     * the UNEP rules, an unrestricted user sees both entities' rules.
+     */
+    @Test
+    @TestTransaction
+    void lists_all_rules_with_their_plan() {
+        RuleConfigService unep = unep();
+        unep.createPlan("UNEP", "PLAN_U", "Plan U", Direction.INBOUND, (short) 2026);
+        unep.createRule("UNEP", "PLAN_U", "RU1", "Règle U1", RuleFamily.LINEAR);
+        unep.createRule("UNEP", "PLAN_U", "RU2", "Règle U2", RuleFamily.LINEAR);
+        RuleConfigService alptis = service(List.of("ALPTIS_ASSURANCES"), "admin-alptis");
+        alptis.createPlan("ALPTIS_ASSURANCES", "PLAN_AL", "Plan AL", Direction.OUTBOUND, (short) 2026);
+        alptis.createRule("ALPTIS_ASSURANCES", "PLAN_AL", "RA1", "Règle A1", RuleFamily.LINEAR);
+
+        // Restricted to UNEP: the two UNEP rules, each carrying its plan and entity.
+        var unepRules = unep.listAllRules();
+        assertEquals(2, unepRules.stream().filter(r -> r.planCode().equals("PLAN_U")).count());
+        var ru1 = unepRules.stream().filter(r -> r.code().equals("RU1")).findFirst().orElseThrow();
+        assertEquals("PLAN_U", ru1.planCode());
+        assertEquals("UNEP", ru1.entityCode());
+        assertEquals(0, unepRules.stream().filter(r -> r.code().equals("RA1")).count());
+
+        // Unrestricted: the Alptis rule appears too.
+        var all = service(List.of("*"), "it-admin").listAllRules();
+        assertEquals(1, all.stream().filter(r -> r.code().equals("RA1")).count());
+        assertEquals(1, all.stream().filter(r -> r.code().equals("RU1")).count());
+    }
+
+    /**
      * A version carries its reprise policy and payment schedule (PAR-08) and its payment conditions
      * (PAR-07), all surfaced on the version view.
      */
