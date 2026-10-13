@@ -232,7 +232,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
 | REG-01 | AdjustmentService | #12 | adjustments | complet |
-| REG-02 | AdjustmentService | #12 | adjustments | partiel — pièce jointe et lien à la ligne corrigée à confirmer |
+| REG-02 | AdjustmentService, AdjustmentsResource | #12 | adjustments | complet — motif obligatoire, référence de pièce jointe et lien à la ligne corrigée saisis à l'écran et restitués dans la liste (lien à la ligne prouvé par AdjustmentsResourceTest) |
 | REG-03 | AdjustmentService (double signature, seuil) | #12 | adjustments | complet |
 | REG-04 | AdjustmentImportService | #12 | adjustments | complet — import en masse d'ajustements depuis un fichier pivot |
 | REG-05 | AdjustmentService (auto-reverse) | #12 | adjustments | complet — option de contrepassation automatique créant la reprise au mois suivant (M+1) |

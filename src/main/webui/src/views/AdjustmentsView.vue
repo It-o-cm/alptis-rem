@@ -12,6 +12,8 @@ interface AdjustmentView {
   type: string;
   amount: number;
   reason: string;
+  attachmentRef: string | null;
+  correctedLineId: number | null;
   status: string;
   submitter: string;
   approver: string | null;
@@ -26,7 +28,10 @@ const rows = ref<AdjustmentView[]>([]);
 const error = ref('');
 const message = ref('');
 const loading = ref(false);
-const form = ref({ type: 'CORRECTION', amount: 0, payeeId: 0, reason: '', autoReverse: false, repaymentSchedule: '' });
+const form = ref({
+  type: 'CORRECTION', amount: 0, payeeId: 0, reason: '', attachmentRef: '', correctedLineId: null as number | null,
+  autoReverse: false, repaymentSchedule: '',
+});
 
 /** Whether the current user may operate the cycle (submit, approve). */
 const canOperate = (): boolean => canOperateCycle(session.roles);
@@ -36,6 +41,8 @@ const columns: Column<AdjustmentView>[] = [
   { key: 'type', label: 'Type' },
   { key: 'amount', label: 'Montant', align: 'num', value: (a) => amount(a.amount) },
   { key: 'reason', label: 'Motif' },
+  { key: 'attachmentRef', label: 'Pièce jointe', value: (a) => a.attachmentRef ?? '—' },
+  { key: 'correctedLineId', label: 'Ligne corrigée', value: (a) => (a.correctedLineId === null ? '—' : `#${a.correctedLineId}`) },
   { key: 'status', label: 'Statut' },
   { key: 'submitter', label: 'Soumis par' },
   { key: 'approver', label: 'Approuvé par', value: (a) => a.approver ?? '—' },
@@ -65,6 +72,8 @@ async function submit(): Promise<void> {
       payeeType: 'DISTRIBUTOR',
       payeeId: form.value.payeeId,
       reason: form.value.reason,
+      attachmentRef: form.value.attachmentRef === '' ? null : form.value.attachmentRef,
+      correctedLineId: form.value.correctedLineId,
       autoReverse: form.value.autoReverse,
       repaymentSchedule: form.value.repaymentSchedule === '' ? null : JSON.stringify(form.value.repaymentSchedule),
     });
@@ -165,6 +174,12 @@ onMounted(load);
         </FormField>
         <FormField label="Motif" width="long" v-slot="{ id }">
           <input :id="id" data-testid="adj-reason" type="text" v-model="form.reason" />
+        </FormField>
+        <FormField label="Pièce jointe (référence)" width="long" v-slot="{ id }">
+          <input :id="id" data-testid="adj-attachment" type="text" v-model="form.attachmentRef" />
+        </FormField>
+        <FormField label="Ligne corrigée (identifiant)" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="adj-corrected-line" type="number" v-model.number="form.correctedLineId" />
         </FormField>
         <FormField label="Contrepassation" width="short" v-slot="{ id }">
           <input :id="id" data-testid="adj-reverse" type="checkbox" v-model="form.autoReverse" />

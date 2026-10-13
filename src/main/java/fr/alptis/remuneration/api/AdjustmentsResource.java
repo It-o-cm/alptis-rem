@@ -8,6 +8,7 @@ import fr.alptis.remuneration.cycle.CycleQueryService.AdjustmentView;
 import fr.alptis.remuneration.domain.Adjustment;
 import fr.alptis.remuneration.domain.AdjustmentStatus;
 import fr.alptis.remuneration.domain.AdjustmentType;
+import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.PayeeType;
@@ -109,9 +110,11 @@ public class AdjustmentsResource {
         DistributorAccount counterpart = request.counterpartPayeeId() == null ? null
                 : accounts.accountFor(entity, PayeeType.valueOf(request.counterpartPayeeType()),
                 request.counterpartPayeeId());
+        CommissionLine correctedLine = request.correctedLineId() == null ? null
+                : CommissionLine.findById(request.correctedLineId());
         Adjustment adjustment = adjustments.create(entity, period, AdjustmentType.valueOf(request.type()),
                 request.amount(), account, request.reason(), request.attachmentRef(),
-                Boolean.TRUE.equals(request.autoReverse()), null, counterpart, request.repaymentSchedule(),
+                Boolean.TRUE.equals(request.autoReverse()), correctedLine, counterpart, request.repaymentSchedule(),
                 currentUser.username());
         return Response.status(Response.Status.CREATED)
                 .entity(new AdjustmentResult(adjustment.getId(), adjustment.status)).build();
@@ -177,10 +180,11 @@ public class AdjustmentsResource {
      * @param counterpartPayeeType the transfer counterpart payee type, or null
      * @param counterpartPayeeId   the transfer counterpart payee id, or null
      * @param repaymentSchedule    the repayment schedule (JSON) for an apurement, or null (CAL-14)
+     * @param correctedLineId      the corrected commission line id, or null (REG-02)
      */
     public record AdjustmentRequest(String type, BigDecimal amount, String payeeType, Long payeeId, String reason,
                                     String attachmentRef, Boolean autoReverse, String counterpartPayeeType,
-                                    Long counterpartPayeeId, String repaymentSchedule) {
+                                    Long counterpartPayeeId, String repaymentSchedule, Long correctedLineId) {
     }
 
     /**

@@ -68,6 +68,40 @@ class AdjustmentsResourceTest {
     }
 
     /**
+     * REG-02: an adjustment carries its mandatory reason, an attachment reference and a link to the
+     * corrected commission line, all surfaced in the list.
+     */
+    @Test
+    void submit_with_attachment_and_corrected_line() {
+        Long lineId = QuarkusTransaction.requiringNew().call(() -> {
+            LegalEntity alptis = LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult();
+            Period period = Period.<Period>find("entity = ?1 and periodMonth = ?2", alptis, LocalDate.parse(MONTH))
+                    .firstResult();
+            fr.alptis.remuneration.domain.CommissionLine line = new fr.alptis.remuneration.domain.CommissionLine();
+            line.entity = alptis;
+            line.period = period;
+            line.direction = fr.alptis.remuneration.domain.Direction.OUTBOUND;
+            line.nature = fr.alptis.remuneration.domain.LineNature.LINEAR;
+            line.status = fr.alptis.remuneration.domain.LineStatus.EARNED;
+            line.amount = new java.math.BigDecimal("12.00");
+            line.persist();
+            return line.getId();
+        });
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis").contentType(ContentType.JSON)
+                .body("{\"type\":\"CORRECTION\",\"amount\":-5,\"payeeType\":\"DISTRIBUTOR\",\"payeeId\":42,"
+                        + "\"reason\":\"erreur de taux\",\"attachmentRef\":\"GED-2026-07-123\",\"correctedLineId\":"
+                        + lineId + "}")
+                .when().post("/api/ui/v1/adjustments/ALPTIS_ASSURANCES/" + MONTH).then().statusCode(201);
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/adjustments/ALPTIS_ASSURANCES/" + MONTH)
+                .then().statusCode(200)
+                .body("attachmentRef", hasItem("GED-2026-07-123"))
+                .body("correctedLineId", hasItem(lineId.intValue()));
+    }
+
+    /**
      * A transfer adjustment carries a counterpart account and applies two transfer lines.
      */
     @Test

@@ -262,7 +262,9 @@ public class CycleQueryService {
                 : fr.alptis.remuneration.domain.Adjustment.<fr.alptis.remuneration.domain.Adjustment>list(
                 "period = ?1 order by id desc", period)) {
             views.add(new AdjustmentView(adjustment.getId(), adjustment.adjustmentType, adjustment.amount,
-                    adjustment.reason, adjustment.status, adjustment.getCreatedBy(), adjustment.approvedBy));
+                    adjustment.reason, adjustment.attachmentRef,
+                    adjustment.correctedLine == null ? null : adjustment.correctedLine.getId(),
+                    adjustment.status, adjustment.getCreatedBy(), adjustment.approvedBy));
         }
         return views;
     }
@@ -415,7 +417,8 @@ public class CycleQueryService {
      * @param approver  the approving user, possibly null
      */
     public record AdjustmentView(Long id, fr.alptis.remuneration.domain.AdjustmentType type, java.math.BigDecimal amount,
-                                 String reason, fr.alptis.remuneration.domain.AdjustmentStatus status, String submitter,
+                                 String reason, String attachmentRef, Long correctedLineId,
+                                 fr.alptis.remuneration.domain.AdjustmentStatus status, String submitter,
                                  String approver) {
     }
 }
