@@ -385,7 +385,6 @@ p.ex. `en-plan`/`en-rule` d'EnrollmentsView, `v-scope` de RulesView) :
 
 - CommissionSearchView : `cs-group`, `cs-delegation` (groupement, délégation).
 - BordereauxView : `brd-entity`, `brd-month`, `brd-member`.
-- ClaimsView : `claim-distributor`.
 - DashboardsView : `dash-entity`, `dash-product`, `dash-distributor`.
 - EnrollmentsView : `en-plan`, `en-rule`.
 - ExportsView : `exports-entity`, `exports-period`.
@@ -400,7 +399,8 @@ CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, Repr
 `AAAA-MM-01` via `MonthSelect value-format="date"`) ; DistributorAccountView (entité + mois +
 distributeur via `DistributorSelect`) ; FdvCollaboratorsView, FdvCommercialView, FdvMeasuresView,
 FdvObjectivesView (entité) ; AdjustmentsView (entité + mois + statut au libellé FR), MarginView
-(entité + mois). Chacun porte son assertion ADM-03 dans son test de bout en bout.
+(entité + mois) ; ClaimsView (distributeur via `DistributorSelect`). Chacun porte son assertion
+ADM-03 dans son test de bout en bout.
 Le `MonthSelect` lie le mois tel que le serveur le rend — la date premier-du-mois `AAAA-MM-01` que
 `/periods` renvoie et que **tous** les points d'accès de mois analysent (vérifié : `2026-09` → 500,
 `2026-09-01` → 200). Il n'y a donc qu'une seule forme de mois ; l'option `value-format` introduite sur

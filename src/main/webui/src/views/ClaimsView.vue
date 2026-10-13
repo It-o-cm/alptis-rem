@@ -5,7 +5,7 @@ import { useSessionStore } from '../stores/session';
 import { canOperateCycle, claimStatusLabel } from '../presentation/cycle';
 import { lineNatureLabel, lineStatusLabel } from '../presentation/lines';
 import { formatAmount, formatDate } from '../presentation/format';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, DistributorSelect, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface ClaimView {
@@ -128,8 +128,8 @@ onMounted(load);
 
     <AppCard v-if="canOperate()" title="Enregistrer une réclamation" data-testid="claim-form">
       <AppForm twoColumn @submit="record">
-        <FormField label="Code distributeur" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="claim-distributor" type="text" v-model="form.distributorCode" />
+        <FormField label="Distributeur" width="short" v-slot="{ id }">
+          <DistributorSelect :id="id" data-testid="claim-distributor" v-model="form.distributorCode" allow-empty />
         </FormField>
         <FormField label="Objet" width="long" v-slot="{ id }">
           <input :id="id" data-testid="claim-subject" type="text" v-model="form.subject" />

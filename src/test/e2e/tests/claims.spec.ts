@@ -29,8 +29,9 @@ test.describe('Réclamations — opérateur', () => {
     await page.getByTestId('claim-resolve').click();
     await expect(page.getByTestId('claim-message')).toContainText('close');
 
-    // Record a new claim for a known distributor.
-    await page.getByTestId('claim-distributor').fill('P13897');
+    // Record a new claim for a known distributor, picked from the list by its name (ADM-03).
+    await expect(page.getByTestId('claim-distributor').locator('option', { hasText: 'Cabinet Martin' })).toHaveCount(1);
+    await page.getByTestId('claim-distributor').selectOption('P13897');
     await page.getByTestId('claim-subject').fill('Commission sous-évaluée');
     await page.getByTestId('claim-submit').click();
     await expect(page.getByTestId('claim-message')).toContainText('enregistrée');
