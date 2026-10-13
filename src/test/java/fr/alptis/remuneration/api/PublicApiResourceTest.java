@@ -128,6 +128,47 @@ class PublicApiResourceTest {
     }
 
     /**
+     * BRD-10: the distributor's annual tax certificates (attestations) are published through the API —
+     * the current year by default and for an explicit year — totalling its own paid commissions only.
+     */
+    @Test
+    void tax_certificates_published() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Distributor mine = Distributor.<Distributor>find("partnerCode", CODE).firstResult();
+            paidLine(entity, mine, "42.00");
+            // Another distributor's paid line of the same year is excluded from this distributor's certificate.
+            Distributor other = new Distributor();
+            other.partnerCode = "OTHER-API";
+            other.legalName = "Autre";
+            other.oriasStatus = OriasStatus.REGISTERED;
+            other.persist();
+            paidLine(entity, other, "999.00");
+        });
+
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/v1/distributors/" + CODE + "/tax-certificates?year=2026")
+                .then().statusCode(200).body("[0].total", is(42.0f)).body("[0].year", is(2026));
+        // Without a year, the current fiscal year is used (the clock is in 2026).
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/v1/distributors/" + CODE + "/tax-certificates")
+                .then().statusCode(200).body("total", hasItem(42.0f));
+    }
+
+    /** Persists a paid commission line attached to September 2026 for a distributor. */
+    private static void paidLine(LegalEntity entity, Distributor distributor, String amount) {
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.originDistributor = distributor;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = LineStatus.PAID;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = LocalDate.parse(MONTH);
+        line.persist();
+    }
+
+    /**
      * The periods resource returns the state of the entity's periods, and the import deposit returns a
      * result readable by its id.
      */

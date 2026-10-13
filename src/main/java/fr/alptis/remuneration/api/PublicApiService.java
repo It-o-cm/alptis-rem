@@ -43,18 +43,24 @@ public class PublicApiService {
     /** The import service, for the deposit endpoint. */
     private final ImportService imports;
 
+    /** The tax-certificate service, to publish attestations (BRD-10). */
+    private final fr.alptis.remuneration.documents.TaxCertificateService taxCertificates;
+
     /**
      * Creates the service.
      *
-     * @param scope    the entity-visibility scope
-     * @param accounts the distributor-account service
-     * @param imports  the import service
+     * @param scope           the entity-visibility scope
+     * @param accounts        the distributor-account service
+     * @param imports         the import service
+     * @param taxCertificates the tax-certificate service
      */
     @Inject
-    public PublicApiService(EntityScope scope, AccountService accounts, ImportService imports) {
+    public PublicApiService(EntityScope scope, AccountService accounts, ImportService imports,
+                            fr.alptis.remuneration.documents.TaxCertificateService taxCertificates) {
         this.scope = scope;
         this.accounts = accounts;
         this.imports = imports;
+        this.taxCertificates = taxCertificates;
     }
 
     /**
@@ -163,6 +169,39 @@ public class PublicApiService {
                 distributor.getId(), codes)) {
             result.add(new StatementDto(statement.entity.code, statement.statementNumber, statement.versionNo,
                     statement.netAmount, statement.status.name(), statement.pdfRef));
+        }
+        return result;
+    }
+
+    /**
+     * Returns the annual tax certificates (attestations) of a distributor across the entities in scope,
+     * made available to the extranets, GED and CRM at publication (BRD-10, BRD-08).
+     *
+     * @param code   the distributor partner code
+     * @param entity the entity filter, or null
+     * @param year   the fiscal year
+     * @return the attestation views
+     */
+    /**
+     * The current fiscal year, from the application clock (default for the attestations endpoint).
+     *
+     * @return the current year
+     */
+    public int currentYear() {
+        return taxCertificates.currentYear();
+    }
+
+    public List<AttestationDto> taxCertificates(String code, String entity, int year) {
+        distributor(code);
+        List<AttestationDto> result = new ArrayList<>();
+        for (String entityCode : codes(entity)) {
+            for (fr.alptis.remuneration.documents.TaxCertificateService.CertificateView certificate
+                    : taxCertificates.certificates(entityCode, year)) {
+                if (code.equals(certificate.beneficiary())) {
+                    result.add(new AttestationDto(entityCode, certificate.year(), certificate.total(),
+                            certificate.lineCount()));
+                }
+            }
         }
         return result;
     }
@@ -281,6 +320,17 @@ public class PublicApiService {
      */
     public record StatementDto(String entity, String statementNumber, Integer versionNo, BigDecimal netAmount,
                                String status, String pdfRef) {
+    }
+
+    /**
+     * An annual tax certificate (attestation) of a distributor (BRD-10, BRD-08).
+     *
+     * @param entity    the entity code
+     * @param year      the fiscal year
+     * @param total     the total paid commission of the year
+     * @param lineCount the number of paid lines
+     */
+    public record AttestationDto(String entity, int year, BigDecimal total, int lineCount) {
     }
 
     /**

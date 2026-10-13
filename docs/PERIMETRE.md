@@ -297,7 +297,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | BRD-07 | StatementService (report solde) | #18 | cr60 JUnit | complet |
 | BRD-08 | TaxCertificateService | #59 | tax-certificates | complet — attestation fiscale annuelle par bénéficiaire (total payé de l'exercice) |
 | BRD-09 | AgreementService (discountSummary) | #33 | discounts | complet — synthèse des escomptes par convention (versé, apuré, créance) |
-| BRD-10 | PublicApiService | — | — | partiel — mise à disposition extranets/GED/CRM à confirmer |
+| BRD-10 | PublicApiService (statements, lines, tax-certificates) | API 9.8 | PublicApiResourceTest | complet — bordereaux, lignes et attestations fiscales mis à disposition des extranets/GED/CRM par l'API publique `/api/v1` (consultation) ; le push éditique vers la GED est hors profil dev (§8) |
 | BRD-11 | StatementService (member statement) | #18 | bordereaux | complet — relevé informatif de la part propre d'un membre payé par son groupement |
 | BRD-12 | StatementService (spreadsheet/workbook) | #18 | bordereaux | complet — export des données du bordereau (tableur CSV et classeur xlsx réels) |
 

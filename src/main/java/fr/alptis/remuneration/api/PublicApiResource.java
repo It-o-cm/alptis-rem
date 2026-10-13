@@ -95,6 +95,30 @@ public class PublicApiResource {
      * @param entity the entity filter, or null
      * @return the agreement views
      */
+    /**
+     * Returns the annual tax certificates (attestations) of a distributor, defaulting to the current
+     * fiscal year (BRD-10).
+     *
+     * @param code   the distributor partner code
+     * @param entity the entity filter, or null
+     * @param year   the fiscal year, or null for the current year
+     * @return the attestation views
+     */
+    @GET
+    @Path("/distributors/{code}/tax-certificates")
+    public List<PublicApiService.AttestationDto> taxCertificates(@PathParam("code") String code,
+                                                                 @QueryParam("entity") String entity,
+                                                                 @QueryParam("year") Integer year) {
+        return service.taxCertificates(code, entity, year == null ? service.currentYear() : year);
+    }
+
+    /**
+     * Returns the escompte agreements and receivables of a distributor.
+     *
+     * @param code   the distributor partner code
+     * @param entity the entity filter, or null
+     * @return the agreement views
+     */
     @GET
     @Path("/distributors/{code}/advance-agreements")
     public List<PublicApiService.AgreementDto> advanceAgreements(@PathParam("code") String code,
