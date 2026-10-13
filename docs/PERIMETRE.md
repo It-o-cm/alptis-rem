@@ -384,37 +384,36 @@ liés à une valeur connue, audit à élargir — certains écrans en portent d'
 p.ex. `en-plan`/`en-rule` d'EnrollmentsView, `v-scope` de RulesView) :
 
 - CommissionSearchView : `cs-group`, `cs-delegation` (groupement, délégation).
-- AccountingView : `acc-entity`, `acc-month`.
-- AdjustmentsView : `adj-entity`, `adj-month`.
+- AdjustmentsView : `adj-entity`, `adj-month` (mois `AAAA-MM-01`, cf. points de méthode).
 - BordereauxView : `brd-entity`, `brd-month`, `brd-member`.
 - ClaimsView : `claim-distributor`.
-- ControlsView : `ctl-entity`, `ctl-month`.
 - DashboardsView : `dash-entity`, `dash-product`, `dash-distributor`.
-- DistributorAccountView : `acc-entity`, `acc-month`.
 - EnrollmentsView : `en-plan`, `en-rule`.
 - ExportsView : `exports-entity`, `exports-period`.
 - FdvCollaboratorsView : `fdvcol-entity`.
 - FdvCommercialView : `fdvc-entity`.
 - FdvMeasuresView : `fdvm-entity`.
 - FdvObjectivesView : `fdvo-entity`.
-- FdvPlanView : `fdvp-entity`, `fdvp-month`.
-- FdvValidationView : `fdvv-entity`, `fdvv-month`.
 - ManualEventView : `field-coverage`, `cov-coverage`, `cov-product`, `cov-production`, `cov-source`, `cov-contract`, `cov-holder`.
-- MarginView : `margin-entity`, `margin-month`.
+- MarginView : `margin-entity`, `margin-month` (mois `AAAA-MM-01`).
 - ParameterTransferView : `pt-entity`, `pt-plan` (`pt-newcode` reste libre : nouveau code).
-- PaymentView : `pay-entity`, `pay-month`.
 - SimulationView : `sim-entity`, `sim-month`, `sim-rule`, `sim-scope`.
 
 Écrans déjà convertis : #24 CommissionSearchView (entité/mois/distributeur/produit/nature) ;
 RoleMappingsView (entité ; rôle et entité au libellé dans le formulaire et le tableau) ;
 CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, RepriseView, IndicatorsView
-(entité), chacun avec l'assertion ADM-03 ajoutée à son test de bout en bout.
+(entité) ; AccountingView, ControlsView, PaymentView, FdvPlanView, FdvValidationView (entité + mois
+`AAAA-MM-01` via `MonthSelect value-format="date"`) ; DistributorAccountView (entité + mois +
+distributeur via `DistributorSelect`). Chacun porte son assertion ADM-03 dans son test de bout en bout.
+Le `MonthSelect` gère les deux formats de valeur (`AAAA-MM` / `AAAA-MM-01`) ; `monthLabel` accepte les
+deux. Le jeu `seedCycle` relie désormais `P13897` à son entité (`DistributorEntity` ACTIVE) pour qu'il
+soit atteignable depuis la recherche de distributeurs qui alimente le sélecteur.
 
 **Affichages d'énum bruts encore en clair** (à remplacer par le libellé FR du glossaire) :
 
-- ControlsView:285 `severity` ; FdvValidationView:202 `status` ; AdjustmentsView:214 `status` ;
-  SupervisionView:51 `status` ; BordereauxView:286 `month` ; PaymentView:347 `reason` ;
-  ImportsView:299 `status`.
+- AdjustmentsView:214 `status` ; SupervisionView:51 `status` ; BordereauxView:286 `month` ;
+  ImportsView:299 `status`. (ControlsView `severity`, FdvValidationView `status` et PaymentView
+  `reason` sont désormais au libellé FR, cf. `severityLabel`/`exclusionReasonLabel`/`variableStatusLabel`.)
 
 **Points de méthode repérés** (à traiter avec la spécification, pas à contourner) :
 
@@ -422,9 +421,14 @@ CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, Repr
   (`cov-product=P-UNKNOWN` dans manual-event.spec, `dash-product=PRODUIT-INEXISTANT` dans
   reporting.spec) : la liste empêche la saisie libre, donc le chemin d'échec se reprouve
   autrement (sélection d'une valeur connue sans donnée, et contrôle serveur conservé).
-- Plusieurs champs « mois » reçoivent une date (`margin-month=2026-09-01`,
-  `adj-month=2026-10-01`, `sim-month=2026-09-01`) : le `MonthSelect` impose le format mois
-  `AAAA-MM`, la vue et le test sont alignés en conséquence.
+- Deux sémantiques de « mois » coexistent côté serveur : les écrans de période prennent un
+  mois `AAAA-MM` (AccountingView, ControlsView, CommissionSearchView…), tandis qu'AdjustmentsView,
+  MarginView et la simulation FDV passent une `LocalDate` premier-du-mois `AAAA-MM-01` dans le
+  chemin d'API (`.../adjustments/{entity}/2026-09-01`). Avant de convertir ces derniers, le
+  `MonthSelect` doit offrir une option de format de valeur (`AAAA-MM` ou `AAAA-MM-01`) et
+  `monthLabel` accepter les deux formes ; sinon le mois sélecteur casserait l'appel serveur. La
+  vue et le test sont alignés sur la forme attendue par chaque endpoint — ne pas changer le
+  contrat serveur.
 
 ## Cas de recette — état du rejeu
 

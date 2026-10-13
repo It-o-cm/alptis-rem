@@ -19,7 +19,9 @@ test.describe('Compte distributeur — opérateur', () => {
     page,
   }) => {
     await page.goto('/distributeur');
-    await page.getByTestId('acc-partner').fill('P13897');
+    // ADM-03: the distributor is chosen from a list shown by its name, never typed as a code.
+    await expect(page.getByTestId('acc-partner').locator('option', { hasText: 'P13897' })).toHaveCount(1);
+    await page.getByTestId('acc-partner').selectOption('P13897');
     await page.getByTestId('acc-search').click();
     await expect(page.getByTestId('account-view')).toBeVisible();
     await expect(page.getByTestId('account-total')).toContainText('400,00');

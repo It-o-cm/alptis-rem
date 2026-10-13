@@ -3,9 +3,9 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
-import { jobCodeLabel, componentLabel } from '../presentation/salesforce';
+import { jobCodeLabel, componentLabel, variableStatusLabel } from '../presentation/salesforce';
 import HBarChart from '../components/charts/HBarChart.vue';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface Result {
@@ -155,10 +155,10 @@ onMounted(load);
 
     <FilterBar :loading="loading" :resettable="false" search-label="Rafraîchir" search-testid="fdvv-refresh" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="fdvv-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="fdvv-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="date" v-slot="{ id }">
-        <input :id="id" data-testid="fdvv-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="fdvv-month" v-model="month" :entity="entity" value-format="date" />
       </FormField>
     </FilterBar>
 
@@ -199,7 +199,7 @@ onMounted(load);
         empty-testid="no-result"
         :row-testid="(r) => `result-row-${r.id}`"
       >
-        <template #cell-status="{ row }"><span :data-testid="`result-status-${row.id}`">{{ row.status }}</span></template>
+        <template #cell-status="{ row }"><span :data-testid="`result-status-${row.id}`">{{ variableStatusLabel(row.status) }}</span></template>
         <template #actions="{ row }">
           <AppButton
             v-if="canValidate() && row.status === 'CALCULATED'"

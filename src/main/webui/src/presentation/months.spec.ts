@@ -9,6 +9,11 @@ describe('monthLabel', () => {
     expect(monthLabel('2025-08')).toBe('août 2025');
   });
 
+  it('also accepts the first-of-month date form some endpoints use', () => {
+    expect(monthLabel('2026-09-01')).toBe('septembre 2026');
+    expect(monthLabel('2026-01-01')).toBe('janvier 2026');
+  });
+
   it('returns a dash for a missing value', () => {
     expect(monthLabel(null)).toBe('—');
     expect(monthLabel(undefined)).toBe('—');

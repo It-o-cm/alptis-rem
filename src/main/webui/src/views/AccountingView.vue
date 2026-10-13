@@ -4,7 +4,7 @@ import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canProduceExport } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface SchemeRow {
@@ -208,10 +208,10 @@ onMounted(refresh);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="acc-refresh" :resettable="false" @search="refresh">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="acc-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="acc-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="acc-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="acc-month" v-model="month" :entity="entity" value-format="date" />
       </FormField>
     </FilterBar>
 

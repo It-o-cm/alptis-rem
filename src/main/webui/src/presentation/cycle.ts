@@ -99,6 +99,29 @@ export function severityTag(severity: string): string {
   return 'tag mute';
 }
 
+/** French label of an anomaly severity, or the raw code when unknown (ADM-03). */
+export function severityLabel(severity: string): string {
+  const labels: Record<string, string> = {
+    BLOCKING: 'Bloquant',
+    WARNING: 'Avertissement',
+    INFO: 'Information',
+  };
+  return labels[severity] ?? severity;
+}
+
+/** French label of a payment-exclusion reason, or the raw code when unknown (ADM-03). */
+export function exclusionReasonLabel(reason: string): string {
+  const labels: Record<string, string> = {
+    ACCOUNT_BLOCKED: 'Compte bloqué',
+    BELOW_THRESHOLD: 'Sous le seuil de paiement',
+    FREQUENCY: 'Hors fréquence de versement',
+    NO_BANK_DETAILS: 'Sans coordonnées bancaires',
+    NON_POSITIVE_BALANCE: 'Solde non positif',
+    PAYEE_INACTIVE: 'Bénéficiaire inactif',
+  };
+  return labels[reason] ?? reason;
+}
+
 /** French label of a control decision. */
 export function decisionLabel(decision: string): string {
   if (decision === 'FIXED') return 'Corrigée';

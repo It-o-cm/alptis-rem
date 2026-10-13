@@ -20,16 +20,19 @@ test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règ
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
   const operatorPage = await operator.newPage();
   await operatorPage.goto('/paiement');
+  // ADM-03: the entity and month are chosen from lists shown by their names, never typed as codes.
+  await expect(operatorPage.getByTestId('pay-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(operatorPage.getByTestId('pay-month').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
   const cycleRow = operatorPage.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' });
   await expect(cycleRow).toHaveCount(1);
   await cycleRow.getByRole('button', { name: 'Détail' }).click();
   await operatorPage.getByTestId('lot-prepare').click();
   await expect(operatorPage.locator('[data-testid^="order-iban-"]').first()).toContainText('FR76');
   // The debtor account is excluded for a non-positive balance.
-  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]', { hasText: 'NON_POSITIVE_BALANCE' }))
+  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]', { hasText: 'Solde non positif' }))
     .toHaveCount(1);
   // REF-08: a distributor terminated before the period is excluded as an inactive payee.
-  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]', { hasText: 'PAYEE_INACTIVE' }))
+  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]', { hasText: 'Bénéficiaire inactif' }))
     .toHaveCount(1);
   await operator.close();
 

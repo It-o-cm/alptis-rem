@@ -71,6 +71,15 @@ public class CycleDemoSeeder {
         distributor.partnerCode = PARTNER;
         distributor.legalName = "Cabinet Martin";
         distributor.persist();
+        // Link the distributor to the entity so it is reachable from the entity-scoped distributor
+        // search that feeds the distributor selector (ADM-03): the account screen picks it from a list.
+        fr.alptis.remuneration.domain.DistributorEntity activeLink = new fr.alptis.remuneration.domain.DistributorEntity();
+        activeLink.distributor = distributor;
+        activeLink.entity = entity;
+        activeLink.status = fr.alptis.remuneration.domain.PartnerStatus.ACTIVE;
+        activeLink.validFrom = month.minusYears(1);
+        activeLink.setCreatedAt(clock.now());
+        activeLink.persist();
         account(entity, period, distributor, "PC-DEBIT", "-100");
         DistributorAccount creditor = account(entity, period, distributor, "PC-CREDIT", "500");
         BankAccount bank = new BankAccount();

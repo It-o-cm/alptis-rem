@@ -21,14 +21,15 @@ const MONTH_NAMES = [
 ];
 
 /**
- * Formats an ISO month (`2026-09`) as a French month and year (`septembre 2026`).
+ * Formats an ISO month as a French month and year (`septembre 2026`). Accepts both the bare month
+ * form (`2026-09`) and the first-of-month date form (`2026-09-01`) that some endpoints use.
  * Returns a dash for a missing or unparseable value.
  */
 export function monthLabel(month: string | null | undefined): string {
   if (!month) {
     return EMPTY;
   }
-  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  const match = /^(\d{4})-(\d{2})(?:-\d{2})?$/.exec(month);
   if (!match) {
     return EMPTY;
   }

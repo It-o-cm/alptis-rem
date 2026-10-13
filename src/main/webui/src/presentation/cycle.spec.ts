@@ -9,6 +9,8 @@ import {
   batchTypeLabel,
   claimStatusLabel,
   severityTag,
+  severityLabel,
+  exclusionReasonLabel,
   decisionLabel,
 } from './cycle';
 
@@ -88,5 +90,22 @@ describe('anomaly presentation', () => {
     expect(decisionLabel('FIXED')).toBe('Corrigée');
     expect(decisionLabel('ACCEPTED')).toBe('Acceptée');
     expect(decisionLabel('DEFERRED')).toBe('Reportée');
+  });
+
+  it('labels each severity in French and echoes an unknown one', () => {
+    expect(severityLabel('BLOCKING')).toBe('Bloquant');
+    expect(severityLabel('WARNING')).toBe('Avertissement');
+    expect(severityLabel('INFO')).toBe('Information');
+    expect(severityLabel('XXX')).toBe('XXX');
+  });
+
+  it('labels each payment-exclusion reason in French and echoes an unknown one', () => {
+    expect(exclusionReasonLabel('ACCOUNT_BLOCKED')).toBe('Compte bloqué');
+    expect(exclusionReasonLabel('BELOW_THRESHOLD')).toBe('Sous le seuil de paiement');
+    expect(exclusionReasonLabel('FREQUENCY')).toBe('Hors fréquence de versement');
+    expect(exclusionReasonLabel('NO_BANK_DETAILS')).toBe('Sans coordonnées bancaires');
+    expect(exclusionReasonLabel('NON_POSITIVE_BALANCE')).toBe('Solde non positif');
+    expect(exclusionReasonLabel('PAYEE_INACTIVE')).toBe('Bénéficiaire inactif');
+    expect(exclusionReasonLabel('XXX')).toBe('XXX');
   });
 });

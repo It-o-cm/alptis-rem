@@ -2,9 +2,9 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
-import { canOperateCycle, canValidateFinance, paymentStatusLabel } from '../presentation/cycle';
+import { canOperateCycle, canValidateFinance, paymentStatusLabel, exclusionReasonLabel } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface LotView {
@@ -250,10 +250,10 @@ onMounted(loadLots);
       @search="loadLots"
     >
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="pay-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="pay-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="pay-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="pay-month" v-model="month" :entity="entity" value-format="date" />
       </FormField>
     </FilterBar>
 
@@ -344,7 +344,7 @@ onMounted(loadLots);
         :row-testid="(x) => `exclusion-row-${detail?.exclusions.indexOf(x)}`"
       >
         <template #cell-reason="{ row }">
-          <span :data-testid="`exclusion-reason-${detail?.exclusions.indexOf(row)}`">{{ row.reason }}</span>
+          <span :data-testid="`exclusion-reason-${detail?.exclusions.indexOf(row)}`">{{ exclusionReasonLabel(row.reason) }}</span>
         </template>
       </DataTable>
 

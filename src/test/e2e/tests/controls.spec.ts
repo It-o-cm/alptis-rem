@@ -18,6 +18,9 @@ test.describe('Contrôles — opérateur', () => {
     page,
   }) => {
     await page.goto('/controles');
+    // ADM-03: the entity and month are chosen from lists shown by their names, never typed as codes.
+    await expect(page.getByTestId('ctl-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+    await expect(page.getByTestId('ctl-month').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
     await page.getByTestId('ctl-run').click();
     await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
 
@@ -27,6 +30,8 @@ test.describe('Contrôles — opérateur', () => {
       .filter({ hasText: 'ACCOUNT-DEBTOR' })
       .first();
     await expect(row).toBeVisible();
+    // ADM-03: the severity is shown by its French label, not the raw enum code.
+    await expect(row).toContainText(/Bloquant|Avertissement|Information/);
     await expect(page.getByTestId('chart-ctl-severity')).toBeVisible();
     await expect(page.getByTestId('chart-ctl-family')).toBeVisible();
     // Decide that very anomaly and read its traced decision back.

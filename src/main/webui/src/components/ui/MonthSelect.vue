@@ -19,8 +19,14 @@ const props = withDefaults(
     allowEmpty?: boolean;
     /** Label of the empty option when offered. */
     emptyLabel?: string;
+    /**
+     * Shape of the bound value: `month` for the bare `AAAA-MM` the period endpoints take, `date`
+     * for the first-of-month `AAAA-MM-01` LocalDate that adjustments, margin and the FDV simulation
+     * take in their API path. The label is the same French month either way.
+     */
+    valueFormat?: 'month' | 'date';
   }>(),
-  { entity: undefined, allowEmpty: false, emptyLabel: 'Tous les mois' },
+  { entity: undefined, allowEmpty: false, emptyLabel: 'Tous les mois', valueFormat: 'month' },
 );
 
 const periods = usePeriodsStore();
@@ -29,11 +35,16 @@ onMounted(() => {
   periods.ensure();
 });
 
+/** A known month in the shape the caller binds (bare month or first-of-month date). */
+function toValue(month: string): string {
+  return props.valueFormat === 'date' ? `${month}-01` : month;
+}
+
 /** The known months, newest first, always including the currently bound month. */
 const options = computed(() => {
-  const months = periods.monthsFor(props.entity);
-  const withCurrent = model.value && !months.includes(model.value) ? [model.value, ...months] : months;
-  return withCurrent.map((m) => ({ value: m, label: monthLabel(m) }));
+  const values = periods.monthsFor(props.entity).map(toValue);
+  const withCurrent = model.value && !values.includes(model.value) ? [model.value, ...values] : values;
+  return withCurrent.map((v) => ({ value: v, label: monthLabel(v) }));
 });
 </script>
 

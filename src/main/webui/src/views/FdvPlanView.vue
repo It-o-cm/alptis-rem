@@ -6,7 +6,7 @@ import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
 import { jobCodeLabel, JOB_CODES, componentLabel, PLAN_COMPONENTS } from '../presentation/salesforce';
 import {
-  AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading,
+  AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading,
 } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -184,10 +184,10 @@ onMounted(load);
 
     <FilterBar :loading="loading" :resettable="false" search-label="Rafraîchir" search-testid="fdvp-refresh" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="fdvp-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="fdvp-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="date" v-slot="{ id }">
-        <input :id="id" data-testid="fdvp-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="fdvp-month" v-model="month" :entity="entity" value-format="date" />
       </FormField>
     </FilterBar>
 

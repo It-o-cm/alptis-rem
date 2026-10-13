@@ -2,9 +2,9 @@
 import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
-import { canOperateCycle, severityTag, decisionLabel } from '../presentation/cycle';
+import { canOperateCycle, severityTag, severityLabel, decisionLabel } from '../presentation/cycle';
 import HBarChart from '../components/charts/HBarChart.vue';
-import { AppButton, AppCard, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface Count {
@@ -251,10 +251,10 @@ onMounted(async () => {
     <AppCard>
       <div class="ui-bar">
         <FormField label="Entité" stacked width="short" v-slot="{ id }">
-          <input :id="id" data-testid="ctl-entity" type="text" v-model="entity" />
+          <EntitySelect :id="id" data-testid="ctl-entity" v-model="entity" />
         </FormField>
         <FormField label="Mois" stacked width="short" v-slot="{ id }">
-          <input :id="id" data-testid="ctl-month" type="text" v-model="month" />
+          <MonthSelect :id="id" data-testid="ctl-month" v-model="month" :entity="entity" value-format="date" />
         </FormField>
         <AppButton variant="secondary" data-testid="ctl-refresh" @click="loadAnomalies">Rafraîchir</AppButton>
         <AppButton v-if="canOperate()" data-testid="ctl-run" @click="run">Lancer les contrôles</AppButton>
@@ -282,7 +282,7 @@ onMounted(async () => {
         empty-testid="no-anomaly"
         :row-testid="(a) => `anomaly-row-${a.id}`"
       >
-        <template #cell-severity="{ row }"><span :class="tag(row.severity)">{{ row.severity }}</span></template>
+        <template #cell-severity="{ row }"><span :class="tag(row.severity)">{{ severityLabel(row.severity) }}</span></template>
         <template #cell-decision="{ row }">
           <span :data-testid="`anomaly-decision-${row.id}`">{{ decided(row.decision) }}</span>
         </template>

@@ -23,6 +23,8 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
   const adminPage = await admin.newPage();
   await adminPage.goto('/fdv/plan');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(adminPage.getByTestId('fdvp-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(adminPage.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
   await expect(adminPage.getByTestId('collab-row-C-DEMO')).toBeVisible();
   await adminPage.getByTestId('fdvp-run').click();
@@ -44,9 +46,11 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   const manager = await browser.newContext({ httpCredentials: USERS.managerAlptis });
   const managerPage = await manager.newPage();
   await managerPage.goto('/fdv/validation');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(managerPage.getByTestId('fdvv-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(managerPage.getByTestId('chart-fdvv')).toBeVisible();
   await managerPage.locator('[data-testid^="result-validate-"]').first().click();
-  await expect(managerPage.locator('[data-testid^="result-status-"]').first()).toContainText('VALIDATED');
+  await expect(managerPage.locator('[data-testid^="result-status-"]').first()).toContainText('Validé');
   // The per-person pay synthesis (FDV-14) now shows the validated collaborator.
   await expect(managerPage.getByTestId('fdvv-summary')).toBeVisible();
   await expect(managerPage.locator('[data-testid^="pay-summary-"]').first()).toBeVisible();

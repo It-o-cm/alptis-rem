@@ -19,6 +19,9 @@ test('le contrôleur Finance lit le schéma et produit l’extraction @screen:ac
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
   const page = await finance.newPage();
   await page.goto('/comptabilite');
+  // ADM-03: the entity and month are chosen from lists shown by their names, never typed as codes.
+  await expect(page.getByTestId('acc-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(page.getByTestId('acc-month').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
   // The schema carries the accounting events (FIN-02).
   await expect(page.getByTestId('acc-scheme')).toContainText('FORECAST_RECOGNITION');
   // The extraction is produced and its CSV carries the OUT-02 columns (FIN-03).

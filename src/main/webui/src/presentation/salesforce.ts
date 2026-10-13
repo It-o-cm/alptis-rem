@@ -83,3 +83,18 @@ export function componentLabel(code: string | null): string {
   }
   return COMPONENT_LABELS[code] ?? code;
 }
+
+/** French label of each variable-result status (FDV-13). */
+const RESULT_STATUS_LABELS: Record<string, string> = {
+  CALCULATED: 'Calculé',
+  VALIDATED: 'Validé',
+  EXPORTED: 'Exporté',
+};
+
+/** Returns the French label of a variable-result status, or the code itself when unknown or absent. */
+export function variableStatusLabel(code: string | null): string {
+  if (code === null) {
+    return '—';
+  }
+  return RESULT_STATUS_LABELS[code] ?? code;
+}

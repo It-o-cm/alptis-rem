@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  jobCodeLabel, JOB_CODES, measureTypeLabel, objectiveTypeLabel, OBJECTIVE_TYPES, componentLabel, PLAN_COMPONENTS,
+  jobCodeLabel, JOB_CODES, measureTypeLabel, objectiveTypeLabel, OBJECTIVE_TYPES, componentLabel, PLAN_COMPONENTS, variableStatusLabel,
 } from './salesforce';
 
 describe('sales-force presentation', () => {
@@ -39,5 +39,13 @@ describe('sales-force presentation', () => {
     expect(componentLabel('UNKNOWN')).toBe('UNKNOWN');
     expect(componentLabel(null)).toBe('—');
     expect(PLAN_COMPONENTS).toContain('MONTHLY_INDIVIDUAL');
+  });
+
+  it('labels known variable-result statuses and falls back for the rest', () => {
+    expect(variableStatusLabel('CALCULATED')).toBe('Calculé');
+    expect(variableStatusLabel('VALIDATED')).toBe('Validé');
+    expect(variableStatusLabel('EXPORTED')).toBe('Exporté');
+    expect(variableStatusLabel('UNKNOWN')).toBe('UNKNOWN');
+    expect(variableStatusLabel(null)).toBe('—');
   });
 });

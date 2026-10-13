@@ -5,7 +5,7 @@ import { useSessionStore } from '../stores/session';
 import { canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
 import LineChart from '../components/charts/LineChart.vue';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, DistributorSelect, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface MonthBalance {
@@ -218,13 +218,13 @@ onMounted(loadDebtors);
 
     <FilterBar :loading="loading" :resettable="false" search-testid="acc-search" @search="search">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="acc-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="acc-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="date" v-slot="{ id }">
-        <input :id="id" data-testid="acc-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="acc-month" v-model="month" :entity="entity" value-format="date" />
       </FormField>
-      <FormField label="Code partenaire" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="acc-partner" type="text" v-model="partnerCode" />
+      <FormField label="Distributeur" stacked width="short" v-slot="{ id }">
+        <DistributorSelect :id="id" data-testid="acc-partner" v-model="partnerCode" allow-empty />
       </FormField>
     </FilterBar>
 
