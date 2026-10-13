@@ -56,15 +56,59 @@ public class StatementService {
         if (statement == null) {
             throw new ResourceNotFoundException("Bordereau inconnu : " + statementId);
         }
+        fr.alptis.remuneration.domain.StatementGrouping grouping = grouping(statement.account);
         List<Row> rows = new ArrayList<>();
         for (CommissionLine line : CommissionLine.<CommissionLine>list(
                 "account = ?1 and period = ?2 and status in ?3 order by id",
                 statement.account, statement.period, SHOWN)) {
-            rows.add(new Row(section(line.nature), label(line), line.basisAmount, line.rate, line.amount, line.reason));
+            String group = grouping == fr.alptis.remuneration.domain.StatementGrouping.NONE ? null
+                    : groupValue(line, grouping);
+            rows.add(new Row(section(line.nature), label(line), line.basisAmount, line.rate, line.amount, line.reason,
+                    group));
         }
         return new StatementContent(statement.statementNumber, statement.versionNo,
                 statement.account.payeeType + " #" + statement.account.payeeId, statement.period.periodMonth,
-                rows, statement.periodTotal, statement.carriedBalance, statement.netAmount);
+                rows, statement.periodTotal, statement.carriedBalance, statement.netAmount, grouping.name());
+    }
+
+    /**
+     * Resolves the statement's beneficiary distributor and its bordereau declension preference (BRD-04),
+     * defaulting to no declension when there is no distributor or no preference.
+     *
+     * @param account the statement's account
+     * @return the declension preference
+     */
+    private static fr.alptis.remuneration.domain.StatementGrouping grouping(
+            fr.alptis.remuneration.domain.DistributorAccount account) {
+        fr.alptis.remuneration.domain.Distributor distributor = null;
+        if (account.payeeType == fr.alptis.remuneration.domain.PayeeType.PRODUCTION_CODE) {
+            ProductionCode pc = ProductionCode.findById(account.payeeId);
+            distributor = pc == null ? null : pc.distributor;
+        } else if (account.payeeType == fr.alptis.remuneration.domain.PayeeType.DISTRIBUTOR) {
+            distributor = fr.alptis.remuneration.domain.Distributor.findById(account.payeeId);
+        }
+        return distributor == null || distributor.statementGrouping == null
+                ? fr.alptis.remuneration.domain.StatementGrouping.NONE : distributor.statementGrouping;
+    }
+
+    /**
+     * Returns a line's declension value — its insurer code or its product code — or null when the line
+     * carries no product (BRD-04). Called only when a declension is requested.
+     *
+     * @param line     the commission line
+     * @param grouping the declension preference (by insurer or by product)
+     * @return the declension value, or null
+     */
+    private static String groupValue(CommissionLine line, fr.alptis.remuneration.domain.StatementGrouping grouping) {
+        fr.alptis.remuneration.domain.ProductOption option = line.coverage == null ? null : line.coverage.option;
+        fr.alptis.remuneration.domain.Product product = option == null ? null : option.product;
+        if (product == null) {
+            return null;
+        }
+        if (grouping == fr.alptis.remuneration.domain.StatementGrouping.BY_INSURER) {
+            return product.insurer == null ? null : product.insurer.code;
+        }
+        return product.code;
     }
 
     /**
@@ -97,11 +141,13 @@ public class StatementService {
         BigDecimal total = BigDecimal.ZERO;
         for (CommissionLine line : CommissionLine.<CommissionLine>list(
                 "originProductionCode = ?1 and period = ?2 and status in ?3 order by id", code, period, SHOWN)) {
-            rows.add(new Row(section(line.nature), label(line), line.basisAmount, line.rate, line.amount, line.reason));
+            rows.add(new Row(section(line.nature), label(line), line.basisAmount, line.rate, line.amount, line.reason,
+                    null));
             total = total.add(line.amount == null ? BigDecimal.ZERO : line.amount);
         }
         return new StatementContent("RELEVE-" + memberCode, null, "Code de production " + memberCode,
-                period.periodMonth, rows, total, BigDecimal.ZERO, total);
+                period.periodMonth, rows, total, BigDecimal.ZERO, total,
+                fr.alptis.remuneration.domain.StatementGrouping.NONE.name());
     }
 
     /**
@@ -157,16 +203,17 @@ public class StatementService {
      */
     public String spreadsheet(Long statementId) {
         StatementContent content = render(statementId);
-        StringBuilder csv = new StringBuilder("rubrique;libelle;assiette;taux;montant;motif\n");
+        StringBuilder csv = new StringBuilder("rubrique;libelle;assiette;taux;montant;motif;declinaison\n");
         for (Row row : content.rows()) {
             csv.append(row.section()).append(';').append(row.label()).append(';')
                     .append(plain(row.basis())).append(';').append(plain(row.rate())).append(';')
                     .append(plain(row.amount())).append(';').append(row.reason() == null ? "" : row.reason())
+                    .append(';').append(row.group() == null ? "" : row.group())
                     .append('\n');
         }
-        csv.append("Total de la période;;;;").append(plain(content.periodTotal())).append(";\n");
-        csv.append("Solde antérieur reporté;;;;").append(plain(content.carried())).append(";\n");
-        csv.append("Net payé;;;;").append(plain(content.net())).append(";\n");
+        csv.append("Total de la période;;;;").append(plain(content.periodTotal())).append(";;\n");
+        csv.append("Solde antérieur reporté;;;;").append(plain(content.carried())).append(";;\n");
+        csv.append("Net payé;;;;").append(plain(content.net())).append(";;\n");
         return csv.toString();
     }
 
@@ -247,9 +294,10 @@ public class StatementService {
      * @param rate    the rate, or null
      * @param amount  the amount
      * @param reason  the reason, or null
+     * @param group   the declension value (insurer or product), or null when no declension (BRD-04)
      */
     public record Row(String section, String label, BigDecimal basis, BigDecimal rate, BigDecimal amount,
-                      String reason) {
+                      String reason, String group) {
     }
 
     /**
@@ -263,9 +311,10 @@ public class StatementService {
      * @param periodTotal     the period total
      * @param carried         the carried balance
      * @param net             the net amount
+     * @param grouping        the bordereau declension preference (NONE, BY_INSURER, BY_PRODUCT, BRD-04)
      */
     public record StatementContent(String statementNumber, Integer versionNo, String beneficiary,
                                    java.time.LocalDate month, List<Row> rows, BigDecimal periodTotal,
-                                   BigDecimal carried, BigDecimal net) {
+                                   BigDecimal carried, BigDecimal net, String grouping) {
     }
 }

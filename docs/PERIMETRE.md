@@ -291,7 +291,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | BRD-01 | StatementService, StatementDocuments | #18 | bordereaux | complet — PDF et tableur xlsx réels (produits sans dépendance externe), téléchargeables et archivés avec empreinte |
 | BRD-02 | StatementService (render/section) | #18 | bordereaux | complet — contenu de bordereau par rubriques du §9.5 (commissions, reprises, escomptes, compléments, ajustements, report, net) |
 | BRD-03 | StatementService | #18 | bordereaux | complet |
-| BRD-04 | StatementService | #18 | — | partiel — déclinaison par assureur/produit et multi-entités à vérifier |
+| BRD-04 | StatementService (render, grouping) | #18 | bordereaux | complet — bordereau décliné selon la préférence du distributeur (aucune, par assureur ou par produit) : chaque ligne porte le code assureur ou produit, restitué à l'écran et dans le tableur ; un bordereau est produit par entité (lot et ordre par entité, PAY-08) |
 | BRD-05 | DocumentTemplateService | #58 | document-templates | complet — modèles de documents modifiables par l'administrateur, versionnés |
 | BRD-06 | StatementService (archivage/rectificatif) | #18 | bordereaux | complet |
 | BRD-07 | StatementService (report solde) | #18 | cr60 JUnit | complet |

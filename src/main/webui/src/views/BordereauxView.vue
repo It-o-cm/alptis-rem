@@ -24,6 +24,7 @@ interface Row {
   rate: number | null;
   amount: number;
   reason: string | null;
+  group: string | null;
 }
 
 interface StatementContent {
@@ -35,6 +36,7 @@ interface StatementContent {
   periodTotal: number;
   carried: number;
   net: number;
+  grouping: string;
 }
 
 const session = useSessionStore();
@@ -67,6 +69,7 @@ const rowColumns: Column<Row>[] = [
   { key: 'rate', label: 'Taux', align: 'num', value: (r) => r.rate ?? '—' },
   { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
   { key: 'reason', label: 'Motif', value: (r) => r.reason ?? '—' },
+  { key: 'group', label: 'Déclinaison', value: (r) => r.group ?? '—' },
 ];
 
 /**

@@ -5,8 +5,13 @@ import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.Direction;
+import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
+import fr.alptis.remuneration.domain.Insurer;
 import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.ProductOption;
+import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.domain.StatementGrouping;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.PayeeType;
@@ -105,6 +110,166 @@ class StatementServiceTest {
         statement.status = StatementStatus.DRAFT;
         statement.persist();
         return statement;
+    }
+
+    private long seq = 100;
+
+    /** A product option whose product carries the given code and optional insurer. */
+    private ProductOption optionOf(String productCode, String insurerCode) {
+        Product p = new Product();
+        p.entity = unep();
+        p.code = productCode;
+        p.label = productCode;
+        if (insurerCode != null) {
+            Insurer ins = new Insurer();
+            ins.code = insurerCode;
+            ins.persist();
+            p.insurer = ins;
+        }
+        p.persist();
+        ProductOption option = new ProductOption();
+        option.product = p;
+        option.code = "OPT-" + (seq++);
+        option.persist();
+        return option;
+    }
+
+    /** A coverage carrying the given option (its contract has no own product here). */
+    private Coverage coverageWith(ProductOption option) {
+        Contract contract = new Contract();
+        contract.entity = unep();
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = "C-" + (seq++);
+        contract.persist();
+        Coverage c = new Coverage();
+        c.contract = contract;
+        c.coverageCode = contract.contractNumber + "-C1";
+        c.effectDate = M;
+        c.option = option;
+        c.persist();
+        return c;
+    }
+
+    /** A distributor carrying a bordereau declension preference. */
+    private Distributor distributorWith(StatementGrouping grouping) {
+        Distributor d = new Distributor();
+        d.partnerCode = "D-" + (seq++);
+        d.legalName = "D";
+        d.statementGrouping = grouping;
+        d.persist();
+        return d;
+    }
+
+    /** A persisted statement on an account for a period. */
+    private Statement statementOn(DistributorAccount account, Period period) {
+        Statement s = new Statement();
+        s.entity = unep();
+        s.period = period;
+        s.account = account;
+        s.batchType = BatchType.CYCLE;
+        s.statementNumber = "ST-" + (seq++);
+        s.versionNo = 1;
+        s.level = StatementLevel.DISTRIBUTOR;
+        s.carriedBalance = BigDecimal.ZERO;
+        s.periodTotal = BigDecimal.ZERO;
+        s.netAmount = BigDecimal.ZERO;
+        s.status = StatementStatus.DRAFT;
+        s.persist();
+        return s;
+    }
+
+    /** A persisted period for the default month. */
+    private Period aPeriod() {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = M;
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        period.persist();
+        return period;
+    }
+
+    /** A DISTRIBUTOR-type account pointing at a payee id. */
+    private DistributorAccount distributorAccount(PayeeType type, long payeeId) {
+        DistributorAccount account = new DistributorAccount();
+        account.entity = unep();
+        account.payeeType = type;
+        account.payeeId = payeeId;
+        account.persist();
+        return account;
+    }
+
+    /**
+     * BRD-04: a statement declined by insurer tags each line with its insurer code when the line carries
+     * a product with an insurer, and leaves it blank otherwise (no insurer, no product, no coverage).
+     */
+    @Test
+    @TestTransaction
+    void renders_declension_by_insurer() {
+        Period period = aPeriod();
+        Distributor d = distributorWith(StatementGrouping.BY_INSURER);
+        DistributorAccount account = distributorAccount(PayeeType.DISTRIBUTOR, d.getId());
+        line(period, account, coverageWith(optionOf("P1", "AXA")), LineNature.LINEAR, "30.00");
+        line(period, account, coverageWith(optionOf("P2", null)), LineNature.LINEAR, "20.00");
+        line(period, account, null, LineNature.ADVANCE, "10.00");
+        line(period, account, coverageWith(null), LineNature.MANUAL, "5.00");
+        Statement statement = statementOn(account, period);
+
+        var content = service.render(statement.getId());
+        assertEquals("BY_INSURER", content.grouping());
+        assertEquals("AXA", content.rows().get(0).group());
+        assertEquals(null, content.rows().get(1).group());
+        assertEquals(null, content.rows().get(2).group());
+        assertEquals(null, content.rows().get(3).group());
+        // The CSV carries the declension column.
+        assertTrue(service.spreadsheet(statement.getId()).contains(";declinaison\n"));
+    }
+
+    /**
+     * BRD-04: a statement declined by product tags each line with its product code; a production-code
+     * account resolves its distributor's preference.
+     */
+    @Test
+    @TestTransaction
+    void renders_declension_by_product_through_production_code() {
+        Period period = aPeriod();
+        Distributor d = distributorWith(StatementGrouping.BY_PRODUCT);
+        ProductionCode pc = new ProductionCode();
+        pc.entity = unep();
+        pc.code = "PC-BRD04";
+        pc.distributor = d;
+        pc.persist();
+        DistributorAccount account = distributorAccount(PayeeType.PRODUCTION_CODE, pc.getId());
+        line(period, account, coverageWith(optionOf("PROD-X", null)), LineNature.LINEAR, "40.00");
+        Statement statement = statementOn(account, period);
+
+        var content = service.render(statement.getId());
+        assertEquals("BY_PRODUCT", content.grouping());
+        assertEquals("PROD-X", content.rows().get(0).group());
+    }
+
+    /**
+     * BRD-04: with no distributor, an unknown production code, a group account or a distributor without
+     * preference, the statement is not declined (no group on its lines).
+     */
+    @Test
+    @TestTransaction
+    void renders_without_declension_on_resolution_edges() {
+        Period period = aPeriod();
+        // A production-code account whose production code does not exist.
+        DistributorAccount ghost = distributorAccount(PayeeType.PRODUCTION_CODE, 999999L);
+        line(period, ghost, coverageWith(optionOf("PX", "AXA")), LineNature.LINEAR, "10.00");
+        assertEquals("NONE", service.render(statementOn(ghost, period).getId()).grouping());
+
+        // A group account (neither production code nor distributor).
+        DistributorAccount groupAcct = distributorAccount(PayeeType.GROUP, 7L);
+        line(period, groupAcct, null, LineNature.LINEAR, "10.00");
+        assertEquals("NONE", service.render(statementOn(groupAcct, period).getId()).grouping());
+
+        // A distributor without a declension preference.
+        Distributor plain = distributorWith(null);
+        DistributorAccount acct = distributorAccount(PayeeType.DISTRIBUTOR, plain.getId());
+        line(period, acct, null, LineNature.LINEAR, "10.00");
+        assertEquals("NONE", service.render(statementOn(acct, period).getId()).grouping());
     }
 
     /** Posts a line of a nature on an account. */

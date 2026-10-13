@@ -7,14 +7,14 @@ import { resetDb, seedCycle, USERS } from '../support/helpers';
 // carried balance, the spreadsheet export, publication and the rectificative version (BRD-01,
 // BRD-02, BRD-06, BRD-07, BRD-12).
 //
-// @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-06 @req:BRD-07 @req:BRD-11 @req:BRD-12
+// @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-04 @req:BRD-06 @req:BRD-07 @req:BRD-11 @req:BRD-12
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
   await seedCycle(request);
 });
 
-test('l’opérateur consulte un bordereau, l’exporte, le publie puis le rectifie @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-07 @req:BRD-12 @req:BRD-06 @role-action:OPERATOR-publish-statement @role-action:OPERATOR-rectify-statement', async ({
+test('l’opérateur consulte un bordereau, l’exporte, le publie puis le rectifie @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-04 @req:BRD-07 @req:BRD-12 @req:BRD-06 @role-action:OPERATOR-publish-statement @role-action:OPERATOR-rectify-statement', async ({
   browser,
 }) => {
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
@@ -25,11 +25,13 @@ test('l’opérateur consulte un bordereau, l’exporte, le publie puis le recti
   const firstRow = page.locator('[data-testid^="statement-row-"]').first();
   await expect(firstRow).toBeVisible();
 
-  // Its preview shows the rubric lines and the carried balance / net footer (section 9.5).
+  // Its preview shows the rubric lines, the carried balance / net footer (section 9.5) and the
+  // per-insurer/product declension column (BRD-04).
   await page.locator('[data-testid^="statement-open-"]').first().click();
   await expect(page.getByTestId('statement-detail')).toBeVisible();
   await expect(page.locator('[data-testid^="statement-line-section-"]').first()).not.toBeEmpty();
   await expect(page.getByTestId('statement-net')).not.toBeEmpty();
+  await expect(page.getByTestId('statement-detail')).toContainText('Déclinaison');
 
   // Its spreadsheet export is downloadable and carries the net footer.
   await page.locator('[data-testid^="statement-csv-"]').first().click();
