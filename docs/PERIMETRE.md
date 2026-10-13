@@ -184,7 +184,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | ING-06 | ImportService (relance auto), EventQueryService | #7, #8 | events, held-events | complet — relance serveur, écrans « recherche d'événements » (statut, motif, lignes produites) et « en attente par motif » livrés |
 | ING-07 | ManualEventService | #6 | manual-event | complet — événements et données complémentaires saisissables à la main, tracés |
 | ING-08 | ImportService, AdjustmentImportService | #5, #12 | imports, adjustments | complet — import en masse de données complémentaires (garanties/événements, #5) et d'ajustements (REG-04, #12) |
-| ING-09 | EXTERNAL family, PayeeExternalImporter | #57 | — | partiel — attendu des assureurs non porté comme donnée |
+| ING-09 | ExternalFamily (nature déclarée), CalculationEngine | #57 | cr51 + ing09 JUnit | complet — commissions déjà calculées chargées en ligne `EXTERNAL` et commissions reçues d'assureurs chargées en ligne `INSURER` de sens entrant (la famille EXTERNAL prend la nature déclarée par la règle, §6.10) ; prouvé par `CalculationEngineTest.ing09_insurer_commission_loads_an_insurer_line` et `FamilyProposeTest` |
 | ING-10 | FlowCatalogService | #3, #48 | flux | complet |
 | ING-11 | OpeningBalanceImporter | #51 | reprise | complet |
 
@@ -224,7 +224,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | CAL-10 | CalculationEngine (explication), CommissionLinesResource | #23 | reporting | complet — ligne rattachée à son événement/règle/assiette/taux avec explication, exposée par l'écran détail de ligne |
 | CAL-11 | CalculationEngine, SimulationService | #41 | cr69 JUnit | complet |
 | CAL-12 | CalculationEngine (recalcul partiel) | #9 | calculations, JUnit | complet — recalcul partiel par distributeur, produit ou règle depuis l'écran |
-| CAL-13 | CalculationEngine | #57 | — | partiel — attendu assureur et marge partiellement réalisés (FIN-08) |
+| CAL-13 | CalculationEngine (recordExpected), ReportingService (margin) | #57 | cr33/34/36 + margin JUnit | complet — commission reçue attendue calculée par les règles jumelles de sens INBOUND (P17), conservée avec le résultat du contrôle « reçu ≠ attendu » (§6.6), et marge nette reçu − versé par produit/assureur/distributeur ; prouvés par `SavingsEngineTest.cr33/34/36` et `ReportingServiceTest.margin_on_three_axes` |
 | CAL-14 | AdjustmentService (repaymentSchedule) | #30 | distributor-account | complet — avance exceptionnelle remboursée selon un échéancier d'apurement |
 
 ### 8.5 Ajustements et réclamations (REG)

@@ -646,6 +646,52 @@ class CalculationEngineTest {
     }
 
     /**
+     * ING-09 / section 6.10: an INSURER_COMMISSION event, matched by an inbound rule of the EXTERNAL
+     * family declaring the INSURER nature, loads the received commission as a persisted INSURER line of
+     * inbound direction — the basis of retrocessions, margin and the insurer reconciliation.
+     */
+    @Test
+    @TestTransaction
+    void ing09_insurer_commission_loads_an_insurer_line() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-1", p, null, "P1");
+        CommissionPlan plan = new CommissionPlan();
+        plan.entity = unep();
+        plan.code = "PLAN_IN";
+        plan.label = "Entrant";
+        plan.direction = Direction.INBOUND;
+        plan.vintage = (short) 2026;
+        plan.persist();
+        Rule rule = new Rule();
+        rule.plan = plan;
+        rule.code = "R_INS";
+        rule.label = "Commission reçue";
+        rule.family = RuleFamily.EXTERNAL;
+        rule.persist();
+        RuleVersion v = new RuleVersion();
+        v.rule = rule;
+        v.versionNo = 1;
+        v.status = VersionStatus.ACTIVE;
+        v.scope = "{\"product\":[\"SANTE_SELECT\"],\"eventType\":[\"INSURER_COMMISSION\"]}";
+        v.parameters = "{}";
+        v.exclusionGroup = "BASE";
+        v.priority = 10;
+        v.outputNature = LineNature.INSURER;
+        v.validFrom = MONTH;
+        v.persist();
+        BusinessEvent e = event(c, "E1", EventType.INSURER_COMMISSION, LocalDate.of(2026, 1, 5), null);
+        e.precomputedAmount = new BigDecimal("451.54");
+
+        engine.runReal("UNEP", MONTH);
+
+        List<CommissionLine> lines = lines();
+        assertEquals(1, lines.size());
+        assertEquals(LineNature.INSURER, lines.get(0).nature);
+        assertEquals(Direction.INBOUND, lines.get(0).direction);
+        assertEquals(0, lines.get(0).amount.compareTo(new BigDecimal("451.54")));
+    }
+
+    /**
      * CR-77: a fixed fee of 300 € yields a FEE line with neither rate nor basis.
      */
     @Test

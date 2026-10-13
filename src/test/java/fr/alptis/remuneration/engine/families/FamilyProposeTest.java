@@ -145,4 +145,16 @@ class FamilyProposeTest {
         assertEquals(null, lines.get(0).basisAmount());
         assertEquals(null, lines.get(0).rate());
     }
+
+    /**
+     * Section 6.10 / ING-09: an inbound rule declaring the INSURER nature loads the received insurer
+     * commission as an INSURER line (not a recalculated one), carrying its amount.
+     */
+    @Test
+    void external_loads_a_received_insurer_commission() {
+        List<ProposedLine> lines = external.propose(input(null, null, LineNature.INSURER, null,
+                new BigDecimal("451.54"), null, new BigDecimal("451.54")));
+        assertEquals(LineNature.INSURER, lines.get(0).nature());
+        assertEquals(0, lines.get(0).amount().compareTo(new BigDecimal("451.54")));
+    }
 }

@@ -47,8 +47,10 @@ public class ExternalFamily implements ComputingFamily {
     /**
      * {@inheritDoc}
      *
-     * <p>Produces a single {@code EXTERNAL} line carrying the amount computed outside the system,
-     * without recalculation (CR-51); a missing amount yields zero.</p>
+     * <p>Produces a single line carrying the amount computed outside the system, without recalculation
+     * (CR-51): the line takes the nature the rule declares — {@code EXTERNAL} for a distributor
+     * commission already computed by a third party, {@code INSURER} for a commission received from an
+     * insurer (section 6.10). A missing amount yields zero.</p>
      *
      * @param input the calculation input
      * @return a one-line proposal
@@ -57,11 +59,12 @@ public class ExternalFamily implements ComputingFamily {
     public List<ProposedLine> propose(CalculationInput input) {
         BigDecimal amount = (input.precomputedAmount() == null ? BigDecimal.ZERO : input.precomputedAmount())
                 .setScale(2, RoundingMode.HALF_UP);
-        String explanation = "{\"family\":\"EXTERNAL\",\"basis\":"
+        LineNature nature = input.outputNature() == null ? LineNature.EXTERNAL : input.outputNature();
+        String explanation = "{\"family\":\"EXTERNAL\",\"nature\":\"" + nature.name() + "\",\"basis\":"
                 + (input.precomputedBasis() == null ? "null" : input.precomputedBasis().toPlainString())
                 + ",\"rate\":" + (input.precomputedRate() == null ? "null" : input.precomputedRate().toPlainString())
                 + ",\"amount\":" + amount.toPlainString() + "}";
-        return List.of(new ProposedLine(LineNature.EXTERNAL, input.precomputedBasis(), input.precomputedRate(),
+        return List.of(new ProposedLine(nature, input.precomputedBasis(), input.precomputedRate(),
                 amount, explanation));
     }
 }
