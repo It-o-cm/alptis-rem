@@ -187,7 +187,7 @@ onMounted(load);
         <EntitySelect :id="id" data-testid="fdvp-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="date" v-slot="{ id }">
-        <MonthSelect :id="id" data-testid="fdvp-month" v-model="month" :entity="entity" value-format="date" />
+        <MonthSelect :id="id" data-testid="fdvp-month" v-model="month" :entity="entity" />
       </FormField>
     </FilterBar>
 

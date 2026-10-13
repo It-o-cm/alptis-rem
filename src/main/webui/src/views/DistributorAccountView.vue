@@ -221,7 +221,7 @@ onMounted(loadDebtors);
         <EntitySelect :id="id" data-testid="acc-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="date" v-slot="{ id }">
-        <MonthSelect :id="id" data-testid="acc-month" v-model="month" :entity="entity" value-format="date" />
+        <MonthSelect :id="id" data-testid="acc-month" v-model="month" :entity="entity" />
       </FormField>
       <FormField label="Distributeur" stacked width="short" v-slot="{ id }">
         <DistributorSelect :id="id" data-testid="acc-partner" v-model="partnerCode" allow-empty />

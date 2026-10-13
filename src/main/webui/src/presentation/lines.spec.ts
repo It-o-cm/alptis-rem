@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lineNatureLabel, lineStatusLabel, directionLabel, NATURE_OPTIONS } from './lines';
+import { lineNatureLabel, lineStatusLabel, directionLabel, adjustmentStatusLabel, NATURE_OPTIONS } from './lines';
 
 describe('commission line labels', () => {
   it('labels natures, a dash for none, and echoes an unknown one', () => {
@@ -24,6 +24,16 @@ describe('commission line labels', () => {
     expect(directionLabel('OUTBOUND')).toBe('Sortant');
     expect(directionLabel(null)).toBe('—');
     expect(directionLabel('XXX')).toBe('XXX');
+  });
+
+  it('labels adjustment statuses, a dash for none, and echoes an unknown one', () => {
+    expect(adjustmentStatusLabel('DRAFT')).toBe('Brouillon');
+    expect(adjustmentStatusLabel('SUBMITTED')).toBe('Soumis');
+    expect(adjustmentStatusLabel('APPROVED')).toBe('Approuvé');
+    expect(adjustmentStatusLabel('REJECTED')).toBe('Rejeté');
+    expect(adjustmentStatusLabel('APPLIED')).toBe('Appliqué');
+    expect(adjustmentStatusLabel(null)).toBe('—');
+    expect(adjustmentStatusLabel('XXX')).toBe('XXX');
   });
 
   it('offers every nature as a filter option with its label', () => {

@@ -254,7 +254,7 @@ onMounted(async () => {
           <EntitySelect :id="id" data-testid="ctl-entity" v-model="entity" />
         </FormField>
         <FormField label="Mois" stacked width="short" v-slot="{ id }">
-          <MonthSelect :id="id" data-testid="ctl-month" v-model="month" :entity="entity" value-format="date" />
+          <MonthSelect :id="id" data-testid="ctl-month" v-model="month" :entity="entity" />
         </FormField>
         <AppButton variant="secondary" data-testid="ctl-refresh" @click="loadAnomalies">Rafraîchir</AppButton>
         <AppButton v-if="canOperate()" data-testid="ctl-run" @click="run">Lancer les contrôles</AppButton>

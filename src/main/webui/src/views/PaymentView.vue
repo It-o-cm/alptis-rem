@@ -253,7 +253,7 @@ onMounted(loadLots);
         <EntitySelect :id="id" data-testid="pay-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="short" v-slot="{ id }">
-        <MonthSelect :id="id" data-testid="pay-month" v-model="month" :entity="entity" value-format="date" />
+        <MonthSelect :id="id" data-testid="pay-month" v-model="month" :entity="entity" />
       </FormField>
     </FilterBar>
 

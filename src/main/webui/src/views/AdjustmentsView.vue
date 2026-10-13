@@ -4,7 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { adjustmentStatusLabel } from '../presentation/lines';
+import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface AdjustmentView {
@@ -149,10 +150,10 @@ onMounted(load);
       @search="load"
     >
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="adj-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="adj-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="adj-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="adj-month" v-model="month" :entity="entity" />
       </FormField>
     </FilterBar>
 
@@ -211,7 +212,7 @@ onMounted(load);
         :row-testid="(a) => `adjustment-row-${a.id}`"
       >
         <template #cell-status="{ row }">
-          <span :data-testid="`adjustment-status-${row.id}`">{{ row.status }}</span>
+          <span :data-testid="`adjustment-status-${row.id}`">{{ adjustmentStatusLabel(row.status) }}</span>
         </template>
         <template #actions="{ row }">
           <AppButton

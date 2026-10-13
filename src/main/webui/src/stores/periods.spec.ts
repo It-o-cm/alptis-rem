@@ -29,11 +29,12 @@ describe('periods store', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
+        // The server returns each month as the first-of-month ISO date (section 9.8), newest first.
         okResponse([
-          { entityCode: 'ALPTIS_ASSURANCES', month: '2026-08' },
-          { entityCode: 'ALPTIS_ASSURANCES', month: '2026-09' },
-          { entityCode: 'UNEP', month: '2026-09' },
-          { entityCode: 'UNEP', month: '2026-07' },
+          { entityCode: 'ALPTIS_ASSURANCES', month: '2026-08-01' },
+          { entityCode: 'ALPTIS_ASSURANCES', month: '2026-09-01' },
+          { entityCode: 'UNEP', month: '2026-09-01' },
+          { entityCode: 'UNEP', month: '2026-07-01' },
         ]),
       ),
     );
@@ -41,9 +42,9 @@ describe('periods store', () => {
     await periods.ensure();
 
     expect(periods.loaded).toBe(true);
-    expect(periods.monthsFor()).toEqual(['2026-09', '2026-08', '2026-07']);
-    expect(periods.monthsFor('ALPTIS_ASSURANCES')).toEqual(['2026-09', '2026-08']);
-    expect(periods.monthsFor('UNEP')).toEqual(['2026-09', '2026-07']);
+    expect(periods.monthsFor()).toEqual(['2026-09-01', '2026-08-01', '2026-07-01']);
+    expect(periods.monthsFor('ALPTIS_ASSURANCES')).toEqual(['2026-09-01', '2026-08-01']);
+    expect(periods.monthsFor('UNEP')).toEqual(['2026-09-01', '2026-07-01']);
   });
 
   it('loads only once', async () => {

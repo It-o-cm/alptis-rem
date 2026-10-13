@@ -32,6 +32,15 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Annulée',
 };
 
+/** French labels of the manual-adjustment statuses (section 5.6). */
+const ADJUSTMENT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  SUBMITTED: 'Soumis',
+  APPROVED: 'Approuvé',
+  REJECTED: 'Rejeté',
+  APPLIED: 'Appliqué',
+};
+
 /** French labels of the commission direction. */
 const DIRECTION_LABELS: Record<string, string> = {
   INBOUND: 'Entrant',
@@ -54,6 +63,12 @@ export function lineStatusLabel(status: string | null): string {
 export function directionLabel(direction: string | null): string {
   if (direction === null) return '—';
   return DIRECTION_LABELS[direction] ?? direction;
+}
+
+/** French label of a manual-adjustment status, a dash for none, or the raw code when unknown. */
+export function adjustmentStatusLabel(status: string | null): string {
+  if (status === null) return '—';
+  return ADJUSTMENT_STATUS_LABELS[status] ?? status;
 }
 
 /** The commission-line natures offered as a filter, with their French labels (ADM-03). */

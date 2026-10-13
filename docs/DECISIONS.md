@@ -187,3 +187,26 @@ et poussait la page au-delà de la fenêtre (défilement horizontal de page). Co
 en faisant du conteneur `.ui-table__scroll` un bloc contenant (`position: relative`)
 pour l'élément absolu : la page ne défile plus horizontalement, le tableau défile
 dans son propre cadre. Vérifié par `ergonomie-alignment.spec.ts` en 1440 et 1024.
+
+## 2026-10-13 — ADM-03 : une seule forme de mois, option `value-format` retirée
+
+Section / sujet : ADM-03 (sélecteurs en liste), `MonthSelect`, `/periods`.
+
+Un passage précédent avait introduit une option `value-format` (`month`/`date`) sur
+`MonthSelect`, au motif supposé que `/periods` rendait le mois en `AAAA-MM` et que
+certains points d'accès (ajustements, marge, simulation FDV) attendaient `AAAA-MM-01`.
+Cette lecture est fausse, vérifiée en frappant le serveur `dev` :
+
+- `GET /api/ui/v1/periods` → `{"month":"2026-09-01",…}` (date premier-du-mois).
+- `controls/ALPTIS_ASSURANCES/2026-09/anomalies` → **500** ; `.../2026-09-01/anomalies` → **200**.
+- `reporting/ALPTIS_ASSURANCES/search?month=2026-09` → **500** ; `?month=2026-09-01` → **200**.
+
+Il n'existe donc qu'une forme de mois : la date `AAAA-MM-01`, que `/periods` rend et que
+tous les points d'accès analysent par `LocalDate.parse`. Le mode `date` de `value-format`
+ajoutait un second `-01` (`2026-09-01-01`), produisant des options cassées dès qu'on les
+sélectionnait (le défaut codé en dur masquait le défaut : il n'était jamais soumis par la
+suite e2e, qui ne changeait pas le mois par la liste). Décision : retirer `value-format`,
+lier la date du serveur telle quelle dans `MonthSelect`, et convertir AdjustmentsView et
+MarginView qui changent réellement de mois par la liste (prouvé par `adjustments.spec` —
+bascule sur octobre après contrepassation — et `reporting.spec` — marge). `monthLabel`
+accepte les deux formes par prudence d'affichage.

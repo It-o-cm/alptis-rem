@@ -133,14 +133,17 @@ test('le contrôleur Finance lit la marge et le rapprochement assureurs @screen:
   // The full demo runs the annual close, which records the expected-vs-received insurer control.
   await loadDemo(page.request);
   await page.goto('/marge');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('margin-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(page.locator('[data-testid^="margin-product-"]').first()).toBeVisible();
   await expect(page.getByTestId('chart-margin-product')).toBeVisible();
   // FIN-08: the insurer reconciliation (expected vs received) section is shown, with at least one
   // insurer row recorded by the annual close.
   await expect(page.getByTestId('insurer-recon')).toBeVisible();
   await expect(page.locator('[data-testid^="recon-row-"]').first()).toBeVisible();
-  // FIN-08 settlement: Finance records the insurer's payment advice for the month.
-  await page.getByTestId('margin-month').fill('2026-09-01');
+  // FIN-08 settlement: Finance records the insurer's payment advice for the month, picked from the
+  // month list by its French name (ADM-03).
+  await page.getByTestId('margin-month').selectOption('2026-09-01');
   await page.getByTestId('margin-settle').click();
   await expect(page.getByTestId('margin-message')).toContainText('Règlement assureur enregistré');
   await finance.close();

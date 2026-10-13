@@ -18,6 +18,9 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
   const page = await operator.newPage();
   await page.goto('/ajustements');
+  // ADM-03: the entity and month are chosen from lists shown by their names, never typed as codes.
+  await expect(page.getByTestId('adj-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(page.getByTestId('adj-month').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
   await page.getByTestId('adj-type').selectOption('CORRECTION');
   await page.getByTestId('adj-amount').fill('9');
   await page.getByTestId('adj-payee').fill('1');
@@ -25,7 +28,8 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   // REG-02: the adjustment accepts an attachment reference, shown back in the list.
   await page.getByTestId('adj-attachment').fill('GED-2026-07-123');
   await page.getByTestId('adj-submit').click();
-  await expect(page.locator('[data-testid^="adjustment-status-"]').first()).toContainText('SUBMITTED');
+  // ADM-03: the status is shown by its French label, not the raw enum code.
+  await expect(page.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Soumis');
   await expect(page.getByText('GED-2026-07-123').first()).toBeVisible();
   await operator.close();
 
@@ -33,7 +37,7 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   const adminPage = await admin.newPage();
   await adminPage.goto('/ajustements');
   await adminPage.locator('[data-testid^="adjustment-approve-"]').first().click();
-  await expect(adminPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('APPLIED');
+  await expect(adminPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Appliqué');
   await admin.close();
 });
 
@@ -54,7 +58,7 @@ test('l’opérateur importe des ajustements en masse @screen:adjustments @req:R
     buffer: Buffer.from(csv, 'utf-8'),
   });
   await expect(page.getByTestId('adj-message')).toContainText('1 ajustement(s) importé(s)');
-  await expect(page.locator('[data-testid^="adjustment-status-"]').first()).toContainText('SUBMITTED');
+  await expect(page.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Soumis');
   await operator.close();
 });
 
@@ -77,10 +81,13 @@ test('un ajustement à contrepassation automatique crée sa reprise au mois suiv
   const adminPage = await admin.newPage();
   await adminPage.goto('/ajustements');
   await adminPage.locator('[data-testid^="adjustment-approve-"]').first().click();
-  await expect(adminPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('APPLIED');
+  await expect(adminPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Appliqué');
 
-  // The reversal lives on the next period (October): switch the month and find the clawback.
-  await adminPage.getByTestId('adj-month').fill('2026-10-01');
+  // The reversal lives on the next period (October), which the approval opened: reload so the month
+  // catalogue now offers it, pick it from the list (ADM-03) and find the clawback.
+  await adminPage.goto('/ajustements');
+  await expect(adminPage.getByTestId('adj-month').locator('option', { hasText: 'octobre 2026' })).toHaveCount(1);
+  await adminPage.getByTestId('adj-month').selectOption('2026-10-01');
   await adminPage.getByTestId('adj-refresh').click();
   await expect(adminPage.getByText('Contrepassation')).toBeVisible();
   await admin.close();

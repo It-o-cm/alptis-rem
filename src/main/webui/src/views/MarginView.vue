@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 import HBarChart from '../components/charts/HBarChart.vue';
 
@@ -137,10 +137,10 @@ onMounted(load);
       @search="load"
     >
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="margin-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="margin-entity" v-model="entity" />
       </FormField>
       <FormField label="Mois (règlement assureur)" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="margin-month" type="text" v-model="month" />
+        <MonthSelect :id="id" data-testid="margin-month" v-model="month" :entity="entity" />
       </FormField>
     </FilterBar>
 
