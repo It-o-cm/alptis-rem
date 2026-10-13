@@ -244,6 +244,24 @@ async function addVersion(): Promise<void> {
 }
 
 /**
+ * Generates the amendment (avenant) of a version and sends it for signature (PAR-11).
+ * @param versionNo the version number
+ */
+async function generateAmendment(versionNo: number): Promise<void> {
+  if (selectedPlan.value === null || selectedRule.value === null) {
+    return;
+  }
+  try {
+    const amendment = await apiPost<{ reference: string; signatureStatus: string }>(
+      `/api/ui/v1/plans/${selectedPlan.value}/rules/${selectedRule.value}/versions/${versionNo}/amendment`
+      + `?entityCode=${entityCode()}`, {});
+    ok(`Avenant ${amendment.reference} généré et envoyé en signature (${amendment.signatureStatus}).`);
+  } catch (e) {
+    fail(e);
+  }
+}
+
+/**
  * Approves a draft version of the selected rule.
  * @param versionNo the version number to approve
  */
@@ -355,6 +373,10 @@ onMounted(loadPlans);
           <AppButton v-if="canEdit() && row.status === 'DRAFT'" variant="secondary"
                      :data-testid="`version-approve-${row.versionNo}`" @click="approve(row.versionNo)">
             Approuver
+          </AppButton>
+          <AppButton v-if="canEdit()" variant="secondary"
+                     :data-testid="`version-amendment-${row.versionNo}`" @click="generateAmendment(row.versionNo)">
+            Générer l'avenant
           </AppButton>
         </template>
       </DataTable>

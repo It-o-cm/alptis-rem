@@ -3,6 +3,8 @@ package fr.alptis.remuneration.rules;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.alptis.remuneration.domain.Agreement;
+import fr.alptis.remuneration.domain.AgreementType;
+import fr.alptis.remuneration.domain.SignatureStatus;
 import fr.alptis.remuneration.domain.CommissionPlan;
 import fr.alptis.remuneration.domain.ConflictException;
 import fr.alptis.remuneration.domain.DateTimeProvider;
@@ -258,6 +260,66 @@ public class RuleConfigService {
         audit.record(currentUser.username(), version.rule.plan.entity, "APPROVE_RULE_VERSION", "RuleVersion",
                 version.getId(), "\"DRAFT\"", "\"APPROVED\"");
         return toVersionView(version, List.of());
+    }
+
+    /**
+     * Generates the amendment (avenant) founding a rule version from its parameters and records it as
+     * sent for electronic signature (PAR-11): an {@link Agreement} of the matching amendment type is
+     * created, unsigned (awaiting signature), carrying the generated document reference. The electronic
+     * signature itself is out of the dev profile (section 8 of the brief); the amendment waits in the
+     * {@code NOT_SIGNED} state until its signature is recorded.
+     *
+     * @param entityCode the entity code
+     * @param planCode   the plan code
+     * @param ruleCode   the rule code
+     * @param versionNo  the rule version number
+     * @return the generated amendment view
+     */
+    @Transactional
+    public AmendmentView generateAmendment(String entityCode, String planCode, String ruleCode, int versionNo) {
+        RuleVersion version = requireVersion(entityCode, planCode, ruleCode, versionNo);
+        LegalEntity entity = version.rule.plan.entity;
+        AgreementType type = amendmentTypeOf(version.outputNature);
+        String reference = entity.code + "_AVENANT_" + ruleCode + "_v" + versionNo;
+        Agreement agreement = new Agreement();
+        agreement.entity = entity;
+        agreement.agreementType = type;
+        agreement.reference = reference;
+        agreement.documentRef = reference + ".pdf";
+        agreement.validFrom = version.validFrom;
+        agreement.validTo = version.validTo;
+        agreement.signatureStatus = SignatureStatus.NOT_SIGNED;
+        agreement.setCreatedAt(clock.now());
+        agreement.persist();
+        audit.record(currentUser.username(), entity, "GENERATE_AMENDMENT", "Agreement", agreement.getId(), null,
+                "{\"reference\":\"" + reference + "\",\"type\":\"" + type.name() + "\"}");
+        return new AmendmentView(reference, type.name(), agreement.signatureStatus.name(), agreement.documentRef);
+    }
+
+    /**
+     * Maps a rule's produced nature to the amendment type it founds: a surcommission distributeur or
+     * prévoyance amendment, else a partnership agreement.
+     *
+     * @param nature the rule version's output nature
+     * @return the amendment type
+     */
+    private static AgreementType amendmentTypeOf(LineNature nature) {
+        return switch (nature) {
+            case RCD -> AgreementType.RCD_AMENDMENT;
+            case RCP -> AgreementType.RCP_AMENDMENT;
+            default -> AgreementType.PARTNERSHIP;
+        };
+    }
+
+    /**
+     * The generated amendment (PAR-11).
+     *
+     * @param reference       the amendment reference
+     * @param type            the amendment type
+     * @param signatureStatus the signature status (awaiting signature)
+     * @param documentRef     the generated document reference
+     */
+    public record AmendmentView(String reference, String type, String signatureStatus, String documentRef) {
     }
 
     /**

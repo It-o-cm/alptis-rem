@@ -5,7 +5,7 @@ import { resetDb, USERS } from '../support/helpers';
 // Per-screen tests for the rule-configuration screen (PAR-01 to PAR-05, PAR-12): plans, rules,
 // versions, the approval by a second administrator and the conflict display.
 //
-// @screen:rules @req:PAR-01 @req:PAR-03 @req:PAR-04 @req:PAR-05 @req:PAR-06 @req:PAR-07 @req:PAR-08 @req:PAR-12
+// @screen:rules @req:PAR-01 @req:PAR-03 @req:PAR-04 @req:PAR-05 @req:PAR-06 @req:PAR-07 @req:PAR-08 @req:PAR-11 @req:PAR-12
 
 test.beforeEach(async ({ request }) => {
   await resetDb(request);
@@ -13,7 +13,7 @@ test.beforeEach(async ({ request }) => {
 
 test.describe('Paramétrage des règles', () => {
   test('crée un plan, une règle et une version, approuvée par un second administrateur '
-    + '@screen:rules @req:PAR-01 @req:PAR-04 @path:PAR-01', async ({ browser }) => {
+    + '@screen:rules @req:PAR-01 @req:PAR-04 @req:PAR-11 @path:PAR-01', async ({ browser }) => {
     const adminCtx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
     const admin = await adminCtx.newPage();
     await admin.goto('/regles');
@@ -49,6 +49,11 @@ test.describe('Paramétrage des règles', () => {
     await admin2.getByTestId('rule-open-E2E_RULE').click();
     await admin2.getByTestId('version-approve-1').click();
     await expect(admin2.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('APPROVED');
+
+    // PAR-11: generate the amendment from the version and send it for signature.
+    await admin2.getByTestId('version-amendment-1').click();
+    await expect(admin2.getByTestId('rules-message')).toContainText('Avenant');
+    await expect(admin2.getByTestId('rules-message')).toContainText('signature');
 
     await adminCtx.close();
     await admin2Ctx.close();

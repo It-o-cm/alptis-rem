@@ -202,7 +202,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | PAR-08 | RuleConfigService, CalculationEngine | #38 | — | complet — politique de reprise + mode `DEFER`/`FORFEIT` de la condition de versement (§6.7) désormais honorés par le moteur |
 | PAR-09 | AgreementService | #31, #32 | advance-agreements | complet — saisie et suivi des conventions d'escompte (statut, plafond, compteurs) |
 | PAR-10 | AgreementService | #40 | enrollments | complet |
-| PAR-11 | — | — | — | partiel — génération d'avenant absente ; envoi en signature électronique hors périmètre dev (LANCEMENT §6) |
+| PAR-11 | RuleConfigService (generateAmendment) | #38 | rules | complet — l'avenant est généré depuis une version de règle (type selon la nature : avenant RCD/RCP ou convention), avec sa référence de document, et créé en attente de signature (`NOT_SIGNED`) ; la signature électronique elle-même est hors profil dev (§8 du cadrage) |
 | PAR-12 | RuleConfigService (duplicate) | #36 | rules | complet |
 | PAR-13 | SimulationService | #41 | simulation | complet |
 | PAR-14 | RuleConfigService (plausibility) | #38 | rules | complet |

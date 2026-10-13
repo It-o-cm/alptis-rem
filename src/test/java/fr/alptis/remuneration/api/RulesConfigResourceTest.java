@@ -87,6 +87,11 @@ class RulesConfigResourceTest {
         admin2().when().post("/api/ui/v1/plans/P1/rules/R1/versions/1/approve?entityCode=ALPTIS_ASSURANCES")
                 .then().statusCode(200).body("status", is("APPROVED"));
 
+        // PAR-11: the amendment is generated from the version and sent for signature (unsigned).
+        admin().when().post("/api/ui/v1/plans/P1/rules/R1/versions/1/amendment?entityCode=ALPTIS_ASSURANCES")
+                .then().statusCode(201).body("reference", is("ALPTIS_ASSURANCES_AVENANT_R1_v1"))
+                .body("signatureStatus", is("NOT_SIGNED"));
+
         admin().contentType(ContentType.JSON)
                 .body("{\"entityCode\":\"ALPTIS_ASSURANCES\",\"newCode\":\"P1_2027\",\"newVintage\":2027}")
                 .when().post("/api/ui/v1/plans/P1/duplicate").then().statusCode(201).body("vintage", is(2027));

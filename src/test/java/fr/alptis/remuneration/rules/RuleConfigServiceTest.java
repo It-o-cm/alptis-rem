@@ -78,6 +78,41 @@ class RuleConfigServiceTest {
                 null);
     }
 
+    /** Builds a version input declaring the given output nature. */
+    private static VersionInput versionOfNature(LineNature nature) {
+        return new VersionInput(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), VersionAnchor.EVENT_DATE,
+                "{\"product\":[\"X\"]}", List.of("PREMIUM_COLLECTED"), RuleBasis.COLLECTED_PREMIUM, nature,
+                "{\"allowedRates\":[0.15]}", null, null, 10, "BASE", null);
+    }
+
+    /**
+     * PAR-11: an amendment is generated from a rule version and sent for signature, unsigned, with the
+     * type that matches the version's nature (RCD, RCP, else a partnership) and a generated document
+     * reference; an unknown version is rejected.
+     */
+    @Test
+    @TestTransaction
+    void generates_an_amendment_from_a_version() {
+        RuleConfigService svc = unep();
+        svc.createPlan("UNEP", "PLAN_AV", "Plan avenant", Direction.INBOUND, (short) 2026);
+        svc.createRule("UNEP", "PLAN_AV", "RLIN", "Linéaire", RuleFamily.LINEAR);
+        svc.addVersion("UNEP", "PLAN_AV", "RLIN", versionOfNature(LineNature.LINEAR));
+        svc.createRule("UNEP", "PLAN_AV", "RRCD", "Surcom D", RuleFamily.LINEAR);
+        svc.addVersion("UNEP", "PLAN_AV", "RRCD", versionOfNature(LineNature.RCD));
+        svc.createRule("UNEP", "PLAN_AV", "RRCP", "Surcom P", RuleFamily.LINEAR);
+        svc.addVersion("UNEP", "PLAN_AV", "RRCP", versionOfNature(LineNature.RCP));
+
+        var linear = svc.generateAmendment("UNEP", "PLAN_AV", "RLIN", 1);
+        assertEquals("PARTNERSHIP", linear.type());
+        assertEquals("NOT_SIGNED", linear.signatureStatus());
+        assertEquals("UNEP_AVENANT_RLIN_v1", linear.reference());
+        assertEquals("UNEP_AVENANT_RLIN_v1.pdf", linear.documentRef());
+        assertEquals("RCD_AMENDMENT", svc.generateAmendment("UNEP", "PLAN_AV", "RRCD", 1).type());
+        assertEquals("RCP_AMENDMENT", svc.generateAmendment("UNEP", "PLAN_AV", "RRCP", 1).type());
+
+        assertThrows(ResourceNotFoundException.class, () -> svc.generateAmendment("UNEP", "PLAN_AV", "RLIN", 99));
+    }
+
     /**
      * Creates a plan, a rule and a draft version, validating its parameters against the family schema.
      */

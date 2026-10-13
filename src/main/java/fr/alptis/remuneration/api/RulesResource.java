@@ -182,6 +182,26 @@ public class RulesResource {
     }
 
     /**
+     * Generates the amendment (avenant) of a rule version and sends it for signature (PAR-11).
+     *
+     * @param planCode   the plan code
+     * @param ruleCode   the rule code
+     * @param versionNo  the version number
+     * @param entityCode the entity code
+     * @return a 201 response with the generated amendment
+     */
+    @POST
+    @Path("/plans/{planCode}/rules/{ruleCode}/versions/{versionNo}/amendment")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed("BUSINESS_ADMIN")
+    public Response generateAmendment(@PathParam("planCode") String planCode, @PathParam("ruleCode") String ruleCode,
+                                      @PathParam("versionNo") int versionNo,
+                                      @jakarta.ws.rs.QueryParam("entityCode") String entityCode) {
+        RuleConfigService.AmendmentView view = service.generateAmendment(entityCode, planCode, ruleCode, versionNo);
+        return Response.status(Response.Status.CREATED).entity(view).build();
+    }
+
+    /**
      * Returns the plausibility alerts (PAR-14) for a parameter payload.
      *
      * @param request the plausibility request
