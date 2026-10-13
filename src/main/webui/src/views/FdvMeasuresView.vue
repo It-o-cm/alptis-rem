@@ -4,7 +4,7 @@ import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { measureTypeLabel } from '../presentation/salesforce';
 import { formatAmount } from '../presentation/format';
-import { AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface Measure {
@@ -59,7 +59,7 @@ onMounted(load);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="fdvm-refresh" :resettable="false" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="fdvm-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="fdvm-entity" v-model="entity" />
       </FormField>
     </FilterBar>
 

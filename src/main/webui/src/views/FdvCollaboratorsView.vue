@@ -5,7 +5,7 @@ import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { jobCodeLabel, JOB_CODES } from '../presentation/salesforce';
 import {
-  AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading,
+  AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading,
 } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -146,7 +146,7 @@ onMounted(load);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="fdvcol-refresh" :resettable="false" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="fdvcol-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="fdvcol-entity" v-model="entity" />
       </FormField>
     </FilterBar>
 

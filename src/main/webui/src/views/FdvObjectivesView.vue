@@ -6,7 +6,7 @@ import { canEditEntityParameters } from '../presentation/access';
 import { jobCodeLabel, JOB_CODES, objectiveTypeLabel, OBJECTIVE_TYPES } from '../presentation/salesforce';
 import { formatAmount } from '../presentation/format';
 import {
-  AppButton, AppCard, AppForm, AppMessage, DataTable, FilterBar, FormField, PageHeading,
+  AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading,
 } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -90,7 +90,7 @@ onMounted(load);
 
     <FilterBar :loading="loading" search-label="Rafraîchir" search-testid="fdvo-refresh" :resettable="false" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="fdvo-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="fdvo-entity" v-model="entity" />
       </FormField>
     </FilterBar>
 

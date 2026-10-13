@@ -390,10 +390,6 @@ p.ex. `en-plan`/`en-rule` d'EnrollmentsView, `v-scope` de RulesView) :
 - DashboardsView : `dash-entity`, `dash-product`, `dash-distributor`.
 - EnrollmentsView : `en-plan`, `en-rule`.
 - ExportsView : `exports-entity`, `exports-period`.
-- FdvCollaboratorsView : `fdvcol-entity`.
-- FdvCommercialView : `fdvc-entity`.
-- FdvMeasuresView : `fdvm-entity`.
-- FdvObjectivesView : `fdvo-entity`.
 - ManualEventView : `field-coverage`, `cov-coverage`, `cov-product`, `cov-production`, `cov-source`, `cov-contract`, `cov-holder`.
 - MarginView : `margin-entity`, `margin-month` (mois `AAAA-MM-01`).
 - ParameterTransferView : `pt-entity`, `pt-plan` (`pt-newcode` reste libre : nouveau code).
@@ -404,7 +400,8 @@ RoleMappingsView (entité ; rôle et entité au libellé dans le formulaire et l
 CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, RepriseView, IndicatorsView
 (entité) ; AccountingView, ControlsView, PaymentView, FdvPlanView, FdvValidationView (entité + mois
 `AAAA-MM-01` via `MonthSelect value-format="date"`) ; DistributorAccountView (entité + mois +
-distributeur via `DistributorSelect`). Chacun porte son assertion ADM-03 dans son test de bout en bout.
+distributeur via `DistributorSelect`) ; FdvCollaboratorsView, FdvCommercialView, FdvMeasuresView,
+FdvObjectivesView (entité). Chacun porte son assertion ADM-03 dans son test de bout en bout.
 Le `MonthSelect` gère les deux formats de valeur (`AAAA-MM` / `AAAA-MM-01`) ; `monthLabel` accepte les
 deux. Le jeu `seedCycle` relie désormais `P13897` à son entité (`DistributorEntity` ACTIVE) pour qu'il
 soit atteignable depuis la recherche de distributeurs qui alimente le sélecteur.

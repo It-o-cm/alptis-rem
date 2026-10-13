@@ -4,7 +4,7 @@ import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
 import GaugeChart from '../components/charts/GaugeChart.vue';
-import { AppButton, AppCard, AppMessage, DataTable, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface Simulation {
@@ -96,7 +96,7 @@ async function simulate(): Promise<void> {
 
     <FilterBar :loading="loading" :resettable="false" search-label="Afficher" search-testid="fdvc-load" @search="load">
       <FormField label="Entité" stacked width="short" v-slot="{ id }">
-        <input :id="id" data-testid="fdvc-entity" type="text" v-model="entity" />
+        <EntitySelect :id="id" data-testid="fdvc-entity" v-model="entity" />
       </FormField>
       <FormField label="Matricule" stacked width="short" v-slot="{ id }">
         <input :id="id" data-testid="fdvc-id" type="text" v-model="externalId" />

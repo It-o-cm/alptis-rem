@@ -78,6 +78,8 @@ test('le commercial consulte son variable et le simule @screen:fdvCommercial @re
   const rep = await browser.newContext({ httpCredentials: USERS.salesRep });
   const page = await rep.newPage();
   await page.goto('/fdv/commercial');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('fdvc-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await page.getByTestId('fdvc-id').fill('C-DEMO');
   await page.getByTestId('fdvc-load').click();
   await expect(page.locator('[data-testid^="my-result-"]').first()).toBeVisible();
@@ -99,6 +101,8 @@ test('l’administrateur crée puis modifie un collaborateur @screen:fdvCollabor
   const page = await admin.newPage();
   await page.goto('/fdv/collaborateurs');
   await expect(page.getByTestId('page-title')).toHaveText('Collaborateurs');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('fdvcol-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
 
   // Create a collaborator.
   await page.getByTestId('collab-external-id').fill('E2E-C1');
@@ -132,6 +136,8 @@ test('l’administrateur consulte les mesures reçues @screen:fdvMeasures @req:F
   const page = await admin.newPage();
   await page.goto('/fdv/mesures');
   await expect(page.getByTestId('page-title')).toHaveText('Mesures reçues');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('fdvm-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   // The demo seeds production and absence measures for the collaborators.
   const row = page.locator('[data-testid^="measure-row-"]').first();
   await expect(row).toBeVisible();
@@ -164,6 +170,8 @@ test('l’administrateur crée un objectif collectif versionné @screen:fdvObjec
   const page = await admin.newPage();
   await page.goto('/fdv/objectifs');
   await expect(page.getByTestId('page-title')).toHaveText('Objectifs');
+  // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
+  await expect(page.getByTestId('fdvo-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
 
   // A collective objective (no collaborator) at version 1.
   await page.getByTestId('obj-type').selectOption('COLLECTIVE_QUANTITATIVE');
