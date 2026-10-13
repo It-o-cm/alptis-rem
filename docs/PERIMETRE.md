@@ -243,7 +243,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | N° | Classes serveur | Écran | Tests | État |
 | --- | --- | --- | --- | --- |
 | CTL-01 | ControlCatalogService, ControlService (edit) | #11 | controls | complet — catalogue éditable par le métier (gravité, activation, paramètres) |
-| CTL-02 | ControlService | #10 | controls | partiel — couverture de toutes les familles de contrôle à vérifier |
+| CTL-02 | ControlService, ControlCatalogService | #10 | controls, cycle JUnit | complet — les contrôles listés en §8.6 sont livrés dans les dix familles (complétude, qualité des données, calcul, escompte, reprises, surcommissions, comptes, paiement, comptabilité, flux externes), soit 33 contrôles paramétrables ; chacun évalué par `ControlService.run`, prouvé jambe par jambe par `ControlFamiliesTest`, et listé à l'écran du catalogue (controls.spec, catalog-row par famille) |
 | CTL-03 | ControlService (checklist) | #10 | controls | complet — liste de contrôle par période, à cocher, tracée |
 | CTL-04 | ControlService (edit → version), CycleQueryService (versions) | #11 | controls | complet — versionnement des contrôles (nouvelle version à chaque édition, historique consultable) |
 | CTL-05 | ControlService (décision tracée) | #10 | controls | complet |

@@ -31,8 +31,8 @@ class ControlCatalogServiceTest {
         entity.name = "Contrôles";
         entity.persist();
 
-        assertEquals(5, service.seed(entity));
-        assertEquals(5, ControlDefinition.count("entity = ?1", entity));
+        assertEquals(33, service.seed(entity));
+        assertEquals(33, ControlDefinition.count("entity = ?1", entity));
         assertEquals(0, service.seed(entity));
         assertEquals(0, service.seed(null));
     }

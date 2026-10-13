@@ -127,11 +127,14 @@ public class DemoCycleRunner {
      */
     private void configureControlSeverities(DemoWorld world) {
         for (LegalEntity entity : world.entities.values()) {
+            // The healthy demo data must flow through the cycle, so the whole catalogue warns by
+            // default; the narrative then promotes one anomaly to blocking and one to information to
+            // showcase the three severities. The blocking capability itself is proven by the unit tests.
+            for (ControlDefinition control : ControlDefinition.<ControlDefinition>list("entity = ?1", entity)) {
+                control.severity = ControlSeverity.WARNING;
+            }
             severity(entity, "DATA-FUTURE", ControlSeverity.BLOCKING);
             severity(entity, "ACCOUNT-DEBTOR", ControlSeverity.INFO);
-            severity(entity, "DATA-PREMIUM", ControlSeverity.WARNING);
-            severity(entity, "CALC-NO-RULE", ControlSeverity.WARNING);
-            severity(entity, "CLAWBACK-EXCESS", ControlSeverity.WARNING);
         }
     }
 
