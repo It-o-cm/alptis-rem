@@ -349,7 +349,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | FDV-03 | SalesForceService (createObjective), SalesForceQueryService | #69 | fdv | complet — objectifs individuels/collectifs, quantitatifs/qualitatifs, par poste et période, versionnés en ajout seul |
 | FDV-04 | SalesForceService (savePlan) | #70 | fdv | complet — gestion des plans par poste et composante : enveloppe, mensualité, barèmes/critères/règles d'absence (paramètres JSON) et validité datée |
 | FDV-05 | SalesForceService (runMonth) | #71 | cr88 JUnit | complet |
-| FDV-06 | — | #73 | — | absent — régularisation annuelle |
+| FDV-06 | SalesForceService (runAnnualRegularization) | #70 | fdv | complet — régularisation annuelle individuelle de janvier N+1 : droit annuel = enveloppe effective × min(1, pondéré/objectif) − acomptes versés, enveloppe minorée des mensualités des mois d'absence (plancher 0), écrite en ANNUAL_ADJUSTMENT ; lancée par l'administration |
 | FDV-07 | — | — | — | absent — variable trimestriel qualitatif |
 | FDV-08 | — | — | — | absent — variable annuel collectif |
 | FDV-09 | SalesForceService (savePlan — barème) | #70 | fdv | partiel — barèmes animateurs/responsables configurables au plan (paliers 15/25/35 %, critères 3/5) ; calcul reporté à l'atelier direction commerciale (§8.14 Limites, H-21) |
@@ -405,7 +405,8 @@ ligne datée sans effacer l'ancienne) :
    `ExportServiceTest.data_export_is_incremental_since_a_window`. L'export complet reste disponible pour
    l'initialisation.
 9. CR-72 mesuré par extrapolation depuis 60 bénéficiaires (2026-10-09, §11).
-10. FDV-06/07/08/09/10/12/16 reportés (2026-10-09, §8.14).
+10. FDV-07/08/09/10/12 reportés (2026-10-09, §8.14) ; FDV-06 (régularisation annuelle) et FDV-16
+    (simulateur) levés depuis.
 11. `ConfirmDialog` construit mais non raccordé aux actions irréversibles (2026-10-10, ERGONOMIE §3).
 12. Déclaration fausse « tous les écrans de l'inventaire existent comme vues réelles »
     (2026-10-09, §4) — rectifiée par le présent état des lieux.

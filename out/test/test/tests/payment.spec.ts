@@ -1,0 +1,73 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { resetDb, seedCycle, USERS } from '../support/helpers';
+
+// Per-screen tests for the payment screen: a cycle lot with its orders and exclusions, preparation,
+// Finance validation with the SEPA file, the bank result and the off-cycle lot (PAY-01, PAY-02,
+// PAY-03, PAY-06, PAY-07).
+//
+// @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @req:PAY-07
+
+test.beforeEach(async ({ request }) => {
+  await resetDb(request);
+  await seedCycle(request);
+});
+
+test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règle l’ordre @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @role-action:OPERATOR-prepare-lot @role-action:FINANCE_CONTROLLER-validate-lot @role-action:FINANCE_CONTROLLER-record-bank-result', async ({
+  browser,
+}) => {
+  // The operator prepares the cycle lot: an order gets a resolved IBAN and an exclusion is listed.
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const operatorPage = await operator.newPage();
+  await operatorPage.goto('/paiement');
+  const cycleRow = operatorPage.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' });
+  await expect(cycleRow).toHaveCount(1);
+  await cycleRow.getByRole('button', { name: 'Détail' }).click();
+  await operatorPage.getByTestId('lot-prepare').click();
+  await expect(operatorPage.locator('[data-testid^="order-iban-"]').first()).toContainText('FR76');
+  await expect(operatorPage.locator('[data-testid^="exclusion-reason-"]').first()).toContainText(
+    'NON_POSITIVE_BALANCE',
+  );
+  await operator.close();
+
+  // The Finance controller validates the lot, which issues its orders, then reads the SEPA file.
+  const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
+  const financePage = await finance.newPage();
+  await financePage.goto('/paiement');
+  await financePage.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' })
+    .getByRole('button', { name: 'Détail' }).click();
+  await financePage.getByTestId('lot-validate').click();
+  await expect(financePage.locator('[data-testid^="order-status-"]').first()).toContainText('Émis');
+
+  await financePage.getByTestId('lot-sepa').click();
+  await expect(financePage.getByTestId('sepa-content')).toContainText('pain.001.001.03');
+
+  // The bank settles the order; re-reading the lot shows it settled (effect seen on reload).
+  await financePage.locator('[data-testid^="order-settle-"]').first().click();
+  await expect(financePage.locator('[data-testid^="order-status-"]').first()).toContainText('Réglé');
+  await finance.close();
+});
+
+test('l’opérateur crée un lot hors-cycle pour un distributeur @screen:payment @req:PAY-07 @role-action:OPERATOR-create-off-cycle', async ({
+  browser,
+}) => {
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const page = await operator.newPage();
+  await page.goto('/paiement');
+  await page.getByTestId('pay-offcycle-partner').fill('P13897');
+  await page.getByTestId('pay-offcycle-submit').click();
+  await expect(page.getByTestId('pay-message')).toContainText('hors-cycle');
+  await expect(page.locator('[data-testid^="lot-type-"]', { hasText: 'OFF_CYCLE' })).toHaveCount(1);
+  await operator.close();
+});
+
+test.describe('Paiement — accessibilité', () => {
+  test.use({ httpCredentials: USERS.financeAlptis });
+
+  test('aucune violation d’accessibilité grave ou critique @screen:payment', async ({ page }) => {
+    await page.goto('/paiement');
+    const results = await new AxeBuilder({ page }).analyze();
+    const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+    expect(serious).toEqual([]);
+  });
+});

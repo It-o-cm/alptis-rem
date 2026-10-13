@@ -144,6 +144,21 @@ async function run(): Promise<void> {
   }
 }
 
+const regYear = ref(2026);
+
+/** Launches the annual individual regularization of January N+1 (FDV-06). */
+async function runAnnualRegularization(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    const result = await apiPost<{ regularized: number }>(
+      `/api/ui/v1/fdv/${entity.value}/${regYear.value}/annual-regularization`, {});
+    message.value = `Régularisation annuelle ${regYear.value} lancée : ${result.regularized} collaborateur(s).`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Régularisation refusée';
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -166,8 +181,14 @@ onMounted(load);
     <AppMessage v-if="error" variant="error" data-testid="fdvp-error">{{ error }}</AppMessage>
     <AppMessage v-if="message" variant="success" data-testid="fdvp-message">{{ message }}</AppMessage>
 
-    <div v-if="canRun()">
+    <div v-if="canRun()" class="fdvp-actions">
       <AppButton variant="secondary" data-testid="fdvp-run" @click="run">Lancer le calcul</AppButton>
+      <FormField label="Année à régulariser" stacked width="short" v-slot="{ id }">
+        <input :id="id" data-testid="fdvp-reg-year" type="number" v-model.number="regYear" />
+      </FormField>
+      <AppButton variant="secondary" data-testid="fdvp-reg" @click="runAnnualRegularization">
+        Régularisation annuelle
+      </AppButton>
     </div>
 
     <AppCard title="Plans de variable par poste">
@@ -238,3 +259,12 @@ onMounted(load);
     </AppCard>
   </div>
 </template>
+
+<style scoped>
+.fdvp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+</style>

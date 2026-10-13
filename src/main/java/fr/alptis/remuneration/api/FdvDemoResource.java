@@ -50,6 +50,11 @@ public class FdvDemoResource {
         period.periodMonth = periodMonth;
         period.state = PeriodState.CONTROLLED;
         period.persist();
+        Period january = new Period();
+        january.entity = entity;
+        january.periodMonth = LocalDate.of(periodMonth.getYear() + 1, 1, 1);
+        january.state = PeriodState.CONTROLLED;
+        january.persist();
         Employee employee = new Employee();
         employee.entity = entity;
         employee.externalId = MATRICULE;

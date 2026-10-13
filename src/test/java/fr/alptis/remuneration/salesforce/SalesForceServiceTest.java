@@ -373,6 +373,132 @@ class SalesForceServiceTest {
                 JobCode.CAC, VariableComponent.MONTHLY_INDIVIDUAL, BigDecimal.TEN, null, "{bad", FROM, null)));
     }
 
+    /** Creates the January N+1 period the regularization is booked in. */
+    private static Period january(int nextYear) {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = LocalDate.of(nextYear, 1, 1);
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        return period;
+    }
+
+    /** Creates an annual individual objective covering the whole year. */
+    private static void yearObjective(Employee employee, int year, String target) {
+        SalesObjective objective = new SalesObjective();
+        objective.entity = unep();
+        objective.employee = employee;
+        objective.jobCode = employee.jobCode;
+        objective.objectiveType = ObjectiveType.INDIVIDUAL_QUANTITATIVE;
+        objective.periodFrom = LocalDate.of(year, 1, 1);
+        objective.periodTo = LocalDate.of(year, 12, 31);
+        objective.targetValue = new BigDecimal(target);
+        objective.versionNo = 1;
+        objective.persist();
+    }
+
+    /** Persists a monthly individual result of an amount in a period. */
+    private static void monthlyResult(Period period, Employee employee, String amount) {
+        VariableResult result = new VariableResult();
+        result.period = period;
+        result.employee = employee;
+        result.component = VariableComponent.MONTHLY_INDIVIDUAL;
+        result.amount = new BigDecimal(amount);
+        result.achievementRate = BigDecimal.ONE;
+        result.status = VariableResultStatus.VALIDATED;
+        result.persist();
+    }
+
+    /** The annual-adjustment regularization result of an employee. */
+    private static VariableResult regul(Employee employee) {
+        return VariableResult.<VariableResult>find("employee = ?1 and component = ?2", employee,
+                VariableComponent.ANNUAL_ADJUSTMENT).firstResult();
+    }
+
+    /**
+     * FDV-06: the January N+1 regularization — envelope × annual achievement rate (capped at 100 %)
+     * minus the monthly instalments paid. The CAC reference example gives 2 450 × 95 % − 1 314 = 1 013,50 €.
+     * A rate above 100 % is capped, a month of absence reduces the envelope, and no objective pays zero.
+     */
+    @Test
+    @TestTransaction
+    void fdv06_regularizes_the_annual_individual() {
+        Period sep = period();
+        january(2027);
+        // CAC reference example: 95 % achievement, nine instalments paid.
+        Employee cac = employee("CAC1", JobCode.CAC);
+        plan(JobCode.CAC, "2450", "146");
+        yearObjective(cac, 2026, "1000");
+        measure(cac, MeasureType.PRODUCTION, "emprunteur", "950");
+        for (int i = 0; i < 9; i++) {
+            monthlyResult(sep, cac, "146");
+        }
+        // A rate above 100 % is capped: 4 200 × 100 % − 0.
+        Employee rr = employee("RR1", JobCode.RR);
+        plan(JobCode.RR, "4200", "300");
+        yearObjective(rr, 2026, "1000");
+        measure(rr, MeasureType.PRODUCTION, "emprunteur", "2000");
+        // A month of absence reduces the envelope by one instalment: (7 700 − 458) × 100 %.
+        Employee dr = employee("DR1", JobCode.DR);
+        plan(JobCode.DR, "7700", "458");
+        yearObjective(dr, 2026, "1000");
+        measure(dr, MeasureType.PRODUCTION, "emprunteur", "1000");
+        measure(dr, MeasureType.ABSENCE, "absence", "10");
+        // No objective pays nothing.
+        Employee dnv = employee("DNV1", JobCode.DNV);
+        plan(JobCode.DNV, "16000", "933");
+
+        assertEquals(4, service.runAnnualRegularization("UNEP", 2026));
+
+        assertEquals(0, regul(cac).amount.compareTo(new BigDecimal("1013.50")));
+        assertEquals(0, regul(cac).achievementRate.compareTo(new BigDecimal("0.95")));
+        assertEquals(0, regul(rr).amount.compareTo(new BigDecimal("4200.00")));
+        assertEquals(0, regul(dr).amount.compareTo(new BigDecimal("7242.00")));
+        assertEquals(0, regul(dnv).amount.compareTo(BigDecimal.ZERO));
+
+        // A rerun replaces the calculated results rather than doubling them.
+        assertEquals(4, service.runAnnualRegularization("UNEP", 2026));
+        assertEquals(4, VariableResult.count("component = ?1", VariableComponent.ANNUAL_ADJUSTMENT));
+    }
+
+    /**
+     * FDV-06 edges: the envelope reduced below zero by absence is floored at zero; a plan without a
+     * monthly instalment reduces nothing; an employee without a plan is skipped; an unknown period is
+     * rejected.
+     */
+    @Test
+    @TestTransaction
+    void fdv06_regularization_edges() {
+        january(2027);
+        // A tiny envelope reduced below zero by a month of absence is floored at zero.
+        Employee rb = employee("RB1", JobCode.RB);
+        plan(JobCode.RB, "100", "146");
+        yearObjective(rb, 2026, "1000");
+        measure(rb, MeasureType.PRODUCTION, "emprunteur", "1000");
+        measure(rb, MeasureType.ABSENCE, "absence", "10");
+        // A plan with no monthly instalment reduces nothing even with an absent month.
+        Employee cac = employee("CAC1", JobCode.CAC);
+        VariablePlan noInstalment = new VariablePlan();
+        noInstalment.entity = unep();
+        noInstalment.jobCode = JobCode.CAC;
+        noInstalment.component = VariableComponent.MONTHLY_INDIVIDUAL;
+        noInstalment.envelopeAmount = new BigDecimal("2450");
+        noInstalment.instalmentAmount = null;
+        noInstalment.validFrom = LocalDate.of(2026, 1, 1);
+        noInstalment.persist();
+        yearObjective(cac, 2026, "1000");
+        measure(cac, MeasureType.PRODUCTION, "emprunteur", "1000");
+        measure(cac, MeasureType.ABSENCE, "absence", "10");
+        // An employee without a plan is skipped.
+        employee("DR1", JobCode.DR);
+
+        assertEquals(2, service.runAnnualRegularization("UNEP", 2026));
+        assertEquals(0, regul(rb).amount.compareTo(BigDecimal.ZERO));
+        assertEquals(0, regul(cac).amount.compareTo(new BigDecimal("2450.00")));
+
+        assertThrows(ResourceNotFoundException.class, () -> service.runAnnualRegularization("UNEP", 2099));
+    }
+
     /**
      * FDV-03: objectives are versioned append-only per key; an individual, a second version of it, a
      * different employee (own version 1) and a collective objective are all created; an existing

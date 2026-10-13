@@ -252,6 +252,24 @@ public class FdvResource {
     }
 
     /**
+     * Runs the annual individual regularization of January N+1 (FDV-06), launched by the business
+     * administrator.
+     *
+     * @param entityCode the entity code
+     * @param year       the regularized year
+     * @return the number of regularization results written
+     */
+    @POST
+    @Path("/{entity}/{year}/annual-regularization")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public java.util.Map<String, Integer> annualRegularization(@PathParam("entity") String entityCode,
+                                                               @PathParam("year") int year) {
+        requireScope(entityCode);
+        return java.util.Map.of("regularized", service.runAnnualRegularization(entityCode, year));
+    }
+
+    /**
      * Validates a result (FDV-13), performed by the regional manager.
      *
      * @param id the result id

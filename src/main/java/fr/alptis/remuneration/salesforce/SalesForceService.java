@@ -118,6 +118,130 @@ public class SalesForceService {
     }
 
     /**
+     * Runs the annual individual regularization of January N+1 (FDV-06), launched by the business
+     * administrator: for each post with a monthly-individual plan, the annual right is the envelope
+     * multiplied by the annual achievement rate (weighted production over the year against the
+     * objective, capped at 100 %); the regularization is that right minus the monthly instalments
+     * already paid. A month not paid for absence reduces the envelope by the post's instalment (section
+     * 8.14 "Limites"). A negative gap is left to the manager's decision (H-53). The results are booked in
+     * the January N+1 period.
+     *
+     * @param entityCode the entity code
+     * @param year       the year being regularized
+     * @return the number of regularization results written
+     */
+    @Transactional
+    public int runAnnualRegularization(String entityCode, int year) {
+        LegalEntity entity = entity(entityCode);
+        Period january = period(entity, LocalDate.of(year + 1, 1, 1));
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        VariableResult.delete("period = ?1 and component = ?2 and status = ?3", january,
+                VariableComponent.ANNUAL_ADJUSTMENT, VariableResultStatus.CALCULATED);
+        int count = 0;
+        for (Employee employee : activeEmployees(entity, yearStart)) {
+            VariablePlan plan = VariablePlan.<VariablePlan>find(
+                    "entity = ?1 and jobCode = ?2 and component = ?3 and validFrom <= ?4"
+                            + " and (validTo is null or validTo >= ?4)",
+                    entity, employee.jobCode, VariableComponent.MONTHLY_INDIVIDUAL, yearStart).firstResult();
+            if (plan == null) {
+                continue;
+            }
+            computeAnnualRegularization(january, employee, plan, year, yearStart, yearEnd);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Computes and persists one employee's annual regularization result (FDV-06).
+     *
+     * @param january   the January N+1 period the result is booked in
+     * @param employee  the employee
+     * @param plan      the monthly-individual plan of the post
+     * @param year      the regularized year
+     * @param yearStart the first day of the year
+     * @param yearEnd   the last day of the year
+     */
+    private void computeAnnualRegularization(Period january, Employee employee, VariablePlan plan, int year,
+                                             LocalDate yearStart, LocalDate yearEnd) {
+        BigDecimal weighted = weightedProduction(employee, yearStart, yearEnd);
+        BigDecimal objective = annualObjective(employee, yearStart);
+        BigDecimal rate = objective.signum() == 0 ? BigDecimal.ZERO
+                : weighted.divide(objective, 6, RoundingMode.HALF_UP).min(BigDecimal.ONE);
+        BigDecimal instalment = plan.instalmentAmount == null ? BigDecimal.ZERO : plan.instalmentAmount;
+        int absentMonths = absentMonths(employee, year);
+        BigDecimal envelope = plan.envelopeAmount
+                .subtract(instalment.multiply(BigDecimal.valueOf(absentMonths))).max(BigDecimal.ZERO);
+        BigDecimal annualRight = envelope.multiply(rate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal monthlyPaid = monthlyPaid(employee, year);
+        BigDecimal regularization = annualRight.subtract(monthlyPaid);
+
+        VariableResult result = new VariableResult();
+        result.period = january;
+        result.employee = employee;
+        result.plan = plan;
+        result.component = VariableComponent.ANNUAL_ADJUSTMENT;
+        result.achievementRate = rate;
+        result.amount = regularization;
+        result.status = VariableResultStatus.CALCULATED;
+        result.explanation = "{\"annualRate\":" + rate.toPlainString() + ",\"envelope\":"
+                + envelope.toPlainString() + ",\"annualRight\":" + annualRight.toPlainString() + ",\"monthlyPaid\":"
+                + monthlyPaid.toPlainString() + ",\"absentMonths\":" + absentMonths + "}";
+        result.persist();
+    }
+
+    /**
+     * The employee's annual individual objective target in force at the year's start, or zero.
+     *
+     * @param employee  the employee
+     * @param yearStart the first day of the year
+     * @return the target value, or zero
+     */
+    private BigDecimal annualObjective(Employee employee, LocalDate yearStart) {
+        SalesObjective objective = SalesObjective.<SalesObjective>find(
+                "employee = ?1 and objectiveType = ?2 and periodFrom <= ?3 and periodTo >= ?3 order by versionNo desc",
+                employee, ObjectiveType.INDIVIDUAL_QUANTITATIVE, yearStart).firstResult();
+        return objective == null ? BigDecimal.ZERO : objective.targetValue;
+    }
+
+    /**
+     * The sum of the employee's monthly individual results paid over the year.
+     *
+     * @param employee the employee
+     * @param year     the year
+     * @return the total paid
+     */
+    private BigDecimal monthlyPaid(Employee employee, int year) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (VariableResult result : VariableResult.<VariableResult>list(
+                "employee = ?1 and component = ?2 and period.periodMonth >= ?3 and period.periodMonth <= ?4",
+                employee, VariableComponent.MONTHLY_INDIVIDUAL, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 1))) {
+            total = total.add(result.amount);
+        }
+        return total;
+    }
+
+    /**
+     * The number of months of the year in which the employee's absence reached the monthly threshold.
+     *
+     * @param employee the employee
+     * @param year     the year
+     * @return the count of absence-blocked months
+     */
+    private int absentMonths(Employee employee, int year) {
+        int months = 0;
+        for (int m = 1; m <= 12; m++) {
+            LocalDate first = LocalDate.of(year, m, 1);
+            LocalDate last = first.withDayOfMonth(first.lengthOfMonth());
+            if (absenceDays(employee, first, last).compareTo(MONTHLY_ABSENCE_DAYS) >= 0) {
+                months++;
+            }
+        }
+        return months;
+    }
+
+    /**
      * Computes and persists one employee's monthly individual result.
      *
      * @param period   the period

@@ -239,6 +239,27 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-06: the business administrator launches the annual regularization of January N+1; a sales rep
+     * may not.
+     */
+    @Test
+    void runs_annual_regularization() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Period january = new Period();
+            january.entity = entity;
+            january.periodMonth = LocalDate.of(2027, 1, 1);
+            january.state = PeriodState.CONTROLLED;
+            january.persist();
+        });
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2026/annual-regularization")
+                .then().statusCode(200).body("regularized", is(1));
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2026/annual-regularization").then().statusCode(403);
+    }
+
+    /**
      * FDV-16: a commercial simulates a month with a hypothetical production (objective met) and the
      * measured one; a viewer is refused.
      */
