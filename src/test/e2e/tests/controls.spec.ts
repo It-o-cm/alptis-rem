@@ -54,7 +54,7 @@ test.describe('Contrôles — opérateur', () => {
     await expect(page.getByTestId('catalog-row-EXT-INSURER-MISMATCH')).toBeVisible();
   });
 
-  test('coche un contrôle dans la liste de contrôle de la période @screen:controls @req:CTL-03', async ({
+  test('coche un contrôle dans la liste de contrôle de la période @screen:controls @req:CTL-03 @path:CTL-06', async ({
     page,
   }) => {
     await page.goto('/controles');

@@ -742,7 +742,14 @@ différé. INT-04 (mise à l'écart d'un doublon : ré-import d'une même clé s
 l'auteur refusée / par un second administrateur) étiqueté sur ses deux tests existants (règle + CR-71).
 PAR-05 (deux versions même groupe/priorité, périmètres recouvrants → approbation refusée) : le message de
 refus **nomme désormais les règles en conflit** (`plan/règle vN`), non plus un simple décompte, et le test
-le vérifie. 15 `@path`.
+le vérifie. CTL-06 (liste de contrôle de la période : un contrôle coché et son état persisté) étiqueté sur
+le test existant de la liste de contrôle. 16 `@path`.
+
+**Audit §4.3–4.6 (2026-10-15).** Beaucoup de tests d'écran ne couvrent qu'une partie d'un parcours
+(p. ex. CTL-02 ne décide qu'une anomalie « acceptée », pas les trois décisions ; PAI-02 n'affiche que
+deux des six motifs d'exclusion ; FIN-05 ne vérifie pas encore équilibre/total de l'extraction ; PAI-05
+ne télécharge pas la liste des chèques). Ces parcours seront complétés (vérifications manquantes ajoutées)
+avant d'être étiquetés, un par passage.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
