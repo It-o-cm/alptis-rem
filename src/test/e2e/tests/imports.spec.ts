@@ -106,6 +106,36 @@ test.describe('Imports — opérateur', () => {
     await expect(eventRow).toHaveCount(1);
   });
 
+  test('mise à l’écart d’un doublon : statut du rejet, aucun événement créé (INT-04) @screen:imports @path:INT-04', async ({ page, request }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=ALPTIS_ASSURANCES&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    const header =
+      'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount\n';
+    const line = 'ALPTIS_ASSURANCES;CLEVA;DUP-1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00\n';
+    const deposit = async (name: string) => {
+      await page.getByTestId('upload-flow').selectOption('events');
+      await page.getByTestId('upload-source').selectOption('CLEVA');
+      await page.getByTestId('upload-file').setInputFiles({ name, mimeType: 'text/csv', buffer: Buffer.from(header + line, 'utf-8') });
+      await page.getByTestId('upload-submit').click();
+    };
+    await page.goto('/imports');
+    await deposit('a.csv');
+    await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s)');
+    // The same source key, deposited again, is a duplicate.
+    await deposit('b.csv');
+    await expect(page.getByTestId('upload-message')).toContainText('0 intégrée(s), 1 rejetée(s)');
+    // Discard the duplicate rejection; its status becomes discarded.
+    await page.locator('[data-testid^="batch-row-"]').first().click();
+    const rejection = page.locator('[data-testid^="rejection-row-"]').filter({ hasText: 'DUPLICATE' });
+    await expect(rejection).toHaveCount(1);
+    await rejection.getByRole('button', { name: 'Écarter' }).click();
+    await expect(page.locator('[data-testid^="rejection-row-"]').first()).toContainText('DISCARDED');
+    // No duplicate event was created: only the first deposit's event exists.
+    await page.goto('/evenements');
+    await page.getByTestId('events-search').click();
+    await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'Prime encaissée' })).toHaveCount(1);
+  });
+
   test('un même nom de fichier de deux systèmes source est accepté et distingué au journal (INT-06) @screen:imports @path:INT-06', async ({ page }) => {
     await page.goto('/imports');
     const header = 'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n';

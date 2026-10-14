@@ -728,8 +728,8 @@ avec les vérifications de sa colonne. Certains parcours déjà exercés par un 
 **Rejeu des cas de recette terminé (2026-10-15)** : les 69 cas hors performance sont rejoués ; place aux
 parcours `@path`.
 
-**Parcours `@path` — avancement (début 2026-10-15).** 12 sur ~135 (`ADM-01`, `BOOT-01`, `CR-70`, `DEM-01`,
-`DEM-02`, `INT-01`, `INT-05`, `INT-06`, `INT-07`, `INT-11`, `INT-13`, `PAR-01`). §4.1 intégration en cours :
+**Parcours `@path` — avancement (début 2026-10-15).** 13 sur ~135 (`ADM-01`, `BOOT-01`, `CR-70`, `DEM-01`,
+`DEM-02`, `INT-01`, `INT-04`, `INT-05`, `INT-06`, `INT-07`, `INT-11`, `INT-13`, `PAR-01`). §4.1 intégration en cours :
 INT-01 (dépôt valide : cinq compteurs au journal, **empreinte et auteur exposés sur le détail du lot**,
 événement visible avec son statut sur `/evenements`), INT-05 (ré-import refusé sans doublon), INT-06
 (deux systèmes source distingués — **colonne « Système source »** ajoutée au journal, §9.9), INT-07
@@ -737,8 +737,11 @@ INT-01 (dépôt valide : cinq compteurs au journal, **empreinte et auteur expos�
 donnée à l'écran si besoin. **Point relevé (INT-01)** : l'auteur affiché est le libellé générique
 « import » du profil dev, non l'identité de l'opérateur ; l'enregistrer demanderait de propager
 l'utilisateur à travers la façade d'import (qui gère ses propres transactions par paquets) — raffinement
-différé. Restent de §4.1 : INT-02 (six codes de rejet), INT-03 (correction, à compléter), INT-04 (mise à
-l'écart d'un doublon), INT-08..24.
+différé. INT-04 (mise à l'écart d'un doublon : ré-import d'une même clé source → rejet `DUPLICATE`,
+écarté → statut `DISCARDED`, aucun événement en double sur `/evenements`) ajouté — 13 `@path`. Restent de
+§4.1 : INT-02 (les codes de rejet ; `STRUCTURE` n'est atteignable que par le flux coordonnées bancaires,
+pas par les événements — le détail de lot montre déjà code + ligne brute + statut), INT-03 (correction, à
+compléter : compteurs et audit), INT-08..24.
 
 ## Simplifications à reprendre (relevé de docs/DECISIONS.md)
 
