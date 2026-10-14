@@ -172,6 +172,19 @@ async function runAnnualRegularization(): Promise<void> {
   }
 }
 
+/** Settles the annual collective variable in the selected month (FDV-08); June regularizes January. */
+async function runAnnualCollective(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    const result = await apiPost<{ collective: number }>(
+      `/api/ui/v1/fdv/${entity.value}/${month.value}/annual-collective`, {});
+    message.value = `Variable collectif annuel réglé : ${result.collective} collaborateur(s).`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Règlement refusé';
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -204,6 +217,9 @@ onMounted(load);
       </FormField>
       <AppButton variant="secondary" data-testid="fdvp-reg" @click="runAnnualRegularization">
         Régularisation annuelle
+      </AppButton>
+      <AppButton variant="secondary" data-testid="fdvp-collective" @click="runAnnualCollective">
+        Collectif annuel
       </AppButton>
     </div>
 

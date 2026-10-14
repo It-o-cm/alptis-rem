@@ -120,6 +120,18 @@ public class FdvDemoResource {
         seedActivity(employee, "productivite", quarterStart, new BigDecimal("12.00"));
         seedActivity(employee, "efficacite", quarterStart, new BigDecimal("8.00"));
         seedActivity(employee, "developpement", quarterStart, new BigDecimal("13.00"));
+
+        // An annual-collective plan for the CAC post (FDV-08). The entity-wide collective objective is
+        // created by the scenario itself (through the objectives screen), so the objectives screen keeps a
+        // single collective objective of its own.
+        VariablePlan collectivePlan = new VariablePlan();
+        collectivePlan.entity = entity;
+        collectivePlan.jobCode = JobCode.CAC;
+        collectivePlan.component = VariableComponent.ANNUAL_COLLECTIVE;
+        collectivePlan.envelopeAmount = new BigDecimal("550.00");
+        collectivePlan.validFrom = LocalDate.of(2026, 1, 1);
+        collectivePlan.validTo = LocalDate.of(2026, 12, 31);
+        collectivePlan.persist();
         return Response.noContent().build();
     }
 

@@ -82,6 +82,26 @@ public class DemoSalesForceBuilder {
     private void plans(LegalEntity entity) {
         plan(entity, JobCode.CAC, new BigDecimal("2450.00"), new BigDecimal("146.00"));
         plan(entity, JobCode.RR, new BigDecimal("4200.00"), new BigDecimal("300.00"));
+        collectivePlan(entity, JobCode.CAC, new BigDecimal("550.00"));
+        collectivePlan(entity, JobCode.RR, new BigDecimal("4800.00"));
+    }
+
+    /**
+     * Creates one annual-collective variable-pay plan for a post (FDV-08), with its collective envelope.
+     *
+     * @param entity   the entity
+     * @param jobCode  the post
+     * @param envelope the collective annual envelope
+     */
+    private void collectivePlan(LegalEntity entity, JobCode jobCode, BigDecimal envelope) {
+        VariablePlan plan = new VariablePlan();
+        plan.entity = entity;
+        plan.jobCode = jobCode;
+        plan.component = VariableComponent.ANNUAL_COLLECTIVE;
+        plan.envelopeAmount = envelope;
+        plan.validFrom = LocalDate.of(2026, 1, 1);
+        stamp(plan);
+        plan.persist();
     }
 
     /**

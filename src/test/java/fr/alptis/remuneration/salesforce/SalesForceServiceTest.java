@@ -702,4 +702,115 @@ class SalesForceServiceTest {
                 new SalesForceService.CollaboratorInput("GHOST", "X", "Y", JobCode.CAC, null, null, null,
                         LocalDate.of(2026, 1, 1), null)));
     }
+
+    /** Creates a June N+1 period the collective regularization is booked in. */
+    private static void june(int nextYear) {
+        Period period = new Period();
+        period.entity = unep();
+        period.periodMonth = LocalDate.of(nextYear, 6, 1);
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+    }
+
+    /** Creates an annual-collective plan for a post, with its envelope and no instalment. */
+    private static void collectivePlan(JobCode jobCode, String envelope) {
+        VariablePlan plan = new VariablePlan();
+        plan.entity = unep();
+        plan.jobCode = jobCode;
+        plan.component = VariableComponent.ANNUAL_COLLECTIVE;
+        plan.envelopeAmount = new BigDecimal(envelope);
+        plan.validFrom = LocalDate.of(2026, 1, 1);
+        plan.validTo = LocalDate.of(2026, 12, 31);
+        plan.persist();
+    }
+
+    /** Creates the entity-wide collective objective (no employee) for 2026. */
+    private static void collectiveObjective(String target) {
+        SalesObjective objective = new SalesObjective();
+        objective.entity = unep();
+        objective.objectiveType = ObjectiveType.COLLECTIVE_QUANTITATIVE;
+        objective.periodFrom = LocalDate.of(2026, 1, 1);
+        objective.periodTo = LocalDate.of(2026, 12, 31);
+        objective.targetValue = new BigDecimal(target);
+        objective.versionNo = 1;
+        objective.persist();
+    }
+
+    /** Creates an absence measure of a given number of days in a specific month. */
+    private static void absenceInMonth(Employee employee, LocalDate month, String days) {
+        EmployeeMeasure measure = new EmployeeMeasure();
+        measure.employee = employee;
+        measure.measureType = MeasureType.ABSENCE;
+        measure.dimension = "absence";
+        measure.periodFrom = month;
+        measure.periodTo = month.withDayOfMonth(month.lengthOfMonth());
+        measure.value = new BigDecimal(days);
+        measure.persist();
+    }
+
+    /** The collective result of an employee in a settlement month. */
+    private static VariableResult collectiveIn(Employee employee, LocalDate month) {
+        return VariableResult.<VariableResult>find(
+                "employee = ?1 and component = ?2 and period.periodMonth = ?3",
+                employee, VariableComponent.ANNUAL_COLLECTIVE, month).firstResult();
+    }
+
+    /**
+     * FDV-08: the annual collective variable is settled in January N+1 — each post's envelope times the
+     * collective achievement rate (collective weighted production over the collective objective, capped),
+     * prorated by worked months. Collective production is 1 400 (E1) + 500 (E2) = 1 900 against a 2 800
+     * objective, so the rate is 1 900 / 2 800 = 0,678571 and each CAC's 550 € envelope settles at
+     * 550 × 0,678571 = 373,21 €. Re-settling in June with unchanged figures writes only the delta: zero.
+     */
+    @Test
+    @TestTransaction
+    void fdv08_collective_settles_in_january_then_regularizes_in_june() {
+        Employee e1 = employee("E1", JobCode.CAC);
+        Employee e2 = employee("E2", JobCode.CAC);
+        collectivePlan(JobCode.CAC, "550");
+        collectiveObjective("2800");
+        measure(e1, MeasureType.PRODUCTION, "particulier", "2000");
+        measure(e2, MeasureType.PRODUCTION, "emprunteur", "500");
+        january(2027);
+
+        assertEquals(2, service.runAnnualCollective("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(0, collectiveIn(e1, LocalDate.of(2027, 1, 1)).amount.compareTo(new BigDecimal("373.21")));
+        assertEquals(0, collectiveIn(e1, LocalDate.of(2027, 1, 1)).achievementRate.compareTo(new BigDecimal("0.678571")));
+        assertEquals(0, collectiveIn(e2, LocalDate.of(2027, 1, 1)).amount.compareTo(new BigDecimal("373.21")));
+
+        // June regularization with unchanged figures pays the delta over January: zero.
+        june(2027);
+        assertEquals(2, service.runAnnualCollective("UNEP", LocalDate.of(2027, 6, 1)));
+        assertEquals(0, collectiveIn(e1, LocalDate.of(2027, 6, 1)).amount.compareTo(BigDecimal.ZERO));
+
+        // A January rerun replaces the calculated results rather than doubling them.
+        assertEquals(2, service.runAnnualCollective("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(2, VariableResult.count("component = ?1 and period.periodMonth = ?2",
+                VariableComponent.ANNUAL_COLLECTIVE, LocalDate.of(2027, 1, 1)));
+    }
+
+    /**
+     * FDV-08 edges: one absent month prorates the envelope by eleven twelfths (550 × 11/12 = 504,17 €);
+     * an employee without a collective plan is skipped; and with no collective objective the rate is zero
+     * and nothing is paid.
+     */
+    @Test
+    @TestTransaction
+    void fdv08_collective_absence_prorates_and_no_objective_pays_zero() {
+        Employee worker = employee("WORK", JobCode.CAC);
+        employee("NOPLAN", JobCode.RB);
+        collectivePlan(JobCode.CAC, "550");
+        collectiveObjective("1000");
+        measure(worker, MeasureType.PRODUCTION, "particulier", "2000");
+        absenceInMonth(worker, LocalDate.of(2026, 1, 1), "10");
+        january(2027);
+
+        assertEquals(1, service.runAnnualCollective("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(0, collectiveIn(worker, LocalDate.of(2027, 1, 1)).amount.compareTo(new BigDecimal("504.17")));
+
+        // With no collective objective the rate is zero and nothing is paid.
+        SalesObjective.delete("objectiveType = ?1", ObjectiveType.COLLECTIVE_QUANTITATIVE);
+        service.runAnnualCollective("UNEP", LocalDate.of(2027, 1, 1));
+        assertEquals(0, collectiveIn(worker, LocalDate.of(2027, 1, 1)).amount.compareTo(BigDecimal.ZERO));
+    }
 }

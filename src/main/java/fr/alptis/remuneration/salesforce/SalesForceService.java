@@ -241,6 +241,133 @@ public class SalesForceService {
         return months;
     }
 
+    /**
+     * Runs the annual collective quantitative variable (FDV-08), launched by the business administrator:
+     * each post's collective envelope is paid when the entity's collective annual objective is met,
+     * prorated by the months the employee worked (one absent month removes one twelfth). It is settled a
+     * first time in January N+1 and regularized in June N+1; a later settlement writes only the delta
+     * over what the earlier settlement of the same year already paid, so re-running regularizes rather
+     * than duplicates. The settled year is the settlement month's year minus one. Idempotent: the
+     * settlement period's non-validated collective results are dropped first. The collective objective is
+     * the entity-wide {@code COLLECTIVE_QUANTITATIVE} objective (no employee); each envelope is a plan
+     * parameter (section 8.14 — "ce sont des paramètres", DEC 2026-10-14).
+     *
+     * @param entityCode      the entity code
+     * @param settlementMonth the month the collective variable is settled in (January or June N+1)
+     * @return the number of collective results written
+     */
+    @Transactional
+    public int runAnnualCollective(String entityCode, LocalDate settlementMonth) {
+        LegalEntity entity = entity(entityCode);
+        Period settlement = period(entity, settlementMonth);
+        int year = settlementMonth.getYear() - 1;
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        VariableResult.delete("period = ?1 and component = ?2 and status = ?3", settlement,
+                VariableComponent.ANNUAL_COLLECTIVE, VariableResultStatus.CALCULATED);
+        BigDecimal objective = collectiveObjective(entity, yearStart);
+        BigDecimal production = collectiveProduction(entity, yearStart, yearEnd);
+        BigDecimal rate = objective.signum() == 0 ? BigDecimal.ZERO
+                : production.divide(objective, 6, RoundingMode.HALF_UP).min(BigDecimal.ONE);
+        int count = 0;
+        for (Employee employee : activeEmployees(entity, yearStart)) {
+            VariablePlan plan = planOf(entity, employee, VariableComponent.ANNUAL_COLLECTIVE, yearStart);
+            if (plan == null) {
+                continue;
+            }
+            computeAnnualCollective(settlement, employee, plan, year, rate);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Computes and persists one employee's annual collective result (FDV-08): the post envelope times the
+     * collective achievement rate times the worked-months proration, minus what the same year's earlier
+     * settlement already paid.
+     *
+     * @param settlement the settlement period the result is booked in
+     * @param employee   the employee
+     * @param plan       the annual-collective plan of the post
+     * @param year       the settled year
+     * @param rate       the collective achievement rate (capped at 100 %)
+     */
+    private void computeAnnualCollective(Period settlement, Employee employee, VariablePlan plan, int year,
+                                         BigDecimal rate) {
+        int absentMonths = absentMonths(employee, year);
+        BigDecimal proration = BigDecimal.valueOf(12L - absentMonths)
+                .divide(BigDecimal.valueOf(12), 6, RoundingMode.HALF_UP);
+        BigDecimal right = plan.envelopeAmount.multiply(rate).multiply(proration).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal alreadyPaid = collectivePaid(employee, settlement.periodMonth);
+        BigDecimal amount = right.subtract(alreadyPaid);
+
+        VariableResult result = new VariableResult();
+        result.period = settlement;
+        result.employee = employee;
+        result.plan = plan;
+        result.component = VariableComponent.ANNUAL_COLLECTIVE;
+        result.achievementRate = rate;
+        result.amount = amount;
+        result.status = VariableResultStatus.CALCULATED;
+        result.explanation = "{\"collectiveRate\":" + rate.toPlainString() + ",\"envelope\":"
+                + plan.envelopeAmount.toPlainString() + ",\"proration\":" + proration.toPlainString()
+                + ",\"collectiveRight\":" + right.toPlainString() + ",\"alreadyPaid\":" + alreadyPaid.toPlainString()
+                + ",\"absentMonths\":" + absentMonths + "}";
+        result.persist();
+    }
+
+    /**
+     * The entity's collective annual objective target in force at the year's start, or zero. The
+     * collective objective carries no employee (it applies to the whole entity).
+     *
+     * @param entity    the entity
+     * @param yearStart the first day of the year
+     * @return the target value, or zero
+     */
+    private BigDecimal collectiveObjective(LegalEntity entity, LocalDate yearStart) {
+        SalesObjective objective = SalesObjective.<SalesObjective>find(
+                "entity = ?1 and employee is null and objectiveType = ?2 and periodFrom <= ?3 and periodTo >= ?3"
+                        + " order by versionNo desc",
+                entity, ObjectiveType.COLLECTIVE_QUANTITATIVE, yearStart).firstResult();
+        return objective == null ? BigDecimal.ZERO : objective.targetValue;
+    }
+
+    /**
+     * The entity's collective weighted production over a window: the sum of the weighted production of
+     * every employee active at the window start.
+     *
+     * @param entity the entity
+     * @param from   the window start
+     * @param to     the window end
+     * @return the collective weighted production
+     */
+    private BigDecimal collectiveProduction(LegalEntity entity, LocalDate from, LocalDate to) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (Employee employee : activeEmployees(entity, from)) {
+            total = total.add(weightedProduction(employee, from, to));
+        }
+        return total;
+    }
+
+    /**
+     * The sum of the employee's collective results already settled earlier in the settlement year, so a
+     * June regularization pays only the delta over the January settlement.
+     *
+     * @param employee        the employee
+     * @param settlementMonth the current settlement month
+     * @return the collective amount already paid this settlement year before this month
+     */
+    private BigDecimal collectivePaid(Employee employee, LocalDate settlementMonth) {
+        BigDecimal total = BigDecimal.ZERO;
+        LocalDate yearStart = settlementMonth.withDayOfYear(1);
+        for (VariableResult result : VariableResult.<VariableResult>list(
+                "employee = ?1 and component = ?2 and period.periodMonth >= ?3 and period.periodMonth < ?4",
+                employee, VariableComponent.ANNUAL_COLLECTIVE, yearStart, settlementMonth)) {
+            total = total.add(result.amount);
+        }
+        return total;
+    }
+
     /** The three qualitative criteria of the quarterly variable (FDV-07), as measure dimensions. */
     private static final List<String> QUALITATIVE_CRITERIA = List.of("productivite", "efficacite", "developpement");
 

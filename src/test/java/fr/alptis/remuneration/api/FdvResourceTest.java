@@ -300,6 +300,44 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-08: the business administrator settles the annual collective variable in January N+1; a sales
+     * rep may not. The seeded CAC has an annual-collective plan and the entity's collective objective is
+     * met, so one result is written.
+     */
+    @Test
+    void settles_annual_collective() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Period january = new Period();
+            january.entity = entity;
+            january.periodMonth = LocalDate.of(2027, 1, 1);
+            january.state = PeriodState.CONTROLLED;
+            january.persist();
+            VariablePlan collectivePlan = new VariablePlan();
+            collectivePlan.entity = entity;
+            collectivePlan.jobCode = JobCode.CAC;
+            collectivePlan.component = VariableComponent.ANNUAL_COLLECTIVE;
+            collectivePlan.envelopeAmount = new BigDecimal("550.00");
+            collectivePlan.validFrom = LocalDate.of(2026, 1, 1);
+            collectivePlan.validTo = LocalDate.of(2026, 12, 31);
+            collectivePlan.persist();
+            SalesObjective collective = new SalesObjective();
+            collective.entity = entity;
+            collective.objectiveType = ObjectiveType.COLLECTIVE_QUANTITATIVE;
+            collective.periodFrom = LocalDate.of(2026, 1, 1);
+            collective.periodTo = LocalDate.of(2026, 12, 31);
+            collective.targetValue = new BigDecimal("1000.00");
+            collective.versionNo = 1;
+            collective.persist();
+        });
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/annual-collective")
+                .then().statusCode(200).body("collective", is(1));
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/annual-collective").then().statusCode(403);
+    }
+
+    /**
      * FDV-16: a commercial simulates a month with a hypothetical production (objective met) and the
      * measured one; a viewer is refused.
      */

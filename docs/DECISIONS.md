@@ -262,3 +262,27 @@ portent l'en-tête `Authorization` basic explicite (le contexte navigateur ne pr
 
 Reste pour ADM-03 : ManualEventView (système source/produit en liste, énumérations au libellé) et le
 balayage des libellés d'énum restant (signature/type/statut d'inscription, agrément distributeur).
+
+## 2026-10-14 — FDV-08 : variable annuel quantitatif collectif
+
+Section 8.14 (FDV-08) spécifie le collectif de façon volontairement grossière (« atelier direction
+commerciale »), mais `PERIMETRE.md` interdit de le reporter. Faute de précision de la spécification, les
+choix suivants sont retenus (CLAUDE.md : hypothèse 15 muette → choix le plus simple compatible §6/§12.3) :
+
+- **Objectif collectif** : un objectif `COLLECTIVE_QUANTITATIVE` sans collaborateur (employee nul),
+  porté par l'entité. La production collective est la somme des productions pondérées (FDV-11) des
+  collaborateurs actifs de l'entité sur l'année ; le taux d'atteinte collectif = production collective /
+  objectif collectif, plafonné à 100 % (même règle que l'annuel individuel FDV-06).
+- **Montant** : chaque poste a une enveloppe collective, paramètre du plan (`ANNUAL_COLLECTIVE`),
+  renseignée dans le jeu de démonstration par la grille 2026 (CAC 550 €, RR 4 800 €). Le droit =
+  enveloppe × taux collectif × proratisation.
+- **Proratisation par absence** : « proratisée à partir d'un mois d'absence » = multipliée par
+  (12 − mois d'absence) / 12, un mois d'absence étant un mois où l'absence atteint le seuil mensuel
+  (10 jours, comme FDV-05/06).
+- **Règlement et régularisation** : réglé en janvier N+1, régularisé en juin N+1. L'année réglée est
+  l'année du mois de règlement moins un. Un règlement postérieur n'écrit que le delta par rapport à ce
+  qu'un règlement antérieur de la même année a déjà payé (le règlement de juin régularise celui de
+  janvier) ; relancer un règlement remplace ses lignes non validées au lieu de les doubler.
+- **Lancement** : par l'administrateur métier depuis l'écran « Plan de variable », avec le mois de
+  règlement choisi dans la liste. Les montants attendus des tests sont calculés à la main depuis ces
+  règles (SalesForceServiceTest.fdv08_*).

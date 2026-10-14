@@ -65,6 +65,44 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   await finance.close();
 });
 
+test('l’administrateur règle le variable collectif annuel en janvier N+1 @screen:fdvObjectives @screen:fdvPlan @screen:fdvValidation @req:FDV-08', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+
+  // The entity-wide collective objective for 2026 (FDV-03 collective), met by the seeded production
+  // (2000 × 0,7 = 1400 against a 1000 target), so the collective rate is capped at 100 %.
+  await page.goto('/fdv/objectifs');
+  await page.getByTestId('obj-type').selectOption('COLLECTIVE_QUANTITATIVE');
+  await page.getByTestId('obj-job').selectOption('CAC');
+  await page.getByTestId('obj-employee').fill('');
+  await page.getByTestId('obj-target').fill('1000');
+  await page.getByTestId('obj-from').fill('2026-01-01');
+  await page.getByTestId('obj-to').fill('2026-12-31');
+  await page.getByTestId('obj-submit').click();
+  await expect(page.getByTestId('fdvo-message')).toContainText('enregistré');
+
+  // The admin settles the annual collective variable (FDV-08) in January N+1 (the settled year is 2026).
+  await page.goto('/fdv/plan');
+  await expect(page.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
+  // ADM-03: the settlement month is picked from a list by its French name.
+  await page.getByTestId('fdvp-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvp-collective').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('collectif annuel réglé');
+  await expect(page.getByTestId('fdvp-message')).toContainText('collaborateur');
+
+  // The collective result is visible on the validation screen for January 2027: the CAC's 550 € envelope
+  // (collective objective met, no absence) shown by its French component label and amount.
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvv-refresh').click();
+  const row = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Collectif' }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('550,00');
+  await admin.close();
+});
+
 test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16', async ({
   browser,
 }) => {
