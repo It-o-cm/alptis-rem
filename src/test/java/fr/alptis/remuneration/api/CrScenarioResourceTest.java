@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
@@ -305,6 +306,36 @@ class CrScenarioResourceTest {
         plantAndRun("CR-50");
         search().body("findAll { it.nature == 'RETROCESSION' }.size()", is(1))
                 .body("find { it.nature == 'RETROCESSION' }.amount", is(60.00f));
+    }
+
+    /** The explanation of a commission line, read on the line-detail endpoint. */
+    private static io.restassured.response.ValidatableResponse lineDetail(int id) {
+        return given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/commission-lines/" + id).then().statusCode(200);
+    }
+
+    /** CR-43: an unpaid rate of 6% forfeits the development line — a 0,00 € RCD line keeping its reason. */
+    @Test
+    void cr43_development_unpaid_condition() {
+        given().when().post("/api/test/cr-scenario?cr=CR-43&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/close-development").then().statusCode(200);
+        int id = search().body("findAll { it.nature == 'RCD' }.size()", is(1))
+                .body("find { it.nature == 'RCD' }.amount", is(0.00f))
+                .extract().path("find { it.nature == 'RCD' }.id");
+        lineDetail(id).body("explanation", containsString("forfeited"));
+    }
+
+    /** CR-47: a P/C of 96% breaks the portfolio condition — a 0,00 € RCP line keeping its condition detail. */
+    @Test
+    void cr47_portfolio_condition_failed() {
+        given().when().post("/api/test/cr-scenario?cr=CR-47&entity=UNEP&month=2026-12-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-12-01/close-portfolio").then().statusCode(200);
+        int id = search("2026-12-01").body("findAll { it.nature == 'RCP' }.size()", is(1))
+                .body("find { it.nature == 'RCP' }.amount", is(0.00f))
+                .extract().path("find { it.nature == 'RCP' }.id");
+        lineDetail(id).body("explanation", containsString("LOSS_RATIO"));
     }
 
     /** CR-48: 12 new adhésions reach the 2% count tier, giving an RCP line of 1 000,00 € on 50 000 €. */

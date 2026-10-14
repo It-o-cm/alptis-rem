@@ -541,8 +541,9 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 34 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-32`,
-  `CR-35`, `CR-41`, `CR-42`, `CR-46`, `CR-48`, `CR-49`, `CR-50`, `CR-51`, `CR-68`, `CR-70`).
+- **Rejeu par l'interface (`@cr:`) :** 36 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-32`,
+  `CR-35`, `CR-41`, `CR-42`, `CR-43`, `CR-46`, `CR-47`, `CR-48`, `CR-49`, `CR-50`, `CR-51`, `CR-68`,
+  `CR-70`).
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -578,12 +579,19 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   100 € → 60,00 €, par `runReal`).
 - **RCP prévoyance au nombre rejouée par l'interface (2026-10-14, §13.4)** : CR-48 (12 adhésions
   nouvelles → palier 2 % d'un barème au nombre, 1 000,00 € sur 50 000 € de primes, par `close-portfolio`).
-  Le chargeur gagne le barème au nombre (`countScale`). **Tous les cas de §13.4 qui produisent une ligne
-  sont rejoués.** Restent de §13.4 les seuls cas à 0 € / anomalie : CR-40 (sous le premier palier),
-  CR-43 (condition d'impayés non remplie), CR-44 (avenant non signé), CR-47 (P/C de la RCP non remplie),
-  plus CR-45 (reprise de RCD). Les quatre premiers ne produisent pas de ligne de commission : ils se
-  liront sur un écran de contrôle (anomalie / ligne à 0 € avec motif), pas sur la recherche de
-  commissions — c'est le prochain chantier de rejeu (chemin de lecture des contrôles).
+  Le chargeur gagne le barème au nombre (`countScale`).
+- **Lignes à 0 € avec motif rejouées par l'interface (2026-10-14, §13.4)** : CR-43 (condition d'impayés
+  à 6 % non remplie → ligne `RCD` de 0,00 € par `close-development`, motif `forfeited` lu en ouvrant le
+  détail de la ligne sur la recherche de commissions) et CR-47 (P/C de 96 % cassant la condition de
+  portefeuille → ligne `RCP` de 0,00 € par `close-portfolio`, détail de condition `LOSS_RATIO` lu de
+  même). La recherche de commissions montre bien les lignes à 0 € (aucun filtre de montant), et le détail
+  de ligne (`line-detail`) expose l'explication native stockée (CAL-10, D14). Restent de §13.4 : CR-40
+  (production sous le premier palier → aucune ligne), CR-44 (avenant non signé → aucune ligne, anomalie
+  de contrôle) et CR-45 (reprise de RCD). CR-40 et CR-44 ne produisent aucune ligne : leur rejeu lira
+  l'anomalie sur un écran de contrôle (`ControlResult`), prochain chantier avec les montants attendus
+  CR-33/34/36. **Point de UX relevé** : le détail de ligne affiche les clés techniques brutes de
+  l'explication (`forfeited`, `rcp`, `conditions`…) et non un libellé français ; CAL-10 demande
+  l'explication « en clair ». À traiter hors du rejeu, comme resserrement de CAL-10.
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

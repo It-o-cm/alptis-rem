@@ -546,4 +546,44 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(rcp).toHaveCount(1);
     await expect(rcp.first()).toContainText(/1.?000,00/);
   });
+
+  test('CR-43 : une condition d’impayés non remplie écrit une RCD à 0,00 € avec son motif @screen:calculations @screen:commissionSearch @cr:CR-43', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-43&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+    await page.getByTestId('close-development').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de développement calculée');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const rcd = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Développement (RCD)' });
+    await expect(rcd).toHaveCount(1);
+    await expect(rcd.first()).toContainText('0,00');
+    await rcd.first().click();
+    await expect(page.getByTestId('line-detail')).toContainText('forfeited');
+  });
+
+  test('CR-47 : un P/C de 96 % écrit une RCP à 0,00 € avec le détail des conditions @screen:calculations @screen:commissionSearch @cr:CR-47', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-47&entity=UNEP&month=2026-12-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-12-01');
+    await page.getByTestId('close-portfolio').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de portefeuille calculée');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-12-01');
+    await page.getByTestId('cs-search').click();
+    const rcp = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Portefeuille (RCP)' });
+    await expect(rcp).toHaveCount(1);
+    await expect(rcp.first()).toContainText('0,00');
+    await rcp.first().click();
+    await expect(page.getByTestId('line-detail')).toContainText('LOSS_RATIO');
+  });
 });

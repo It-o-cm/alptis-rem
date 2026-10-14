@@ -111,6 +111,8 @@ public class CrScenarioResource {
             case "CR-42" -> seedCr42(entity, periodMonth);
             case "CR-46" -> seedCr46(entity, periodMonth);
             case "CR-41" -> seedCr41(entity, periodMonth);
+            case "CR-43" -> seedCr43(entity, periodMonth);
+            case "CR-47" -> seedCr47(entity, periodMonth);
             case "CR-48" -> seedCr48(entity, periodMonth);
             case "CR-49" -> seedCr49(entity, periodMonth);
             case "CR-50" -> seedCr50(entity, periodMonth);
@@ -737,6 +739,52 @@ public class CrScenarioResource {
         indicator.periodTo = LocalDate.of(year, 12, 31);
         indicator.value = new BigDecimal(value);
         indicator.persist();
+    }
+
+    /**
+     * CR-43 (RCD, condition non remplie) : un taux d'impayés de 6 % casse la condition de paiement
+     * (&lt; 5 %) ; la clôture de développement écrit une ligne `RCD` de 0,00 €, le motif étant conservé
+     * dans l'explication de la ligne.
+     *
+     * @param entity      the entity
+     * @param periodMonth the development close month
+     */
+    private void seedCr43(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR43", product, LocalDate.of(year, 1, 10), "P-CR43", null);
+        coverage.annualPremium = new BigDecimal("30000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR43").firstResult();
+        RuleVersion version = version(entity, "PLAN-CR43", "R-CR43", RuleFamily.TIERED, LineNature.RCD,
+                santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
+                LocalDate.of(year, 1, 1), null, null);
+        santeDevelopmentScale(version);
+        condition(version, QualityIndicatorType.UNPAID_RATE, ConditionOperator.LT, "0.05");
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT);
+        indicator(entity, distributor, QualityIndicatorType.UNPAID_RATE, "0.06", year);
+        event(entity, coverage, "CR43-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
+    }
+
+    /**
+     * CR-47 (RCP santé, condition non remplie) : un P/C de 96 % casse la condition de portefeuille
+     * (&le; 95 %) ; la clôture de portefeuille écrit une ligne `RCP` de 0,00 €, le détail des conditions
+     * étant conservé dans l'explication de la ligne.
+     *
+     * @param entity      the entity
+     * @param periodMonth the portfolio close month
+     */
+    private void seedCr47(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR47", product, LocalDate.of(year, 1, 10), "P-CR47", null);
+        coverage.annualPremium = new BigDecimal("200000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR47").firstResult();
+        RuleVersion version = version(entity, "PLAN-CR47", "R-CR47", RuleFamily.PORTFOLIO, LineNature.RCP,
+                santeScope(entity), "{\"rate\":0.04}", LocalDate.of(year, 1, 1), null, null);
+        condition(version, QualityIndicatorType.LOSS_RATIO, ConditionOperator.LE, "0.95");
+        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT);
+        indicator(entity, distributor, QualityIndicatorType.LOSS_RATIO, "0.96", year);
+        event(entity, coverage, "CR47-PREM", EventType.PREMIUM_COLLECTED, LocalDate.of(year, 6, 1), "200000");
     }
 
     /**
