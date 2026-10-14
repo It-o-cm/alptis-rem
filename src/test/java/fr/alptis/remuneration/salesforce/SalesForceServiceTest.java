@@ -813,4 +813,95 @@ class SalesForceServiceTest {
         service.runAnnualCollective("UNEP", LocalDate.of(2027, 1, 1));
         assertEquals(0, collectiveIn(worker, LocalDate.of(2027, 1, 1)).amount.compareTo(BigDecimal.ZERO));
     }
+
+    /** Creates an annual-manager plan for a post, with its growth and criteria scales. */
+    private static void managerPlan(JobCode jobCode, String parameters) {
+        VariablePlan plan = new VariablePlan();
+        plan.entity = unep();
+        plan.jobCode = jobCode;
+        plan.component = VariableComponent.ANNUAL_MANAGER;
+        plan.envelopeAmount = new BigDecimal("0");
+        plan.parameters = parameters;
+        plan.validFrom = LocalDate.of(2026, 1, 1);
+        plan.validTo = LocalDate.of(2026, 12, 31);
+        plan.persist();
+    }
+
+    /** The annual-manager result of an employee. */
+    private static VariableResult manager(Employee employee) {
+        return VariableResult.<VariableResult>find("employee = ?1 and component = ?2", employee,
+                VariableComponent.ANNUAL_MANAGER).firstResult();
+    }
+
+    /**
+     * FDV-09: the animators/managers variable sums a production-growth tier and a met-criteria tier.
+     * Weighted production 1 400 over a 1 000 baseline is a 40 % growth, reaching the 35 % tier (3 000 €);
+     * three qualitative criteria are met, reaching the 3-criteria tier (500 €): 3 500 € in all.
+     */
+    @Test
+    @TestTransaction
+    void fdv09_manager_variable_sums_growth_and_criteria_tiers() {
+        Employee e = employee("E1", JobCode.CAC);
+        managerPlan(JobCode.CAC, "{\"growthBaseline\":1000,\"growthTiers\":{\"15\":1000,\"25\":2000,\"35\":3000},"
+                + "\"criteriaTiers\":{\"3\":500,\"5\":1500}}");
+        measure(e, MeasureType.PRODUCTION, "particulier", "2000");
+        qualitativeObjective(e, "10");
+        measure(e, MeasureType.ACTIVITY, "productivite", "12");
+        measure(e, MeasureType.ACTIVITY, "efficacite", "11");
+        measure(e, MeasureType.ACTIVITY, "developpement", "13");
+        january(2027);
+
+        assertEquals(1, service.runManagerVariable("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(0, new BigDecimal("3500.00").compareTo(manager(e).amount));
+        assertEquals(0, new BigDecimal("0.400000").compareTo(manager(e).achievementRate));
+
+        // A rerun replaces the calculated result rather than doubling it.
+        assertEquals(1, service.runManagerVariable("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(1, VariableResult.count("component = ?1", VariableComponent.ANNUAL_MANAGER));
+    }
+
+    /**
+     * FDV-09 edges: a plan without a growth baseline earns no growth tier and, with no qualitative
+     * objective, no criteria tier (custom criteria list); a plan without a growth-scale map and a custom
+     * criterion met earns only its criteria tier; a non-object growth scale earns nothing; and an
+     * employee without a manager plan is skipped.
+     */
+    @Test
+    @TestTransaction
+    void fdv09_manager_edges() {
+        // No growth baseline and no qualitative objective: growth 0, no criterion met (custom list).
+        Employee noBase = employee("NOBASE", JobCode.CAC);
+        managerPlan(JobCode.CAC, "{\"growthTiers\":{\"15\":1000},\"criteriaTiers\":{\"2\":300},"
+                + "\"criteria\":[\"productivite\",\"efficacite\"]}");
+        measure(noBase, MeasureType.PRODUCTION, "particulier", "5000");
+        measure(noBase, MeasureType.ACTIVITY, "productivite", "99");
+        // No growth scale at all, but one default criterion met against a threshold pays its criteria tier.
+        Employee onlyCriteria = employee("ONLYCRIT", JobCode.DR);
+        managerPlan(JobCode.DR, "{\"growthBaseline\":1000,\"criteriaTiers\":{\"1\":200}}");
+        measure(onlyCriteria, MeasureType.PRODUCTION, "particulier", "2000");
+        qualitativeObjective(onlyCriteria, "10");
+        measure(onlyCriteria, MeasureType.ACTIVITY, "productivite", "12");
+        // A non-object growth scale yields no growth tier (and no criteria scale: nothing).
+        Employee badTiers = employee("BADT", JobCode.RR);
+        managerPlan(JobCode.RR, "{\"growthBaseline\":1000,\"growthTiers\":5}");
+        measure(badTiers, MeasureType.PRODUCTION, "particulier", "2000");
+        // Descending growth tiers (a lower key after a higher one is skipped) and a non-array criteria
+        // node (fallen back to the default criteria): growth 40 % reaches 3000 and one default criterion
+        // met pays 100, so 3100.
+        Employee combo = employee("COMBO", JobCode.DNV);
+        managerPlan(JobCode.DNV, "{\"growthBaseline\":1000,\"growthTiers\":{\"35\":3000,\"15\":1000},"
+                + "\"criteria\":\"productivite\",\"criteriaTiers\":{\"1\":100}}");
+        measure(combo, MeasureType.PRODUCTION, "particulier", "2000");
+        qualitativeObjective(combo, "10");
+        measure(combo, MeasureType.ACTIVITY, "productivite", "12");
+        // An employee without a manager plan is skipped.
+        employee("NOPLAN", JobCode.RB);
+        january(2027);
+
+        assertEquals(4, service.runManagerVariable("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(0, BigDecimal.ZERO.compareTo(manager(noBase).amount));
+        assertEquals(0, new BigDecimal("200.00").compareTo(manager(onlyCriteria).amount));
+        assertEquals(0, BigDecimal.ZERO.compareTo(manager(badTiers).amount));
+        assertEquals(0, new BigDecimal("3100.00").compareTo(manager(combo).amount));
+    }
 }

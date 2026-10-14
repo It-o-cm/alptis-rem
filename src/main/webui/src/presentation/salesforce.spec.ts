@@ -35,6 +35,7 @@ describe('sales-force presentation', () => {
   it('labels known variable components and falls back for the rest', () => {
     expect(componentLabel('MONTHLY_INDIVIDUAL')).toBe('Mensuel individuel');
     expect(componentLabel('ANNUAL_COLLECTIVE')).toBe('Collectif');
+    expect(componentLabel('ANNUAL_MANAGER')).toBe('Animateurs et responsables');
     expect(componentLabel('MANUAL_ADJUSTMENT')).toBe('Ajustement');
     expect(componentLabel('UNKNOWN')).toBe('UNKNOWN');
     expect(componentLabel(null)).toBe('—');

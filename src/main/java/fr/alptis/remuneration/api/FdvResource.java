@@ -307,6 +307,24 @@ public class FdvResource {
     }
 
     /**
+     * Settles the annual variable of animators and managers in a month (FDV-09), launched by the business
+     * administrator. The measured year is the month's year minus one.
+     *
+     * @param entityCode the entity code
+     * @param month      the settlement month (ISO date, January N+1)
+     * @return the number of manager results written
+     */
+    @POST
+    @Path("/{entity}/{month}/manager-variable")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public java.util.Map<String, Integer> managerVariable(@PathParam("entity") String entityCode,
+                                                          @PathParam("month") String month) {
+        requireScope(entityCode);
+        return java.util.Map.of("managers", service.runManagerVariable(entityCode, LocalDate.parse(month)));
+    }
+
+    /**
      * Validates a result (FDV-13), performed by the regional manager.
      *
      * @param id the result id

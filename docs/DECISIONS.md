@@ -286,3 +286,27 @@ choix suivants sont retenus (CLAUDE.md : hypothèse 15 muette → choix le plus 
 - **Lancement** : par l'administrateur métier depuis l'écran « Plan de variable », avec le mois de
   règlement choisi dans la liste. Les montants attendus des tests sont calculés à la main depuis ces
   règles (SalesForceServiceTest.fdv08_*).
+
+## 2026-10-14 — FDV-09 : variable des animateurs et responsables
+
+Section 8.14 (FDV-09) décrit « paliers de croissance de la production (15, 25, 35 %) et nombre de
+critères qualitatifs atteints (3, 5) » sans formule ni montants (atelier direction commerciale).
+`PERIMETRE.md` interdit le report ; choix retenus (le plus simple compatible §6/§12.3, montants en
+paramètres de plan) :
+
+- **Composante** `ANNUAL_MANAGER`, réglée en janvier N+1 (année mesurée = année du mois de règlement
+  moins un), lancée par l'administrateur métier depuis l'écran « Plan de variable ».
+- **Palier de croissance** : la croissance de la production est l'excédent de la production pondérée
+  (FDV-11) sur une base de référence `growthBaseline` (paramètre du plan, p.ex. la production de
+  l'année précédente) : croissance % = (pondérée − base) / base × 100. Le barème `growthTiers` associe
+  un pourcentage à un montant ; on retient le montant du plus haut palier dont le seuil est atteint.
+- **Palier de critères** : nombre de critères qualitatifs atteints sur l'année (un critère est atteint
+  quand son activité cumulée atteint le seuil de l'objectif qualitatif du poste) ; le barème
+  `criteriaTiers` associe un nombre de critères à un montant (plus haut palier atteint). Les critères
+  sont la liste `criteria` du plan si fournie, sinon les trois critères standard (productivité,
+  efficacité, développement) — les paliers 3 et 5 de la spécification supposent un plan listant jusqu'à
+  cinq critères.
+- **Montant** = montant du palier de croissance + montant du palier de critères. Jeu de démonstration :
+  barèmes renseignés par des valeurs vraisemblables (RR : base 3000, paliers 2000/4000/6000 et
+  1500/3000). Les montants attendus des tests sont calculés à la main depuis ces règles
+  (SalesForceServiceTest.fdv09_*).

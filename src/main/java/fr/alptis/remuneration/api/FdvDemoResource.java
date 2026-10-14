@@ -132,6 +132,20 @@ public class FdvDemoResource {
         collectivePlan.validFrom = LocalDate.of(2026, 1, 1);
         collectivePlan.validTo = LocalDate.of(2026, 12, 31);
         collectivePlan.persist();
+
+        // An annual-manager plan for the CAC post (FDV-09): the weighted production of 1400 over a 1000
+        // baseline is a 40 % growth, reaching the 35 % tier (3000 €); only two qualitative criteria are
+        // met (below the 3-criteria tier), so the settled amount is 3000 €.
+        VariablePlan managerPlan = new VariablePlan();
+        managerPlan.entity = entity;
+        managerPlan.jobCode = JobCode.CAC;
+        managerPlan.component = VariableComponent.ANNUAL_MANAGER;
+        managerPlan.envelopeAmount = new BigDecimal("3000.00");
+        managerPlan.parameters = "{\"growthBaseline\":1000,\"growthTiers\":{\"15\":1000,\"25\":2000,\"35\":3000},"
+                + "\"criteriaTiers\":{\"3\":500,\"5\":1000}}";
+        managerPlan.validFrom = LocalDate.of(2026, 1, 1);
+        managerPlan.validTo = LocalDate.of(2026, 12, 31);
+        managerPlan.persist();
         return Response.noContent().build();
     }
 

@@ -338,6 +338,36 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-09: the business administrator settles the animators/managers variable in January N+1; a sales
+     * rep may not. The seeded CAC has an annual-manager plan, so one result is written.
+     */
+    @Test
+    void settles_manager_variable() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Period january = new Period();
+            january.entity = entity;
+            january.periodMonth = LocalDate.of(2027, 1, 1);
+            january.state = PeriodState.CONTROLLED;
+            january.persist();
+            VariablePlan managerPlan = new VariablePlan();
+            managerPlan.entity = entity;
+            managerPlan.jobCode = JobCode.CAC;
+            managerPlan.component = VariableComponent.ANNUAL_MANAGER;
+            managerPlan.envelopeAmount = new BigDecimal("3000.00");
+            managerPlan.parameters = "{\"growthBaseline\":1000,\"growthTiers\":{\"35\":3000}}";
+            managerPlan.validFrom = LocalDate.of(2026, 1, 1);
+            managerPlan.validTo = LocalDate.of(2026, 12, 31);
+            managerPlan.persist();
+        });
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/manager-variable")
+                .then().statusCode(200).body("managers", is(1));
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/manager-variable").then().statusCode(403);
+    }
+
+    /**
      * FDV-16: a commercial simulates a month with a hypothetical production (objective met) and the
      * measured one; a viewer is refused.
      */

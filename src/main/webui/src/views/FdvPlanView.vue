@@ -185,6 +185,19 @@ async function runAnnualCollective(): Promise<void> {
   }
 }
 
+/** Settles the animators/managers variable in the selected month (FDV-09). */
+async function runManagerVariable(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    const result = await apiPost<{ managers: number }>(
+      `/api/ui/v1/fdv/${entity.value}/${month.value}/manager-variable`, {});
+    message.value = `Variable animateurs et responsables réglé : ${result.managers} collaborateur(s).`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Règlement refusé';
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -220,6 +233,9 @@ onMounted(load);
       </AppButton>
       <AppButton variant="secondary" data-testid="fdvp-collective" @click="runAnnualCollective">
         Collectif annuel
+      </AppButton>
+      <AppButton variant="secondary" data-testid="fdvp-manager" @click="runManagerVariable">
+        Animateurs et responsables
       </AppButton>
     </div>
 

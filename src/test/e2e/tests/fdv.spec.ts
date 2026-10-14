@@ -103,6 +103,31 @@ test('l’administrateur règle le variable collectif annuel en janvier N+1 @scr
   await admin.close();
 });
 
+test('l’administrateur règle le variable des animateurs et responsables @screen:fdvPlan @screen:fdvValidation @req:FDV-09', async ({
+  browser,
+}) => {
+  // The admin settles the animators/managers variable (FDV-09) in January N+1 (measured year 2026).
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/plan');
+  await expect(page.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
+  await page.getByTestId('fdvp-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvp-manager').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('animateurs et responsables réglé');
+  await expect(page.getByTestId('fdvp-message')).toContainText('collaborateur');
+
+  // The result is visible on the validation screen for January 2027: weighted production 1400 over a
+  // 1000 baseline is a 40 % growth reaching the 35 % tier (3000 €); two criteria met is below the
+  // 3-criteria tier, so 3000 €, shown by its French component label and amount.
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvv-refresh').click();
+  const row = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Animateurs et responsables' }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(/3.000,00/);
+  await admin.close();
+});
+
 test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16', async ({
   browser,
 }) => {

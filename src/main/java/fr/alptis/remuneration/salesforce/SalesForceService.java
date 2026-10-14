@@ -22,6 +22,7 @@ import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -366,6 +367,134 @@ public class SalesForceService {
             total = total.add(result.amount);
         }
         return total;
+    }
+
+    /**
+     * Runs the annual variable of animators and managers (FDV-09), launched by the business administrator
+     * and booked in the given settlement month (January N+1): for each post with an annual-manager plan,
+     * a production-growth tier amount (the plan's {@code growthTiers} map of growth percentage to amount,
+     * the production growth being the weighted production's excess over the plan's {@code growthBaseline})
+     * plus a qualitative-criteria tier amount (the plan's {@code criteriaTiers} map of met-criteria count
+     * to amount). Both scales and the baseline are plan parameters (section 8.14 — "ce sont des
+     * paramètres", DEC 2026-10-14). Idempotent: the period's non-validated manager results are dropped.
+     *
+     * @param entityCode      the entity code
+     * @param settlementMonth the month the manager variable is booked in (January N+1)
+     * @return the number of manager results written
+     */
+    @Transactional
+    public int runManagerVariable(String entityCode, LocalDate settlementMonth) {
+        LegalEntity entity = entity(entityCode);
+        Period settlement = period(entity, settlementMonth);
+        int year = settlementMonth.getYear() - 1;
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        VariableResult.delete("period = ?1 and component = ?2 and status = ?3", settlement,
+                VariableComponent.ANNUAL_MANAGER, VariableResultStatus.CALCULATED);
+        int count = 0;
+        for (Employee employee : activeEmployees(entity, yearStart)) {
+            VariablePlan plan = planOf(entity, employee, VariableComponent.ANNUAL_MANAGER, yearStart);
+            if (plan == null) {
+                continue;
+            }
+            computeManagerVariable(settlement, employee, plan, yearStart, yearEnd);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Computes and persists one animator/manager result (FDV-09): the growth-tier amount plus the
+     * criteria-tier amount.
+     *
+     * @param settlement the settlement period the result is booked in
+     * @param employee   the employee
+     * @param plan       the annual-manager plan of the post
+     * @param yearStart  the first day of the measured year
+     * @param yearEnd    the last day of the measured year
+     */
+    private void computeManagerVariable(Period settlement, Employee employee, VariablePlan plan, LocalDate yearStart,
+                                        LocalDate yearEnd) {
+        com.fasterxml.jackson.databind.JsonNode params = readParameters(mapper, plan.parameters);
+        BigDecimal weighted = weightedProduction(employee, yearStart, yearEnd);
+        BigDecimal baseline = decimalParam(params, "growthBaseline");
+        BigDecimal growthPercent = baseline.signum() == 0 ? BigDecimal.ZERO
+                : weighted.subtract(baseline).divide(baseline, 6, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+        BigDecimal growthAmount = tierAmount(params.get("growthTiers"), growthPercent);
+        BigDecimal threshold = qualitativeThreshold(employee, yearStart);
+        int metCount = managerCriteriaMet(employee, params.get("criteria"), threshold, yearStart, yearEnd);
+        BigDecimal criteriaAmount = tierAmount(params.get("criteriaTiers"), BigDecimal.valueOf(metCount));
+        BigDecimal amount = growthAmount.add(criteriaAmount).setScale(2, RoundingMode.HALF_UP);
+
+        VariableResult result = new VariableResult();
+        result.period = settlement;
+        result.employee = employee;
+        result.plan = plan;
+        result.component = VariableComponent.ANNUAL_MANAGER;
+        result.achievementRate = growthPercent.movePointLeft(2);
+        result.amount = amount;
+        result.status = VariableResultStatus.CALCULATED;
+        result.explanation = "{\"growthPercent\":" + growthPercent.toPlainString() + ",\"growthAmount\":"
+                + growthAmount.toPlainString() + ",\"criteriaMet\":" + metCount + ",\"criteriaAmount\":"
+                + criteriaAmount.toPlainString() + "}";
+        result.persist();
+    }
+
+    /**
+     * The amount of the highest tier whose numeric key does not exceed the value, or zero when no tier is
+     * reached or the map is absent. A tier map pairs a numeric key (a growth percentage or a met-criteria
+     * count) with the amount earned once the key is reached.
+     *
+     * @param tiers the tier map node, possibly null
+     * @param value the value to place against the tiers
+     * @return the reached tier's amount, or zero
+     */
+    private static BigDecimal tierAmount(com.fasterxml.jackson.databind.JsonNode tiers, BigDecimal value) {
+        if (tiers == null || !tiers.isObject()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal bestKey = null;
+        BigDecimal amount = BigDecimal.ZERO;
+        for (Iterator<String> names = tiers.fieldNames(); names.hasNext();) {
+            String key = names.next();
+            BigDecimal threshold = new BigDecimal(key);
+            if (threshold.compareTo(value) <= 0 && (bestKey == null || threshold.compareTo(bestKey) > 0)) {
+                bestKey = threshold;
+                amount = new BigDecimal(tiers.get(key).asText());
+            }
+        }
+        return amount;
+    }
+
+    /**
+     * The number of qualitative criteria an animator/manager met over the year: a criterion is met when
+     * its summed activity reaches the manager's qualitative objective threshold. The criteria are the
+     * plan's {@code criteria} list when given, otherwise the three standard quarterly criteria.
+     *
+     * @param employee  the employee
+     * @param criteria  the plan's criteria list node, possibly null
+     * @param threshold the qualitative objective threshold
+     * @param from      the year start
+     * @param to        the year end
+     * @return the count of met criteria
+     */
+    private int managerCriteriaMet(Employee employee, com.fasterxml.jackson.databind.JsonNode criteria,
+                                   BigDecimal threshold, LocalDate from, LocalDate to) {
+        List<String> dimensions = QUALITATIVE_CRITERIA;
+        if (criteria != null && criteria.isArray()) {
+            dimensions = new java.util.ArrayList<>();
+            for (com.fasterxml.jackson.databind.JsonNode node : criteria) {
+                dimensions.add(node.asText());
+            }
+        }
+        int met = 0;
+        for (String dimension : dimensions) {
+            if (threshold.signum() > 0 && activityValue(employee, dimension, from, to).compareTo(threshold) >= 0) {
+                met++;
+            }
+        }
+        return met;
     }
 
     /** The three qualitative criteria of the quarterly variable (FDV-07), as measure dimensions. */
@@ -982,6 +1111,7 @@ public class SalesForceService {
             VariableComponent.MONTHLY_INDIVIDUAL, "Mensuel individuel",
             VariableComponent.QUARTERLY_QUALITATIVE, "Qualitatif",
             VariableComponent.ANNUAL_COLLECTIVE, "Collectif",
+            VariableComponent.ANNUAL_MANAGER, "Animateurs et responsables",
             VariableComponent.ANNUAL_ADJUSTMENT, "Régularisation",
             VariableComponent.MANUAL_ADJUSTMENT, "Ajustement");
 

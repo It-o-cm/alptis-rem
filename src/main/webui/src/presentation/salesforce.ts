@@ -65,6 +65,7 @@ const COMPONENT_LABELS: Record<string, string> = {
   MONTHLY_INDIVIDUAL: 'Mensuel individuel',
   QUARTERLY_QUALITATIVE: 'Qualitatif',
   ANNUAL_COLLECTIVE: 'Collectif',
+  ANNUAL_MANAGER: 'Animateurs et responsables',
   ANNUAL_ADJUSTMENT: 'Régularisation',
   MANUAL_ADJUSTMENT: 'Ajustement',
 };
@@ -74,6 +75,7 @@ export const PLAN_COMPONENTS: readonly string[] = [
   'MONTHLY_INDIVIDUAL',
   'QUARTERLY_QUALITATIVE',
   'ANNUAL_COLLECTIVE',
+  'ANNUAL_MANAGER',
 ];
 
 /** Returns the French label of a variable component, or the code itself when unknown or absent. */

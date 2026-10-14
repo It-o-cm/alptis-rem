@@ -10,6 +10,8 @@ public enum VariableComponent {
     QUARTERLY_QUALITATIVE,
     /** The annual collective pay. */
     ANNUAL_COLLECTIVE,
+    /** The annual variable of animators and managers: production-growth tiers and qualitative criteria tiers (FDV-09). */
+    ANNUAL_MANAGER,
     /** The annual regularisation of the individual variable. */
     ANNUAL_ADJUSTMENT,
     /** A manual adjustment decided by the manager, carrying its reason (FDV-13). */

@@ -84,6 +84,30 @@ public class DemoSalesForceBuilder {
         plan(entity, JobCode.RR, new BigDecimal("4200.00"), new BigDecimal("300.00"));
         collectivePlan(entity, JobCode.CAC, new BigDecimal("550.00"));
         collectivePlan(entity, JobCode.RR, new BigDecimal("4800.00"));
+        managerPlan(entity, JobCode.RR, new BigDecimal("12000.00"),
+                "{\"growthBaseline\":3000,\"growthTiers\":{\"15\":2000,\"25\":4000,\"35\":6000},"
+                        + "\"criteriaTiers\":{\"3\":1500,\"5\":3000}}");
+    }
+
+    /**
+     * Creates one annual-manager variable-pay plan for a post (FDV-09), with its growth and criteria
+     * scales.
+     *
+     * @param entity     the entity
+     * @param jobCode    the post
+     * @param envelope   the indicative annual envelope
+     * @param parameters the growth and criteria scales (JSON)
+     */
+    private void managerPlan(LegalEntity entity, JobCode jobCode, BigDecimal envelope, String parameters) {
+        VariablePlan plan = new VariablePlan();
+        plan.entity = entity;
+        plan.jobCode = jobCode;
+        plan.component = VariableComponent.ANNUAL_MANAGER;
+        plan.envelopeAmount = envelope;
+        plan.parameters = parameters;
+        plan.validFrom = LocalDate.of(2026, 1, 1);
+        stamp(plan);
+        plan.persist();
     }
 
     /**
