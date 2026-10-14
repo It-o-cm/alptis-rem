@@ -32,6 +32,10 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
 
 État au 2026-10-14 (ADM-03 en cours) :
 
+- **ADM-03 CLÔTURÉ** : helper `accounting.ts` (événement comptable, variante, rôle de compte, §10.2,
+  100 % vitest) ; AccountingView (schéma, correspondance, écritures, chaîne) au libellé FR, `accounting.spec`
+  adapté (3/3 verts). Balayage final : plus aucun code d'énumération brut à l'écran, plus aucune saisie libre
+  d'une valeur connue. ADM-03 passe à `complet` dans le Tableau 2.
 - **Balayage complet des énumérations hors tableau et des passthroughs (7 écrans)** : ContractsView,
   AccountingView, AdvanceAgreementsView, DiscountsView, DistributorAccountView, RulesView et TransfersView
   n'affichent plus aucun code d'énumération brut (statuts d'adhésion/ligne/événement/position/convention/
@@ -393,7 +397,7 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | --- | --- | --- | --- | --- |
 | ADM-01 | RoleMappingAdminService, partitioning | #63 | role-mappings (ADM-01) | complet |
 | ADM-02 | EntityAdminService | #43 | entity-params | complet |
-| ADM-03 | (interface française) ; socle `CodeSelect`/`EntitySelect`/`MonthSelect`/`DistributorSelect`/`ProductSelect` + magasins `periods`/`distributors`/`products` + `months.ts` | tous | reporting.spec (ADM-03 : libellés d'énum, entité/mois/distributeur/produit/nature en liste) | partiel — socle « liste / sélection » livré et testé à 100 % (vitest) et appliqué à l'écran #24 (recherche de commissions) : entité, mois, distributeur, produit et nature choisis dans une liste ; nature, statut, sens, type d'événement, mois et dates affichés par leur libellé FR. **Reste à convertir** les saisies libres de code et les affichages d'énum bruts des autres écrans — liste précise dans la rubrique « ADM-03 — reste à faire » ci-dessous. |
+| ADM-03 | (interface française) ; socle `CodeSelect`/`EntitySelect`/`MonthSelect`/`DistributorSelect`/`ProductSelect`/`SourceSystemSelect`… + magasins `periods`/`distributors`/`products`/`sourceSystems`… + helpers de présentation (`events`, `lines`, `coverage`, `agreements`, `distributors`, `advance`, `transfers`, `accounting`, `rules`, `salesforce`, `imports`, `months`) | tous | par écran (assertions de libellé FR dans chaque spec) | complet — interface française achevée : (1) toute valeur connue (entité, mois, distributeur, produit, plan, règle, groupement, délégation, membre, système source, type d'ajustement…) se choisit dans une liste, plus aucune saisie libre d'un code connu ; (2) plus aucun code d'énumération brut à l'écran — statuts, natures, sens, types d'événement, modes, signatures, statuts d'inscription/convention/position/version/cession, événements comptables, variantes et rôles de compte sont affichés par leur libellé FR du glossaire via des helpers de présentation couverts à 100 % (vitest) ; (3) mois et dates au format français. Balayage systématique des colonnes, slots `#cell-*`, fiches `DetailRow` et interpolations fait sur tous les écrans ; les champs `reason`/`Motif` restants sont du texte libre, pas des énumérations. |
 | ADM-04 | AuditService (chaîne de hachage) | #64 | audit | complet |
 | ADM-05 | EntityAdminService | #43 | entity-params | complet |
 | ADM-06 | PurgeService | #66 | admin-supervision | complet |
@@ -419,11 +423,12 @@ niveau de preuve de bout en bout (étiquette `@req`/`@cr`) quand il existe.
 | FDV-15 | SalesForceQueryService | #72 | fdv | complet |
 | FDV-16 | SalesForceService (simulateMonthly) | #72 | fdv | complet — simulateur de variable (production hypothétique ou mesurée) et alerte d'atteinte de seuil, sans persistance |
 
-## ADM-03 — reste à faire (conversion écran par écran)
+## ADM-03 — conversion écran par écran (CLÔTURÉE le 2026-10-14)
 
-Le socle est posé et prouvé sur l'écran #24. La conversion des autres écrans se fait
-écran par écran, chacun avec l'adaptation de son test de bout en bout, pour ne jamais
-laisser la suite rouge. Ne pas marquer ADM-03 `complet` tant qu'il reste une ligne ici.
+**ADM-03 est `complet`.** Tous les écrans ont été convertis, écran par écran, chacun avec l'adaptation
+de son test de bout en bout. Le relevé ci-dessous est conservé pour mémoire : chaque ligne a été traitée
+(saisies libres de code → listes ; codes d'énumération → libellés FR) et le balayage final (colonnes,
+slots `#cell-*`, `DetailRow`, interpolations, codes comptables) ne trouve plus aucun code brut à l'écran.
 
 **Saisies libres de code à remplacer par une liste / recherche** (relevé des `type="text"`
 liés à une valeur connue, audit à élargir — certains écrans en portent d'autres, p.ex. `v-scope`
@@ -464,10 +469,14 @@ de RulesView) :
   tous 100 % vitest (176 tests). e2e des 6 specs touchées vertes (22/22), build serveur inchangé.
   Les `reason`/`Motif` restants (CommissionSearchView, BordereauxView, PeriodsView) sont des champs de
   texte libre, pas des énumérations — laissés tels quels à dessein.
-- **Reste pour clore ADM-03** : AccountingView « schéma comptable » (`acc-scheme`) affiche les codes
-  d'évènement comptable bruts (`FORECAST_RECOGNITION`, `PAYMENT`…) ; à décider — libellé FR d'un nouvel
-  `accountingEventLabel`, ou codes de domaine comptable admis. À traiter au prochain passage, puis
-  repasser l'audit complet une dernière fois avant de marquer ADM-03 `complet`.
+- ~~AccountingView « schéma comptable »~~ **fait (2026-10-14)** : nouveau helper `accounting.ts`
+  (`accountingEventLabel`, `accountingVariantLabel`, `accountRoleLabel`, §10.2, 100 % vitest). Le schéma
+  (événement, variante, rôles débit/crédit), la table de correspondance (rôle), la table des écritures
+  (événement comptable) et la chaîne d'audit (nature de ligne) affichent désormais le libellé FR ;
+  `accounting.spec` asserte « Constatation du prévisionnel » et « Provision pour commissions à payer ».
+  Les numéros de compte, journaux et en-têtes de CSV restent des données/techniques, non des énumérations.
+- **ADM-03 clôturé** : le balayage final (toutes colonnes, slots, fiches, interpolations, codes comptables)
+  ne trouve plus aucun code d'énumération brut, et aucune saisie libre d'une valeur connue ne subsiste.
 
 Socle « liste / sélection » complété le 2026-10-13 : stores Pinia `groupings`, `delegations`,
 `productionCodes`, `plans`, `rules` (100 % vitest) ; composants `GroupSelect`, `DelegationSelect`,

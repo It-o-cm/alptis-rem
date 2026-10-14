@@ -5,6 +5,8 @@ import { useSessionStore } from '../stores/session';
 import { canProduceExport } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
 import { eventTypeLabel } from '../presentation/events';
+import { accountingEventLabel, accountingVariantLabel, accountRoleLabel } from '../presentation/accounting';
+import { lineNatureLabel } from '../presentation/lines';
 import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -75,22 +77,22 @@ const canExtract = () => canProduceExport(session.roles);
 
 /** Columns of the accounting scheme table. */
 const schemeColumns: Column<SchemeRow & { i: number }>[] = [
-  { key: 'event', label: 'Événement' },
-  { key: 'variant', label: 'Variante' },
-  { key: 'debitRole', label: 'Débit (rôle)' },
-  { key: 'creditRole', label: 'Crédit (rôle)' },
+  { key: 'event', label: 'Événement', value: (s) => accountingEventLabel(s.event) },
+  { key: 'variant', label: 'Variante', value: (s) => accountingVariantLabel(s.variant) },
+  { key: 'debitRole', label: 'Débit (rôle)', value: (s) => accountRoleLabel(s.debitRole) },
+  { key: 'creditRole', label: 'Crédit (rôle)', value: (s) => accountRoleLabel(s.creditRole) },
 ];
 
 /** Columns of the account-mapping table. */
 const mappingColumns: Column<MappingRow & { i: number }>[] = [
-  { key: 'role', label: 'Rôle' },
+  { key: 'role', label: 'Rôle', value: (m) => accountRoleLabel(m.role) },
   { key: 'accountNumber', label: 'Compte' },
   { key: 'journal', label: 'Journal' },
 ];
 
 /** Columns of the monthly entries table. */
 const entryColumns: Column<Entry>[] = [
-  { key: 'accountingEvent', label: 'Événement' },
+  { key: 'accountingEvent', label: 'Événement', value: (e) => accountingEventLabel(e.accountingEvent) },
   { key: 'journal', label: 'Journal' },
   { key: 'entryDate', label: 'Date' },
   { key: 'debitAccount', label: 'Débit' },
@@ -287,7 +289,7 @@ onMounted(refresh);
         </DetailRow>
         <DetailRow label="Bordereau">{{ chain.statement ?? '—' }}</DetailRow>
         <DetailRow label="Ligne de commission">
-          {{ chain.lineId ? `#${chain.lineId}${chain.lineNature ? ' · ' + chain.lineNature : ''}` : '—' }}
+          {{ chain.lineId ? `#${chain.lineId}${chain.lineNature ? ' · ' + lineNatureLabel(chain.lineNature) : ''}` : '—' }}
         </DetailRow>
         <DetailRow label="Assiette">{{ chain.basis !== null ? amount(chain.basis) : '—' }}</DetailRow>
         <DetailRow label="Taux">{{ chain.rate ?? '—' }}</DetailRow>
