@@ -485,4 +485,47 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(external).toHaveCount(1);
     await expect(external.first()).toContainText('17,50');
   });
+
+  test('CR-41 : deux clôtures de développement versent 300,00 € en janvier puis 1 050,00 € en février @screen:calculations @screen:commissionSearch @cr:CR-41', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-41&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+    await page.getByTestId('close-development').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de développement calculée');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-02-01');
+    await page.getByTestId('close-development').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de développement calculée');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const january = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Développement (RCD)' });
+    await expect(january).toHaveCount(1);
+    await expect(january.first()).toContainText('300,00');
+    await page.getByTestId('cs-month').selectOption('2026-02-01');
+    await page.getByTestId('cs-search').click();
+    const february = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Développement (RCD)' });
+    await expect(february).toHaveCount(1);
+    await expect(february.first()).toContainText(/1.?050,00/);
+  });
+
+  test('CR-50 : une rétrocession de 60 % sur une commission reçue de 100 € verse 60,00 € @screen:calculations @screen:commissionSearch @cr:CR-50', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-50&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const retro = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Rétrocession' });
+    await expect(retro).toHaveCount(1);
+    await expect(retro.first()).toContainText('60,00');
+  });
 });

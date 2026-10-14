@@ -287,6 +287,26 @@ class CrScenarioResourceTest {
                 .body("find { it.nature == 'RCP' }.amount", is(8000.00f));
     }
 
+    /** CR-41: cumulative development closes pay 300,00 € in January and 1 050,00 € in February. */
+    @Test
+    void cr41_development_two_tiers() {
+        given().when().post("/api/test/cr-scenario?cr=CR-41&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/close-development").then().statusCode(200);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-02-01/close-development").then().statusCode(200);
+        search("2026-01-01").body("find { it.nature == 'RCD' }.amount", is(300.00f));
+        search("2026-02-01").body("find { it.nature == 'RCD' }.amount", is(1050.00f));
+    }
+
+    /** CR-50: a 60% retrocession on a 100 € received insurer commission yields a RETROCESSION line of 60,00 €. */
+    @Test
+    void cr50_mandatary_retrocession() {
+        plantAndRun("CR-50");
+        search().body("findAll { it.nature == 'RETROCESSION' }.size()", is(1))
+                .body("find { it.nature == 'RETROCESSION' }.amount", is(60.00f));
+    }
+
     /** CR-49: a 30 € linear commission split 90/10 pays 27,00 € to the distributor and 3,00 € to its group. */
     @Test
     void cr49_share_with_group() {

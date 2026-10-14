@@ -110,7 +110,9 @@ public class CrScenarioResource {
             case "CR-35" -> seedCr35(entity, periodMonth);
             case "CR-42" -> seedCr42(entity, periodMonth);
             case "CR-46" -> seedCr46(entity, periodMonth);
+            case "CR-41" -> seedCr41(entity, periodMonth);
             case "CR-49" -> seedCr49(entity, periodMonth);
+            case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
@@ -586,6 +588,32 @@ public class CrScenarioResource {
     }
 
     /**
+     * CR-41 (RCD santé, deux paliers) : le cumul atteint 30 000 € fin janvier puis 60 000 € fin février ;
+     * la clôture de développement verse 300,00 € en janvier (palier marginal 3 %) puis 1 350 − 300 =
+     * 1 050,00 € en février. Deux périodes sont semées, janvier et février.
+     *
+     * @param entity      the entity
+     * @param periodMonth the January calculation month
+     */
+    private void seedCr41(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        period(entity, periodMonth.plusMonths(1));
+        Product product = product(entity, "SANTE");
+        Coverage january = coverage(entity, "CR41-1", product, LocalDate.of(year, 1, 10), "P-CR41", null);
+        january.annualPremium = new BigDecimal("30000");
+        Coverage february = coverage(entity, "CR41-2", product, LocalDate.of(year, 2, 10), "P-CR41", null);
+        february.annualPremium = new BigDecimal("30000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR41").firstResult();
+        RuleVersion version = version(entity, "PLAN-CR41", "R-CR41", RuleFamily.TIERED, LineNature.RCD,
+                santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
+                LocalDate.of(year, 1, 1), null, null);
+        santeDevelopmentScale(version);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT);
+        event(entity, january, "CR41-SUB1", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
+        event(entity, february, "CR41-SUB2", EventType.SUBSCRIPTION, LocalDate.of(year, 2, 15), null);
+    }
+
+    /**
      * CR-46 (RCP santé) : une rémunération de portefeuille à 4 % sur 200 000 € de primes encaissées,
      * toutes conditions de qualité remplies (P/C 82 % ≤ 95 %, taux de chute 14 % ≤ 20 %) ; la clôture de
      * portefeuille, déclenchée depuis l'écran des exécutions, verse une ligne `RCP` de 8 000,00 €.
@@ -734,6 +762,22 @@ public class CrScenarioResource {
                 "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-50 (rétrocession à un mandataire) : une commission reçue de l'assureur de 100 € rétrocédée à
+     * 60 % donne une ligne `RETROCESSION` de 60,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr50(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR50", product, periodMonth, "P-CR50", null);
+        version(entity, "PLAN-CR50", "R-CR50", RuleFamily.SHARE, LineNature.RETROCESSION,
+                "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"INSURER_COMMISSION\"]}",
+                "{\"sourceNature\":\"INSURER\",\"rate\":0.60}", periodMonth, null, null);
+        event(entity, coverage, "CR50-E1", EventType.INSURER_COMMISSION, periodMonth.plusDays(14), "100");
     }
 
     /**
