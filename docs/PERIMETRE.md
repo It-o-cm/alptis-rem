@@ -541,7 +541,9 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 10 sur 70 (`CR-01` à `CR-08`, `CR-68`, `CR-70`).
+- **Rejeu par l'interface (`@cr:`) :** 14 sur 70 (`CR-01` à `CR-12`, `CR-68`, `CR-70`). CR-09 (annulation →
+  ligne inverse), CR-10 (changement de taux versionné), CR-11 (taux hors grille → événement en attente,
+  aucune ligne), CR-12 (collèges 7 %/5 %) rejoués le 2026-10-14.
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

@@ -105,4 +105,38 @@ class CrScenarioResourceTest {
         plantAndRun("CR-08");
         search().body("findAll { it.nature == 'CLAWBACK' }.size()", is(0));
     }
+
+    /** CR-09: cancelling the CR-01 premium adds the inverse line, so the two LINEAR lines net to zero. */
+    @Test
+    void cr09_cancellation_is_the_inverse() {
+        plantAndRun("CR-09");
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItems(15.00f, -15.00f))
+                .body("findAll { it.nature == 'LINEAR' }.amount.sum() as double", is(0.0));
+    }
+
+    /** CR-10: the January premium stays at 15% (15,00 €), the March one moves to 12% (12,00 €); nothing recalculated. */
+    @Test
+    void cr10_version_by_event_date() {
+        plantAndRun("CR-10");
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItems(15.00f, 12.00f))
+                .body("findAll { it.nature == 'LINEAR' }.size()", is(2));
+    }
+
+    /** CR-11: a 12% rate outside the [15,20] grid holds the event (rate out of grid); no line is produced. */
+    @Test
+    void cr11_rate_out_of_grid() {
+        given().when().post("/api/test/cr-scenario?cr=CR-11&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/run")
+                .then().statusCode(200).body("failed.holdReason", hasItem("RATE_OUT_OF_GRID"));
+        search().body("size()", is(0));
+    }
+
+    /** CR-12: collective colleges pay 7% for executives and 5% for non-executives on 1000 € each: 70,00 € and 50,00 €. */
+    @Test
+    void cr12_colleges() {
+        plantAndRun("CR-12");
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItems(70.00f, 50.00f))
+                .body("findAll { it.nature == 'LINEAR' }.size()", is(2));
+    }
 }

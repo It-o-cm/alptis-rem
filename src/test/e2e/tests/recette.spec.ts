@@ -129,4 +129,74 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
       await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Reprise' })).toHaveCount(0);
     });
   }
+
+  test('CR-09 : l’annulation d’un encaissement ajoute la ligne inverse @screen:calculations @screen:commissionSearch @cr:CR-09', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-09&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const linear = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' });
+    await expect(linear).toHaveCount(2);
+    await expect(linear.filter({ hasText: '-15,00' })).toHaveCount(1);
+  });
+
+  test('CR-10 : un changement de taux laisse l’encaissement antérieur à 15 % et le suivant à 12 % @screen:calculations @screen:commissionSearch @cr:CR-10', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-10&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const linear = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' });
+    await expect(linear).toHaveCount(2);
+    await expect(linear.filter({ hasText: '15,00' })).toHaveCount(1);
+    await expect(linear.filter({ hasText: '12,00' })).toHaveCount(1);
+  });
+
+  test('CR-11 : un taux hors grille met l’événement en attente et ne produit aucune ligne @screen:calculations @screen:commissionSearch @cr:CR-11', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-11&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    // The event is held with the "rate out of grid" reason, shown among the failed units.
+    await expect(page.getByTestId('failed-row-CR11-E1')).toContainText('Taux hors grille');
+    // No commission line is produced.
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    await expect(page.locator('[data-testid^="cs-row-"]')).toHaveCount(0);
+  });
+
+  test('CR-12 : les collèges paient 70,00 € aux cadres et 50,00 € aux non-cadres @screen:calculations @screen:commissionSearch @cr:CR-12', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-12&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const linear = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' });
+    await expect(linear.filter({ hasText: '70,00' })).toHaveCount(1);
+    await expect(linear.filter({ hasText: '50,00' })).toHaveCount(1);
+  });
 });
