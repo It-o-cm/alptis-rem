@@ -245,4 +245,12 @@ class CrScenarioResourceTest {
         search().body("findAll { it.nature == 'LINEAR' }.size()", is(1))
                 .body("find { it.nature == 'LINEAR' }.amount", is(9.00f));
     }
+
+    /** CR-32: a discounted scheduled plan of 300 €/month yields one ADVANCE line of 288,00 € in year one. */
+    @Test
+    void cr32_discount_year_one() {
+        plantAndRun("CR-32", "2026-02-01");
+        search("2026-02-01").body("size()", is(1))
+                .body("find { it.nature == 'ADVANCE' }.amount", is(288.00f));
+    }
 }

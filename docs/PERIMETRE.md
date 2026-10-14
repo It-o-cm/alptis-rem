@@ -541,15 +541,19 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 25 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30`, `CR-31`,
+- **Rejeu par l'interface (`@cr:`) :** 26 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-32`,
   `CR-68`, `CR-70`).
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
   d'escompte (statut/escompté/apuré) est lue sur l'écran de la convention `/escompte`, les
   régularisations/reprises sur la recherche de commissions. Épargne retraite (§13.3) : versement initial
-  linéaire (CR-30 → 120,00 € sur un PER à 2 %), versement programmé linéaire (CR-31 → 9,00 € à 3 %) ; les
-  cas escompté/rappel/complément/surcommission assureur (CR-32 à CR-38) restent à rejouer.
+  linéaire (CR-30 → 120,00 € sur un PER à 2 %), versement programmé linéaire (CR-31 → 9,00 € à 3 %),
+  versement programmé escompté an 1 (CR-32 → 288,00 €, calcul de février sur un versement de janvier,
+  §6.6). Restent à rejouer : CR-33/34 (rappel assureur — produisent un **montant attendu**, pas de ligne,
+  à lire sur un écran de contrôle, non pilotable par la recherche de commissions), CR-35/36 (complément
+  et surcommission assureur — reposent sur la **clôture annuelle**, non exposée par l'écran des
+  exécutions aujourd'hui), CR-37/38 (fichier réel assureur — pilotés par l'import).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

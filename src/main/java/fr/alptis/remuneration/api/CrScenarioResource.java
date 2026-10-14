@@ -88,6 +88,7 @@ public class CrScenarioResource {
             case "CR-28" -> seedCr28(entity, periodMonth);
             case "CR-30" -> seedCr30(entity, periodMonth);
             case "CR-31" -> seedCr31(entity, periodMonth);
+            case "CR-32" -> seedCr32(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -474,6 +475,40 @@ public class CrScenarioResource {
      */
     private String perScope(LegalEntity entity, String eventType) {
         return "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"PER\"],\"eventType\":[\"" + eventType + "\"]}";
+    }
+
+    /**
+     * The savings perimeter for a PER product, all event types.
+     *
+     * @param entity the entity
+     * @return the scope JSON
+     */
+    private String savingsScope(LegalEntity entity) {
+        return "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"PER\"]}";
+    }
+
+    /** Parameters of an outbound retirement discount settled at the fifth anniversary, rate 8 %. */
+    private static final String OUT_DISCOUNT =
+            "{\"settlementRule\":\"FIFTH_ANNIVERSARY\",\"agreementRequired\":false,\"rate\":0.08,"
+            + "\"offsetting\":false,\"annualReadjustment\":false}";
+
+    /**
+     * CR-32 (versement programmé, escompté) : un plan programmé de 300 €/mois escompté donne, l'année 1,
+     * une seule ligne `ADVANCE` de 288,00 € (3 600 × 8 %) ; les versements programmés ne produisent pas de
+     * ligne. L'escompte est dû dans la période qui suit le premier versement (§6.6), d'où un calcul de
+     * février sur un versement de janvier.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (February)
+     */
+    private void seedCr32(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = periodMonth.minusMonths(1).withDayOfMonth(1);
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, "CR32", product, effect, "P-CR32", null);
+        linearChoice(coverage, "0.03", effect, null);
+        version(entity, "PLAN-CR32", "R-CR32", RuleFamily.ADVANCE, LineNature.ADVANCE,
+                savingsScope(entity), OUT_DISCOUNT, effect, null, null);
+        event(entity, coverage, "CR32-E1", EventType.SCHEDULED_PAYMENT, effect.plusDays(9), "300.00");
     }
 
     /**

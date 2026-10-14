@@ -374,4 +374,24 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
       await expect(linear.first()).toContainText(c.amount);
     });
   }
+
+  test('CR-32 : un plan programmé escompté donne une ligne Escompte de 288,00 € en année 1 @screen:calculations @screen:commissionSearch @cr:CR-32', async ({
+    page,
+    request,
+  }) => {
+    // The discount falls due the month after the first payment, so the January plan is run in February.
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-32&entity=UNEP&month=2026-02-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-02-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-02-01');
+    await page.getByTestId('cs-search').click();
+    const rows = page.locator('[data-testid^="cs-row-"]');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText('Escompte');
+    await expect(rows.first()).toContainText('288,00');
+  });
 });
