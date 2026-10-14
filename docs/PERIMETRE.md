@@ -541,11 +541,13 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 15 sur 70 (`CR-01` à `CR-12`, `CR-20`, `CR-68`, `CR-70`). §13.1
-  complète. CR-20 (versement d'escompte → 2 lignes `ADVANCE` 300 + 100) ouvre §13.2 : le scénario sait
-  désormais poser une convention d'escompte (`AdvanceAgreement`) et une garantie escomptée
-  (`advanceRequested`). Les cas d'apurement/rupture (CR-21..28) suivront, avec vérification de la position
-  d'escompte sur l'écran de la convention (les lignes `OFFSET` n'apparaissent pas dans la recherche).
+- **Rejeu par l'interface (`@cr:`) :** 19 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-24`, `CR-68`, `CR-70`).
+  §13.1 complète ; §13.2 escompte bien avancée. CR-21 (apurement → position Active, escompté 480 / apuré 80),
+  CR-22 (résiliation → position Annulée, régularisation −200 + reprise −150), CR-23 (solde → position Apurée),
+  CR-24 (complément → position Apurée, régularisation +30) rejoués le 2026-10-14 ; la position d'escompte
+  est lue sur l'écran de la convention (`/escompte`, opérateur UNEP), les régularisations/reprises sur la
+  recherche. Reste §13.2 : CR-25 (hors convention), CR-26 (second impayé), CR-27 (plafond), CR-28 (déficit
+  à 360 j) — setups particuliers (fenêtre, rang d'impayé, plafond, mois de règlement).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

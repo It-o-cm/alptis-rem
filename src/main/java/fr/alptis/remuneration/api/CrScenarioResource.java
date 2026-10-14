@@ -76,6 +76,10 @@ public class CrScenarioResource {
             case "CR-11" -> seedCr11(entity, periodMonth);
             case "CR-12" -> seedCr12(entity, periodMonth);
             case "CR-20" -> seedCr20(entity, periodMonth);
+            case "CR-21" -> seedCr21(entity, periodMonth);
+            case "CR-22" -> seedCr22(entity, periodMonth);
+            case "CR-23" -> seedCr23(entity, periodMonth);
+            case "CR-24" -> seedCr24(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -300,6 +304,66 @@ public class CrScenarioResource {
     private void seedCr20(LegalEntity entity, LocalDate periodMonth) {
         escompteCoverage(entity, periodMonth, "CR20", "P-CR20", "1000");
         convention(entity, "P-CR20", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+    }
+
+    /**
+     * CR-21 (apurement) : escompte de 480 € sur une prime de 1 200 €, puis deux encaissements de 100 €
+     * imputés (apurés) ; les lignes acquises sont au statut `OFFSET` (jamais payées) et la position reste
+     * active (créance encore ouverte). Observable sur l'écran de la convention : escompté 480,00 €, apuré
+     * 80,00 €, statut Active.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr21(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CR21", "P-CR21", "1200");
+        convention(entity, "P-CR21", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+        premium(entity, coverage, "CR21-E1", periodMonth.plusDays(14), "100.00");
+        premium(entity, coverage, "CR21-E2", periodMonth.plusMonths(1).plusDays(14), "100.00");
+    }
+
+    /**
+     * CR-22 (résiliation à 6 mois) : 200 € apurés puis résiliation au 180e jour ; l'escompte est annulé,
+     * la part non apurée est régularisée (−200,00 €) et l'apport acquis est repris (−150,00 €) ; le
+     * distributeur conserve 50 € de suivi.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr22(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CR22", "P-CR22", "1000");
+        convention(entity, "P-CR22", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+        premium(entity, coverage, "CR22-E1", periodMonth.plusMonths(2).plusDays(14), "500.00");
+        event(entity, coverage, "CR22-TERM", EventType.TERMINATION, periodMonth.plusDays(180), null);
+    }
+
+    /**
+     * CR-23 (solde par apurement) : 400 € apurés au 10e mois ; l'escompte est soldé (`SETTLED`) sans
+     * régularisation, et les commissions suivantes redeviennent payables.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr23(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CR23", "P-CR23", "1000");
+        convention(entity, "P-CR23", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+        for (int i = 0; i < 10; i++) {
+            premium(entity, coverage, "CR23-E" + i, periodMonth.plusMonths(i).plusDays(14), "100.00");
+        }
+    }
+
+    /**
+     * CR-24 (solde avec complément d'escompte) : 380 € apurés puis une ligne acquise après une hausse de
+     * cotisation qui dépasse l'escompte ; l'escompte est soldé avec une régularisation payable de +30,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr24(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CR24", "P-CR24", "1000");
+        convention(entity, "P-CR24", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+        premium(entity, coverage, "CR24-E1", periodMonth.plusMonths(1).plusDays(14), "950.00");
+        premium(entity, coverage, "CR24-E2", periodMonth.plusMonths(2).plusDays(14), "125.00");
     }
 
     /**

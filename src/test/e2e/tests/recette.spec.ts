@@ -217,4 +217,75 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(advance.filter({ hasText: '300,00' })).toHaveCount(1);
     await expect(advance.filter({ hasText: '100,00' })).toHaveCount(1);
   });
+
+  test('CR-21 : l’apurement laisse la position active avec 480,00 € escompté et 80,00 € apuré @screen:calculations @screen:advance @cr:CR-21', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-21&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    // The discount position is read on the convention screen (the offset lines are never paid).
+    await page.goto('/escompte');
+    await page.getByTestId('advance-row-0').click();
+    const position = page.getByTestId('adv-position-row');
+    await expect(position).toContainText('Active');
+    await expect(position).toContainText('480,00');
+    await expect(position).toContainText('80,00');
+  });
+
+  test('CR-22 : la résiliation annule l’escompte, régularise −200,00 € et reprend −150,00 € @screen:calculations @screen:commissionSearch @screen:advance @cr:CR-22', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-22&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const rows = page.locator('[data-testid^="cs-row-"]');
+    await expect(rows.filter({ hasText: 'Régularisation d’escompte' }).filter({ hasText: '-200,00' })).toHaveCount(1);
+    await expect(rows.filter({ hasText: 'Reprise' }).filter({ hasText: '-150,00' })).toHaveCount(1);
+    await page.goto('/escompte');
+    await page.getByTestId('advance-row-0').click();
+    await expect(page.getByTestId('adv-position-row')).toContainText('Annulée');
+  });
+
+  test('CR-23 : le solde par apurement passe la position à Apurée @screen:calculations @screen:advance @cr:CR-23', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-23&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/escompte');
+    await page.getByTestId('advance-row-0').click();
+    await expect(page.getByTestId('adv-position-row')).toContainText('Apurée');
+  });
+
+  test('CR-24 : le complément d’escompte solde la position avec une régularisation de +30,00 € @screen:calculations @screen:commissionSearch @screen:advance @cr:CR-24', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-24&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Régularisation d’escompte' })
+      .filter({ hasText: '30,00' })).toHaveCount(1);
+    await page.goto('/escompte');
+    await page.getByTestId('advance-row-0').click();
+    await expect(page.getByTestId('adv-position-row')).toContainText('Apurée');
+  });
 });

@@ -147,4 +147,44 @@ class CrScenarioResourceTest {
         search().body("findAll { it.nature == 'ADVANCE' }.size()", is(2))
                 .body("findAll { it.nature == 'ADVANCE' }.amount.sum() as double", is(400.0));
     }
+
+    /** The discount position of a convention, ready for body assertions. */
+    private static io.restassured.response.ValidatableResponse position(String partner) {
+        return given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/advance-agreements/UNEP/" + partner).then().statusCode(200);
+    }
+
+    /** CR-21: two premiums are offset against the advance; the position stays active with 480 advanced, 80 offset. */
+    @Test
+    void cr21_apurement() {
+        plantAndRun("CR-21");
+        position("P-CR21").body("positions[0].status", is("ACTIVE"))
+                .body("positions[0].advanced as double", is(480.0))
+                .body("positions[0].offset as double", is(80.0));
+    }
+
+    /** CR-22: a termination at six months cancels the advance, regularises −200,00 € and claws back −150,00 €. */
+    @Test
+    void cr22_rupture_with_clawback() {
+        plantAndRun("CR-22");
+        search().body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount.sum() as double", is(-200.0))
+                .body("findAll { it.nature == 'CLAWBACK' }.amount.sum() as double", is(-150.0));
+        position("P-CR22").body("positions[0].status", is("CANCELLED"));
+    }
+
+    /** CR-23: once the offset cumul reaches the advance, the position settles with no adjustment. */
+    @Test
+    void cr23_settled_by_offset() {
+        plantAndRun("CR-23");
+        position("P-CR23").body("positions[0].status", is("SETTLED"));
+        search().body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.size()", is(0));
+    }
+
+    /** CR-24: a hike past the advance settles it with a payable top-up of +30,00 €. */
+    @Test
+    void cr24_top_up_complement() {
+        plantAndRun("CR-24");
+        search().body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount.sum() as double", is(30.0));
+        position("P-CR24").body("positions[0].status", is("SETTLED"));
+    }
 }
