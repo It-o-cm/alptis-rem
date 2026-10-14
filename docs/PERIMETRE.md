@@ -541,10 +541,10 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 45 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
-  `CR-40` à `CR-51`, `CR-67`, `CR-68`, `CR-69`, `CR-70`, `CR-71`). **§13.1, §13.2, §13.4 complètes ;
-  §13.3 complète sauf CR-37/38 (fichier assureur réel, pilotés par l'import) ; §13.5 entamée (CR-67,
-  CR-68, CR-69, CR-70, CR-71).**
+- **Rejeu par l'interface (`@cr:`) :** 46 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
+  `CR-40` à `CR-51`, `CR-63`, `CR-67`, `CR-68`, `CR-69`, `CR-70`, `CR-71`). **§13.1, §13.2, §13.4
+  complètes ; §13.3 complète sauf CR-37/38 (fichier assureur réel, pilotés par l'import) ; §13.5 entamée
+  (CR-63, CR-67, CR-68, CR-69, CR-70, CR-71).**
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -626,12 +626,19 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   sur la période de janvier qu'elle a calculée reproduit la ligne au centime — réel 15,00 €, simulé
   15,00 €, écart 0,00 €, 1 ligne rejouée, 0 modifiée — sur l'écran de simulation). Rejeu sans pipeline de
   paiement : la simulation relit les lignes réelles de la période et les compare, sans effet de bord.
-- **Reste à rejouer** : CR-37/38 (fichier assureur réel UMR, par l'import) et le reste de §13.5 (comptes,
-  paiement, comptabilité : CR-60 compte débiteur, CR-61 compensation, CR-62 suspension ORIAS, CR-63 seuil,
-  CR-64 alignement, CR-65 cycle comptable, CR-66 vision comptable d'une résiliation ; CR-72 performance
-  exclu). Ces cas restants reposent sur le pipeline de paiement/
-  comptabilité (lots, ordres, bordereaux, écritures) ou une période close : leur rejeu demandera de
-  piloter la validation métier, le paiement et la clôture depuis les écrans correspondants.
+- **Seuil de paiement rejoué par le pipeline complet (2026-10-14, §13.5)** : CR-63 (une commission de
+  7,50 € sous le seuil de 10,00 € de l'entité n'est pas ordonnancée). **Chemin de rejeu du cycle complet
+  établi et prouvé** : `seedCr63` sème la prime, puis le rejeu enchaîne calcul réel (`/calculs`),
+  transitions d'état sur l'écran des périodes (`/` : `admin-unep` avance vers « Calculée » puis
+  « Contrôlée », `validator-unep` vers « Validée métier » puis « Paiement préparé »), et lecture du lot
+  sur l'écran de paiement (`/paiement`) : aucun ordre (`no-order`) et une exclusion « Sous le seuil de
+  paiement ». Test d'API bout-en-bout (`CrScenarioResourceTest`, les quatre transitions avec le bon rôle
+  puis `/payment/.../lots`) et e2e multi-rôles. Deux utilisateurs UNEP ajoutés aux helpers e2e
+  (`admin-unep`, `validator-unep`). Ce chemin réutilisable débloque CR-60/61/62/64 (paiement) et
+  CR-65/66 (comptabilité, via l'écran `/comptabilite` après la validation métier).
+- **Reste à rejouer** : CR-37/38 (fichier assureur réel UMR, par l'import) et le reste de §13.5 (CR-60
+  compte débiteur, CR-61 compensation, CR-62 suspension ORIAS, CR-64 alignement, CR-65 cycle comptable,
+  CR-66 vision comptable d'une résiliation ; CR-72 performance exclu).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

@@ -734,4 +734,49 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(page.getByTestId('sim-sim')).toContainText('15,00');
     await expect(page.getByTestId('sim-ecart')).toContainText('0,00');
   });
+
+  test('CR-63 : une commission sous le seuil de paiement n’est pas ordonnancée et figure en exclusion @screen:calculations @screen:periods @screen:payment @cr:CR-63', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-63&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    // The admin runs the real calculation, then advances the period through calculation and controls.
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/calculs');
+    await admin.getByTestId('calc-run').click();
+    await expect(admin.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    // The business validator validates, then prepares the payment.
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+    // On the payment screen the lot carries no order and a below-threshold exclusion.
+    await admin.goto('/paiement');
+    await admin.getByTestId('pay-month').selectOption('2026-01-01');
+    await admin.getByTestId('pay-refresh').click();
+    await admin.locator('[data-testid^="lot-open-"]').first().click();
+    await expect(admin.getByTestId('lot-detail')).toBeVisible();
+    await expect(admin.getByTestId('no-order')).toBeVisible();
+    await expect(admin.locator('[data-testid^="exclusion-reason-"]').first()).toContainText(
+      'Sous le seuil de paiement',
+    );
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });

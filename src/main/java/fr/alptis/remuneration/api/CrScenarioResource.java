@@ -126,6 +126,7 @@ public class CrScenarioResource {
             case "CR-49" -> seedCr49(entity, periodMonth);
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
+            case "CR-63" -> seedCr63(entity, periodMonth);
             case "CR-67" -> seedCr67(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
@@ -1010,6 +1011,23 @@ public class CrScenarioResource {
                 "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-63 (seuil de paiement) : une prime de 50 € à 15 % produit une commission de 7,50 €, sous le
+     * seuil minimal de paiement de l'entité (10,00 €) ; une fois la période préparée au paiement, le
+     * bénéficiaire n'a pas d'ordre et figure en exclusion « sous le seuil », son solde restant acquis.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr63(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR63", product, periodMonth, "P-CR63", null);
+        linearChoice(coverage, "0.15", periodMonth, null);
+        version(entity, "PLAN-CR63", "R-CR63", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        premium(entity, coverage, "CR63-E1", periodMonth.plusDays(4), "50.00");
     }
 
     /**

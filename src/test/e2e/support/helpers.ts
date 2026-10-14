@@ -9,6 +9,8 @@ export const USERS = {
   financeAlptis: { username: 'finance-alptis', password: 'finance-alptis' },
   viewerAlptis: { username: 'viewer-alptis', password: 'viewer-alptis' },
   operatorUnep: { username: 'operator-unep', password: 'operator-unep' },
+  adminUnep: { username: 'admin-unep', password: 'admin-unep' },
+  validatorUnep: { username: 'validator-unep', password: 'validator-unep' },
   itAdmin: { username: 'it-admin', password: 'it-admin' },
   auditor: { username: 'auditor', password: 'auditor' },
   managerAlptis: { username: 'manager-alptis', password: 'manager-alptis' },

@@ -344,6 +344,31 @@ class CrScenarioResourceTest {
                 .when().get("/api/ui/v1/commission-lines/" + id).then().statusCode(200);
     }
 
+    /** Advances a UNEP period to a target state as a given user. */
+    private static void transition(String user, String month, String toState) {
+        given().auth().preemptive().basic(user, user).contentType("application/json")
+                .body(java.util.Map.of("toState", toState, "reason", "test"))
+                .when().post("/api/ui/v1/periods/UNEP/" + month + "/transition").then().statusCode(200);
+    }
+
+    /** CR-63: a 7,50 € commission below the 10 € payment threshold yields no order and a below-threshold exclusion. */
+    @Test
+    void cr63_below_threshold() {
+        plantAndRun("CR-63");
+        transition("admin-unep", "2026-01-01", "CALCULATED");
+        transition("operator-unep", "2026-01-01", "CONTROLLED");
+        transition("validator-unep", "2026-01-01", "BUSINESS_VALIDATED");
+        transition("operator-unep", "2026-01-01", "PAYMENT_PREPARED");
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2026-01-01/lots").then().statusCode(200)
+                .body("size()", is(1)).extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/lots/" + lotId).then().statusCode(200)
+                .body("orders.size()", is(0))
+                .body("exclusions.reason", hasItem("BELOW_THRESHOLD"))
+                .body("exclusions.find { it.reason == 'BELOW_THRESHOLD' }.amount", is(7.50f));
+    }
+
     /** CR-69: simulating the CR-01 rule on its calculated period reproduces the line to the cent (ecart 0). */
     @Test
     void cr69_reproduces_identical_lines() {
