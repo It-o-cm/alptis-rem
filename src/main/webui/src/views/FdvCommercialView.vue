@@ -4,7 +4,7 @@ import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
 import GaugeChart from '../components/charts/GaugeChart.vue';
-import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface Simulation {
@@ -127,7 +127,7 @@ async function simulate(): Promise<void> {
     <AppCard title="Simulateur de variable (FDV-16)" data-testid="fdvc-simulator">
       <div class="ui-bar">
         <FormField label="Mois" stacked width="short" v-slot="{ id }">
-          <input :id="id" data-testid="sim-month" type="text" v-model="simMonth" />
+          <MonthSelect :id="id" data-testid="sim-month" v-model="simMonth" :entity="entity" />
         </FormField>
         <FormField label="Production pondérée simulée (vide = mesurée)" stacked width="short" v-slot="{ id }">
           <input :id="id" data-testid="sim-production" type="number" step="any" v-model.number="simProduction" />

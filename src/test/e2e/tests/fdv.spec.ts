@@ -86,7 +86,8 @@ test('le commercial consulte son variable et le simule @screen:fdvCommercial @re
   await expect(page.locator('[data-testid^="chart-gauge-"]').first()).toBeVisible();
 
   // The simulator (FDV-16): a hypothetical production above the objective pays the instalment.
-  await page.getByTestId('sim-month').fill('2026-09-01');
+  // ADM-03: the month is picked from a list, never typed as an ISO code.
+  await page.getByTestId('sim-month').selectOption('2026-09-01');
   await page.getByTestId('sim-production').fill('5000');
   await page.getByTestId('sim-run').click();
   await expect(page.getByTestId('sim-alert')).toContainText('Objectif atteint');

@@ -414,7 +414,8 @@ de RulesView) :
   `cov-mode` (mode de rémunération) et `cov-status` (statut d'adhésion) affichées au libellé FR via
   `CodeSelect` ; `field-coverage`/`field-contract`/`cov-coverage`/`cov-contract`/`cov-holder`/`cov-production`
   restent libres (identifiants d'une garantie/adhésion/souscripteur créés à la saisie, comme `pt-newcode`).
-- FdvCommercialView : `sim-month` (mois du simulateur) à passer en `MonthSelect`.
+- ~~FdvCommercialView~~ **converti (2026-10-14)** : `sim-month` (mois du simulateur) passé en `MonthSelect`
+  (scopé à l'entité), `fdv.spec` adapté (`selectOption`).
 
 **Balayage des libellés d'énum restant** (affichage d'un code technique dans un tableau/une fiche,
 à remplacer par le libellé FR du glossaire — audit en cours) :
@@ -448,8 +449,9 @@ distributeur via `DistributorSelect`) ; FdvCollaboratorsView, FdvCommercialView,
 FdvObjectivesView (entité) ; AdjustmentsView (entité + mois + statut au libellé FR), MarginView
 (entité + mois) ; ClaimsView (distributeur via `DistributorSelect`) ;
 ManualEventView (système source via `SourceSystemSelect`, produit via `ProductSelect`, type
-d'événement/mode de rémunération/statut d'adhésion au libellé FR via `CodeSelect`). Chacun porte son
-assertion ADM-03 dans son test de bout en bout.
+d'événement/mode de rémunération/statut d'adhésion au libellé FR via `CodeSelect`) ;
+FdvCommercialView (`sim-month` via `MonthSelect`). Chacun porte son assertion ADM-03 dans son test de
+bout en bout.
 Le `MonthSelect` lie le mois tel que le serveur le rend — la date premier-du-mois `AAAA-MM-01` que
 `/periods` renvoie et que **tous** les points d'accès de mois analysent (vérifié : `2026-09` → 500,
 `2026-09-01` → 200). Il n'y a donc qu'une seule forme de mois ; l'option `value-format` introduite sur
