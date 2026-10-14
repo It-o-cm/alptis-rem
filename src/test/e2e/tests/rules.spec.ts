@@ -59,6 +59,43 @@ test.describe('Paramétrage des règles', () => {
     await admin2Ctx.close();
   });
 
+  test('CR-71 : un administrateur ne peut approuver sa propre version de règle '
+    + '@screen:rules @req:PAR-04 @cr:CR-71', async ({ browser }) => {
+    const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+    const admin = await ctx.newPage();
+    await admin.goto('/regles');
+
+    await admin.getByTestId('plan-code').fill('SOD_PLAN');
+    await admin.getByTestId('plan-label').fill('Plan SoD');
+    await admin.getByTestId('plan-vintage').fill('2026');
+    await admin.getByTestId('plan-create').click();
+    await expect(admin.getByTestId('plan-row-SOD_PLAN')).toBeVisible();
+
+    await admin.getByTestId('plan-open-SOD_PLAN').click();
+    await admin.getByTestId('rule-code').fill('SOD_RULE');
+    await admin.getByTestId('rule-label').fill('Règle SoD');
+    await admin.getByTestId('rule-family').selectOption('LINEAR');
+    await admin.getByTestId('rule-create').click();
+    await expect(admin.getByTestId('rule-row-SOD_RULE')).toBeVisible();
+
+    await admin.getByTestId('rule-open-SOD_RULE').click();
+    await admin.getByTestId('v-from').fill('2026-01-01');
+    await admin.getByTestId('v-to').fill('2026-12-31');
+    await admin.getByTestId('v-scope').fill('{"product":["SOD_PROD"]}');
+    await admin.getByTestId('v-parameters').fill('{"allowedRates":[0.15]}');
+    await admin.getByTestId('v-group').fill('SOD');
+    await admin.getByTestId('version-create').click();
+    await expect(admin.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('Brouillon');
+
+    // The very administrator who created the version cannot approve it (separation of duties, CR-71).
+    await admin.getByTestId('version-approve-1').click();
+    await expect(admin.getByTestId('rules-error')).toContainText('Séparation des tâches');
+    // The version stays a draft; the refusal changed nothing.
+    await expect(admin.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('Brouillon');
+
+    await ctx.close();
+  });
+
   test('ajoute une version avec barème de famille, conditions et politique de reprise '
     + '@screen:rules @req:PAR-06 @req:PAR-07 @req:PAR-08', async ({ browser }) => {
     const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });

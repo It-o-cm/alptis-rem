@@ -4,6 +4,7 @@ import fr.alptis.remuneration.domain.ConcurrentUpdateException;
 import fr.alptis.remuneration.domain.ConflictException;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.ValidationException;
+import fr.alptis.remuneration.security.SeparationOfDutiesException;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
@@ -58,6 +59,17 @@ public class UiExceptionMappers {
     @ServerExceptionMapper
     public Response conflict(ConflictException exception) {
         return problem(Response.Status.CONFLICT.getStatusCode(), "Conflit", exception.getMessage());
+    }
+
+    /**
+     * Maps a separation-of-duties refusal (e.g. approving one's own rule version, CR-71) to 403.
+     *
+     * @param exception the separation-of-duties exception
+     * @return a 403 problem response
+     */
+    @ServerExceptionMapper
+    public Response separationOfDuties(SeparationOfDutiesException exception) {
+        return problem(Response.Status.FORBIDDEN.getStatusCode(), "Séparation des tâches", exception.getMessage());
     }
 
     /**

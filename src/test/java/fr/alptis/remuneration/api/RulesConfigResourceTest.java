@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
@@ -103,6 +104,37 @@ class RulesConfigResourceTest {
                 .body("{\"parameters\":\"{\\\"allowedRates\\\":[{\\\"acquisition\\\":0.9,\\\"servicing\\\":0.1}]}\"}")
                 .when().post("/api/ui/v1/rule-versions/plausibility").then().statusCode(200)
                 .body("size()", greaterThanOrEqualTo(1));
+    }
+
+    /**
+     * CR-71: the administrator who created a rule version is refused approval of it himself, with a 403
+     * problem response carrying the French separation-of-duties message.
+     */
+    @Test
+    void cr71_admin_cannot_approve_own_version() {
+        admin().contentType(ContentType.JSON)
+                .body("{\"entityCode\":\"ALPTIS_ASSURANCES\",\"code\":\"PSOD\",\"label\":\"Plan SoD\","
+                        + "\"direction\":\"OUTBOUND\",\"vintage\":2026}")
+                .when().post("/api/ui/v1/plans").then().statusCode(201);
+        admin().contentType(ContentType.JSON)
+                .body("{\"entityCode\":\"ALPTIS_ASSURANCES\",\"code\":\"RSOD\",\"label\":\"Règle SoD\","
+                        + "\"family\":\"LINEAR\"}")
+                .when().post("/api/ui/v1/plans/PSOD/rules").then().statusCode(201);
+        admin().contentType(ContentType.JSON)
+                .body("{\"entityCode\":\"ALPTIS_ASSURANCES\",\"validFrom\":\"2026-01-01\",\"validTo\":\"2026-12-31\","
+                        + "\"versionAnchor\":\"EVENT_DATE\",\"scope\":\"{\\\"product\\\":[\\\"SOD\\\"]}\","
+                        + "\"triggerEventTypes\":[\"PREMIUM_COLLECTED\"],\"basis\":\"COLLECTED_PREMIUM\","
+                        + "\"outputNature\":\"LINEAR\",\"parameters\":\"{\\\"allowedRates\\\":[0.15]}\","
+                        + "\"priority\":10,\"exclusionGroup\":\"SOD\"}")
+                .when().post("/api/ui/v1/plans/PSOD/rules/RSOD/versions").then().statusCode(201);
+
+        admin().when().post("/api/ui/v1/plans/PSOD/rules/RSOD/versions/1/approve?entityCode=ALPTIS_ASSURANCES")
+                .then().statusCode(403).contentType("application/problem+json")
+                .body("detail", containsString("Séparation des tâches"));
+
+        // The version stays a draft after the refusal.
+        admin().when().get("/api/ui/v1/plans/PSOD/rules/RSOD/versions?entityCode=ALPTIS_ASSURANCES")
+                .then().statusCode(200).body("[0].status", is("DRAFT"));
     }
 
     /**
