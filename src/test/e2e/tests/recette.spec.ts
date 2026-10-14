@@ -42,4 +42,44 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(page.getByTestId('line-detail')).toBeVisible();
     await expect(page.getByTestId('line-detail')).toContainText('Linéaire');
   });
+
+  test('CR-02 : précompté année 1 donne ACQUISITION 300,00 € et SERVICING 100,00 € @screen:calculations @screen:commissionSearch @cr:CR-02', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-02&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const acquisition = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Acquisition' }).first();
+    await expect(acquisition).toContainText('300,00');
+    const servicing = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Gestion' }).first();
+    await expect(servicing).toContainText('100,00');
+  });
+
+  test('CR-03 : précompté année 2 ne donne que SERVICING 100,00 € @screen:calculations @screen:commissionSearch @cr:CR-03', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-03&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const servicing = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Gestion' }).first();
+    await expect(servicing).toContainText('100,00');
+    // No acquisition line in the second year.
+    await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Acquisition' })).toHaveCount(0);
+  });
 });

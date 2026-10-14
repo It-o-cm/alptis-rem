@@ -59,12 +59,31 @@ public class CrScenarioResource {
         LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
         LocalDate periodMonth = LocalDate.parse(month);
         period(entity, periodMonth);
-        if ("CR-01".equals(crCode)) {
-            seedCr01(entity, periodMonth);
-            return Response.noContent().build();
+        switch (crCode) {
+            case "CR-01" -> seedCr01(entity, periodMonth);
+            case "CR-02" -> seedCr02(entity, periodMonth);
+            case "CR-03" -> seedCr03(entity, periodMonth);
+            default -> {
+                return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
+            }
         }
-        return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
+        return Response.noContent().build();
     }
+
+    /**
+     * The premium perimeter of the reference product for an entity: the product and a collected premium.
+     *
+     * @param entity the entity
+     * @return the scope JSON
+     */
+    private String premiumScope(LegalEntity entity) {
+        return "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE_SELECT\"],"
+                + "\"eventType\":[\"PREMIUM_COLLECTED\"]}";
+    }
+
+    /** Parameters of the reference 30/10 upfront rule (first year 365 days). */
+    private static final String UPFRONT_PARAMS =
+            "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365}";
 
     /**
      * CR-01 (linéaire) : Santé Select, choix linéaire 15 %, un encaissement de 100 € hors taxes ; le
@@ -77,11 +96,44 @@ public class CrScenarioResource {
         Product product = product(entity, "SANTE_SELECT");
         Coverage coverage = coverage(entity, "CR01", product, periodMonth, "P-CR01");
         linearChoice(coverage, "0.15", periodMonth);
-        String scope = "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE_SELECT\"],"
-                + "\"eventType\":[\"PREMIUM_COLLECTED\"]}";
-        version(entity, "PLAN-CR", "R-CR01-LIN", RuleFamily.LINEAR, LineNature.LINEAR, scope,
+        version(entity, "PLAN-CR01", "R-CR01-LIN", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
                 "{\"allowedRates\":[0.15]}", periodMonth);
         premium(entity, coverage, "CR01-E1", periodMonth.plusDays(4), "100.00");
+    }
+
+    /**
+     * CR-02 (précompté, année 1) : apport 30 %, suivi 10 %, prime annuelle de 1 000 € encaissée la
+     * première année ; le moteur doit produire une ligne {@code ACQUISITION} de 300,00 € et une ligne
+     * {@code SERVICING} de 100,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr02(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR02", product, periodMonth, "P-CR02");
+        upfrontChoice(coverage, "0.30", "0.10", periodMonth);
+        version(entity, "PLAN-CR02", "R-CR02-UPF", RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
+                UPFRONT_PARAMS, periodMonth);
+        premium(entity, coverage, "CR02-E1", periodMonth.plusDays(4), "1000.00");
+    }
+
+    /**
+     * CR-03 (précompté, année 2) : même garantie une année plus tard, prime de 1 000 € encaissée la
+     * deuxième année ; le moteur ne doit produire qu'une ligne {@code SERVICING} de 100,00 €, sans apport.
+     * La garantie prend effet un an avant le mois de calcul, de sorte que la prime tombe en 2e année.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr03(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = periodMonth.minusYears(1);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR03", product, effect, "P-CR03");
+        upfrontChoice(coverage, "0.30", "0.10", effect);
+        version(entity, "PLAN-CR03", "R-CR03-UPF", RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
+                UPFRONT_PARAMS, effect);
+        premium(entity, coverage, "CR03-E1", periodMonth.plusDays(4), "1000.00");
     }
 
     /**
@@ -175,6 +227,24 @@ public class CrScenarioResource {
         choice.coverage = coverage;
         choice.mode = RemunerationMode.LINEAR;
         choice.linearRate = new BigDecimal(rate);
+        choice.validFrom = from;
+        choice.persist();
+    }
+
+    /**
+     * Creates an upfront remuneration choice for a coverage.
+     *
+     * @param coverage    the coverage
+     * @param acquisition the acquisition rate, as a fraction
+     * @param servicing   the servicing rate, as a fraction
+     * @param from        the start of validity
+     */
+    private void upfrontChoice(Coverage coverage, String acquisition, String servicing, LocalDate from) {
+        RemunerationChoice choice = new RemunerationChoice();
+        choice.coverage = coverage;
+        choice.mode = RemunerationMode.UPFRONT;
+        choice.acquisitionRate = new BigDecimal(acquisition);
+        choice.servicingRate = new BigDecimal(servicing);
         choice.validFrom = from;
         choice.persist();
     }
