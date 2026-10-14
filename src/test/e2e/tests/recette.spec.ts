@@ -687,4 +687,32 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(anomaly).toHaveCount(1);
     await expect(anomaly.first()).toContainText('1008.00');
   });
+
+  test('CR-67 : un fichier aux lignes fausses intègre 1 ligne, en rejette 3 et en met 1 en attente @screen:imports @cr:CR-67', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    const header =
+      'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount';
+    const content =
+      header +
+      '\n' +
+      'UNEP;CLEVA;ENC-1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00\n' +
+      'UNEP;CLEVA;ENC-2;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;0.00\n' +
+      'UNEP;CLEVA;ENC-3;PREMIUM_COLLECTED;;C1;2020-01-05;100.00\n' +
+      'UNEP;CLEVA;ENC-4;PREMIUM_COLLECTED;AD-1;C1;2999-01-01;100.00\n' +
+      'UNEP;CLEVA;ENC-5;PREMIUM_COLLECTED;AD-UNKNOWN;C1;2020-01-05;100.00\n';
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('CLEVA');
+    await page.getByTestId('upload-file').setInputFiles({
+      name: 'unep_events_20260105.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(content),
+    });
+    await page.getByTestId('upload-submit').click();
+    await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 3 rejetée(s), 1 en attente');
+  });
 });

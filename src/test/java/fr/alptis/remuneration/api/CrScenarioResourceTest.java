@@ -344,6 +344,27 @@ class CrScenarioResourceTest {
                 .when().get("/api/ui/v1/commission-lines/" + id).then().statusCode(200);
     }
 
+    /** CR-67: a bad-line events file loads 1 line, rejects 3 and holds 1 (unknown contract). */
+    @Test
+    void cr67_bad_lines_rejected_or_held() {
+        given().when().post("/api/test/cr-scenario?cr=CR-67&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        String header = "entity_code;source_system;source_key;event_type;contract_number;coverage_code;"
+                + "event_date;gross_amount";
+        String content = header + "\n"
+                + "UNEP;CLEVA;ENC-1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00\n"
+                + "UNEP;CLEVA;ENC-2;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;0.00\n"
+                + "UNEP;CLEVA;ENC-3;PREMIUM_COLLECTED;;C1;2020-01-05;100.00\n"
+                + "UNEP;CLEVA;ENC-4;PREMIUM_COLLECTED;AD-1;C1;2999-01-01;100.00\n"
+                + "UNEP;CLEVA;ENC-5;PREMIUM_COLLECTED;AD-UNKNOWN;C1;2020-01-05;100.00\n";
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body(java.util.Map.of("entityCode", "UNEP", "flowCode", "events", "sourceSystem", "CLEVA",
+                        "fileName", "unep_events.csv", "content", content))
+                .when().post("/api/ui/v1/imports")
+                .then().statusCode(201)
+                .body("linesRead", is(5)).body("linesLoaded", is(1))
+                .body("linesRejected", is(3)).body("linesOnHold", is(1));
+    }
+
     /** CR-45: an adhésion bearing 40 € of paid RCD, terminated in the 8th month, is clawed back in full. */
     @Test
     void cr45_development_reprise() {

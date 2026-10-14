@@ -541,9 +541,10 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 43 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
-  `CR-40` à `CR-51`, `CR-68`, `CR-70`, `CR-71`). **§13.1, §13.2, §13.4 complètes ; §13.3 complète sauf
-  CR-37/38 (fichier assureur réel, pilotés par l'import) ; §13.5 entamée (CR-68, CR-70, CR-71).**
+- **Rejeu par l'interface (`@cr:`) :** 44 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
+  `CR-40` à `CR-51`, `CR-67`, `CR-68`, `CR-70`, `CR-71`). **§13.1, §13.2, §13.4 complètes ; §13.3 complète
+  sauf CR-37/38 (fichier assureur réel, pilotés par l'import) ; §13.5 entamée (CR-67, CR-68, CR-70,
+  CR-71).**
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -617,10 +618,16 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   remontait en 500 au lieu d'un `problem+json` 403 au message français. Ajout d'une correspondance 403
   « Séparation des tâches » ; l'écran des règles affiche désormais le motif du refus, la version restant
   « Brouillon ». Test d'API (`RulesConfigResourceTest`) + e2e (`rules.spec`).
+- **Données erronées à l'import rejouées par l'interface (2026-10-14, §13.5)** : CR-67 (un fichier
+  d'événements de cinq lignes — prime nulle, numéro de contrat manquant, date future, contrat inconnu —
+  intègre 1 ligne, en rejette 3 avec leur motif et met 1 en attente, `1 intégrée(s), 3 rejetée(s),
+  1 en attente` sur l'écran des imports). Le chargeur gagne `seedCr67` qui pose le contrat CLEVA visé.
 - **Reste à rejouer** : CR-37/38 (fichier assureur réel UMR, par l'import) et le reste de §13.5 (comptes,
   paiement, comptabilité : CR-60 compte débiteur, CR-61 compensation, CR-62 suspension ORIAS, CR-63 seuil,
-  CR-64 alignement, CR-65 cycle comptable, CR-66 vision comptable d'une résiliation, CR-67 données
-  erronées à l'import, CR-69 reproductibilité ; CR-72 performance exclu).
+  CR-64 alignement, CR-65 cycle comptable, CR-66 vision comptable d'une résiliation, CR-69
+  reproductibilité ; CR-72 performance exclu). Ces cas restants reposent sur le pipeline de paiement/
+  comptabilité (lots, ordres, bordereaux, écritures) ou une période close : leur rejeu demandera de
+  piloter la validation métier, le paiement et la clôture depuis les écrans correspondants.
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

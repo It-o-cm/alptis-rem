@@ -126,6 +126,7 @@ public class CrScenarioResource {
             case "CR-49" -> seedCr49(entity, periodMonth);
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
+            case "CR-67" -> seedCr67(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1009,6 +1010,27 @@ public class CrScenarioResource {
                 "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-67 (données erronées à l'import) : sème le contrat `AD-1` (garantie `C1`, système source CLEVA)
+     * que vise le fichier d'événements, pour que la ligne valide s'intègre, les trois lignes fausses
+     * soient rejetées et la ligne au contrat inconnu soit mise en attente.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (unused beyond the coverage effect year)
+     */
+    private void seedCr67(LegalEntity entity, LocalDate periodMonth) {
+        Contract contract = new Contract();
+        contract.entity = entity;
+        contract.sourceSystem = "CLEVA";
+        contract.contractNumber = "AD-1";
+        contract.persist();
+        Coverage coverage = new Coverage();
+        coverage.contract = contract;
+        coverage.coverageCode = "C1";
+        coverage.effectDate = LocalDate.of(periodMonth.getYear(), 1, 1);
+        coverage.persist();
     }
 
     /**
