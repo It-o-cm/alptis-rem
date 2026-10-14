@@ -111,6 +111,7 @@ public class CrScenarioResource {
             case "CR-42" -> seedCr42(entity, periodMonth);
             case "CR-46" -> seedCr46(entity, periodMonth);
             case "CR-41" -> seedCr41(entity, periodMonth);
+            case "CR-48" -> seedCr48(entity, periodMonth);
             case "CR-49" -> seedCr49(entity, periodMonth);
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
@@ -736,6 +737,52 @@ public class CrScenarioResource {
         indicator.periodTo = LocalDate.of(year, 12, 31);
         indicator.value = new BigDecimal(value);
         indicator.persist();
+    }
+
+    /**
+     * CR-48 (RCP prévoyance, palier au nombre) : 12 adhésions nouvelles atteignent le palier « 10 à 19 »
+     * (2 %) d'un barème au nombre ; appliqué aux 50 000 € de primes encaissées, la clôture de portefeuille
+     * verse une ligne `RCP` de 1 000,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (the portfolio close month)
+     */
+    private void seedCr48(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "SANTE");
+        RuleVersion version = version(entity, "PLAN-CR48", "R-CR48", RuleFamily.PORTFOLIO, LineNature.RCP,
+                santeScope(entity), "{\"rate\":0}", LocalDate.of(year, 1, 1), null, null);
+        countScale(version);
+        condition(version, QualityIndicatorType.PORTFOLIO_LAPSE_RATE, ConditionOperator.LE, "0.15");
+        for (int i = 1; i <= 12; i++) {
+            Coverage coverage = coverage(entity, "CR48-" + i, product, LocalDate.of(year, 1, 10), "P-CR48", null);
+            event(entity, coverage, "CR48-SUB" + i, EventType.SUBSCRIPTION, LocalDate.of(year, 2, 1), null);
+            if (i == 1) {
+                event(entity, coverage, "CR48-PREM", EventType.PREMIUM_COLLECTED, LocalDate.of(year, 6, 1), "50000");
+            }
+        }
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR48").firstResult();
+        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT);
+        indicator(entity, distributor, QualityIndicatorType.PORTFOLIO_LAPSE_RATE, "0.10", year);
+    }
+
+    /**
+     * Attaches a new-business count scale (prévoyance RCP) to a rule version: 1 % from 5 adhésions, 2 %
+     * from 10, 3 % from 20, 4 % from 40, the reached tier's rate applying to the whole collected premium.
+     *
+     * @param version the portfolio rule version
+     */
+    private void countScale(RuleVersion version) {
+        Scale scale = new Scale();
+        scale.ruleVersion = version;
+        scale.mode = ScaleMode.WHOLE;
+        scale.measure = ScaleMeasure.AMOUNT;
+        scale.output = ScaleOutput.RATE;
+        scale.persist();
+        tier(scale, "5", "0.01");
+        tier(scale, "10", "0.02");
+        tier(scale, "20", "0.03");
+        tier(scale, "40", "0.04");
     }
 
     /**

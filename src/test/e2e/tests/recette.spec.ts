@@ -528,4 +528,22 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(retro).toHaveCount(1);
     await expect(retro.first()).toContainText('60,00');
   });
+
+  test('CR-48 : douze adhésions atteignent le palier 2 % et versent une RCP de 1 000,00 € @screen:calculations @screen:commissionSearch @cr:CR-48', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-48&entity=UNEP&month=2026-12-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-12-01');
+    await page.getByTestId('close-portfolio').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de portefeuille calculée');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-12-01');
+    await page.getByTestId('cs-search').click();
+    const rcp = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Portefeuille (RCP)' });
+    await expect(rcp).toHaveCount(1);
+    await expect(rcp.first()).toContainText(/1.?000,00/);
+  });
 });

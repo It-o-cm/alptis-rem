@@ -307,6 +307,16 @@ class CrScenarioResourceTest {
                 .body("find { it.nature == 'RETROCESSION' }.amount", is(60.00f));
     }
 
+    /** CR-48: 12 new adhésions reach the 2% count tier, giving an RCP line of 1 000,00 € on 50 000 €. */
+    @Test
+    void cr48_portfolio_provident_tier() {
+        given().when().post("/api/test/cr-scenario?cr=CR-48&entity=UNEP&month=2026-12-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-12-01/close-portfolio").then().statusCode(200);
+        search("2026-12-01").body("findAll { it.nature == 'RCP' }.size()", is(1))
+                .body("find { it.nature == 'RCP' }.amount", is(1000.00f));
+    }
+
     /** CR-49: a 30 € linear commission split 90/10 pays 27,00 € to the distributor and 3,00 € to its group. */
     @Test
     void cr49_share_with_group() {
