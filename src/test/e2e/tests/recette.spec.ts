@@ -827,4 +827,40 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-66 : une résiliation régularise le prévisionnel de 90,00 € en comptabilité @screen:periods @screen:accounting @cr:CR-66', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-66&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    // The forecast lines are seeded; the period only needs to advance to business validation.
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+
+    // The forecast-adjustment entry of 90,00 € is read on the accounting screen.
+    await admin.goto('/comptabilite');
+    await admin.getByTestId('acc-month').selectOption('2026-01-01');
+    await admin.getByTestId('acc-refresh').click();
+    const adjustment = admin.locator('[data-testid^="entry-row-"]').filter({ hasText: 'FORECAST_ADJUSTMENT' });
+    await expect(adjustment).toHaveCount(1);
+    await expect(adjustment.first()).toContainText('90,00');
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });

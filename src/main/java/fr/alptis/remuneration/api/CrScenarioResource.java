@@ -127,6 +127,7 @@ public class CrScenarioResource {
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
             case "CR-63" -> seedCr63(entity, periodMonth);
+            case "CR-66" -> seedCr66(entity, periodMonth);
             case "CR-67" -> seedCr67(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
@@ -1011,6 +1012,43 @@ public class CrScenarioResource {
                 "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-66 (résiliation, vision comptable) : une résiliation au 6e mois régularise le prévisionnel de
+     * −90 € ; à la validation métier, l'écriture d'ajustement du prévisionnel de 90,00 € contre-passe la
+     * provision (débit provision, crédit charge prévisionnelle). Les lignes `FORECAST` sont posées
+     * directement, comme état d'entrée du scénario.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr66(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        CommissionLine origin = forecastLine(entity, period, "180.00", null);
+        forecastLine(entity, period, "-90.00", origin);
+    }
+
+    /**
+     * Poses a forecast commission line on a period, optionally pointing at the origin line it adjusts.
+     *
+     * @param entity     the entity
+     * @param period     the period
+     * @param amount     the signed amount
+     * @param originLine the line this one adjusts, or null
+     * @return the created forecast line
+     */
+    private CommissionLine forecastLine(LegalEntity entity, Period period, String amount, CommissionLine originLine) {
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = LineStatus.FORECAST;
+        line.amount = new BigDecimal(amount);
+        line.originLine = originLine;
+        line.persist();
+        return line;
     }
 
     /**

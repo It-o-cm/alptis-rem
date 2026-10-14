@@ -541,10 +541,10 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 47 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
-  `CR-40` à `CR-51`, `CR-63`, `CR-64`, `CR-67`, `CR-68`, `CR-69`, `CR-70`, `CR-71`). **§13.1, §13.2,
-  §13.4 complètes ; §13.3 complète sauf CR-37/38 (fichier assureur réel, pilotés par l'import) ; §13.5
-  entamée (CR-63, CR-64, CR-67, CR-68, CR-69, CR-70, CR-71).**
+- **Rejeu par l'interface (`@cr:`) :** 48 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
+  `CR-40` à `CR-51`, `CR-63`, `CR-64`, `CR-66`, `CR-67`, `CR-68`, `CR-69`, `CR-70`, `CR-71`). **§13.1,
+  §13.2, §13.4 complètes ; §13.3 complète sauf CR-37/38 (fichier assureur réel, pilotés par l'import) ;
+  §13.5 entamée (CR-63, CR-64, CR-66, CR-67, CR-68, CR-69, CR-70, CR-71).**
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -641,11 +641,17 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   bordereau de même net 15,00 € sur l'écran des bordereaux). Réutilise le chemin du cycle complet
   (CR-63) et vérifie l'invariant PAY-05 (ordre = bordereau ; total du lot = somme). Test d'API bout-en-
   bout + e2e multi-rôles.
+- **Vision comptable d'une résiliation rejouée par le pipeline (2026-10-14, §13.5)** : CR-66 (une
+  résiliation au 6e mois régularise le prévisionnel de −90 € ; à la validation métier, une écriture
+  `FORECAST_ADJUSTMENT` de 90,00 € contre-passe la provision, lue sur `/comptabilite`). Les lignes
+  `FORECAST` sont posées comme état d'entrée (`seedCr66`), le pipeline s'arrête à la validation métier
+  (pas de paiement nécessaire). Test d'API + e2e multi-rôles. Le chemin de lecture comptable est désormais
+  prouvé et réutilisable pour CR-65 (cycle comptable complet : reconnaissance du prévisionnel, acquisition,
+  paiement).
 - **Reste à rejouer** : CR-37/38 (fichier assureur réel UMR, par l'import) et le reste de §13.5 (CR-60
   compte débiteur et CR-61 compensation — demandent de semer soldes d'ouverture / lignes payées
   antérieures et, pour CR-61, un déclenchement de compensation ; CR-62 suspension ORIAS ; CR-65 cycle
-  comptable et CR-66 vision comptable d'une résiliation — à lire sur `/comptabilite` après validation
-  métier ; CR-72 performance exclu).
+  comptable complet, lu sur `/comptabilite` ; CR-72 performance exclu).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

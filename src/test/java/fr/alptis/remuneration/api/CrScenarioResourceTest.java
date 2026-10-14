@@ -369,6 +369,18 @@ class CrScenarioResourceTest {
                 .body("exclusions.find { it.reason == 'BELOW_THRESHOLD' }.amount", is(7.50f));
     }
 
+    /** CR-66: a sixth-month termination posts a forecast-adjustment entry of 90,00 € at business validation. */
+    @Test
+    void cr66_termination_forecast_adjustment() {
+        given().when().post("/api/test/cr-scenario?cr=CR-66&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        transition("admin-unep", "2026-01-01", "CALCULATED");
+        transition("operator-unep", "2026-01-01", "CONTROLLED");
+        transition("validator-unep", "2026-01-01", "BUSINESS_VALIDATED");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounting/UNEP/2026-01-01/entries").then().statusCode(200)
+                .body("find { it.accountingEvent == 'FORECAST_ADJUSTMENT' }.amount", is(90.00f));
+    }
+
     /** CR-64: each order aligns with a bordereau of the same amount and the lot total equals their sum. */
     @Test
     void cr64_alignment() {
