@@ -1,5 +1,7 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.domain.AdvanceAgreement;
+import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionPlan;
@@ -73,6 +75,7 @@ public class CrScenarioResource {
             case "CR-10" -> seedCr10(entity, periodMonth);
             case "CR-11" -> seedCr11(entity, periodMonth);
             case "CR-12" -> seedCr12(entity, periodMonth);
+            case "CR-20" -> seedCr20(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -284,6 +287,97 @@ public class CrScenarioResource {
                 collegeScope(entity, "NON_EXECUTIVE"), "{\"allowedRates\":[0.05]}", periodMonth, null, null);
         premium(entity, executive, "CR12-EXE-E", periodMonth.plusDays(4), "1000.00");
         premium(entity, nonExecutive, "CR12-NON-E", periodMonth.plusDays(4), "1000.00");
+    }
+
+    /**
+     * CR-20 (versement d'escompte) : convention valide, prime annualisée 1 000 €, apport 30 % / suivi
+     * 10 %, escompte demandé ; le moteur verse l'escompte dans la période du mois d'effet : deux lignes
+     * `ADVANCE` totalisant 400,00 € (300 + 100) et une position d'escompte active.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (the coverage effect month)
+     */
+    private void seedCr20(LegalEntity entity, LocalDate periodMonth) {
+        escompteCoverage(entity, periodMonth, "CR20", "P-CR20", "1000");
+        convention(entity, "P-CR20", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+    }
+
+    /**
+     * Creates an escompte garantie: a product, contract (registered at the effect date), coverage with an
+     * annualised premium, distributor, production code and assignment, an upfront 30/10 choice with the
+     * advance requested, and the upfront rule. Returns the coverage.
+     *
+     * @param entity  the entity
+     * @param effect  the coverage effect date
+     * @param num     the contract number (keys the plan/rule/codes)
+     * @param partner the distributor partner code
+     * @param premium the annualised premium
+     * @return the coverage
+     */
+    private Coverage escompteCoverage(LegalEntity entity, LocalDate effect, String num, String partner,
+                                      String premium) {
+        Product product = product(entity, "SANTE_SELECT");
+        Contract contract = new Contract();
+        contract.entity = entity;
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = num;
+        contract.product = product;
+        contract.registrationDate = effect;
+        contract.persist();
+        Coverage coverage = new Coverage();
+        coverage.contract = contract;
+        coverage.coverageCode = num + "-C1";
+        coverage.effectDate = effect;
+        coverage.annualPremium = new BigDecimal(premium);
+        coverage.persist();
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = partner;
+        distributor.legalName = partner;
+        distributor.persist();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = entity;
+        pc.code = "PC-" + num;
+        pc.distributor = distributor;
+        pc.persist();
+        CoverageAssignment assignment = new CoverageAssignment();
+        assignment.coverage = coverage;
+        assignment.productionCode = pc;
+        assignment.role = AssignmentRole.MAIN;
+        assignment.share = BigDecimal.ONE;
+        assignment.validFrom = effect;
+        assignment.persist();
+        RemunerationChoice choice = new RemunerationChoice();
+        choice.coverage = coverage;
+        choice.mode = RemunerationMode.UPFRONT;
+        choice.acquisitionRate = new BigDecimal("0.30");
+        choice.servicingRate = new BigDecimal("0.10");
+        choice.advanceRequested = true;
+        choice.validFrom = effect;
+        choice.persist();
+        version(entity, "PLAN-" + num, "R-" + num, RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
+                UPFRONT_PARAMS, effect, null, CLAWBACK);
+        return coverage;
+    }
+
+    /**
+     * Creates a VALID discount convention for a distributor, with a contract cap and a window end.
+     *
+     * @param entity       the entity
+     * @param partner      the distributor partner code
+     * @param maxContracts the contract cap
+     * @param validTo      the end of the convention window
+     */
+    private void convention(LegalEntity entity, String partner, int maxContracts, LocalDate validTo) {
+        AdvanceAgreement agreement = new AdvanceAgreement();
+        agreement.entity = entity;
+        agreement.distributor = Distributor.find("partnerCode", partner).firstResult();
+        agreement.validFrom = LocalDate.of(2025, 1, 1);
+        agreement.validTo = validTo;
+        agreement.anticipationDays = 0;
+        agreement.maxContracts = maxContracts;
+        agreement.unpaidRankThreshold = (short) 2;
+        agreement.status = AdvanceAgreementStatus.VALID;
+        agreement.persist();
     }
 
     /**

@@ -139,4 +139,12 @@ class CrScenarioResourceTest {
         search().body("findAll { it.nature == 'LINEAR' }.amount", hasItems(70.00f, 50.00f))
                 .body("findAll { it.nature == 'LINEAR' }.size()", is(2));
     }
+
+    /** CR-20: a valid convention pays the advance on the annualised premium: two ADVANCE lines, 400,00 € total. */
+    @Test
+    void cr20_advance_payment() {
+        plantAndRun("CR-20");
+        search().body("findAll { it.nature == 'ADVANCE' }.size()", is(2))
+                .body("findAll { it.nature == 'ADVANCE' }.amount.sum() as double", is(400.0));
+    }
 }

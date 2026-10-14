@@ -199,4 +199,22 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(linear.filter({ hasText: '70,00' })).toHaveCount(1);
     await expect(linear.filter({ hasText: '50,00' })).toHaveCount(1);
   });
+
+  test('CR-20 : le versement d’escompte paie deux lignes Escompte de 300,00 € et 100,00 € @screen:calculations @screen:commissionSearch @cr:CR-20', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-20&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const advance = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Escompte' });
+    await expect(advance).toHaveCount(2);
+    await expect(advance.filter({ hasText: '300,00' })).toHaveCount(1);
+    await expect(advance.filter({ hasText: '100,00' })).toHaveCount(1);
+  });
 });
