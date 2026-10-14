@@ -729,7 +729,7 @@ avec les vérifications de sa colonne. Certains parcours déjà exercés par un 
 parcours `@path`.
 
 **Parcours `@path` — avancement (début 2026-10-15).** 13 sur ~135 (`ADM-01`, `BOOT-01`, `CR-70`, `DEM-01`,
-`DEM-02`, `INT-01`, `INT-04`, `INT-05`, `INT-06`, `INT-07`, `INT-11`, `INT-13`, `PAR-01`, `PAR-03`). §4.1 intégration en cours :
+`DEM-02`, `INT-01`, `INT-04`, `INT-05`, `INT-06`, `INT-07`, `INT-11`, `INT-13`, `PAR-01`, `PAR-03`, `PAR-05`). §4.1 intégration en cours :
 INT-01 (dépôt valide : cinq compteurs au journal, **empreinte et auteur exposés sur le détail du lot**,
 événement visible avec son statut sur `/evenements`), INT-05 (ré-import refusé sans doublon), INT-06
 (deux systèmes source distingués — **colonne « Système source »** ajoutée au journal, §9.9), INT-07
@@ -740,7 +740,9 @@ l'utilisateur à travers la façade d'import (qui gère ses propres transactions
 différé. INT-04 (mise à l'écart d'un doublon : ré-import d'une même clé source → rejet `DUPLICATE`,
 écarté → statut `DISCARDED`, aucun événement en double sur `/evenements`) ajouté. PAR-03 (approbation par
 l'auteur refusée / par un second administrateur) étiqueté sur ses deux tests existants (règle + CR-71).
-14 `@path`.
+PAR-05 (deux versions même groupe/priorité, périmètres recouvrants → approbation refusée) : le message de
+refus **nomme désormais les règles en conflit** (`plan/règle vN`), non plus un simple décompte, et le test
+le vérifie. 15 `@path`.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :

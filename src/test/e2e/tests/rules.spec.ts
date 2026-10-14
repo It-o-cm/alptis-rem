@@ -144,7 +144,7 @@ test.describe('Paramétrage des règles', () => {
     await ctx.close();
   });
 
-  test('refuse l’approbation d’une version en conflit @screen:rules @req:PAR-05', async ({ browser }) => {
+  test('refuse l’approbation d’une version en conflit, en nommant la règle en conflit @screen:rules @req:PAR-05 @path:PAR-05', async ({ browser }) => {
     const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
     const admin = await ctx.newPage();
     await admin.goto('/regles');
@@ -179,7 +179,9 @@ test.describe('Paramétrage des règles', () => {
     await expect(admin2.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('Approuvée');
     await admin2.getByTestId('rule-open-C2').click();
     await admin2.getByTestId('version-approve-1').click();
+    // The refusal names the conflicting rule (PAR-05), not just a count.
     await expect(admin2.getByTestId('rules-error')).toContainText('conflit');
+    await expect(admin2.getByTestId('rules-error')).toContainText('C1');
     await ctx2.close();
   });
 

@@ -270,8 +270,11 @@ public class RuleConfigService {
         separationOfDuties.ensureDifferentApprover(version.getCreatedBy(), currentUser.username());
         List<RuleVersion> conflicts = conflictDetector.conflicts(version);
         if (!conflicts.isEmpty()) {
-            throw new ConflictException("Approbation refusée : conflit avec " + conflicts.size()
-                    + " version(s) de même priorité et groupe d'exclusion sur un périmètre et une période communs.");
+            String named = conflicts.stream()
+                    .map(v -> v.rule.plan.code + "/" + v.rule.code + " v" + v.versionNo)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            throw new ConflictException("Approbation refusée : conflit avec " + named
+                    + " (même priorité et groupe d'exclusion sur un périmètre et une période communs).");
         }
         version.status = VersionStatus.APPROVED;
         version.approvedBy = currentUser.username();
