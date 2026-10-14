@@ -779,4 +779,52 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-64 : chaque ordre est aligné sur un bordereau de même montant @screen:calculations @screen:periods @screen:payment @screen:bordereaux @cr:CR-64', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-01&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/calculs');
+    await admin.getByTestId('calc-run').click();
+    await expect(admin.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+    // The lot carries one order of 15,00 € and its total is the same.
+    await admin.goto('/paiement');
+    await admin.getByTestId('pay-month').selectOption('2026-01-01');
+    await admin.getByTestId('pay-refresh').click();
+    await admin.locator('[data-testid^="lot-open-"]').first().click();
+    await expect(admin.getByTestId('lot-detail')).toContainText('15,00');
+    await expect(admin.locator('[data-testid^="order-row-"]')).toHaveCount(1);
+    await expect(admin.locator('[data-testid^="order-row-"]').first()).toContainText('15,00');
+
+    // A bordereau of the same net amount is published for the beneficiary.
+    await admin.goto('/bordereaux');
+    await admin.getByTestId('brd-month').selectOption('2026-01-01');
+    await admin.getByTestId('brd-refresh').click();
+    const statement = admin.locator('[data-testid^="statement-row-"]').filter({ hasText: '15,00' });
+    await expect(statement).toHaveCount(1);
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });

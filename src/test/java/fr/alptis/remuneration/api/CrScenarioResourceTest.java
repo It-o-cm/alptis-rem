@@ -369,6 +369,25 @@ class CrScenarioResourceTest {
                 .body("exclusions.find { it.reason == 'BELOW_THRESHOLD' }.amount", is(7.50f));
     }
 
+    /** CR-64: each order aligns with a bordereau of the same amount and the lot total equals their sum. */
+    @Test
+    void cr64_alignment() {
+        plantAndRun("CR-01");
+        transition("admin-unep", "2026-01-01", "CALCULATED");
+        transition("operator-unep", "2026-01-01", "CONTROLLED");
+        transition("validator-unep", "2026-01-01", "BUSINESS_VALIDATED");
+        transition("operator-unep", "2026-01-01", "PAYMENT_PREPARED");
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2026-01-01/lots").then().statusCode(200)
+                .body("size()", is(1)).body("[0].total", is(15.00f)).extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/lots/" + lotId).then().statusCode(200)
+                .body("orders.size()", is(1)).body("orders[0].amount", is(15.00f)).body("total", is(15.00f));
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/documents/UNEP/2026-01-01/statements").then().statusCode(200)
+                .body("netAmount", hasItem(15.00f));
+    }
+
     /** CR-69: simulating the CR-01 rule on its calculated period reproduces the line to the cent (ecart 0). */
     @Test
     void cr69_reproduces_identical_lines() {
