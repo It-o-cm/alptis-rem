@@ -55,7 +55,7 @@ test.describe('Imports — opérateur', () => {
     await expect(page.getByTestId('flow-events')).toContainText('Manquant');
   });
 
-  test('refuse un fichier déjà intégré (CR-68) @screen:imports @cr:CR-68', async ({ page }) => {
+  test('refuse un fichier déjà intégré, sans doublon (CR-68, INT-05) @screen:imports @cr:CR-68 @path:INT-05', async ({ page }) => {
     await page.goto('/imports');
     const upload = async () => {
       await page.getByTestId('upload-flow').selectOption('distributors');
@@ -68,8 +68,29 @@ test.describe('Imports — opérateur', () => {
     };
     await upload();
     await expect(page.getByTestId('upload-message')).toBeVisible();
+    // The first deposit created exactly one batch in the journal.
+    await expect(page.locator('[data-testid^="batch-row-"]')).toHaveCount(1);
     await upload();
     await expect(page.getByTestId('upload-error')).toContainText('déjà intégré');
+    // The second, refused deposit created no new batch: no duplicate import (INT-05).
+    await expect(page.locator('[data-testid^="batch-row-"]')).toHaveCount(1);
+  });
+
+  test('un fichier réduit à son en-tête est reçu avec zéro ligne (INT-07) @screen:imports @path:INT-07', async ({ page }) => {
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('distributors');
+    await page.getByTestId('upload-source').selectOption('SESAME');
+    await page.getByTestId('upload-file').setInputFiles({
+      name: 'ALPTIS_ASSURANCES_distributors_entete.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n', 'utf-8'),
+    });
+    await page.getByTestId('upload-submit').click();
+    // Zero lines integrated, rejected or held; the flow is nonetheless received.
+    await expect(page.getByTestId('upload-message')).toContainText('0 intégrée(s), 0 rejetée(s)');
+    const batchRow = page.locator('[data-testid^="batch-row-"]').first();
+    await expect(batchRow).toContainText('Distributeurs');
+    await expect(page.getByTestId('flow-distributors')).toContainText('Reçu');
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:imports', async ({ page }) => {

@@ -725,6 +725,17 @@ Les parcours (@path) se couvrent au niveau 3 : chaque ligne des tableaux §4 de 
 avec les vérifications de sa colonne. Certains parcours déjà exercés par un test d'écran existant seront
 étiquetés quand le test fait réellement les vérifications du parcours (jamais d'étiquette seule).
 
+**Rejeu des cas de recette terminé (2026-10-15)** : les 69 cas hors performance sont rejoués ; place aux
+parcours `@path`.
+
+**Parcours `@path` — avancement (début 2026-10-15).** 10 sur ~135 (`ADM-01`, `BOOT-01`, `CR-70`, `DEM-01`,
+`DEM-02`, `INT-05`, `INT-07`, `INT-11`, `INT-13`, `PAR-01`). §4.1 intégration entamée : INT-05 (ré-import
+refusé sans doublon : le journal garde un seul lot après le second dépôt refusé) et INT-07 (fichier réduit
+à l'en-tête : zéro ligne, flux « reçu ») ajoutés. Méthode : n'étiqueter un parcours que lorsque le test
+fait vraiment les vérifications de sa colonne. Plusieurs parcours (p. ex. INT-01 empreinte/auteur,
+INT-06 distinction par source au journal) demandent d'abord d'exposer la donnée à l'écran — à faire avec
+le parcours, pas d'étiquette seule.
+
 ## Simplifications à reprendre (relevé de docs/DECISIONS.md)
 
 Recensement des décisions qui reportent, approximent, réduisent ou contournent une
