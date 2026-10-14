@@ -7,6 +7,7 @@ import fr.alptis.remuneration.domain.AccountEntry;
 import fr.alptis.remuneration.domain.AccountEntryType;
 import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.Agreement;
+import fr.alptis.remuneration.domain.BankAccount;
 import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
@@ -26,6 +27,7 @@ import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.EventType;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
+import fr.alptis.remuneration.domain.OriasStatus;
 import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
@@ -133,6 +135,7 @@ public class CrScenarioResource {
             case "CR-51" -> seedCr51(entity, periodMonth);
             case "CR-60" -> seedCr60(entity, periodMonth);
             case "CR-61" -> seedCr61(entity, periodMonth);
+            case "CR-62" -> seedCr62(entity, periodMonth);
             case "CR-63" -> seedCr63(entity, periodMonth);
             case "CR-65" -> seedCr65(entity, periodMonth);
             case "CR-66" -> seedCr66(entity, periodMonth);
@@ -1020,6 +1023,40 @@ public class CrScenarioResource {
                 "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-62 (distributeur suspendu) : un distributeur radié de l'ORIAS a sa commission calculée (110 €)
+     * mais son paiement de cycle est bloqué (ordre annulé, exclusion « bénéficiaire inactif ») ; une fois
+     * réinscrit (par ré-import du référentiel), un lot hors cycle le règle. Le distributeur est semé
+     * `STRUCK_OFF`, avec un compte doté d'une ligne acquise de 110 € et des coordonnées bancaires.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr62(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR62", product, periodMonth, "P-CR62", null);
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR62").firstResult();
+        distributor.oriasStatus = OriasStatus.STRUCK_OFF;
+        DistributorEntity link = new DistributorEntity();
+        link.distributor = distributor;
+        link.entity = entity;
+        link.status = PartnerStatus.ACTIVE;
+        link.validFrom = periodMonth;
+        link.persist();
+        earnedOnCode(entity, period(entity, periodMonth), coverage, "110.00");
+        BankAccount bank = new BankAccount();
+        bank.entity = entity;
+        bank.holderType = PayeeType.PRODUCTION_CODE;
+        bank.holderId = pc.getId();
+        bank.iban = "FR7630001007941234567890185";
+        bank.bic = "AGRIFRPP";
+        bank.holderName = "P-CR62";
+        bank.validFrom = periodMonth;
+        bank.persist();
     }
 
     /**

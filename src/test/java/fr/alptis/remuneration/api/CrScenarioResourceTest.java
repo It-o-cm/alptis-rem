@@ -420,6 +420,34 @@ class CrScenarioResourceTest {
         transition("operator-unep", month, "PAYMENT_PREPARED");
     }
 
+    /** CR-62: a struck-off distributor's cycle payment is cancelled, then an off-cycle lot pays 110,00 € once reinstated. */
+    @Test
+    void cr62_orias_suspension_and_off_cycle() {
+        given().when().post("/api/test/cr-scenario?cr=CR-62&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        prepareMonth("2026-01-01");
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2026-01-01/lots").then().statusCode(200)
+                .body("size()", is(1)).extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/payment/lots/" + lotId + "/prepare").then().statusCode(200)
+                .body("orders[0].status", is("CANCELLED"))
+                .body("exclusions.reason", hasItem("PAYEE_INACTIVE"));
+        // Reinstatement: re-import the distributor referential with the ORIAS status back to registered.
+        String dist = "entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from;"
+                + "orias_status\nUNEP;SESAME;P-CR62;P-CR62;INDEPENDENT;ACTIVE;2026-01-01;REGISTERED\n";
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body(java.util.Map.of("entityCode", "UNEP", "flowCode", "distributors", "sourceSystem", "SESAME",
+                        "fileName", "reinstate.csv", "content", dist))
+                .when().post("/api/ui/v1/imports").then().statusCode(201).body("linesLoaded", is(1));
+        // The off-cycle lot now pays the 110,00 € that was blocked.
+        int offId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/payment/UNEP/2026-01-01/off-cycle/P-CR62").then().statusCode(200)
+                .body("total", is(110.00f)).extract().path("id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/lots/" + offId).then().statusCode(200)
+                .body("orders.size()", is(1)).body("orders[0].amount", is(110.00f));
+    }
+
     /** CR-60: a −1 000 € opening balance means no payment in February, then a 300,00 € order in March. */
     @Test
     void cr60_debtor_carried_forward() {

@@ -7,6 +7,7 @@ import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.DistributorType;
 import fr.alptis.remuneration.domain.ImportBatch;
 import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.OriasStatus;
 import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.RejectionReasonCode;
@@ -150,6 +151,9 @@ public class ReferentialImportService {
         distributor.group = newGroup;
         distributor.commissionable = !"false".equals(value(row, "commissionable"));
         distributor.advanceExcluded = "true".equals(value(row, "advance_excluded"));
+        // ORIAS registration status, carried by the distributor referential (default registered); a
+        // struck-off then re-registered distributor is reinstated by re-importing it (CR-62).
+        distributor.oriasStatus = parseOrias(value(row, "orias_status"));
 
         LocalDate validFrom = parseDate(value(row, "valid_from"));
         DistributorEntity link = DistributorEntity.find(
@@ -243,6 +247,17 @@ public class ReferentialImportService {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    /**
+     * Parses an ORIAS status: {@code STRUCK_OFF} when so stated, registered otherwise (the default when
+     * the column is absent).
+     *
+     * @param raw the raw value
+     * @return the ORIAS status
+     */
+    private static OriasStatus parseOrias(String raw) {
+        return "STRUCK_OFF".equals(raw) ? OriasStatus.STRUCK_OFF : OriasStatus.REGISTERED;
     }
 
     /**

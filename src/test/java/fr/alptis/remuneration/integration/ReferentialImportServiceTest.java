@@ -31,10 +31,11 @@ class ReferentialImportServiceTest {
     @Test
     @TestTransaction
     void imports_distributors_with_status() {
-        String content = "entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n"
-                + "ALPTIS_ASSURANCES;SESAME;P13897;Cabinet Martin;INDEPENDENT;ACTIVE;2026-01-01\n"
-                + "ALPTIS_ASSURANCES;SESAME;;Sans code;INDEPENDENT;ACTIVE;2026-01-01\n"
-                + "ALPTIS_ASSURANCES;SESAME;P2;Cabinet X;BOGUS;ACTIVE;2026-01-01\n";
+        String content = "entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from;"
+                + "orias_status\n"
+                + "ALPTIS_ASSURANCES;SESAME;P13897;Cabinet Martin;INDEPENDENT;ACTIVE;2026-01-01;STRUCK_OFF\n"
+                + "ALPTIS_ASSURANCES;SESAME;;Sans code;INDEPENDENT;ACTIVE;2026-01-01;\n"
+                + "ALPTIS_ASSURANCES;SESAME;P2;Cabinet X;BOGUS;ACTIVE;2026-01-01;\n";
 
         ImportBatch batch = service.importDistributors("ALPTIS_ASSURANCES", "SESAME", "dist.csv", content);
 
@@ -43,6 +44,8 @@ class ReferentialImportServiceTest {
         assertEquals(2, batch.linesRejected);
         Distributor distributor = Distributor.find("partnerCode", "P13897").firstResult();
         assertNotNull(distributor);
+        // The ORIAS status is carried by the referential (the struck-off column of the loaded row).
+        assertEquals(fr.alptis.remuneration.domain.OriasStatus.STRUCK_OFF, distributor.oriasStatus);
         DistributorEntity link = DistributorEntity.find("distributor", distributor).firstResult();
         assertEquals("ACTIVE", link.status.name());
     }

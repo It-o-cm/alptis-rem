@@ -999,4 +999,70 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-62 : un distributeur radié de l’ORIAS est bloqué puis réglé par un lot hors cycle @screen:periods @screen:payment @screen:imports @cr:CR-62', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-62&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+    // Preparing the cycle lot cancels the struck-off distributor's order and lists it as inactive.
+    await admin.goto('/paiement');
+    await admin.getByTestId('pay-month').selectOption('2026-01-01');
+    await admin.getByTestId('pay-refresh').click();
+    await admin.locator('[data-testid^="lot-open-"]').first().click();
+    await admin.getByTestId('lot-prepare').click();
+    await expect(
+      admin.locator('[data-testid^="exclusion-reason-"]').filter({ hasText: 'Bénéficiaire inactif' }),
+    ).toHaveCount(1);
+
+    // Reinstatement: re-import the distributor referential with the ORIAS status registered.
+    const dist =
+      'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from;orias_status\n' +
+      'UNEP;SESAME;P-CR62;P-CR62;INDEPENDENT;ACTIVE;2026-01-01;REGISTERED\n';
+    await admin.goto('/imports');
+    await admin.getByTestId('upload-flow').selectOption('distributors');
+    await admin.getByTestId('upload-source').selectOption('SESAME');
+    await admin.getByTestId('upload-file').setInputFiles({
+      name: 'reinstate.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(dist),
+    });
+    await admin.getByTestId('upload-submit').click();
+    await expect(admin.getByTestId('upload-message')).toContainText('1 intégrée(s)');
+
+    // An off-cycle lot now pays the 110,00 € that was blocked.
+    await admin.goto('/paiement');
+    await admin.getByTestId('pay-month').selectOption('2026-01-01');
+    await admin.getByTestId('pay-refresh').click();
+    await admin.getByTestId('pay-offcycle-partner').fill('P-CR62');
+    await admin.getByTestId('pay-offcycle-submit').click();
+    const offCycle = admin.locator('[data-testid^="lot-row-"]').filter({ hasText: 'OFF_CYCLE' });
+    await expect(offCycle).toHaveCount(1);
+    await offCycle.locator('[data-testid^="lot-open-"]').click();
+    await expect(admin.locator('[data-testid^="order-row-"]')).toHaveCount(1);
+    await expect(admin.locator('[data-testid^="order-row-"]').first()).toContainText('110,00');
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });

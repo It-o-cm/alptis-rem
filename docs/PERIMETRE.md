@@ -541,10 +541,10 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 51 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
-  `CR-40` à `CR-51`, `CR-60`, `CR-61`, `CR-63` à `CR-71`).
-  **§13.1, §13.2, §13.4 complètes ; §13.3 complète sauf CR-37/38 (fichier assureur réel, pilotés par
-  l'import) ; §13.5 : reste seulement CR-62 (suspension ORIAS).**
+- **Rejeu par l'interface (`@cr:`) :** 52 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
+  `CR-40` à `CR-51`, `CR-60` à `CR-71`).
+  **§13.1, §13.2, §13.4, §13.5 complètes ; §13.3 complète sauf CR-37/38 (fichier assureur réel, pilotés
+  par l'import).** Reste à rejouer : CR-37/38 seulement (CR-72 performance exclu).
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -668,9 +668,16 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   commission de 700 € le ramène à +300 €, un ordre de 300,00 €). Deux périodes menées jusqu'à la
   préparation du paiement, le solde reporté d'un mois sur l'autre ; solde d'ouverture (`AccountEntry`
   `OPENING_BALANCE`) et lignes acquises posés en entrée. Test d'API + e2e multi-rôles.
-- **Reste à rejouer** : CR-37/38 (fichier assureur réel UMR, par l'import) et CR-62 (suspension ORIAS —
-  radiation puis réinscription, paiement bloqué puis libéré par un lot hors cycle) ; CR-72 performance
-  exclu.
+- **Suspension ORIAS rejouée par le pipeline (2026-10-14, §13.5)** : CR-62 (un distributeur radié de
+  l'ORIAS a sa commission de 110 € calculée, mais la préparation du lot de cycle annule son ordre et le
+  liste en exclusion « bénéficiaire inactif » ; après réinscription, un lot hors cycle le règle). **Au
+  passage, comblement d'un vrai manque** : le statut ORIAS n'était porté par aucun flux — l'import du
+  référentiel distributeurs ignorait la colonne `orias_status`, de sorte qu'un distributeur radié ne
+  pouvait jamais être réinscrit. L'import lit désormais `orias_status` (défaut : inscrit) ; la
+  réinscription se fait par ré-import, comme le ferait la donnée ORIAS réelle. Test d'API + e2e
+  multi-rôles (cycle, import de réinscription, lot hors cycle). **§13.5 est entièrement rejouée.**
+- **Reste à rejouer** : CR-37/38 seulement (fichier assureur réel UMR de juin/juillet 2026, par l'import ;
+  CR-72 performance exclu).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème
