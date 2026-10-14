@@ -13,7 +13,7 @@ test.beforeEach(async ({ request }) => {
 
 test.describe('Paramétrage des règles', () => {
   test('crée un plan, une règle et une version, approuvée par un second administrateur '
-    + '@screen:rules @req:PAR-01 @req:PAR-04 @req:PAR-11 @path:PAR-01', async ({ browser }) => {
+    + '@screen:rules @req:PAR-01 @req:PAR-04 @req:PAR-11 @path:PAR-01 @path:PAR-03', async ({ browser }) => {
     const adminCtx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
     const admin = await adminCtx.newPage();
     await admin.goto('/regles');
@@ -60,7 +60,7 @@ test.describe('Paramétrage des règles', () => {
   });
 
   test('CR-71 : un administrateur ne peut approuver sa propre version de règle '
-    + '@screen:rules @req:PAR-04 @cr:CR-71', async ({ browser }) => {
+    + '@screen:rules @req:PAR-04 @cr:CR-71 @path:PAR-03', async ({ browser }) => {
     const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
     const admin = await ctx.newPage();
     await admin.goto('/regles');
