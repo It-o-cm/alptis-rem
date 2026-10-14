@@ -626,4 +626,22 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await page.getByTestId('ctl-refresh').click();
     await expect(page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'ENR-01' })).toHaveCount(1);
   });
+
+  test('CR-45 : une RCD payée reprise à la résiliation du 8e mois donne une reprise de −40,00 € @screen:calculations @screen:commissionSearch @cr:CR-45', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-45&entity=UNEP&month=2026-09-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-09-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-09-01');
+    await page.getByTestId('cs-search').click();
+    const clawback = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Reprise' });
+    await expect(clawback).toHaveCount(1);
+    await expect(clawback.first()).toContainText('-40,00');
+  });
 });

@@ -314,6 +314,13 @@ class CrScenarioResourceTest {
                 .when().get("/api/ui/v1/commission-lines/" + id).then().statusCode(200);
     }
 
+    /** CR-45: an adhésion bearing 40 € of paid RCD, terminated in the 8th month, is clawed back in full. */
+    @Test
+    void cr45_development_reprise() {
+        plantAndRun("CR-45", "2026-09-01");
+        search("2026-09-01").body("findAll { it.nature == 'CLAWBACK' }.amount.sum() as double", is(-40.0));
+    }
+
     /** CR-40: a 15 000 € production stays under the first tier, so the development close writes no line. */
     @Test
     void cr40_development_below_first_tier() {

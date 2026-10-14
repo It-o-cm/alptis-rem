@@ -8,6 +8,7 @@ import fr.alptis.remuneration.domain.Agreement;
 import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
+import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.CommissionPlan;
 import fr.alptis.remuneration.domain.ConditionOperator;
 import fr.alptis.remuneration.domain.Contract;
@@ -34,6 +35,7 @@ import fr.alptis.remuneration.domain.QualityIndicatorType;
 import fr.alptis.remuneration.domain.RemunerationChoice;
 import fr.alptis.remuneration.domain.RemunerationMode;
 import fr.alptis.remuneration.domain.Rule;
+import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.RuleCondition;
 import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.Scale;
@@ -43,6 +45,7 @@ import fr.alptis.remuneration.domain.ScaleOutput;
 import fr.alptis.remuneration.domain.ScaleTier;
 import fr.alptis.remuneration.domain.SignatureStatus;
 import fr.alptis.remuneration.domain.StaffCategory;
+import fr.alptis.remuneration.domain.SurcommissionAllocation;
 import fr.alptis.remuneration.domain.RuleVersion;
 import fr.alptis.remuneration.domain.VersionStatus;
 import io.quarkus.arc.profile.UnlessBuildProfile;
@@ -114,6 +117,7 @@ public class CrScenarioResource {
             case "CR-41" -> seedCr41(entity, periodMonth);
             case "CR-43" -> seedCr43(entity, periodMonth);
             case "CR-44" -> seedCr44(entity, periodMonth);
+            case "CR-45" -> seedCr45(entity, periodMonth);
             case "CR-47" -> seedCr47(entity, periodMonth);
             case "CR-48" -> seedCr48(entity, periodMonth);
             case "CR-49" -> seedCr49(entity, periodMonth);
@@ -659,6 +663,35 @@ public class CrScenarioResource {
         enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
         event(entity, january, "CR41-SUB1", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
         event(entity, february, "CR41-SUB2", EventType.SUBSCRIPTION, LocalDate.of(year, 2, 15), null);
+    }
+
+    /**
+     * CR-45 (reprise de RCD) : une adhésion portant 40 € de RCD déjà payé (allocation en période
+     * antérieure), résiliée au 8e mois, est reprise en totalité : une ligne `CLAWBACK` de −40,00 € au
+     * calcul réel de la résiliation.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (the termination month)
+     */
+    private void seedCr45(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR45", product, LocalDate.of(periodMonth.getYear(), 1, 15),
+                "P-CR45", null);
+        CommissionLine paid = new CommissionLine();
+        paid.entity = entity;
+        paid.period = period(entity, LocalDate.of(periodMonth.getYear(), 2, 1));
+        paid.direction = Direction.OUTBOUND;
+        paid.status = LineStatus.PAID;
+        paid.nature = LineNature.RCD;
+        paid.amount = new BigDecimal("40.00");
+        paid.persist();
+        SurcommissionAllocation allocation = new SurcommissionAllocation();
+        allocation.commissionLine = paid;
+        allocation.contract = coverage.contract;
+        allocation.annualisedPremium = new BigDecimal("5000");
+        allocation.allocatedAmount = new BigDecimal("40.00");
+        allocation.persist();
+        event(entity, coverage, "CR45-TERM", EventType.TERMINATION, LocalDate.of(periodMonth.getYear(), 9, 15), null);
     }
 
     /**
