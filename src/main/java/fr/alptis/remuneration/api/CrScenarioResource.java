@@ -110,8 +110,10 @@ public class CrScenarioResource {
             case "CR-35" -> seedCr35(entity, periodMonth);
             case "CR-42" -> seedCr42(entity, periodMonth);
             case "CR-46" -> seedCr46(entity, periodMonth);
+            case "CR-40" -> seedCr40(entity, periodMonth);
             case "CR-41" -> seedCr41(entity, periodMonth);
             case "CR-43" -> seedCr43(entity, periodMonth);
+            case "CR-44" -> seedCr44(entity, periodMonth);
             case "CR-47" -> seedCr47(entity, periodMonth);
             case "CR-48" -> seedCr48(entity, periodMonth);
             case "CR-49" -> seedCr49(entity, periodMonth);
@@ -586,8 +588,51 @@ public class CrScenarioResource {
                 santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
                 LocalDate.of(year, 1, 1), null, null);
         santeDevelopmentScale(version);
-        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
         event(entity, coverage, "CR42-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
+    }
+
+    /**
+     * CR-40 (RCD santé, sous le premier palier) : une production cumulée de 15 000 € reste sous le
+     * premier palier (20 000 €) ; la clôture de développement ne produit aucune ligne `RCD`.
+     *
+     * @param entity      the entity
+     * @param periodMonth the development close month
+     */
+    private void seedCr40(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR40", product, LocalDate.of(year, 1, 10), "P-CR40", null);
+        coverage.annualPremium = new BigDecimal("15000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR40").firstResult();
+        RuleVersion version = version(entity, "PLAN-CR40", "R-CR40", RuleFamily.TIERED, LineNature.RCD,
+                santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
+                LocalDate.of(year, 1, 1), null, null);
+        santeDevelopmentScale(version);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
+        event(entity, coverage, "CR40-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
+    }
+
+    /**
+     * CR-44 (RCD sans avenant signé) : l'inscription existe mais l'avenant n'est pas signé ; la clôture
+     * de développement ne produit aucune ligne et lève une anomalie de contrôle (`ENR-01`, « Avenant non
+     * signé »), lue sur l'écran des contrôles.
+     *
+     * @param entity      the entity
+     * @param periodMonth the development close month
+     */
+    private void seedCr44(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR44", product, LocalDate.of(year, 1, 10), "P-CR44", null);
+        coverage.annualPremium = new BigDecimal("30000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR44").firstResult();
+        RuleVersion version = version(entity, "PLAN-CR44", "R-CR44", RuleFamily.TIERED, LineNature.RCD,
+                santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
+                LocalDate.of(year, 1, 1), null, null);
+        santeDevelopmentScale(version);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, false);
+        event(entity, coverage, "CR44-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
     }
 
     /**
@@ -611,7 +656,7 @@ public class CrScenarioResource {
                 santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
                 LocalDate.of(year, 1, 1), null, null);
         santeDevelopmentScale(version);
-        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
         event(entity, january, "CR41-SUB1", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
         event(entity, february, "CR41-SUB2", EventType.SUBSCRIPTION, LocalDate.of(year, 2, 15), null);
     }
@@ -634,7 +679,7 @@ public class CrScenarioResource {
                 santeScope(entity), "{\"rate\":0.04}", LocalDate.of(year, 1, 1), null, null);
         condition(version, QualityIndicatorType.LOSS_RATIO, ConditionOperator.LE, "0.95");
         condition(version, QualityIndicatorType.PORTFOLIO_LAPSE_RATE, ConditionOperator.LE, "0.20");
-        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT);
+        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT, true);
         indicator(entity, distributor, QualityIndicatorType.LOSS_RATIO, "0.82", year);
         indicator(entity, distributor, QualityIndicatorType.PORTFOLIO_LAPSE_RATE, "0.14", year);
         event(entity, coverage, "CR46-PREM", EventType.PREMIUM_COLLECTED, LocalDate.of(year, 6, 1), "200000");
@@ -679,18 +724,19 @@ public class CrScenarioResource {
     }
 
     /**
-     * Enrols a distributor on a rule with a signed amendment of a type.
+     * Enrols a distributor on a rule with an amendment of a type, signed or not.
      *
      * @param rule        the rule
      * @param distributor the distributor
      * @param type        the amendment type
+     * @param signed      whether the amendment is signed
      */
-    private void enrol(Rule rule, Distributor distributor, AgreementType type) {
+    private void enrol(Rule rule, Distributor distributor, AgreementType type, boolean signed) {
         Agreement agreement = new Agreement();
         agreement.entity = rule.plan.entity;
         agreement.agreementType = type;
         agreement.distributor = distributor;
-        agreement.signatureStatus = SignatureStatus.SIGNED;
+        agreement.signatureStatus = signed ? SignatureStatus.SIGNED : SignatureStatus.NOT_SIGNED;
         agreement.validFrom = LocalDate.of(2020, 1, 1);
         agreement.persist();
         Enrollment enrollment = new Enrollment();
@@ -760,7 +806,7 @@ public class CrScenarioResource {
                 LocalDate.of(year, 1, 1), null, null);
         santeDevelopmentScale(version);
         condition(version, QualityIndicatorType.UNPAID_RATE, ConditionOperator.LT, "0.05");
-        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
         indicator(entity, distributor, QualityIndicatorType.UNPAID_RATE, "0.06", year);
         event(entity, coverage, "CR43-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
     }
@@ -782,7 +828,7 @@ public class CrScenarioResource {
         RuleVersion version = version(entity, "PLAN-CR47", "R-CR47", RuleFamily.PORTFOLIO, LineNature.RCP,
                 santeScope(entity), "{\"rate\":0.04}", LocalDate.of(year, 1, 1), null, null);
         condition(version, QualityIndicatorType.LOSS_RATIO, ConditionOperator.LE, "0.95");
-        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT);
+        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT, true);
         indicator(entity, distributor, QualityIndicatorType.LOSS_RATIO, "0.96", year);
         event(entity, coverage, "CR47-PREM", EventType.PREMIUM_COLLECTED, LocalDate.of(year, 6, 1), "200000");
     }
@@ -810,7 +856,7 @@ public class CrScenarioResource {
             }
         }
         Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR48").firstResult();
-        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT);
+        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT, true);
         indicator(entity, distributor, QualityIndicatorType.PORTFOLIO_LAPSE_RATE, "0.10", year);
     }
 

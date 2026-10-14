@@ -541,9 +541,9 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 36 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-32`,
-  `CR-35`, `CR-41`, `CR-42`, `CR-43`, `CR-46`, `CR-47`, `CR-48`, `CR-49`, `CR-50`, `CR-51`, `CR-68`,
-  `CR-70`).
+- **Rejeu par l'interface (`@cr:`) :** 38 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-32`,
+  `CR-35`, `CR-40` à `CR-43`, `CR-44`, `CR-46` à `CR-51`, `CR-68`, `CR-70`). **§13.4 complète sauf CR-45
+  (reprise de RCD).**
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -592,6 +592,13 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   CR-33/34/36. **Point de UX relevé** : le détail de ligne affiche les clés techniques brutes de
   l'explication (`forfeited`, `rcp`, `conditions`…) et non un libellé français ; CAL-10 demande
   l'explication « en clair ». À traiter hors du rejeu, comme resserrement de CAL-10.
+- **Cas sans ligne de §13.4 rejoués par l'interface (2026-10-14)** : CR-40 (production de 15 000 € sous
+  le premier palier → aucune ligne `RCD` ; l'état vide de la recherche de commissions le prouve) et CR-44
+  (inscription sans avenant signé → aucune ligne et une anomalie `ENR-01` « Avenant non signé » levée par
+  la clôture et lue sur l'écran des contrôles `/controles`). Le chargeur gagne la variante d'inscription
+  à avenant non signé. **Il ne reste de §13.4 que CR-45 (reprise de RCD)** : une allocation de RCD déjà
+  payée reprise à la résiliation (−40,00 € au 8e mois, −20,00 € au 15e mois) ; son rejeu demande de semer
+  une `SurcommissionAllocation` payée en période antérieure, puis un `runReal` sur la résiliation.
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

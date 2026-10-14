@@ -586,4 +586,44 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await rcp.first().click();
     await expect(page.getByTestId('line-detail')).toContainText('LOSS_RATIO');
   });
+
+  test('CR-40 : une production sous le premier palier ne verse aucune RCD @screen:calculations @screen:commissionSearch @cr:CR-40', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-40&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+    await page.getByTestId('close-development').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de développement calculée');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    await expect(page.getByTestId('no-row')).toBeVisible();
+    await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Développement (RCD)' })).toHaveCount(0);
+  });
+
+  test('CR-44 : une inscription sans avenant signé ne verse rien et lève une anomalie @screen:calculations @screen:commissionSearch @screen:controls @cr:CR-44', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-44&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+    await page.getByTestId('close-development').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de développement calculée');
+    // No commission line is produced.
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    await expect(page.getByTestId('no-row')).toBeVisible();
+    await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Développement (RCD)' })).toHaveCount(0);
+    // The unsigned-amendment anomaly surfaces on the controls screen.
+    await page.goto('/controles');
+    await page.getByTestId('ctl-month').selectOption('2026-01-01');
+    await page.getByTestId('ctl-refresh').click();
+    await expect(page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'ENR-01' })).toHaveCount(1);
+  });
 });

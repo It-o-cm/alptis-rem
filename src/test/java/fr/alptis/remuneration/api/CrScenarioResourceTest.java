@@ -314,6 +314,27 @@ class CrScenarioResourceTest {
                 .when().get("/api/ui/v1/commission-lines/" + id).then().statusCode(200);
     }
 
+    /** CR-40: a 15 000 € production stays under the first tier, so the development close writes no line. */
+    @Test
+    void cr40_development_below_first_tier() {
+        given().when().post("/api/test/cr-scenario?cr=CR-40&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/close-development").then().statusCode(200);
+        search().body("findAll { it.nature == 'RCD' }.size()", is(0));
+    }
+
+    /** CR-44: an unsigned amendment produces no line and raises an ENR-01 control anomaly. */
+    @Test
+    void cr44_development_without_signed_amendment() {
+        given().when().post("/api/test/cr-scenario?cr=CR-44&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/close-development").then().statusCode(200);
+        search().body("findAll { it.nature == 'RCD' }.size()", is(0));
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/controls/UNEP/2026-01-01/anomalies")
+                .then().statusCode(200).body("controlCode", hasItem("ENR-01"));
+    }
+
     /** CR-43: an unpaid rate of 6% forfeits the development line — a 0,00 € RCD line keeping its reason. */
     @Test
     void cr43_development_unpaid_condition() {
