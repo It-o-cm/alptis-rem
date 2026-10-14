@@ -86,6 +86,8 @@ public class CrScenarioResource {
             case "CR-26" -> seedCr26(entity, periodMonth);
             case "CR-27" -> seedCr27(entity, periodMonth);
             case "CR-28" -> seedCr28(entity, periodMonth);
+            case "CR-30" -> seedCr30(entity, periodMonth);
+            case "CR-31" -> seedCr31(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -429,6 +431,49 @@ public class CrScenarioResource {
         Coverage coverage = escompteCoverage(entity, effect, "CR28", "P-CR28", "1000");
         convention(entity, "P-CR28", 100, LocalDate.of(effect.getYear(), 12, 31));
         premium(entity, coverage, "CR28-E1", effect.plusMonths(6).plusDays(14), "925.00");
+    }
+
+    /**
+     * CR-30 (versement initial, épargne retraite) : versement initial de 6 000 € sur un PER à 2 % ; une
+     * ligne `LINEAR` de 120,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr30(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, "CR30", product, periodMonth, "P-CR30", null);
+        linearChoice(coverage, "0.02", periodMonth, null);
+        version(entity, "PLAN-CR30", "R-CR30", RuleFamily.LINEAR, LineNature.LINEAR,
+                perScope(entity, "INITIAL_PAYMENT"), "{\"allowedRates\":[0.02]}", periodMonth, null, null);
+        event(entity, coverage, "CR30-E1", EventType.INITIAL_PAYMENT, periodMonth.plusDays(4), "6000.00");
+    }
+
+    /**
+     * CR-31 (versement programmé, linéaire) : versement programmé de 300 € sur un PER à 3 % ; une ligne
+     * `LINEAR` de 9,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr31(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, "CR31", product, periodMonth, "P-CR31", null);
+        linearChoice(coverage, "0.03", periodMonth, null);
+        version(entity, "PLAN-CR31", "R-CR31", RuleFamily.LINEAR, LineNature.LINEAR,
+                perScope(entity, "SCHEDULED_PAYMENT"), "{\"allowedRates\":[0.03]}", periodMonth, null, null);
+        event(entity, coverage, "CR31-E1", EventType.SCHEDULED_PAYMENT, periodMonth.plusDays(4), "300.00");
+    }
+
+    /**
+     * The savings perimeter for a PER product and an event type.
+     *
+     * @param entity    the entity
+     * @param eventType the event type
+     * @return the scope JSON
+     */
+    private String perScope(LegalEntity entity, String eventType) {
+        return "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"PER\"],\"eventType\":[\"" + eventType + "\"]}";
     }
 
     /**

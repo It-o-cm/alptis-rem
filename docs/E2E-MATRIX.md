@@ -13,4 +13,4 @@ Généré par `src/test/e2e/scripts/traceability.mjs` (ne pas éditer à la main
 | Couples rôle-action (`@role-action`) | BUSINESS_ADMIN-approve-adjustment, BUSINESS_ADMIN-import-plan, FINANCE_CONTROLLER-export-pay, FINANCE_CONTROLLER-record-bank-result, FINANCE_CONTROLLER-record-cheque-emission, FINANCE_CONTROLLER-validate-lot, IT_ADMIN-purge, OPERATOR-advance-period, OPERATOR-block-account, OPERATOR-compensate-accounts, OPERATOR-create-off-cycle, OPERATOR-decide-anomaly, OPERATOR-extract-accounting, OPERATOR-import-opening-balance, OPERATOR-prepare-lot, OPERATOR-produce-export, OPERATOR-publish-statement, OPERATOR-rectify-statement, OPERATOR-run-simulation, OPERATOR-submit-adjustment, SALES_MANAGER-validate-variable, VIEWER-read-periods |
 
 Nombre de fichiers de tests : 48
-Nombre de tests : 199
+Nombre de tests : 200

@@ -229,4 +229,20 @@ class CrScenarioResourceTest {
         search("2026-12-01").body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount.sum() as double", is(-30.0));
         position("P-CR28").body("positions[0].status", is("SETTLED"));
     }
+
+    /** CR-30: an initial retirement payment of 6000 € at 2% yields one LINEAR line of 120,00 €. */
+    @Test
+    void cr30_initial_payment() {
+        plantAndRun("CR-30");
+        search().body("findAll { it.nature == 'LINEAR' }.size()", is(1))
+                .body("find { it.nature == 'LINEAR' }.amount", is(120.00f));
+    }
+
+    /** CR-31: a scheduled retirement payment of 300 € at 3% yields one LINEAR line of 9,00 €. */
+    @Test
+    void cr31_scheduled_payment_linear() {
+        plantAndRun("CR-31");
+        search().body("findAll { it.nature == 'LINEAR' }.size()", is(1))
+                .body("find { it.nature == 'LINEAR' }.amount", is(9.00f));
+    }
 }

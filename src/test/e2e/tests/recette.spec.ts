@@ -350,4 +350,28 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await page.getByTestId('advance-row-0').click();
     await expect(page.getByTestId('adv-position-row')).toContainText('Apurée');
   });
+
+  // Retirement savings, linear cases: a single LINEAR line on the collected payment.
+  const savingsLinear = [
+    { cr: 'CR-30', titre: 'versement initial', amount: '120,00' },
+    { cr: 'CR-31', titre: 'versement programmé', amount: '9,00' },
+  ];
+  for (const c of savingsLinear) {
+    test(`${c.cr} : ${c.titre} épargne retraite donne une ligne Linéaire de ${c.amount} € @screen:calculations @screen:commissionSearch @cr:${c.cr}`, async ({
+      page,
+      request,
+    }) => {
+      const seeded = await request.post(`/api/test/cr-scenario?cr=${c.cr}&entity=UNEP&month=2026-01-01`);
+      expect(seeded.ok()).toBeTruthy();
+      await page.goto('/calculs');
+      await page.getByTestId('calc-run').click();
+      await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+      await page.goto('/recherche-commissions');
+      await page.getByTestId('cs-month').selectOption('2026-01-01');
+      await page.getByTestId('cs-search').click();
+      const linear = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' });
+      await expect(linear).toHaveCount(1);
+      await expect(linear.first()).toContainText(c.amount);
+    });
+  }
 });
