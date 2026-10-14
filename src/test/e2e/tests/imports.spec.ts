@@ -76,6 +76,36 @@ test.describe('Imports — opérateur', () => {
     await expect(page.locator('[data-testid^="batch-row-"]')).toHaveCount(1);
   });
 
+  test('dépôt d’un fichier d’événements valide : compteurs, empreinte, auteur, événement visible (INT-01) @screen:imports @path:INT-01', async ({ page, request }) => {
+    // A contract the valid event targets, so the line loads rather than being held.
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=ALPTIS_ASSURANCES&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    const events =
+      'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount\n' +
+      'ALPTIS_ASSURANCES;CLEVA;ENC-1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00\n';
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('CLEVA');
+    await page.getByTestId('upload-file').setInputFiles({
+      name: 'encaissements.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(events, 'utf-8'),
+    });
+    await page.getByTestId('upload-submit').click();
+    await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 0 rejetée(s), 0 en attente');
+    // The journal batch carries its fingerprint and the operator who deposited it.
+    const row = page.locator('[data-testid^="batch-row-"]').first();
+    await expect(row).toContainText('CLEVA');
+    await row.click();
+    await expect(page.getByTestId('batch-fingerprint')).not.toBeEmpty();
+    await expect(page.getByTestId('batch-author')).not.toBeEmpty();
+    // The loaded event is visible with its status on the events screen.
+    await page.goto('/evenements');
+    await page.getByTestId('events-search').click();
+    const eventRow = page.locator('[data-testid^="event-row-"]').filter({ hasText: 'Prime encaissée' });
+    await expect(eventRow).toHaveCount(1);
+  });
+
   test('un même nom de fichier de deux systèmes source est accepté et distingué au journal (INT-06) @screen:imports @path:INT-06', async ({ page }) => {
     await page.goto('/imports');
     const header = 'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n';

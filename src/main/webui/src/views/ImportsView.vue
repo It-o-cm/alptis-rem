@@ -304,6 +304,10 @@ onMounted(async () => {
     </AppCard>
 
     <AppCard v-if="selected" data-testid="batch-detail" :title="`Lignes à traiter · ${selected.fileName}`">
+      <p class="page__subtitle">
+        Empreinte <span class="mono" data-testid="batch-fingerprint">{{ selected.fileHash }}</span> ·
+        déposé par <span data-testid="batch-author">{{ selected.importedBy }}</span>
+      </p>
       <DataTable
         :columns="detailColumns"
         :rows="detailRows"
