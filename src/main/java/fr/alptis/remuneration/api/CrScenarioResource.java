@@ -63,6 +63,11 @@ public class CrScenarioResource {
             case "CR-01" -> seedCr01(entity, periodMonth);
             case "CR-02" -> seedCr02(entity, periodMonth);
             case "CR-03" -> seedCr03(entity, periodMonth);
+            case "CR-04" -> seedCr04(entity, periodMonth);
+            case "CR-05" -> seedCr05(entity, periodMonth);
+            case "CR-06" -> seedCr06(entity, periodMonth);
+            case "CR-07" -> seedCr07(entity, periodMonth);
+            case "CR-08" -> seedCr08(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -97,7 +102,7 @@ public class CrScenarioResource {
         Coverage coverage = coverage(entity, "CR01", product, periodMonth, "P-CR01");
         linearChoice(coverage, "0.15", periodMonth);
         version(entity, "PLAN-CR01", "R-CR01-LIN", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
-                "{\"allowedRates\":[0.15]}", periodMonth);
+                "{\"allowedRates\":[0.15]}", periodMonth, null);
         premium(entity, coverage, "CR01-E1", periodMonth.plusDays(4), "100.00");
     }
 
@@ -110,11 +115,7 @@ public class CrScenarioResource {
      * @param periodMonth the calculation month
      */
     private void seedCr02(LegalEntity entity, LocalDate periodMonth) {
-        Product product = product(entity, "SANTE_SELECT");
-        Coverage coverage = coverage(entity, "CR02", product, periodMonth, "P-CR02");
-        upfrontChoice(coverage, "0.30", "0.10", periodMonth);
-        version(entity, "PLAN-CR02", "R-CR02-UPF", RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
-                UPFRONT_PARAMS, periodMonth);
+        Coverage coverage = upfrontCoverage(entity, periodMonth, "CR02", "P-CR02");
         premium(entity, coverage, "CR02-E1", periodMonth.plusDays(4), "1000.00");
     }
 
@@ -128,12 +129,76 @@ public class CrScenarioResource {
      */
     private void seedCr03(LegalEntity entity, LocalDate periodMonth) {
         LocalDate effect = periodMonth.minusYears(1);
-        Product product = product(entity, "SANTE_SELECT");
-        Coverage coverage = coverage(entity, "CR03", product, effect, "P-CR03");
-        upfrontChoice(coverage, "0.30", "0.10", effect);
-        version(entity, "PLAN-CR03", "R-CR03-UPF", RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
-                UPFRONT_PARAMS, effect);
+        Coverage coverage = upfrontCoverage(entity, effect, "CR03", "P-CR03");
         premium(entity, coverage, "CR03-E1", periodMonth.plusDays(4), "1000.00");
+    }
+
+    /**
+     * CR-04 (reprise en 1re année) : six encaissements mensuels de 100 € (précompté 30/10) puis
+     * résiliation au 180e jour ; acquis apport 180,00 € et suivi 60,00 €, reprise −180,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr04(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = upfrontCoverage(entity, periodMonth, "CR04", "P-CR04");
+        for (int i = 0; i < 6; i++) {
+            premium(entity, coverage, "CR04-E" + i, periodMonth.plusMonths(i), "100.00");
+        }
+        event(entity, coverage, "CR04-TERM", EventType.TERMINATION, periodMonth.plusDays(180), null);
+    }
+
+    /**
+     * CR-05 (reprise en 2e année) : prime de 1 000 € puis résiliation au 540e jour ; reprise −150,00 €
+     * (50 % de l'apport de 300 €).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr05(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = upfrontCoverage(entity, periodMonth, "CR05", "P-CR05");
+        premium(entity, coverage, "CR05-E1", periodMonth.plusDays(4), "1000.00");
+        event(entity, coverage, "CR05-TERM", EventType.TERMINATION, periodMonth.plusDays(540), null);
+    }
+
+    /**
+     * CR-06 (pas de reprise au-delà de deux ans) : prime de 1 000 € puis résiliation au 731e jour ;
+     * aucune reprise.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr06(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = upfrontCoverage(entity, periodMonth, "CR06", "P-CR06");
+        premium(entity, coverage, "CR06-E1", periodMonth.plusDays(4), "1000.00");
+        event(entity, coverage, "CR06-TERM", EventType.TERMINATION, periodMonth.plusDays(731), null);
+    }
+
+    /**
+     * CR-07 (sans suite) : deux encaissements de 100 € puis classement sans suite ; reprise de 100 % de
+     * toutes les lignes acquises, soit −80,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr07(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = upfrontCoverage(entity, periodMonth, "CR07", "P-CR07");
+        premium(entity, coverage, "CR07-E1", periodMonth, "100.00");
+        premium(entity, coverage, "CR07-E2", periodMonth.plusMonths(1), "100.00");
+        event(entity, coverage, "CR07-NP", EventType.NOT_PURSUED, periodMonth.plusDays(90), null);
+    }
+
+    /**
+     * CR-08 (décès) : prime de 1 000 € puis décès de l'adhérent au 5e mois ; aucune reprise (le décès
+     * n'est pas un événement de rupture).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr08(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = upfrontCoverage(entity, periodMonth, "CR08", "P-CR08");
+        premium(entity, coverage, "CR08-E1", periodMonth.plusDays(4), "1000.00");
+        event(entity, coverage, "CR08-DEATH", EventType.DEATH, periodMonth.plusDays(150), null);
     }
 
     /**
@@ -260,9 +325,10 @@ public class CrScenarioResource {
      * @param scope      the scope JSON
      * @param parameters the parameters JSON
      * @param from       the start of validity
+     * @param clawback   the clawback policy JSON, or null when the rule has none
      */
     private void version(LegalEntity entity, String planCode, String ruleCode, RuleFamily family, LineNature nature,
-                         String scope, String parameters, LocalDate from) {
+                         String scope, String parameters, LocalDate from, String clawback) {
         CommissionPlan plan = new CommissionPlan();
         plan.entity = entity;
         plan.code = planCode;
@@ -286,7 +352,32 @@ public class CrScenarioResource {
         version.priority = 10;
         version.outputNature = nature;
         version.validFrom = from;
+        version.clawbackPolicy = clawback;
         version.persist();
+    }
+
+    /** The reference upfront clawback policy: 100% the first year, 50% the second, on acquisition. */
+    private static final String CLAWBACK =
+            "{\"type\":\"AGE_STEPS\",\"natures\":[\"ACQUISITION\"],\"triggers\":[\"TERMINATION\",\"WITHDRAWAL\"],"
+            + "\"steps\":[{\"maxDays\":365,\"rate\":1.0},{\"maxDays\":730,\"rate\":0.5}]}";
+
+    /**
+     * Creates an upfront garantie with its 30/10 choice and an active upfront rule carrying the reference
+     * clawback policy, and returns the coverage.
+     *
+     * @param entity         the entity
+     * @param effect         the coverage effect date (and rule start)
+     * @param contractNumber the contract number (also used to key the plan/rule)
+     * @param partnerCode    the distributor partner code
+     * @return the coverage
+     */
+    private Coverage upfrontCoverage(LegalEntity entity, LocalDate effect, String contractNumber, String partnerCode) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, contractNumber, product, effect, partnerCode);
+        upfrontChoice(coverage, "0.30", "0.10", effect);
+        version(entity, "PLAN-" + contractNumber, "R-" + contractNumber, RuleFamily.UPFRONT, LineNature.ACQUISITION,
+                premiumScope(entity), UPFRONT_PARAMS, effect, CLAWBACK);
+        return coverage;
     }
 
     /**
@@ -299,16 +390,31 @@ public class CrScenarioResource {
      * @param basis    the basis amount
      */
     private void premium(LegalEntity entity, Coverage coverage, String key, LocalDate date, String basis) {
+        event(entity, coverage, key, EventType.PREMIUM_COLLECTED, date, basis);
+    }
+
+    /**
+     * Injects a pending event on a coverage.
+     *
+     * @param entity   the entity
+     * @param coverage the coverage
+     * @param key      the source key
+     * @param type     the event type
+     * @param date     the event date
+     * @param basis    the basis amount, or null for a non-financial event (termination, death, …)
+     */
+    private void event(LegalEntity entity, Coverage coverage, String key, EventType type, LocalDate date,
+                       String basis) {
         BusinessEvent event = new BusinessEvent();
         event.entity = entity;
         event.sourceSystem = "SYS";
         event.sourceKey = key;
-        event.eventType = EventType.PREMIUM_COLLECTED;
+        event.eventType = type;
         event.contract = coverage.contract;
         event.coverage = coverage;
         event.eventDate = date;
         event.receivedDate = date;
-        event.basisAmount = new BigDecimal(basis);
+        event.basisAmount = basis == null ? null : new BigDecimal(basis);
         event.processingStatus = ProcessingStatus.PENDING;
         event.persist();
     }

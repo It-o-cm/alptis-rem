@@ -68,4 +68,41 @@ class CrScenarioResourceTest {
                 .body("find { it.nature == 'ACQUISITION' }", nullValue())
                 .body("find { it.nature == 'SERVICING' }.amount", is(100.00f));
     }
+
+    /** CR-04: six first-year premiums then termination at day 180 — acquisition 180, servicing 60, clawback −180. */
+    @Test
+    void cr04_clawback_first_year() {
+        plantAndRun("CR-04");
+        search().body("findAll { it.nature == 'ACQUISITION' }.amount.sum() as double", is(180.0))
+                .body("findAll { it.nature == 'SERVICING' }.amount.sum() as double", is(60.0))
+                .body("findAll { it.nature == 'CLAWBACK' }.amount.sum() as double", is(-180.0));
+    }
+
+    /** CR-05: termination in the second year claws back 50% of the 300 € acquisition: −150,00 €. */
+    @Test
+    void cr05_clawback_second_year() {
+        plantAndRun("CR-05");
+        search().body("findAll { it.nature == 'CLAWBACK' }.amount.sum() as double", is(-150.0));
+    }
+
+    /** CR-06: termination beyond two years claws back nothing. */
+    @Test
+    void cr06_no_clawback_after_two_years() {
+        plantAndRun("CR-06");
+        search().body("findAll { it.nature == 'CLAWBACK' }.size()", is(0));
+    }
+
+    /** CR-07: a not-pursued membership claws back 100% of all earned lines (60 + 20): −80,00 €. */
+    @Test
+    void cr07_not_pursued() {
+        plantAndRun("CR-07");
+        search().body("findAll { it.nature == 'CLAWBACK' }.amount.sum() as double", is(-80.0));
+    }
+
+    /** CR-08: a death is not a breaking event, so the upfront garantie keeps its commission: no clawback. */
+    @Test
+    void cr08_death_no_clawback() {
+        plantAndRun("CR-08");
+        search().body("findAll { it.nature == 'CLAWBACK' }.size()", is(0));
+    }
 }

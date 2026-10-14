@@ -82,4 +82,51 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     // No acquisition line in the second year.
     await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Acquisition' })).toHaveCount(0);
   });
+
+  // The reprise (clawback) cases are read on the commission search: the aggregate CLAWBACK line and its
+  // amount, or its absence. The per-line arithmetic is pinned by CrScenarioResourceTest on the server.
+  const reprise = [
+    { cr: 'CR-04', titre: 'reprise en 1re année', amount: '-180,00' },
+    { cr: 'CR-05', titre: 'reprise en 2e année', amount: '-150,00' },
+    { cr: 'CR-07', titre: 'sans suite', amount: '-80,00' },
+  ];
+  for (const c of reprise) {
+    test(`${c.cr} : ${c.titre} produit une ligne Reprise de ${c.amount} € @screen:calculations @screen:commissionSearch @cr:${c.cr}`, async ({
+      page,
+      request,
+    }) => {
+      const seeded = await request.post(`/api/test/cr-scenario?cr=${c.cr}&entity=UNEP&month=2026-01-01`);
+      expect(seeded.ok()).toBeTruthy();
+      await page.goto('/calculs');
+      await page.getByTestId('calc-run').click();
+      await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+      await page.goto('/recherche-commissions');
+      await page.getByTestId('cs-month').selectOption('2026-01-01');
+      await page.getByTestId('cs-search').click();
+      const row = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Reprise' }).first();
+      await expect(row).toContainText(c.amount);
+    });
+  }
+
+  const noReprise = [
+    { cr: 'CR-06', titre: 'pas de reprise au-delà de deux ans' },
+    { cr: 'CR-08', titre: 'décès sans reprise' },
+  ];
+  for (const c of noReprise) {
+    test(`${c.cr} : ${c.titre} ne produit aucune ligne Reprise @screen:calculations @screen:commissionSearch @cr:${c.cr}`, async ({
+      page,
+      request,
+    }) => {
+      const seeded = await request.post(`/api/test/cr-scenario?cr=${c.cr}&entity=UNEP&month=2026-01-01`);
+      expect(seeded.ok()).toBeTruthy();
+      await page.goto('/calculs');
+      await page.getByTestId('calc-run').click();
+      await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+      await page.goto('/recherche-commissions');
+      await page.getByTestId('cs-month').selectOption('2026-01-01');
+      await page.getByTestId('cs-search').click();
+      await expect(page.locator('[data-testid^="cs-row-"]').first()).toBeVisible();
+      await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Reprise' })).toHaveCount(0);
+    });
+  }
 });

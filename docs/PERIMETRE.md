@@ -541,15 +541,16 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 5 sur 70 (`CR-01`, `CR-02`, `CR-03`, `CR-68`, `CR-70`).
+- **Rejeu par l'interface (`@cr:`) :** 10 sur 70 (`CR-01` à `CR-08`, `CR-68`, `CR-70`).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème
-  initial, donc règle unique, comme les tests moteur) : **CR-01** (linéaire 15 %/100 € → `LINEAR` 15,00 €),
-  **CR-02** (précompté année 1 → `ACQUISITION` 300,00 € + `SERVICING` 100,00 €), **CR-03** (précompté
-  année 2 → `SERVICING` 100,00 € seul). Patron réutilisable : étendre le `switch` de `CrScenarioResource`
-  et ajouter un test `@cr:` par cas pour les 65 restants. Les autres cas restent renvoyés « au niveau
-  JUnit » par des entrées de `docs/DECISIONS.md` à rectifier (étape 4).
+  initial, donc règle unique, comme les tests moteur) : CR-01 (linéaire), CR-02/03 (précompté an 1 / an 2),
+  CR-04 (reprise 1re année −180,00 €), CR-05 (reprise 2e année −150,00 €), CR-06 (pas de reprise > 2 ans),
+  CR-07 (sans suite −80,00 €), CR-08 (décès sans reprise). Montants recopiés à la main de la §13 et
+  vérifiés par `CrScenarioResourceTest` (moteur) et `recette.spec` (interface). Patron réutilisable :
+  étendre le `switch` de `CrScenarioResource` et ajouter un test `@cr:` par cas pour les 60 restants. Les
+  autres cas restent renvoyés « au niveau JUnit » par des entrées de `docs/DECISIONS.md` à rectifier.
 
 ### Plan d'exécution de l'étape 4 (arrêté le 2026-10-14)
 
