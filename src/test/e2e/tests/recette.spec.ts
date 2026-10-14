@@ -715,4 +715,23 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await page.getByTestId('upload-submit').click();
     await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 3 rejetée(s), 1 en attente');
   });
+
+  test('CR-69 : simuler la règle calculée reproduit la ligne au centime, écart nul @screen:calculations @screen:simulation @cr:CR-69', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-01&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/simulation');
+    await page.getByTestId('sim-month').selectOption('2026-01-01');
+    await page.getByTestId('sim-rule').selectOption('R-CR01-LIN');
+    await page.getByTestId('sim-version').fill('1');
+    await page.getByTestId('sim-run').click();
+    await expect(page.getByTestId('sim-real')).toContainText('15,00');
+    await expect(page.getByTestId('sim-sim')).toContainText('15,00');
+    await expect(page.getByTestId('sim-ecart')).toContainText('0,00');
+  });
 });

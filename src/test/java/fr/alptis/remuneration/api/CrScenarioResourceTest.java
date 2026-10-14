@@ -344,6 +344,19 @@ class CrScenarioResourceTest {
                 .when().get("/api/ui/v1/commission-lines/" + id).then().statusCode(200);
     }
 
+    /** CR-69: simulating the CR-01 rule on its calculated period reproduces the line to the cent (ecart 0). */
+    @Test
+    void cr69_reproduces_identical_lines() {
+        plantAndRun("CR-01");
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body(java.util.Map.of("ruleCode", "R-CR01-LIN", "versionNo", 1,
+                        "substitutions", java.util.List.of()))
+                .when().post("/api/ui/v1/simulation/UNEP/2026-01-01")
+                .then().statusCode(200)
+                .body("realTotal", is(15.00f)).body("simulatedTotal", is(15.00f))
+                .body("ecart", is(0.00f)).body("linesReplayed", is(1)).body("linesModified", is(0));
+    }
+
     /** CR-67: a bad-line events file loads 1 line, rejects 3 and holds 1 (unknown contract). */
     @Test
     void cr67_bad_lines_rejected_or_held() {
