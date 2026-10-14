@@ -91,6 +91,7 @@ const receivedFlows = computed(() => new Set(batches.value.map((b) => b.flowCode
 const journalColumns: Column<BatchView>[] = [
   { key: 'flowCode', label: 'Flux', value: (b) => flowLabel(b.flowCode) },
   { key: 'fileName', label: 'Fichier' },
+  { key: 'sourceSystem', label: 'Système source' },
   { key: 'receivedAt', label: 'Reçu le', value: (b) => formatDate(b.receivedAt) },
   { key: 'linesRead', label: 'Lues', align: 'num' },
   { key: 'linesFiltered', label: 'Filtrées', align: 'num' },

@@ -76,6 +76,29 @@ test.describe('Imports — opérateur', () => {
     await expect(page.locator('[data-testid^="batch-row-"]')).toHaveCount(1);
   });
 
+  test('un même nom de fichier de deux systèmes source est accepté et distingué au journal (INT-06) @screen:imports @path:INT-06', async ({ page }) => {
+    await page.goto('/imports');
+    const header = 'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n';
+    const upload = async (source: string, partner: string) => {
+      await page.getByTestId('upload-flow').selectOption('distributors');
+      await page.getByTestId('upload-source').selectOption(source);
+      await page.getByTestId('upload-file').setInputFiles({
+        name: 'reseau.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(header + `ALPTIS_ASSURANCES;${source};${partner};Cabinet;INDEPENDENT;ACTIVE;2026-01-01\n`, 'utf-8'),
+      });
+      await page.getByTestId('upload-submit').click();
+      await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s)');
+    };
+    await upload('SESAME', 'P13897');
+    await upload('CLEVA', 'P99999');
+    // Both deposits are kept, distinguished by their source system in the journal.
+    const rows = page.locator('[data-testid^="batch-row-"]');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.filter({ hasText: 'SESAME' })).toHaveCount(1);
+    await expect(rows.filter({ hasText: 'CLEVA' })).toHaveCount(1);
+  });
+
   test('un fichier réduit à son en-tête est reçu avec zéro ligne (INT-07) @screen:imports @path:INT-07', async ({ page }) => {
     await page.goto('/imports');
     await page.getByTestId('upload-flow').selectOption('distributors');
