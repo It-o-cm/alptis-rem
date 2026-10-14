@@ -163,6 +163,26 @@ public class FdvDemoResource {
         directPlan.persist();
         seedMargin(employee, "nouvelles", new BigDecimal("50000.00"));
         seedMargin(employee, "portefeuille", new BigDecimal("300000.00"));
+
+        // A termination-reduction plan and its early-termination measure (FDV-12): 15 % of 10 000 € of
+        // early-terminated production reduces the variable by 1500 €.
+        VariablePlan terminationPlan = new VariablePlan();
+        terminationPlan.entity = entity;
+        terminationPlan.jobCode = JobCode.CAC;
+        terminationPlan.component = VariableComponent.TERMINATION_REDUCTION;
+        terminationPlan.envelopeAmount = new BigDecimal("0.00");
+        terminationPlan.parameters = "{\"reductionRate\":0.15,\"minimumDurationMonths\":12}";
+        terminationPlan.validFrom = LocalDate.of(2026, 1, 1);
+        terminationPlan.validTo = LocalDate.of(2026, 12, 31);
+        terminationPlan.persist();
+        EmployeeMeasure terminations = new EmployeeMeasure();
+        terminations.employee = employee;
+        terminations.measureType = MeasureType.EARLY_TERMINATION;
+        terminations.dimension = "resiliations";
+        terminations.periodFrom = LocalDate.of(2026, 1, 1);
+        terminations.periodTo = LocalDate.of(2026, 12, 31);
+        terminations.value = new BigDecimal("10000.00");
+        terminations.persist();
         return Response.noContent().build();
     }
 

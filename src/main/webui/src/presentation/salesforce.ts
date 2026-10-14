@@ -28,6 +28,7 @@ const MEASURE_LABELS: Record<string, string> = {
   ACTIVITY: 'Activité commerciale (CRM)',
   MARGIN: 'Marge',
   SPECIFICATIONS_RECEIVED: 'Cahiers des charges reçus',
+  EARLY_TERMINATION: 'Résiliations précoces',
 };
 
 /** Returns the French label of a measure type, or the code itself when unknown or absent. */
@@ -67,6 +68,7 @@ const COMPONENT_LABELS: Record<string, string> = {
   ANNUAL_COLLECTIVE: 'Collectif',
   ANNUAL_MANAGER: 'Animateurs et responsables',
   ANNUAL_DIRECT_SALES: 'Vente directe',
+  TERMINATION_REDUCTION: 'Réduction sur résiliation',
   ANNUAL_ADJUSTMENT: 'Régularisation',
   MANUAL_ADJUSTMENT: 'Ajustement',
 };
@@ -78,6 +80,7 @@ export const PLAN_COMPONENTS: readonly string[] = [
   'ANNUAL_COLLECTIVE',
   'ANNUAL_MANAGER',
   'ANNUAL_DIRECT_SALES',
+  'TERMINATION_REDUCTION',
 ];
 
 /** Returns the French label of a variable component, or the code itself when unknown or absent. */

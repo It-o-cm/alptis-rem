@@ -91,6 +91,9 @@ public class DemoSalesForceBuilder {
                 "{\"marginRate\":0.10,\"overshootThreshold\":40000,\"overshootBonus\":2000,"
                         + "\"portfolioTiers\":{\"100000\":1000,\"250000\":2500}}",
                 VariableComponent.ANNUAL_DIRECT_SALES);
+        managerPlan(entity, JobCode.CAC, new BigDecimal("0.00"),
+                "{\"reductionRate\":0.15,\"minimumDurationMonths\":12}",
+                VariableComponent.TERMINATION_REDUCTION);
     }
 
     /**

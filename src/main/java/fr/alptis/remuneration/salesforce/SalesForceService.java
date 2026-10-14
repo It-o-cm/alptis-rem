@@ -584,6 +584,74 @@ public class SalesForceService {
         result.persist();
     }
 
+    /**
+     * Runs the termination reduction (FDV-12), launched by the business administrator and booked in the
+     * given settlement month: it reduces the variable by a configured rate ({@code reductionRate}) of the
+     * year's production of contracts terminated before the parameterized duration, reported as
+     * {@code EARLY_TERMINATION} measures on the {@code terminationDimension} ("resiliations") dimension.
+     * The reduction is written as a negative result so the per-person pay synthesis nets it against the
+     * other variables (FDV-14). The parameterized minimum duration is applied at the source (the measure
+     * already reflects early terminations); the plan keeps it for traceability. Rate and dimension are
+     * plan parameters (section 8.14, DEC 2026-10-14). Idempotent: the period's non-validated reductions
+     * are dropped first.
+     *
+     * @param entityCode      the entity code
+     * @param settlementMonth the month the reduction is booked in (January N+1)
+     * @return the number of reduction results written
+     */
+    @Transactional
+    public int runTerminationReduction(String entityCode, LocalDate settlementMonth) {
+        LegalEntity entity = entity(entityCode);
+        Period settlement = period(entity, settlementMonth);
+        int year = settlementMonth.getYear() - 1;
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        VariableResult.delete("period = ?1 and component = ?2 and status = ?3", settlement,
+                VariableComponent.TERMINATION_REDUCTION, VariableResultStatus.CALCULATED);
+        int count = 0;
+        for (Employee employee : activeEmployees(entity, yearStart)) {
+            VariablePlan plan = planOf(entity, employee, VariableComponent.TERMINATION_REDUCTION, yearStart);
+            if (plan == null) {
+                continue;
+            }
+            computeTerminationReduction(settlement, employee, plan, yearStart, yearEnd);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Computes and persists one termination-reduction result (FDV-12): a negative amount equal to the
+     * reduction rate times the early-terminated production.
+     *
+     * @param settlement the settlement period the result is booked in
+     * @param employee   the employee
+     * @param plan       the termination-reduction plan of the post
+     * @param yearStart  the first day of the measured year
+     * @param yearEnd    the last day of the measured year
+     */
+    private void computeTerminationReduction(Period settlement, Employee employee, VariablePlan plan,
+                                             LocalDate yearStart, LocalDate yearEnd) {
+        com.fasterxml.jackson.databind.JsonNode params = readParameters(mapper, plan.parameters);
+        String dimension = params.hasNonNull("terminationDimension")
+                ? params.get("terminationDimension").asText() : "resiliations";
+        BigDecimal earlyTerminated = measureSum(employee, MeasureType.EARLY_TERMINATION, dimension, yearStart, yearEnd);
+        BigDecimal rate = decimalParam(params, "reductionRate");
+        BigDecimal reduction = rate.multiply(earlyTerminated).setScale(2, RoundingMode.HALF_UP);
+
+        VariableResult result = new VariableResult();
+        result.period = settlement;
+        result.employee = employee;
+        result.plan = plan;
+        result.component = VariableComponent.TERMINATION_REDUCTION;
+        result.achievementRate = rate;
+        result.amount = reduction.negate();
+        result.status = VariableResultStatus.CALCULATED;
+        result.explanation = "{\"earlyTerminated\":" + earlyTerminated.toPlainString() + ",\"reductionRate\":"
+                + rate.toPlainString() + ",\"reduction\":" + reduction.toPlainString() + "}";
+        result.persist();
+    }
+
     /** The three qualitative criteria of the quarterly variable (FDV-07), as measure dimensions. */
     private static final List<String> QUALITATIVE_CRITERIA = List.of("productivite", "efficacite", "developpement");
 
@@ -1215,6 +1283,7 @@ public class SalesForceService {
             VariableComponent.ANNUAL_COLLECTIVE, "Collectif",
             VariableComponent.ANNUAL_MANAGER, "Animateurs et responsables",
             VariableComponent.ANNUAL_DIRECT_SALES, "Vente directe",
+            VariableComponent.TERMINATION_REDUCTION, "Réduction sur résiliation",
             VariableComponent.ANNUAL_ADJUSTMENT, "Régularisation",
             VariableComponent.MANUAL_ADJUSTMENT, "Ajustement");
 

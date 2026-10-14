@@ -398,6 +398,36 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-12: the business administrator settles the termination reduction in January N+1; a sales rep may
+     * not. The seeded CAC has a termination-reduction plan, so one result is written.
+     */
+    @Test
+    void settles_termination_reduction() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Period january = new Period();
+            january.entity = entity;
+            january.periodMonth = LocalDate.of(2027, 1, 1);
+            january.state = PeriodState.CONTROLLED;
+            january.persist();
+            VariablePlan terminationPlan = new VariablePlan();
+            terminationPlan.entity = entity;
+            terminationPlan.jobCode = JobCode.CAC;
+            terminationPlan.component = VariableComponent.TERMINATION_REDUCTION;
+            terminationPlan.envelopeAmount = new BigDecimal("0.00");
+            terminationPlan.parameters = "{\"reductionRate\":0.15}";
+            terminationPlan.validFrom = LocalDate.of(2026, 1, 1);
+            terminationPlan.validTo = LocalDate.of(2026, 12, 31);
+            terminationPlan.persist();
+        });
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/termination-reduction")
+                .then().statusCode(200).body("reductions", is(1));
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/termination-reduction").then().statusCode(403);
+    }
+
+    /**
      * FDV-16: a commercial simulates a month with a hypothetical production (objective met) and the
      * measured one; a viewer is refused.
      */

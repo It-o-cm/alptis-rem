@@ -332,3 +332,20 @@ paramètre de plan) :
 - Taux, seuils, barème, dimensions et fraction de janvier sont des paramètres de plan, renseignés dans le
   jeu de démonstration par des valeurs vraisemblables. Les montants attendus des tests sont calculés à la
   main (SalesForceServiceTest.fdv10_*).
+
+## 2026-10-14 — FDV-12 : réduction du variable sur résiliation
+
+Section 8.14 (FDV-12) : « Réduire le variable quand un contrat est résilié avant une durée paramétrée »,
+sans formule. Le module forces de vente ne connaît pas les contrats (il reçoit des mesures agrégées, non
+des adhésions) ; le calcul par contrat est donc impossible dans ce périmètre. `PERIMETRE.md` interdit le
+report ; mécanisme paramétré retenu (le plus simple compatible) :
+
+- **Mesure** `EARLY_TERMINATION` : la source (SI RH/CRM) applique la durée minimale paramétrée et fournit,
+  par collaborateur, la production des contrats résiliés avant cette durée (dimension « resiliations »).
+  Un type de mesure dédié évite de polluer la production pondérée (FDV-11).
+- **Composante** `TERMINATION_REDUCTION`, réglée en janvier N+1 : un résultat **négatif** égal à
+  `reductionRate` × production résiliée précocement. La synthèse à payer (FDV-14) sommant les composantes
+  par personne, ce résultat négatif réduit le variable total.
+- **Durée paramétrée** : conservée au plan (`minimumDurationMonths`) pour la traçabilité ; elle est
+  appliquée à la source, la mesure reflétant déjà les résiliations précoces. Taux et dimension sont des
+  paramètres de plan. Montants des tests calculés à la main (SalesForceServiceTest.fdv12_*).

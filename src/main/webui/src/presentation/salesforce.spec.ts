@@ -19,6 +19,7 @@ describe('sales-force presentation', () => {
     expect(measureTypeLabel('ABSENCE')).toBe('Absences (hors congés et RTT)');
     expect(measureTypeLabel('PRODUCTION')).toBe('Production par marché');
     expect(measureTypeLabel('SPECIFICATIONS_RECEIVED')).toBe('Cahiers des charges reçus');
+    expect(measureTypeLabel('EARLY_TERMINATION')).toBe('Résiliations précoces');
     expect(measureTypeLabel('UNKNOWN')).toBe('UNKNOWN');
     expect(measureTypeLabel(null)).toBe('—');
   });
@@ -37,6 +38,7 @@ describe('sales-force presentation', () => {
     expect(componentLabel('ANNUAL_COLLECTIVE')).toBe('Collectif');
     expect(componentLabel('ANNUAL_MANAGER')).toBe('Animateurs et responsables');
     expect(componentLabel('ANNUAL_DIRECT_SALES')).toBe('Vente directe');
+    expect(componentLabel('TERMINATION_REDUCTION')).toBe('Réduction sur résiliation');
     expect(componentLabel('MANUAL_ADJUSTMENT')).toBe('Ajustement');
     expect(componentLabel('UNKNOWN')).toBe('UNKNOWN');
     expect(componentLabel(null)).toBe('—');

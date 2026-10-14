@@ -990,4 +990,65 @@ class SalesForceServiceTest {
         assertEquals(0, new BigDecimal("1000.00").compareTo(directIn(a, LocalDate.of(2027, 1, 1)).amount));
         assertEquals(0, new BigDecimal("700.00").compareTo(directIn(b, LocalDate.of(2027, 1, 1)).amount));
     }
+
+    /** Creates a termination-reduction plan for a post, with its parameters. */
+    private static void terminationPlan(JobCode jobCode, String parameters) {
+        VariablePlan plan = new VariablePlan();
+        plan.entity = unep();
+        plan.jobCode = jobCode;
+        plan.component = VariableComponent.TERMINATION_REDUCTION;
+        plan.envelopeAmount = new BigDecimal("0");
+        plan.parameters = parameters;
+        plan.validFrom = LocalDate.of(2026, 1, 1);
+        plan.validTo = LocalDate.of(2026, 12, 31);
+        plan.persist();
+    }
+
+    /** Creates a yearly early-termination measure on a dimension for an employee. */
+    private static void earlyTermination(Employee employee, String dimension, String value) {
+        EmployeeMeasure measure = new EmployeeMeasure();
+        measure.employee = employee;
+        measure.measureType = MeasureType.EARLY_TERMINATION;
+        measure.dimension = dimension;
+        measure.periodFrom = LocalDate.of(2026, 1, 1);
+        measure.periodTo = LocalDate.of(2026, 12, 31);
+        measure.value = new BigDecimal(value);
+        measure.persist();
+    }
+
+    /** The termination-reduction result of an employee. */
+    private static VariableResult reduction(Employee employee) {
+        return VariableResult.<VariableResult>find("employee = ?1 and component = ?2", employee,
+                VariableComponent.TERMINATION_REDUCTION).firstResult();
+    }
+
+    /**
+     * FDV-12: the termination reduction is a negative amount equal to the reduction rate times the
+     * early-terminated production. A has 15 % of 10 000 € (−1500 €) on the default dimension; B has 20 %
+     * of 5 000 € (−1000 €) on a custom dimension; C has a plan but no early terminations (0 €); and an
+     * employee without a reduction plan is skipped.
+     */
+    @Test
+    @TestTransaction
+    void fdv12_reduces_the_variable_by_early_terminations() {
+        Employee a = employee("A", JobCode.CAC);
+        terminationPlan(JobCode.CAC, "{\"reductionRate\":0.15}");
+        earlyTermination(a, "resiliations", "10000");
+        Employee b = employee("B", JobCode.DR);
+        terminationPlan(JobCode.DR, "{\"reductionRate\":0.20,\"terminationDimension\":\"annul\"}");
+        earlyTermination(b, "annul", "5000");
+        Employee c = employee("C", JobCode.RR);
+        terminationPlan(JobCode.RR, "{\"reductionRate\":0.10}");
+        employee("NOPLAN", JobCode.RB);
+        january(2027);
+
+        assertEquals(3, service.runTerminationReduction("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(0, new BigDecimal("-1500.00").compareTo(reduction(a).amount));
+        assertEquals(0, new BigDecimal("-1000.00").compareTo(reduction(b).amount));
+        assertEquals(0, BigDecimal.ZERO.compareTo(reduction(c).amount));
+
+        // A rerun replaces the calculated result rather than doubling it.
+        assertEquals(3, service.runTerminationReduction("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(3, VariableResult.count("component = ?1", VariableComponent.TERMINATION_REDUCTION));
+    }
 }

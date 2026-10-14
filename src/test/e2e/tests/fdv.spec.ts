@@ -152,6 +152,30 @@ test('l’administrateur règle le variable de la vente directe à 70 % en janvi
   await admin.close();
 });
 
+test('l’administrateur applique la réduction sur résiliation @screen:fdvPlan @screen:fdvValidation @req:FDV-12', async ({
+  browser,
+}) => {
+  // The admin settles the termination reduction (FDV-12) in January N+1: a negative result.
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/plan');
+  await expect(page.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
+  await page.getByTestId('fdvp-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvp-termination').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('Réduction sur résiliation réglée');
+  await expect(page.getByTestId('fdvp-message')).toContainText('collaborateur');
+
+  // The reduction is visible on the validation screen for January 2027: 15 % of 10 000 € of early
+  // terminations reduces the variable by 1500 €, shown as a negative amount by its French label.
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvv-refresh').click();
+  const row = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Réduction sur résiliation' }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(/-1.500,00/);
+  await admin.close();
+});
+
 test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16', async ({
   browser,
 }) => {

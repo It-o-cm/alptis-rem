@@ -211,6 +211,19 @@ async function runDirectSalesVariable(): Promise<void> {
   }
 }
 
+/** Settles the termination reduction in the selected month (FDV-12), reducing the variable. */
+async function runTerminationReduction(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    const result = await apiPost<{ reductions: number }>(
+      `/api/ui/v1/fdv/${entity.value}/${month.value}/termination-reduction`, {});
+    message.value = `Réduction sur résiliation réglée : ${result.reductions} collaborateur(s).`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Règlement refusé';
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -252,6 +265,9 @@ onMounted(load);
       </AppButton>
       <AppButton variant="secondary" data-testid="fdvp-direct" @click="runDirectSalesVariable">
         Vente directe
+      </AppButton>
+      <AppButton variant="secondary" data-testid="fdvp-termination" @click="runTerminationReduction">
+        Réduction sur résiliation
       </AppButton>
     </div>
 

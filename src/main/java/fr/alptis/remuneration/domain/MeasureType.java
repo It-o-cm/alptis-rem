@@ -13,5 +13,7 @@ public enum MeasureType {
     /** Gross margin. */
     MARGIN,
     /** Specifications received. */
-    SPECIFICATIONS_RECEIVED
+    SPECIFICATIONS_RECEIVED,
+    /** Production of contracts terminated before the parameterized duration, driving the variable reduction (FDV-12). */
+    EARLY_TERMINATION
 }

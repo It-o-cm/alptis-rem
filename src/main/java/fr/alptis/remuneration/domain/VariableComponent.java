@@ -14,6 +14,8 @@ public enum VariableComponent {
     ANNUAL_MANAGER,
     /** The annual direct-sales variable: a share of new-business margin with overshoot and a portfolio-value scale (FDV-10). */
     ANNUAL_DIRECT_SALES,
+    /** A reduction of the variable for contracts terminated before the parameterized duration (FDV-12). */
+    TERMINATION_REDUCTION,
     /** The annual regularisation of the individual variable. */
     ANNUAL_ADJUSTMENT,
     /** A manual adjustment decided by the manager, carrying its reason (FDV-13). */

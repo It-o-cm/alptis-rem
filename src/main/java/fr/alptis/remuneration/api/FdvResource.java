@@ -344,6 +344,25 @@ public class FdvResource {
     }
 
     /**
+     * Settles the termination reduction in a month (FDV-12), launched by the business administrator: it
+     * reduces the variable for contracts terminated before the parameterized duration. The measured year
+     * is the month's year minus one.
+     *
+     * @param entityCode the entity code
+     * @param month      the settlement month (ISO date, January N+1)
+     * @return the number of reduction results written
+     */
+    @POST
+    @Path("/{entity}/{month}/termination-reduction")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public java.util.Map<String, Integer> terminationReduction(@PathParam("entity") String entityCode,
+                                                               @PathParam("month") String month) {
+        requireScope(entityCode);
+        return java.util.Map.of("reductions", service.runTerminationReduction(entityCode, LocalDate.parse(month)));
+    }
+
+    /**
      * Validates a result (FDV-13), performed by the regional manager.
      *
      * @param id the result id
