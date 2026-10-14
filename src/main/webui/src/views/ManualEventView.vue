@@ -2,14 +2,25 @@
 import { ref } from 'vue';
 import { apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
-import { AppButton, AppCard, AppForm, AppMessage, FormField, PageHeading } from '../components/ui';
+import {
+  AppButton,
+  AppCard,
+  AppForm,
+  AppMessage,
+  CodeSelect,
+  FormField,
+  PageHeading,
+  ProductSelect,
+  SourceSystemSelect,
+} from '../components/ui';
+import { eventTypeLabel } from '../presentation/events';
+import { REMUNERATION_MODE_OPTIONS, CONTRACT_STATUS_OPTIONS } from '../presentation/coverage';
 
-const EVENT_TYPES = [
+// The event types a manual entry may declare, each shown by its French label (ADM-03).
+const EVENT_TYPE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   'PREMIUM_COLLECTED', 'PREMIUM_CANCELLED', 'TERMINATION', 'WITHDRAWAL', 'DEATH',
   'SUBSCRIPTION', 'ENDORSEMENT', 'SCHEDULED_PAYMENT', 'INITIAL_PAYMENT', 'SURRENDER',
-];
-const REMUNERATION_MODES = ['LINEAR', 'UPFRONT'];
-const CONTRACT_STATUSES = ['PENDING', 'IN_FORCE', 'SUSPENDED', 'TERMINATED', 'WITHDRAWN', 'NOT_PURSUED', 'LITIGATION'];
+].map((value) => ({ value, label: eventTypeLabel(value) }));
 
 const session = useSessionStore();
 const form = ref({
@@ -120,15 +131,13 @@ async function submitCoverage(): Promise<void> {
       <AppMessage v-if="error" variant="error" data-testid="manual-error">{{ error }}</AppMessage>
       <AppForm twoColumn @submit="submit">
         <FormField label="Système source" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="field-source" type="text" v-model="form.sourceSystem" />
+          <SourceSystemSelect :id="id" data-testid="field-source" v-model="form.sourceSystem" />
         </FormField>
         <FormField label="Clé source" width="short" v-slot="{ id }">
           <input :id="id" data-testid="field-key" type="text" v-model="form.sourceKey" />
         </FormField>
         <FormField label="Type d'événement" width="short" v-slot="{ id }">
-          <select :id="id" data-testid="field-type" v-model="form.eventType">
-            <option v-for="t in EVENT_TYPES" :key="t" :value="t">{{ t }}</option>
-          </select>
+          <CodeSelect :id="id" data-testid="field-type" v-model="form.eventType" :options="EVENT_TYPE_OPTIONS" />
         </FormField>
         <FormField label="Numéro d'adhésion" width="short" v-slot="{ id }">
           <input :id="id" data-testid="field-contract" type="text" v-model="form.contractNumber" />
@@ -151,7 +160,7 @@ async function submitCoverage(): Promise<void> {
       <AppMessage v-if="coverageError" variant="error" data-testid="coverage-error">{{ coverageError }}</AppMessage>
       <AppForm twoColumn @submit="submitCoverage">
         <FormField label="Système source" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="cov-source" type="text" v-model="coverage.sourceSystem" />
+          <SourceSystemSelect :id="id" data-testid="cov-source" v-model="coverage.sourceSystem" />
         </FormField>
         <FormField label="Numéro d'adhésion" width="short" v-slot="{ id }">
           <input :id="id" data-testid="cov-contract" type="text" v-model="coverage.contractNumber" />
@@ -160,7 +169,7 @@ async function submitCoverage(): Promise<void> {
           <input :id="id" data-testid="cov-coverage" type="text" v-model="coverage.coverageCode" />
         </FormField>
         <FormField label="Code produit" width="short" v-slot="{ id }">
-          <input :id="id" data-testid="cov-product" type="text" v-model="coverage.productCode" />
+          <ProductSelect :id="id" data-testid="cov-product" v-model="coverage.productCode" />
         </FormField>
         <FormField label="Identifiant souscripteur" width="short" v-slot="{ id }">
           <input :id="id" data-testid="cov-holder" type="text" v-model="coverage.policyholderId" />
@@ -169,14 +178,10 @@ async function submitCoverage(): Promise<void> {
           <input :id="id" data-testid="cov-production" type="text" v-model="coverage.productionCode" />
         </FormField>
         <FormField label="Mode de rémunération" width="short" v-slot="{ id }">
-          <select :id="id" data-testid="cov-mode" v-model="coverage.remunerationMode">
-            <option v-for="m in REMUNERATION_MODES" :key="m" :value="m">{{ m }}</option>
-          </select>
+          <CodeSelect :id="id" data-testid="cov-mode" v-model="coverage.remunerationMode" :options="REMUNERATION_MODE_OPTIONS" />
         </FormField>
         <FormField label="Statut" width="short" v-slot="{ id }">
-          <select :id="id" data-testid="cov-status" v-model="coverage.status">
-            <option v-for="s in CONTRACT_STATUSES" :key="s" :value="s">{{ s }}</option>
-          </select>
+          <CodeSelect :id="id" data-testid="cov-status" v-model="coverage.status" :options="CONTRACT_STATUS_OPTIONS" />
         </FormField>
         <FormField label="Date d'enregistrement" width="date" v-slot="{ id }">
           <input :id="id" data-testid="cov-registration" type="date" v-model="coverage.registrationDate" />

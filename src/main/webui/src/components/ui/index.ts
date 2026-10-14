@@ -18,6 +18,7 @@ export { default as MonthSelect } from './MonthSelect.vue';
 export { default as PlanSelect } from './PlanSelect.vue';
 export { default as ProductSelect } from './ProductSelect.vue';
 export { default as RuleSelect } from './RuleSelect.vue';
+export { default as SourceSystemSelect } from './SourceSystemSelect.vue';
 export { default as DetailList } from './DetailList.vue';
 export { default as DetailRow } from './DetailRow.vue';
 export { default as FilterBar } from './FilterBar.vue';

@@ -15,7 +15,7 @@ test.describe('Événements en attente — opérateur', () => {
 
     // Create a held event on the manual screen (unknown contract → référence inconnue).
     await page.goto('/saisie-evenement');
-    await page.getByTestId('field-source').fill('MANUAL');
+    await page.getByTestId('field-source').selectOption('MANUAL');
     await page.getByTestId('field-key').fill('EVT-HELD-1');
     await page.getByTestId('field-type').selectOption('TERMINATION');
     await page.getByTestId('field-contract').fill('C-UNKNOWN');

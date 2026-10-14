@@ -30,6 +30,19 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   `@path:` restent à compléter (étape 4).
 - `PlaceholderView` : supprimé, plus aucune route ne le référence.
 
+État au 2026-10-14 (ADM-03 en cours) :
+
+- **ManualEventView converti** : socle `SourceSystemSelect` (store Pinia `sourceSystems`, 100 % vitest)
+  et helper de présentation `coverage.ts` (`remunerationModeLabel`/`contractStatusLabel` + options,
+  100 % vitest) ajoutés ; l'écran de saisie manuelle choisit désormais le système source et le produit
+  dans une liste, et affiche le type d'événement, le mode de rémunération et le statut d'adhésion au
+  libellé FR (plus aucune saisie libre de code connu, plus aucun code d'énum brut). Les chemins d'échec
+  des tests qui saisissaient un produit inconnu (`manual-event.spec`) sont reprouvés par la sélection
+  d'un produit connu avec un code de production inconnu (mise en attente conservée). Specs adaptés :
+  `manual-event.spec` (sélections + assertions au libellé), `events.spec` et `held-events.spec`
+  (`field-source` en `selectOption`). `mvn verify` vert (725 tests Java + JaCoCo 100 %), vitest 100 %,
+  les trois specs e2e touchées vertes (12/12).
+
 État au 2026-10-13 (ADM-03 en cours) :
 
 - **Socle « liste / sélection » d'ADM-03 livré** : composants `CodeSelect`, `EntitySelect`, `MonthSelect`,
@@ -396,10 +409,11 @@ laisser la suite rouge. Ne pas marquer ADM-03 `complet` tant qu'il reste une lig
 liés à une valeur connue, audit à élargir — certains écrans en portent d'autres, p.ex. `v-scope`
 de RulesView) :
 
-- ManualEventView : `field-source`/`cov-source` (système source, en liste), `cov-product` (produit, en liste),
-  et les énumérations `field-type`/`cov-mode`/`cov-status` à afficher au libellé FR ;
-  `field-coverage`/`field-contract`/`cov-coverage`/`cov-contract`/`cov-holder`/`cov-production` restent
-  libres (identifiants d'une garantie/adhésion/souscripteur créés à la saisie, comme `pt-newcode`).
+- ~~ManualEventView~~ **converti (2026-10-14)** : `field-source`/`cov-source` en `SourceSystemSelect`,
+  `cov-product` en `ProductSelect`, et les énumérations `field-type` (libellés d'événement),
+  `cov-mode` (mode de rémunération) et `cov-status` (statut d'adhésion) affichées au libellé FR via
+  `CodeSelect` ; `field-coverage`/`field-contract`/`cov-coverage`/`cov-contract`/`cov-holder`/`cov-production`
+  restent libres (identifiants d'une garantie/adhésion/souscripteur créés à la saisie, comme `pt-newcode`).
 - FdvCommercialView : `sim-month` (mois du simulateur) à passer en `MonthSelect`.
 
 **Balayage des libellés d'énum restant** (affichage d'un code technique dans un tableau/une fiche,
@@ -432,8 +446,10 @@ CutoffView, ReconciliationView, TaxCertificatesView, DocumentTemplatesView, Repr
 `AAAA-MM-01` via `MonthSelect value-format="date"`) ; DistributorAccountView (entité + mois +
 distributeur via `DistributorSelect`) ; FdvCollaboratorsView, FdvCommercialView, FdvMeasuresView,
 FdvObjectivesView (entité) ; AdjustmentsView (entité + mois + statut au libellé FR), MarginView
-(entité + mois) ; ClaimsView (distributeur via `DistributorSelect`). Chacun porte son assertion
-ADM-03 dans son test de bout en bout.
+(entité + mois) ; ClaimsView (distributeur via `DistributorSelect`) ;
+ManualEventView (système source via `SourceSystemSelect`, produit via `ProductSelect`, type
+d'événement/mode de rémunération/statut d'adhésion au libellé FR via `CodeSelect`). Chacun porte son
+assertion ADM-03 dans son test de bout en bout.
 Le `MonthSelect` lie le mois tel que le serveur le rend — la date premier-du-mois `AAAA-MM-01` que
 `/periods` renvoie et que **tous** les points d'accès de mois analysent (vérifié : `2026-09` → 500,
 `2026-09-01` → 200). Il n'y a donc qu'une seule forme de mois ; l'option `value-format` introduite sur

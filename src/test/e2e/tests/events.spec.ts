@@ -16,7 +16,7 @@ test.describe('Recherche d’événements — opérateur', () => {
 
     // Create a held event on the manual screen, then find it on the events screen (cross-screen effect).
     await page.goto('/saisie-evenement');
-    await page.getByTestId('field-source').fill('MANUAL');
+    await page.getByTestId('field-source').selectOption('MANUAL');
     await page.getByTestId('field-key').fill('EVT-SEARCH-1');
     await page.getByTestId('field-type').selectOption('TERMINATION');
     await page.getByTestId('field-contract').fill('C-UNKNOWN');
