@@ -394,4 +394,24 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(rows.first()).toContainText('Escompte');
     await expect(rows.first()).toContainText('288,00');
   });
+
+  test('CR-35 : la clôture annuelle verse un complément retraite de 351,00 € et 352,98 € @screen:calculations @screen:commissionSearch @cr:CR-35', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-35&entity=UNEP&month=2026-12-01');
+    expect(seeded.ok()).toBeTruthy();
+    // The retirement complement is computed at the annual close, triggered from the executions screen.
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-12-01');
+    await page.getByTestId('close-annual').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Complément retraite calculé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-12-01');
+    await page.getByTestId('cs-search').click();
+    const complement = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Complément retraite' });
+    await expect(complement).toHaveCount(2);
+    await expect(complement.filter({ hasText: '351,00' })).toHaveCount(1);
+    await expect(complement.filter({ hasText: '352,98' })).toHaveCount(1);
+  });
 });

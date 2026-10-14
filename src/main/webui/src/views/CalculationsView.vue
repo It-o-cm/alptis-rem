@@ -107,6 +107,16 @@ async function launch(): Promise<void> {
   );
 }
 
+/** Runs one of the complementary-remuneration closes of the selected period. */
+async function close(kind: 'development' | 'portfolio' | 'annual', ok: string): Promise<void> {
+  if (!selected.value) return;
+  const p = selected.value;
+  await act(
+    () => apiPost<ExecutionsView>(`/api/ui/v1/calculations/${p.entityCode}/${p.month}/close-${kind}`, {}),
+    ok,
+  );
+}
+
 /** Launches a partial recalculation scoped to the chosen distributor, product or rule. */
 async function launchPartialRecalc(): Promise<void> {
   if (!selected.value || !recalc.value.value) return;
@@ -167,6 +177,25 @@ onMounted(loadPeriods);
         Lancer le calcul
       </AppButton>
     </FilterBar>
+
+    <AppCard
+      v-if="canLaunch() && selected"
+      data-testid="calc-closes"
+      title="Rémunérations complémentaires"
+      subtitle="Clôtures dues ce mois : surcommission de développement (RCD, chaque mois), de portefeuille (RCP, période de janvier), complément retraite (période de février). CAL-05, CAL-06."
+    >
+      <FilterBar>
+        <AppButton :loading="busy" data-testid="close-development" @click="close('development', 'Surcommission de développement calculée.')">
+          Développement (RCD)
+        </AppButton>
+        <AppButton :loading="busy" data-testid="close-portfolio" @click="close('portfolio', 'Surcommission de portefeuille calculée.')">
+          Portefeuille (RCP)
+        </AppButton>
+        <AppButton :loading="busy" data-testid="close-annual" @click="close('annual', 'Complément retraite calculé.')">
+          Complément retraite
+        </AppButton>
+      </FilterBar>
+    </AppCard>
 
     <AppCard v-if="canLaunch() && selected" data-testid="calc-recalc" title="Recalcul partiel">
       <FilterBar>

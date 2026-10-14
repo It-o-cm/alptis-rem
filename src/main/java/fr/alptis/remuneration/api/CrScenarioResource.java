@@ -24,6 +24,11 @@ import fr.alptis.remuneration.domain.RemunerationChoice;
 import fr.alptis.remuneration.domain.RemunerationMode;
 import fr.alptis.remuneration.domain.Rule;
 import fr.alptis.remuneration.domain.RuleFamily;
+import fr.alptis.remuneration.domain.Scale;
+import fr.alptis.remuneration.domain.ScaleMeasure;
+import fr.alptis.remuneration.domain.ScaleMode;
+import fr.alptis.remuneration.domain.ScaleOutput;
+import fr.alptis.remuneration.domain.ScaleTier;
 import fr.alptis.remuneration.domain.StaffCategory;
 import fr.alptis.remuneration.domain.RuleVersion;
 import fr.alptis.remuneration.domain.VersionStatus;
@@ -89,6 +94,7 @@ public class CrScenarioResource {
             case "CR-30" -> seedCr30(entity, periodMonth);
             case "CR-31" -> seedCr31(entity, periodMonth);
             case "CR-32" -> seedCr32(entity, periodMonth);
+            case "CR-35" -> seedCr35(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -512,6 +518,66 @@ public class CrScenarioResource {
     }
 
     /**
+     * CR-35 (complément retraite) : la production annualisée du distributeur sur l'année est inférieure
+     * à 10 000 € (deux contrats à 3 510 € et 3 529,80 € nets de frais), le palier à 10 % s'applique donc
+     * à chacun ; deux lignes `COMPLEMENT` de 351,00 € et 352,98 €, soit 703,98 €. Calculé à la clôture
+     * annuelle, déclenchée depuis l'écran des exécutions.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (the close period, within the production year)
+     */
+    private void seedCr35(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = LocalDate.of(periodMonth.getYear(), 1, 1);
+        Product product = product(entity, "PER");
+        Coverage c1 = coverage(entity, "CR35-1", product, effect, "P-CR35", null);
+        Coverage c2 = coverage(entity, "CR35-2", product, effect, "P-CR35", null);
+        RuleVersion rule = version(entity, "PLAN-CR35", "R-CR35", RuleFamily.TIERED, LineNature.COMPLEMENT,
+                savingsScope(entity), "{\"counterCode\":\"PER\",\"calculationFrequency\":\"ANNUAL\"}", effect, null,
+                null);
+        complementScale(rule);
+        event(entity, c1, "CR35-E1", EventType.SCHEDULED_PAYMENT, LocalDate.of(periodMonth.getYear(), 6, 1),
+                "3510.00");
+        event(entity, c2, "CR35-E2", EventType.SCHEDULED_PAYMENT, LocalDate.of(periodMonth.getYear(), 6, 1),
+                "3529.80");
+    }
+
+    /**
+     * Attaches the retirement-complement tiers to a rule version: a whole-amount scale giving the rate
+     * of the reached tier (10 % below 10 000 €, then 12 %, 15 %, 20 %, 25 %), the lower bound included.
+     *
+     * @param version the tiered complement rule version
+     */
+    private void complementScale(RuleVersion version) {
+        Scale scale = new Scale();
+        scale.ruleVersion = version;
+        scale.mode = ScaleMode.WHOLE;
+        scale.measure = ScaleMeasure.AMOUNT;
+        scale.output = ScaleOutput.RATE;
+        scale.persist();
+        tier(scale, "0", "0.10");
+        tier(scale, "10000", "0.12");
+        tier(scale, "14000", "0.15");
+        tier(scale, "20000", "0.20");
+        tier(scale, "50000", "0.25");
+    }
+
+    /**
+     * Adds one tier to a scale, counted from the first unit.
+     *
+     * @param scale      the scale
+     * @param lowerBound the included lower bound
+     * @param rate       the tier rate, as a fraction
+     */
+    private void tier(Scale scale, String lowerBound, String rate) {
+        ScaleTier tier = new ScaleTier();
+        tier.scale = scale;
+        tier.lowerBound = new BigDecimal(lowerBound);
+        tier.rate = new BigDecimal(rate);
+        tier.fromFirstUnit = Boolean.TRUE;
+        tier.persist();
+    }
+
+    /**
      * Injects a pending unpaid-notice event of a given rank on a coverage.
      *
      * @param entity   the entity
@@ -679,10 +745,13 @@ public class CrScenarioResource {
         coverage.effectDate = effectDate;
         coverage.staffCategory = college;
         coverage.persist();
-        Distributor distributor = new Distributor();
-        distributor.partnerCode = partnerCode;
-        distributor.legalName = partnerCode;
-        distributor.persist();
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", partnerCode).firstResult();
+        if (distributor == null) {
+            distributor = new Distributor();
+            distributor.partnerCode = partnerCode;
+            distributor.legalName = partnerCode;
+            distributor.persist();
+        }
         ProductionCode pc = new ProductionCode();
         pc.entity = entity;
         pc.code = "PC-" + contractNumber;
@@ -747,9 +816,11 @@ public class CrScenarioResource {
      * @param from       the start of validity
      * @param to         the end of validity, or null
      * @param clawback   the clawback policy JSON, or null when the rule has none
+     * @return the created rule version
      */
-    private void version(LegalEntity entity, String planCode, String ruleCode, RuleFamily family, LineNature nature,
-                         String scope, String parameters, LocalDate from, LocalDate to, String clawback) {
+    private RuleVersion version(LegalEntity entity, String planCode, String ruleCode, RuleFamily family,
+                                LineNature nature, String scope, String parameters, LocalDate from, LocalDate to,
+                                String clawback) {
         CommissionPlan plan = new CommissionPlan();
         plan.entity = entity;
         plan.code = planCode;
@@ -776,6 +847,7 @@ public class CrScenarioResource {
         version.validTo = to;
         version.clawbackPolicy = clawback;
         version.persist();
+        return version;
     }
 
     /** The reference upfront clawback policy: 100% the first year, 50% the second, on acquisition. */

@@ -253,4 +253,17 @@ class CrScenarioResourceTest {
         search("2026-02-01").body("size()", is(1))
                 .body("find { it.nature == 'ADVANCE' }.amount", is(288.00f));
     }
+
+    /**
+     * CR-35: closing the year on a distributor whose production stays under 10 000 € applies the 10% tier
+     * to each contract, giving COMPLEMENT lines of 351,00 € and 352,98 €, 703,98 € in all.
+     */
+    @Test
+    void cr35_annual_complement() {
+        given().when().post("/api/test/cr-scenario?cr=CR-35&entity=UNEP&month=2026-12-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-12-01/close-annual").then().statusCode(200);
+        search("2026-12-01").body("findAll { it.nature == 'COMPLEMENT' }.size()", is(2))
+                .body("findAll { it.nature == 'COMPLEMENT' }.amount", hasItems(351.00f, 352.98f));
+    }
 }

@@ -46,7 +46,20 @@ class CalculationResourceTest {
     }
 
     /**
-     * A UNEP operator cannot read or launch an Alptis calculation.
+     * An operator runs the three complementary-remuneration closes of a period (CAL-05, CAL-06).
+     */
+    @Test
+    void operator_runs_the_complementary_closes() {
+        for (String close : new String[] {"close-development", "close-portfolio", "close-annual"}) {
+            given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                    .when().post("/api/ui/v1/calculations/ALPTIS_ASSURANCES/2026-09-01/" + close)
+                    .then().statusCode(200)
+                    .body("runs.size()", greaterThanOrEqualTo(1));
+        }
+    }
+
+    /**
+     * A UNEP operator cannot read or launch an Alptis calculation, including the complementary closes.
      */
     @Test
     void cannot_reach_another_entity() {
@@ -56,6 +69,11 @@ class CalculationResourceTest {
         given().auth().preemptive().basic("operator-unep", "operator-unep")
                 .when().post("/api/ui/v1/calculations/ALPTIS_ASSURANCES/2026-09-01/run")
                 .then().statusCode(404);
+        for (String close : new String[] {"close-development", "close-portfolio", "close-annual"}) {
+            given().auth().preemptive().basic("operator-unep", "operator-unep")
+                    .when().post("/api/ui/v1/calculations/ALPTIS_ASSURANCES/2026-09-01/" + close)
+                    .then().statusCode(404);
+        }
     }
 
     /**

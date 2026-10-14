@@ -78,6 +78,66 @@ public class CalculationResource {
     }
 
     /**
+     * Runs the monthly development surcommission (RCD) of a period, due every month (CAL-05, section
+     * 7.2 step 4.7).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the refreshed executions view
+     */
+    @POST
+    @Path("/{entityCode}/{month}/close-development")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public ExecutionsView closeDevelopment(@PathParam("entityCode") String entityCode,
+                                           @PathParam("month") String month) {
+        requireScope(entityCode);
+        LocalDate periodMonth = LocalDate.parse(month);
+        engine.runDevelopment(entityCode, periodMonth, periodMonth.getYear());
+        return query.executions(entityCode, periodMonth);
+    }
+
+    /**
+     * Runs the annual portfolio surcommission (RCP) of a period, due in the January period (CAL-05,
+     * section 7.2 step 4.7).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the refreshed executions view
+     */
+    @POST
+    @Path("/{entityCode}/{month}/close-portfolio")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public ExecutionsView closePortfolio(@PathParam("entityCode") String entityCode,
+                                         @PathParam("month") String month) {
+        requireScope(entityCode);
+        LocalDate periodMonth = LocalDate.parse(month);
+        engine.runPortfolio(entityCode, periodMonth, periodMonth.getYear());
+        return query.executions(entityCode, periodMonth);
+    }
+
+    /**
+     * Runs the annual retirement complement of a period, due in the February period for a March payment
+     * (CAL-05, CAL-06, section 7.2 step 4.7). The production year closed is the period's year.
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     * @return the refreshed executions view
+     */
+    @POST
+    @Path("/{entityCode}/{month}/close-annual")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public ExecutionsView closeAnnual(@PathParam("entityCode") String entityCode,
+                                      @PathParam("month") String month) {
+        requireScope(entityCode);
+        LocalDate periodMonth = LocalDate.parse(month);
+        engine.runAnnualClose(entityCode, periodMonth, periodMonth.getYear());
+        return query.executions(entityCode, periodMonth);
+    }
+
+    /**
      * Launches a partial recalculation scoped to a distributor, a product or a rule (CAL-12).
      *
      * @param entityCode the entity code
