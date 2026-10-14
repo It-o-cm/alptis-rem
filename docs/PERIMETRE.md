@@ -544,6 +544,27 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Rejeu par l'interface (`@cr:`) :** 2 sur 70 (`CR-68`, `CR-70`). Tous les autres sont
   renvoyés « au niveau JUnit » par des entrées de `docs/DECISIONS.md` à rectifier (étape 4).
 
+### Plan d'exécution de l'étape 4 (arrêté le 2026-10-14)
+
+Mesure du manque, comptée à la source : **@cr 2/71** (il en manque 68, hors CR-72 performance),
+**@path 8/135** (il en manque 127), **@req 106/135** (29 exigences sans test e2e, dont des exigences
+serveur-seules admises : REF-11, REP-06, WKF-03, BRD-10, PAR-11…).
+
+Le rejeu d'un cas de calcul par l'interface (TESTS-E2E §3) suppose une **infrastructure de chargement
+de scénario** qui n'existe pas encore : il faut charger le produit, la règle/version, la garantie, le
+choix de rémunération, le distributeur, le code de production et l'événement, puis **lancer le moteur
+réel depuis l'écran des exécutions** et lire la ligne et son explication sur le compte / l'écran de
+détail. Approche retenue : un point d'accès dev `/<…>/api/test/cr-scenario?cr=CR-xx` qui sème ces objets
+pour l'entité ALPTIS (en reprenant le montage de `CalculationEngineTest` : `product`, `coverage`,
+`linearChoice`/`upfrontChoice`, `version`, `premium`), plus la `DistributorEntity` ACTIVE et le compte
+pour que la ligne soit visible à l'écran. Les montants attendus sont recopiés à la main de la §13.
+Premier cas pilote : **CR-01** (linéaire 15 % sur 100 € → ligne `LINEAR` 15,00 €), qui établit le patron
+réutilisé pour les 67 autres (par familles : CR-02/03 précompté, CR-04..08 reprises, etc.).
+
+Les parcours (@path) se couvrent au niveau 3 : chaque ligne des tableaux §4 de `TESTS-E2E.md` a son test
+avec les vérifications de sa colonne. Certains parcours déjà exercés par un test d'écran existant seront
+étiquetés quand le test fait réellement les vérifications du parcours (jamais d'étiquette seule).
+
 ## Simplifications à reprendre (relevé de docs/DECISIONS.md)
 
 Recensement des décisions qui reportent, approximent, réduisent ou contournent une
@@ -602,3 +623,31 @@ objet **codé en dur** (`REQUIREMENTS_BY_STEP`) et ne vérifie la présence d'un
 lit ni l'inventaire de LANCEMENT §4, ni la section 8, ni la section 13, ni le routeur.
 À réécrire (étape 3) pour qu'il tire ses listes des sources et échoue sur toute ligne
 `absent`/`partiel` de ce fichier.
+
+### Plan d'exécution de l'étape 3 (arrêté le 2026-10-14)
+
+Sources et format repérés pour la réécriture :
+
+- **Écrans attendus** : table d'inventaire de `LANCEMENT.md` §4 (`| Écran | Exigences | Maquette |
+  Étape |`, 73 lignes). Le lien ligne d'inventaire → route → étiquette `@screen` se déclare dans un
+  **fichier versionné unique** (à créer, p.ex. `src/test/e2e/screen-routes.json`), dérivé du Tableau 1
+  de ce fichier (colonne « Route / Vue ») ; le garde-fou échoue si une ligne n'a pas d'entrée, si sa
+  route est absente du routeur (`src/main/webui/src/router/index.ts`), ou si son `@screen` n'a pas de
+  test qui s'y rend et vérifie un contenu métier.
+- **Exigences attendues** : identifiants de la §8 de la spécification. Attention : certaines exigences
+  sont **serveur-seules** (pas d'écran : REF-11, REP-06, WKF-03, BRD-10, PAR-11…) ; le garde-fou doit
+  les admettre comme prouvées par test unitaire, via une liste déclarée et justifiée (ce n'est pas une
+  liste d'exceptions au sens interdit : c'est la distinction écran / hors-écran que porte déjà
+  l'inventaire).
+- **Cas de recette attendus** : CR-01..CR-71 de la §13 (hors CR-72, performance) ; un `@cr` par cas.
+- **Parcours attendus** : identifiants des tableaux §4 de `TESTS-E2E.md` (135) ; un `@path` par parcours.
+- **Genres d'écran** : §2 de `TESTS-E2E.md` (points obligatoires par genre).
+- **Routes réelles** : routeur Vue ; **tests réels** : fichiers `*.spec.ts`.
+
+Le `REQUIREMENTS_BY_STEP` codé en dur et le jalonnement par `PLAN.md` sont supprimés au profit de ces
+dérivations. **Conséquence assumée** : une fois réécrit, le garde-fou **échoue** tant que l'étape 4
+n'est pas finie (68 `@cr` et 127 `@path` manquants) — c'est l'état honnête qui remplace le faux vert
+actuel. La construction **serveur** (`mvn verify -P '!e2e'`) reste verte ; seul le but `e2e-traceability`
+est rouge jusqu'à l'achèvement de l'étape 4. L'étape 3 sera donc menée **en même temps que** l'étape 4
+(ou juste avant son achèvement) pour converger vers le vert, plutôt que de laisser le but rouge des
+dizaines de passes.
