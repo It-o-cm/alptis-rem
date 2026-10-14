@@ -29,18 +29,28 @@ class CrScenarioResourceTest {
         reset.reset();
     }
 
-    /** Plants a case and runs the real calculation of the seeded UNEP month. */
+    /** Plants a case and runs the real calculation of the seeded UNEP month (January 2026). */
     private static void plantAndRun(String crCode) {
-        given().when().post("/api/test/cr-scenario?cr=" + crCode + "&entity=UNEP&month=2026-01-01")
-                .then().statusCode(204);
-        given().auth().preemptive().basic("operator-unep", "operator-unep")
-                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/run").then().statusCode(200);
+        plantAndRun(crCode, "2026-01-01");
     }
 
-    /** The reporting search of the seeded UNEP month, ready for body assertions. */
+    /** Plants a case and runs the real calculation of the seeded UNEP month. */
+    private static void plantAndRun(String crCode, String month) {
+        given().when().post("/api/test/cr-scenario?cr=" + crCode + "&entity=UNEP&month=" + month)
+                .then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/" + month + "/run").then().statusCode(200);
+    }
+
+    /** The reporting search of the January 2026 UNEP month, ready for body assertions. */
     private static io.restassured.response.ValidatableResponse search() {
+        return search("2026-01-01");
+    }
+
+    /** The reporting search of a UNEP month, ready for body assertions. */
+    private static io.restassured.response.ValidatableResponse search(String month) {
         return given().auth().preemptive().basic("operator-unep", "operator-unep")
-                .when().get("/api/ui/v1/reporting/UNEP/search?month=2026-01-01").then().statusCode(200);
+                .when().get("/api/ui/v1/reporting/UNEP/search?month=" + month).then().statusCode(200);
     }
 
     /** CR-01: a linear 15% rule on a 100 € premium yields one LINEAR line of 15,00 €; an unknown case is refused. */
@@ -186,5 +196,37 @@ class CrScenarioResourceTest {
         plantAndRun("CR-24");
         search().body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount.sum() as double", is(30.0));
         position("P-CR24").body("positions[0].status", is("SETTLED"));
+    }
+
+    /** CR-25: a garantie effective after the convention window gets no advance; its premiums are paid. */
+    @Test
+    void cr25_outside_convention() {
+        plantAndRun("CR-25");
+        search().body("findAll { it.nature == 'ADVANCE' }.size()", is(0))
+                .body("size()", is(2));
+    }
+
+    /** CR-26: a rank-2 unpaid notice breaks the advance at once: position cancelled, −400,00 € regularised. */
+    @Test
+    void cr26_second_unpaid() {
+        plantAndRun("CR-26");
+        search().body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount.sum() as double", is(-400.0));
+        position("P-CR26").body("positions[0].status", is("CANCELLED"));
+    }
+
+    /** CR-27: beyond the convention cap the garantie gets no advance; its premiums are paid. */
+    @Test
+    void cr27_cap_reached() {
+        plantAndRun("CR-27");
+        search().body("findAll { it.nature == 'ADVANCE' }.size()", is(0))
+                .body("size()", is(2));
+    }
+
+    /** CR-28: a shortfall still open at the 360-day due date is clawed back as an undue advance of −30,00 €. */
+    @Test
+    void cr28_undue_advance_at_due_date() {
+        plantAndRun("CR-28", "2026-12-01");
+        search("2026-12-01").body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount.sum() as double", is(-30.0));
+        position("P-CR28").body("positions[0].status", is("SETTLED"));
     }
 }

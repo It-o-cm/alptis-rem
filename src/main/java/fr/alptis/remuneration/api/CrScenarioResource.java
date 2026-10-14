@@ -2,6 +2,8 @@ package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
+import fr.alptis.remuneration.domain.AdvancePosition;
+import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionPlan;
@@ -80,6 +82,10 @@ public class CrScenarioResource {
             case "CR-22" -> seedCr22(entity, periodMonth);
             case "CR-23" -> seedCr23(entity, periodMonth);
             case "CR-24" -> seedCr24(entity, periodMonth);
+            case "CR-25" -> seedCr25(entity, periodMonth);
+            case "CR-26" -> seedCr26(entity, periodMonth);
+            case "CR-27" -> seedCr27(entity, periodMonth);
+            case "CR-28" -> seedCr28(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -367,6 +373,79 @@ public class CrScenarioResource {
     }
 
     /**
+     * CR-25 (hors convention) : la garantie prend effet après la fin de la convention ; aucun escompte,
+     * ses encaissements sont payés normalement (une ligne `ACQUISITION` et une ligne `SERVICING`).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr25(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = periodMonth.plusMonths(1);
+        Coverage coverage = escompteCoverage(entity, effect, "CR25", "P-CR25", "1000");
+        convention(entity, "P-CR25", 100, periodMonth.minusDays(1));
+        premium(entity, coverage, "CR25-E1", effect.plusDays(14), "100.00");
+    }
+
+    /**
+     * CR-26 (second impayé) : un avis d'impayé de rang 2 (seuil de la convention) rompt l'escompte
+     * aussitôt ; la position passe `CANCELLED` et la part escomptée est régularisée (−400,00 €).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr26(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CR26", "P-CR26", "1000");
+        convention(entity, "P-CR26", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+        unpaidNotice(entity, coverage, "CR26-UNPAID", periodMonth.plusDays(90), (short) 2);
+    }
+
+    /**
+     * CR-27 (plafond) : la convention est plafonnée à une adhésion, déjà prise par une position existante ;
+     * la garantie n'obtient pas d'escompte et ses encaissements sont payés.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr27(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CR27", "P-CR27", "1000");
+        AdvanceAgreement agreement = convention(entity, "P-CR27", 1, LocalDate.of(periodMonth.getYear(), 12, 31));
+        AdvancePosition taken = new AdvancePosition();
+        taken.advanceAgreement = agreement;
+        taken.status = AdvanceStatus.ACTIVE;
+        taken.persist();
+        premium(entity, coverage, "CR27-E1", periodMonth.plusDays(14), "100.00");
+    }
+
+    /**
+     * CR-28 (déficit à 360 jours) : 370 € apurés mais la position encore ouverte au 360e jour, contrat
+     * toujours en vigueur ; l'escompte est soldé et le reliquat non apuré repris comme escompte indu
+     * (−30,00 €). La garantie prend effet onze mois avant le mois de règlement (décembre).
+     *
+     * @param entity      the entity
+     * @param periodMonth the settlement month (around the 360th day)
+     */
+    private void seedCr28(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = periodMonth.minusMonths(11);
+        Coverage coverage = escompteCoverage(entity, effect, "CR28", "P-CR28", "1000");
+        convention(entity, "P-CR28", 100, LocalDate.of(effect.getYear(), 12, 31));
+        premium(entity, coverage, "CR28-E1", effect.plusMonths(6).plusDays(14), "925.00");
+    }
+
+    /**
+     * Injects a pending unpaid-notice event of a given rank on a coverage.
+     *
+     * @param entity   the entity
+     * @param coverage the coverage
+     * @param key      the source key
+     * @param date     the event date
+     * @param rank     the unpaid rank
+     */
+    private void unpaidNotice(LegalEntity entity, Coverage coverage, String key, LocalDate date, short rank) {
+        BusinessEvent notice = event(entity, coverage, key, EventType.UNPAID_NOTICE, date, null);
+        notice.unpaidRank = rank;
+    }
+
+    /**
      * Creates an escompte garantie: a product, contract (registered at the effect date), coverage with an
      * annualised premium, distributor, production code and assignment, an upfront 30/10 choice with the
      * advance requested, and the upfront rule. Returns the coverage.
@@ -430,8 +509,9 @@ public class CrScenarioResource {
      * @param partner      the distributor partner code
      * @param maxContracts the contract cap
      * @param validTo      the end of the convention window
+     * @return the created agreement
      */
-    private void convention(LegalEntity entity, String partner, int maxContracts, LocalDate validTo) {
+    private AdvanceAgreement convention(LegalEntity entity, String partner, int maxContracts, LocalDate validTo) {
         AdvanceAgreement agreement = new AdvanceAgreement();
         agreement.entity = entity;
         agreement.distributor = Distributor.find("partnerCode", partner).firstResult();
@@ -442,6 +522,7 @@ public class CrScenarioResource {
         agreement.unpaidRankThreshold = (short) 2;
         agreement.status = AdvanceAgreementStatus.VALID;
         agreement.persist();
+        return agreement;
     }
 
     /**

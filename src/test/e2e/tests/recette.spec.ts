@@ -288,4 +288,66 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await page.getByTestId('advance-row-0').click();
     await expect(page.getByTestId('adv-position-row')).toContainText('Apurée');
   });
+
+  // The no-advance escompte cases: the premiums are paid normally (acquisition + servicing), no Escompte line.
+  const noAdvance = [
+    { cr: 'CR-25', titre: 'hors convention' },
+    { cr: 'CR-27', titre: 'plafond atteint' },
+  ];
+  for (const c of noAdvance) {
+    test(`${c.cr} : ${c.titre} ne verse aucun escompte et paie les commissions @screen:calculations @screen:commissionSearch @cr:${c.cr}`, async ({
+      page,
+      request,
+    }) => {
+      const seeded = await request.post(`/api/test/cr-scenario?cr=${c.cr}&entity=UNEP&month=2026-01-01`);
+      expect(seeded.ok()).toBeTruthy();
+      await page.goto('/calculs');
+      await page.getByTestId('calc-run').click();
+      await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+      await page.goto('/recherche-commissions');
+      await page.getByTestId('cs-month').selectOption('2026-01-01');
+      await page.getByTestId('cs-search').click();
+      const rows = page.locator('[data-testid^="cs-row-"]');
+      await expect(rows).toHaveCount(2);
+      await expect(rows.filter({ hasText: 'Escompte' })).toHaveCount(0);
+    });
+  }
+
+  test('CR-26 : un impayé de rang 2 annule l’escompte et régularise −400,00 € @screen:calculations @screen:commissionSearch @screen:advance @cr:CR-26', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-26&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Régularisation d’escompte' })
+      .filter({ hasText: '-400,00' })).toHaveCount(1);
+    await page.goto('/escompte');
+    await page.getByTestId('advance-row-0').click();
+    await expect(page.getByTestId('adv-position-row')).toContainText('Annulée');
+  });
+
+  test('CR-28 : un déficit au 360e jour solde la position et reprend −30,00 € d’escompte indu @screen:calculations @screen:commissionSearch @screen:advance @cr:CR-28', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-28&entity=UNEP&month=2026-12-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-12-01');
+    await page.getByTestId('cs-search').click();
+    await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Régularisation d’escompte' })
+      .filter({ hasText: '-30,00' })).toHaveCount(1);
+    await page.goto('/escompte');
+    await page.getByTestId('advance-row-0').click();
+    await expect(page.getByTestId('adv-position-row')).toContainText('Apurée');
+  });
 });
