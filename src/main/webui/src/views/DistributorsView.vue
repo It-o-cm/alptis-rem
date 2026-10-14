@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
+import { agreementTypeLabel, signatureStatusLabel, enrollmentStatusLabel } from '../presentation/agreements';
+import { distributorTypeLabel, partnerStatusLabel } from '../presentation/distributors';
 
 interface DistributorView {
   partnerCode: string;
@@ -97,14 +99,14 @@ const loading = ref(false);
 const columns: Column<DistributorView>[] = [
   { key: 'partnerCode', label: 'Code partenaire' },
   { key: 'legalName', label: 'Raison sociale' },
-  { key: 'distributorType', label: 'Type', value: (d) => d.distributorType ?? '—' },
+  { key: 'distributorType', label: 'Type', value: (d) => distributorTypeLabel(d.distributorType) },
   { key: 'groupCode', label: 'Groupement', value: (d) => d.groupCode ?? '—' },
 ];
 
 /** Columns of the per-entity status table. */
 const statusColumns: Column<StatusView>[] = [
   { key: 'entityCode', label: 'Entité' },
-  { key: 'status', label: 'Statut' },
+  { key: 'status', label: 'Statut', value: (s) => partnerStatusLabel(s.status) },
   { key: 'validFrom', label: 'Depuis', value: (s) => s.validFrom ?? '—' },
   { key: 'validTo', label: "Jusqu'à", value: (s) => s.validTo ?? '—' },
 ];
@@ -114,15 +116,15 @@ const codeColumns: Column<ProductionCodeView>[] = [
   { key: 'entityCode', label: 'Entité' },
   { key: 'code', label: 'Code' },
   { key: 'label', label: 'Libellé', value: (c) => c.label ?? '—' },
-  { key: 'status', label: 'Statut', value: (c) => c.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (c) => partnerStatusLabel(c.status) },
 ];
 
 /** Columns of the agreements table. */
 const agreementColumns: Column<AgreementView>[] = [
   { key: 'entityCode', label: 'Entité' },
-  { key: 'agreementType', label: 'Nature' },
+  { key: 'agreementType', label: 'Nature', value: (a) => agreementTypeLabel(a.agreementType) },
   { key: 'reference', label: 'Référence', value: (a) => a.reference ?? '—' },
-  { key: 'signatureStatus', label: 'Signature', value: (a) => a.signatureStatus ?? '—' },
+  { key: 'signatureStatus', label: 'Signature', value: (a) => signatureStatusLabel(a.signatureStatus) },
   { key: 'validFrom', label: 'Depuis', value: (a) => a.validFrom ?? '—' },
   { key: 'validTo', label: "Jusqu'à", value: (a) => a.validTo ?? '—' },
 ];
@@ -132,7 +134,7 @@ const enrollmentColumns: Column<EnrollmentView>[] = [
   { key: 'entityCode', label: 'Entité' },
   { key: 'ruleCode', label: 'Règle' },
   { key: 'ruleLabel', label: 'Libellé' },
-  { key: 'status', label: 'Statut', value: (e) => e.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (e) => enrollmentStatusLabel(e.status) },
   { key: 'validFrom', label: 'Depuis', value: (e) => e.validFrom ?? '—' },
   { key: 'validTo', label: "Jusqu'à", value: (e) => e.validTo ?? '—' },
 ];

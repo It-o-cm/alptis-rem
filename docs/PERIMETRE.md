@@ -32,6 +32,13 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
 
 État au 2026-10-14 (ADM-03 en cours) :
 
+- **Balayage des libellés d'énum (EnrollmentsView, DistributorsView)** : helpers de présentation
+  `agreements.ts` (type d'accord, état de signature, statut d'inscription) et `distributors.ts`
+  (type de distributeur, statut de distributeur/code de production), tous deux 100 % vitest. Les deux
+  écrans n'affichent plus aucun code d'énum brut : type d'accord, signature, statut d'inscription, type
+  de distributeur et statuts par entité/code de production sont au libellé FR du glossaire (§5.1, §5.4).
+  Specs adaptés (`enrollments.spec`, `distributors.spec`) : assertions au libellé (« Signé », « Active »,
+  « Actif »). vitest 100 % (170 tests), e2e des deux écrans verts (8/8), build serveur inchangé (vert).
 - **ManualEventView converti** : socle `SourceSystemSelect` (store Pinia `sourceSystems`, 100 % vitest)
   et helper de présentation `coverage.ts` (`remunerationModeLabel`/`contractStatusLabel` + options,
   100 % vitest) ajoutés ; l'écran de saisie manuelle choisit désormais le système source et le produit
@@ -420,9 +427,13 @@ de RulesView) :
 **Balayage des libellés d'énum restant** (affichage d'un code technique dans un tableau/une fiche,
 à remplacer par le libellé FR du glossaire — audit en cours) :
 
-- EnrollmentsView : signature (`SIGNED`/`NOT_SIGNED`), type d'accord, statut d'inscription (`ACTIVE`).
-- DistributorsView : `agreementType`, `signatureStatus`.
-- (poursuivre l'audit des autres tableaux : statuts, natures, sens encore affichés bruts.)
+- ~~EnrollmentsView~~ **converti (2026-10-14)** : type d'accord, signature (`SIGNED`/`NOT_SIGNED`) et
+  statut d'inscription affichés au libellé FR (helper `agreements.ts`).
+- ~~DistributorsView~~ **converti (2026-10-14)** : `agreementType`, `signatureStatus`, statut d'inscription
+  (helper `agreements.ts`) **et** type de distributeur + statut par entité + statut de code de production
+  (helper `distributors.ts`, énums repérés en plus lors du balayage) affichés au libellé FR.
+- (poursuivre l'audit des autres tableaux : statuts, natures, sens encore affichés bruts — reste à passer
+  en revue les écrans non encore audités.)
 
 Socle « liste / sélection » complété le 2026-10-13 : stores Pinia `groupings`, `delegations`,
 `productionCodes`, `plans`, `rules` (100 % vitest) ; composants `GroupSelect`, `DelegationSelect`,

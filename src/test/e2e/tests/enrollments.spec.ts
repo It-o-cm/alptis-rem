@@ -53,7 +53,8 @@ test.describe('Accords et inscriptions', () => {
     await page.getByTestId('ag-partner').selectOption('P13897');
     await page.getByTestId('ag-from').fill('2026-01-01');
     await page.getByTestId('ag-create').click();
-    await expect(page.getByTestId('agreement-row-AGR-1')).toContainText('SIGNED');
+    // ADM-03: the signature state is shown by its French label, not the raw code.
+    await expect(page.getByTestId('agreement-row-AGR-1')).toContainText('Signé');
 
     // ADM-03: plan, rule, distributor and agreement are all picked from lists, never typed.
     await expect(page.getByTestId('en-plan').locator('option', { hasText: 'Réservé (RESP)' })).toHaveCount(1);
@@ -64,7 +65,8 @@ test.describe('Accords et inscriptions', () => {
     await page.getByTestId('en-ref').selectOption('AGR-1');
     await page.getByTestId('en-from').fill('2026-01-01');
     await page.getByTestId('en-enroll').click();
-    await expect(page.getByTestId('enrollment-row-0')).toContainText('ACTIVE');
+    // ADM-03: the enrollment status is shown by its French label, not the raw code.
+    await expect(page.getByTestId('enrollment-row-0')).toContainText('Active');
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:enrollments', async ({ page }) => {

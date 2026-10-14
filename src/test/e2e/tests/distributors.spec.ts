@@ -54,7 +54,8 @@ test.describe('Distributeurs — opérateur', () => {
     await row.click();
     await expect(page.getByTestId('distributor-detail')).toBeVisible();
     await expect(page.getByTestId('status-row')).toContainText('ALPTIS_ASSURANCES');
-    await expect(page.getByTestId('status-row')).toContainText('ACTIVE');
+    // ADM-03: the distributor status is shown by its French label, not the raw code.
+    await expect(page.getByTestId('status-row')).toContainText('Actif');
     await expect(page.getByTestId('code-row-61723')).toContainText('Agence Lyon');
   });
 
@@ -80,10 +81,10 @@ test.describe('Distributeurs — opérateur', () => {
     await expect(fiche).toContainText('GRP-NORD');
     // Agreements: at least the signed RCD amendment.
     await expect(page.getByTestId('agreement-row-ACC-RCD-ALPTIS_ASSURANCES')).toBeVisible();
-    // Enrollments: the reserved RCD rule, active.
+    // Enrollments: the reserved RCD rule, active (ADM-03: French label, not the raw code).
     const enrollment = page.locator('[data-testid^="enrollment-row-"]').first();
     await expect(enrollment).toBeVisible();
-    await expect(enrollment).toContainText('ACTIVE');
+    await expect(enrollment).toContainText('Active');
     // Quality indicators and accounts are present in the same fiche.
     await expect(page.locator('[data-testid="indicator-row"]').first()).toBeVisible();
     await expect(page.getByTestId('account-ALPTIS_ASSURANCES')).toBeVisible();

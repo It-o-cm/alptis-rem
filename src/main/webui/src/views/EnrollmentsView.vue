@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
+import { agreementTypeLabel, signatureStatusLabel, enrollmentStatusLabel } from '../presentation/agreements';
 import {
   AppButton, AppCard, AppForm, AppMessage, CodeSelect, DataTable, DistributorSelect, FormField, PageHeading,
   PlanSelect, RuleSelect,
@@ -29,7 +30,7 @@ const enForm = ref({ planCode: '', ruleCode: '', partnerCode: '', agreementRef: 
 /** Columns of the agreements table. */
 const agreementColumns: Column<AgreementView>[] = [
   { key: 'reference', label: 'Référence' },
-  { key: 'type', label: 'Type', value: (a) => a.type ?? '—' },
+  { key: 'type', label: 'Type', value: (a) => agreementTypeLabel(a.type) },
   { key: 'distributor', label: 'Distributeur', value: (a) => a.partnerCode ?? a.groupCode ?? '—' },
   { key: 'signature', label: 'Signature' },
 ];
@@ -140,7 +141,7 @@ onMounted(loadAgreements);
       >
         <template #cell-reference="{ row }"><span class="mono">{{ row.reference }}</span></template>
         <template #cell-signature="{ row }">
-          <span :class="row.signature === 'SIGNED' ? 'tag ok' : 'tag mute'">{{ row.signature ?? '—' }}</span>
+          <span :class="row.signature === 'SIGNED' ? 'tag ok' : 'tag mute'">{{ signatureStatusLabel(row.signature) }}</span>
         </template>
       </DataTable>
 
@@ -192,7 +193,7 @@ onMounted(loadAgreements);
         :row-testid="enrollmentTestid"
       >
         <template #cell-status="{ row }">
-          <span :class="row.status === 'ACTIVE' ? 'tag ok' : 'tag mute'">{{ row.status ?? '—' }}</span>
+          <span :class="row.status === 'ACTIVE' ? 'tag ok' : 'tag mute'">{{ enrollmentStatusLabel(row.status) }}</span>
         </template>
       </DataTable>
     </AppCard>
