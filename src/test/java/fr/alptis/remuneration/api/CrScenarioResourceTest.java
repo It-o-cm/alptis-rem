@@ -412,6 +412,34 @@ class CrScenarioResourceTest {
                 .body("find { it.accountingEvent == 'FORECAST_ADJUSTMENT' }.amount", is(90.00f));
     }
 
+    /** The single payment lot of a UNEP period, returning its detail path after preparing to PAYMENT_PREPARED. */
+    private static void prepareMonth(String month) {
+        transition("admin-unep", month, "CALCULATED");
+        transition("operator-unep", month, "CONTROLLED");
+        transition("validator-unep", month, "BUSINESS_VALIDATED");
+        transition("operator-unep", month, "PAYMENT_PREPARED");
+    }
+
+    /** CR-60: a −1 000 € opening balance means no payment in February, then a 300,00 € order in March. */
+    @Test
+    void cr60_debtor_carried_forward() {
+        given().when().post("/api/test/cr-scenario?cr=CR-60&entity=UNEP&month=2026-02-01").then().statusCode(204);
+        prepareMonth("2026-02-01");
+        int febLot = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2026-02-01/lots").then().statusCode(200)
+                .body("size()", is(1)).extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/lots/" + febLot).then().statusCode(200).body("orders.size()", is(0));
+
+        prepareMonth("2026-03-01");
+        int marLot = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2026-03-01/lots").then().statusCode(200)
+                .body("size()", is(1)).extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/lots/" + marLot).then().statusCode(200)
+                .body("orders.size()", is(1)).body("orders[0].amount", is(300.00f));
+    }
+
     /** CR-61: compensating a distributor's −200 and +500 codes writes two TRANSFER lines and pays 300,00 €. */
     @Test
     void cr61_compensation() {

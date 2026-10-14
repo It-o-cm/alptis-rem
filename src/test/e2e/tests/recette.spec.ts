@@ -948,4 +948,55 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-60 : un solde débiteur reporté bloque février puis paie 300,00 € en mars @screen:periods @screen:payment @cr:CR-60', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-60&entity=UNEP&month=2026-02-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+
+    // Drives one period from loaded to payment-prepared across the admin and validator.
+    const prepare = async (month: string) => {
+      await admin.goto('/');
+      await admin.getByTestId(`open-UNEP-${month}`).click();
+      await admin.getByTestId('advance-button').click();
+      await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+      await admin.getByTestId('advance-button').click();
+      await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+      await val.goto('/');
+      await val.getByTestId(`open-UNEP-${month}`).click();
+      await val.getByTestId('advance-button').click();
+      await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+      await val.getByTestId('advance-button').click();
+      await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+    };
+
+    const openLot = async (month: string) => {
+      await admin.goto('/paiement');
+      await admin.getByTestId('pay-month').selectOption(month);
+      await admin.getByTestId('pay-refresh').click();
+      await admin.locator('[data-testid^="lot-open-"]').first().click();
+      await expect(admin.getByTestId('lot-detail')).toBeVisible();
+    };
+
+    // February: the −1 000 € opening balance leaves the account debtor, so no order is issued.
+    await prepare('2026-02-01');
+    await openLot('2026-02-01');
+    await expect(admin.getByTestId('no-order')).toBeVisible();
+
+    // March: a further 700 € brings the account to +300 €, which is ordered.
+    await prepare('2026-03-01');
+    await openLot('2026-03-01');
+    await expect(admin.locator('[data-testid^="order-row-"]')).toHaveCount(1);
+    await expect(admin.locator('[data-testid^="order-row-"]').first()).toContainText('300,00');
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });

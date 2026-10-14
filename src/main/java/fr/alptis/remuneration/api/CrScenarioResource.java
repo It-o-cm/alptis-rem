@@ -3,6 +3,8 @@ package fr.alptis.remuneration.api;
 import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AdvancePosition;
+import fr.alptis.remuneration.domain.AccountEntry;
+import fr.alptis.remuneration.domain.AccountEntryType;
 import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.Agreement;
 import fr.alptis.remuneration.domain.AgreementType;
@@ -16,6 +18,7 @@ import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.Enrollment;
@@ -128,6 +131,7 @@ public class CrScenarioResource {
             case "CR-49" -> seedCr49(entity, periodMonth);
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
+            case "CR-60" -> seedCr60(entity, periodMonth);
             case "CR-61" -> seedCr61(entity, periodMonth);
             case "CR-63" -> seedCr63(entity, periodMonth);
             case "CR-65" -> seedCr65(entity, periodMonth);
@@ -1016,6 +1020,36 @@ public class CrScenarioResource {
                 "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-60 (compte débiteur) : un solde d'ouverture de −1 000 € est injecté ; en février une commission
+     * de 600 € laisse le compte à −400 € (aucun paiement), puis en mars une commission de 700 € le ramène
+     * à +300 € (un ordre de 300,00 €). Deux périodes semées, le solde reporté d'un mois sur l'autre.
+     *
+     * @param entity      the entity
+     * @param periodMonth the February calculation month
+     */
+    private void seedCr60(LegalEntity entity, LocalDate periodMonth) {
+        Period february = period(entity, periodMonth);
+        Period march = period(entity, periodMonth.plusMonths(1));
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR60", product, periodMonth.minusMonths(1), "P-CR60", null);
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.PRODUCTION_CODE;
+        account.payeeId = pc.getId();
+        account.persist();
+        AccountEntry opening = new AccountEntry();
+        opening.account = account;
+        opening.entryType = AccountEntryType.OPENING_BALANCE;
+        opening.amount = new BigDecimal("-1000.00");
+        opening.entryDate = periodMonth.minusMonths(1);
+        opening.persist();
+        earnedOnCode(entity, february, coverage, "600.00");
+        earnedOnCode(entity, march, coverage, "700.00");
     }
 
     /**
