@@ -901,4 +901,51 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-61 : la compensation des comptes d’un distributeur paie 300,00 € sur le code créditeur @screen:periods @screen:distributor @screen:payment @cr:CR-61', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-61&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+
+    // The operator compensates the distributor's debtor code against its creditor code.
+    await admin.goto('/distributeur');
+    await admin.getByTestId('acc-month').selectOption('2026-01-01');
+    await admin.getByTestId('acc-partner').selectOption('P-CR61');
+    await admin.getByTestId('acc-search').click();
+    await admin.getByTestId('acc-compensate').click();
+    await expect(admin.getByTestId('acc-message')).toContainText('2 ligne(s) de compensation');
+
+    // The period is prepared and the creditor code is paid 300,00 €, the debtor code is not ordered.
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Paiement préparé');
+    await admin.goto('/paiement');
+    await admin.getByTestId('pay-month').selectOption('2026-01-01');
+    await admin.getByTestId('pay-refresh').click();
+    await admin.locator('[data-testid^="lot-open-"]').first().click();
+    await expect(admin.locator('[data-testid^="order-row-"]')).toHaveCount(1);
+    await expect(admin.locator('[data-testid^="order-row-"]').first()).toContainText('300,00');
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });

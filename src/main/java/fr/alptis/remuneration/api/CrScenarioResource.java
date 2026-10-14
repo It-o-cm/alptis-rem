@@ -16,12 +16,14 @@ import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.EventType;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
+import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
@@ -126,6 +128,7 @@ public class CrScenarioResource {
             case "CR-49" -> seedCr49(entity, periodMonth);
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
+            case "CR-61" -> seedCr61(entity, periodMonth);
             case "CR-63" -> seedCr63(entity, periodMonth);
             case "CR-65" -> seedCr65(entity, periodMonth);
             case "CR-66" -> seedCr66(entity, periodMonth);
@@ -1016,6 +1019,54 @@ public class CrScenarioResource {
     }
 
     /**
+     * CR-61 (compensation) : un distributeur a un code à −200 € et un code à +500 € ; la compensation
+     * écrit deux lignes `TRANSFER`, ramène le code débiteur à 0 et laisse 300,00 € payables sur le code
+     * créditeur. Les deux lignes acquises sont posées comme état d'entrée, chacune sur son code de
+     * production du même distributeur.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr61(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        earnedOnCode(entity, period, coverage(entity, "CR61A", product, periodMonth, "P-CR61", null), "-200.00");
+        earnedOnCode(entity, period, coverage(entity, "CR61B", product, periodMonth, "P-CR61", null), "500.00");
+        // Register the distributor in the entity so it is selectable on the accounts screen.
+        DistributorEntity link = new DistributorEntity();
+        link.distributor = Distributor.<Distributor>find("partnerCode", "P-CR61").firstResult();
+        link.entity = entity;
+        link.status = PartnerStatus.ACTIVE;
+        link.validFrom = periodMonth;
+        link.persist();
+    }
+
+    /**
+     * Poses an earned commission line on a coverage's main production code, so it posts to that code's
+     * account at business validation.
+     *
+     * @param entity   the entity
+     * @param period   the period
+     * @param coverage the coverage carrying the production code
+     * @param amount   the signed amount
+     */
+    private void earnedOnCode(LegalEntity entity, Period period, Coverage coverage, String amount) {
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = LineStatus.EARNED;
+        line.amount = new BigDecimal(amount);
+        line.coverage = coverage;
+        line.originProductionCode = pc;
+        line.attachmentMonth = period.periodMonth;
+        line.persist();
+    }
+
+    /**
      * CR-65 (cycle comptable) : l'exemple de la §10.2 — une provision de prévisionnel de 180 €, puis un
      * encaissement commissionné à 15 € (reconnaissance de l'acquisition puis du payable), enfin le
      * paiement de 15 €, toutes les écritures équilibrées. La ligne `FORECAST` et la ligne `EARNED` (dotée
@@ -1028,19 +1079,7 @@ public class CrScenarioResource {
         Period period = period(entity, periodMonth);
         forecastLine(entity, period, "180.00", null);
         Product product = product(entity, "SANTE_SELECT");
-        Coverage coverage = coverage(entity, "CR65", product, periodMonth, "P-CR65", null);
-        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
-                .firstResult().productionCode;
-        CommissionLine earned = new CommissionLine();
-        earned.entity = entity;
-        earned.period = period;
-        earned.direction = Direction.OUTBOUND;
-        earned.nature = LineNature.LINEAR;
-        earned.status = LineStatus.EARNED;
-        earned.amount = new BigDecimal("15.00");
-        earned.coverage = coverage;
-        earned.originProductionCode = pc;
-        earned.persist();
+        earnedOnCode(entity, period, coverage(entity, "CR65", product, periodMonth, "P-CR65", null), "15.00");
     }
 
     /**
@@ -1076,6 +1115,7 @@ public class CrScenarioResource {
         line.status = LineStatus.FORECAST;
         line.amount = new BigDecimal(amount);
         line.originLine = originLine;
+        line.attachmentMonth = period.periodMonth;
         line.persist();
         return line;
     }

@@ -412,6 +412,26 @@ class CrScenarioResourceTest {
                 .body("find { it.accountingEvent == 'FORECAST_ADJUSTMENT' }.amount", is(90.00f));
     }
 
+    /** CR-61: compensating a distributor's −200 and +500 codes writes two TRANSFER lines and pays 300,00 €. */
+    @Test
+    void cr61_compensation() {
+        given().when().post("/api/test/cr-scenario?cr=CR-61&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        transition("admin-unep", "2026-01-01", "CALCULATED");
+        transition("operator-unep", "2026-01-01", "CONTROLLED");
+        transition("validator-unep", "2026-01-01", "BUSINESS_VALIDATED");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/accounts/UNEP/2026-01-01/distributor/P-CR61/compensate")
+                .then().statusCode(200).body("transfers", is(2));
+        transition("operator-unep", "2026-01-01", "PAYMENT_PREPARED");
+        search().body("findAll { it.nature == 'TRANSFER' }.size()", is(2));
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2026-01-01/lots").then().statusCode(200)
+                .body("size()", is(1)).extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/lots/" + lotId).then().statusCode(200)
+                .body("orders.size()", is(1)).body("orders[0].amount", is(300.00f));
+    }
+
     /** CR-64: each order aligns with a bordereau of the same amount and the lot total equals their sum. */
     @Test
     void cr64_alignment() {
