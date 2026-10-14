@@ -135,6 +135,7 @@ public class CrScenarioResource {
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
             case "CR-37" -> seedCr37(entity, periodMonth);
+            case "CR-38" -> seedCr38(entity, periodMonth);
             case "CR-60" -> seedCr60(entity, periodMonth);
             case "CR-61" -> seedCr61(entity, periodMonth);
             case "CR-62" -> seedCr62(entity, periodMonth);
@@ -1218,6 +1219,7 @@ public class CrScenarioResource {
             + "\"event_type\": {\"column\": \"TYPE_MOUVEMENT\", \"transcode\": {\"VI\": \"INITIAL_PAYMENT\","
             + " \"FG\": \"OUTSTANDING_FEE\"}},"
             + "\"contract_number\": {\"column\": \"NUMERO_CONTRAT\"},"
+            + "\"coverage_code\": {\"column\": \"NUMERO_CONTRAT\"},"
             + "\"event_date\": {\"column\": \"DATE_MOUVEMENT\"}},"
             + "\"derived\": [{"
             + "\"when\": {\"column\": \"MONTANT_COMMISSION\"},"
@@ -1225,6 +1227,7 @@ public class CrScenarioResource {
             + "\"source_key\": {\"column\": \"CODE_MOUVEMENT\", \"suffix\": \"-COM\"},"
             + "\"event_type\": {\"const\": \"INSURER_COMMISSION\"},"
             + "\"contract_number\": {\"column\": \"NUMERO_CONTRAT\"},"
+            + "\"coverage_code\": {\"column\": \"NUMERO_CONTRAT\"},"
             + "\"event_date\": {\"column\": \"DATE_MOUVEMENT\"},"
             + "\"precomputed_amount\": {\"column\": \"MONTANT_COMMISSION\"}}}]}";
 
@@ -1237,11 +1240,45 @@ public class CrScenarioResource {
      * @param periodMonth the mapping's start of validity
      */
     private void seedCr37(LegalEntity entity, LocalDate periodMonth) {
+        seedUmrFlow(entity, periodMonth);
+    }
+
+    /**
+     * CR-38 (fichier réel) : au-delà du mapping UMR (CR-37), ajoute une règle entrante `EXTERNAL` de
+     * nature `INSURER` qui charge les commissions reçues en lignes ; le fichier de production UMR donne
+     * alors des lignes `INSURER` dont le total égale le « montant de commission dû » du bordereau.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr38(LegalEntity entity, LocalDate periodMonth) {
+        seedUmrFlow(entity, periodMonth);
+        version(entity, Direction.INBOUND, "PLAN-CR38", "R-CR38", RuleFamily.EXTERNAL, LineNature.INSURER,
+                "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE_SELECT\"],"
+                        + "\"eventType\":[\"INSURER_COMMISSION\"]}",
+                "{}", periodMonth, null, null);
+    }
+
+    /**
+     * Seeds the UMR insurer production flow: the UMR contract `AD-1` and its coverage (keyed by the
+     * contract number so the mapped events resolve), and the UMR file mapping on the `events` flow.
+     *
+     * @param entity      the entity
+     * @param periodMonth the mapping's start of validity
+     */
+    private void seedUmrFlow(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
         Contract contract = new Contract();
         contract.entity = entity;
         contract.sourceSystem = "UMR";
         contract.contractNumber = "AD-1";
+        contract.product = product;
         contract.persist();
+        Coverage coverage = new Coverage();
+        coverage.contract = contract;
+        coverage.coverageCode = "AD-1";
+        coverage.effectDate = periodMonth;
+        coverage.persist();
         ImportMapping mapping = new ImportMapping();
         mapping.entity = entity;
         mapping.flowCode = "events";

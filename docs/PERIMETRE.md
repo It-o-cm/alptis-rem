@@ -541,10 +541,10 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 53 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-37`,
+- **Rejeu par l'interface (`@cr:`) :** 54 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-38`,
   `CR-40` à `CR-51`, `CR-60` à `CR-71`).
-  **§13.1, §13.2, §13.4, §13.5 complètes ; §13.3 complète sauf CR-38.** Reste à rejouer : CR-38 seulement
-  (CR-72 performance exclu).
+  **Toutes les sections de la §13 sont rejouées (§13.1 à §13.5).** Les 69 cas de recette hors
+  performance (CR-72, volume, exclu) sont rejoués par l'interface. Il ne reste plus de cas à rejouer.
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -684,8 +684,16 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   aucun chemin opérateur. Le flux `events` résout désormais le mapping actif de la source (s'il existe) et
   passe par l'import mappé, sinon l'import pivot ; la source `UMR` apparaît dans la liste dès qu'un mapping
   la déclare. Test d'API (compteurs 2 lues / 1 filtrée / 1 intégrée) + e2e (import sur l'écran).
-- **Reste à rejouer** : CR-38 seulement (fichier de production UMR réel de juillet 2026 : commission reçue
-  = 451,54 € ; à lire via le calcul puis le rapprochement assureur ; CR-72 performance exclu).
+- **Fichier de production UMR rejoué par l'interface (2026-10-15, §13.3 close)** : CR-38 (le fichier de
+  juillet 2026 est importé par le mapping UMR, puis le calcul charge les commissions reçues en lignes
+  `INSURER` de 449,08 € et 2,46 €, soit 451,54 € — le « montant de commission dû » du bordereau — lues sur
+  la recherche de commissions au libellé « Commission reçue »). Le mapping UMR associe désormais la
+  garantie au numéro de contrat pour que les événements importés se rattachent et se commissionnent. Test
+  d'API (import → calcul → lignes) + e2e (import, calcul, recherche). **Toute la §13 est rejouée par
+  l'interface.**
+- **Rejeu des cas de recette : terminé.** Les 69 cas hors performance sont rejoués par l'interface
+  (CR-01→12, CR-20→28, CR-30→38, CR-40→51, CR-60→71). CR-72 (volume de performance) reste hors périmètre
+  du rejeu fonctionnel. **La deuxième des quatre conditions d'arrêt de l'étape 4 est atteinte.**
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

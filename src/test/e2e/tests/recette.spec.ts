@@ -711,6 +711,40 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 0 rejetée(s), 0 en attente');
   });
 
+  test('CR-38 : le fichier de production UMR donne des commissions reçues de 451,54 € @screen:imports @screen:calculations @screen:commissionSearch @cr:CR-38', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-38&entity=UNEP&month=2026-07-01');
+    expect(seeded.ok()).toBeTruthy();
+    const content =
+      'CODE_MOUVEMENT;TYPE_MOUVEMENT;NUMERO_CONTRAT;DATE_MOUVEMENT;NOM_MUTUELLE;MONTANT_COMMISSION\n' +
+      'M10;VI;AD-1;2026-07-05;ALPTIS;449.08\n' +
+      'M11;FG;AD-1;2026-07-10;ALPTIS;2.46\n';
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('UMR');
+    await page.getByTestId('upload-file').setInputFiles({
+      name: 'umr_prod_202607.xlsx.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(content),
+    });
+    await page.getByTestId('upload-submit').click();
+    await expect(page.getByTestId('upload-message')).toContainText('2 intégrée(s)');
+    // Running the calculation loads the received commissions as INSURER lines.
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-07-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-07-01');
+    await page.getByTestId('cs-search').click();
+    const received = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Commission reçue' });
+    await expect(received).toHaveCount(2);
+    await expect(received.filter({ hasText: '449,08' })).toHaveCount(1);
+    await expect(received.filter({ hasText: '2,46' })).toHaveCount(1);
+  });
+
   test('CR-67 : un fichier aux lignes fausses intègre 1 ligne, en rejette 3 et en met 1 en attente @screen:imports @cr:CR-67', async ({
     page,
     request,

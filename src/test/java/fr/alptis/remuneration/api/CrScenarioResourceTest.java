@@ -535,6 +535,23 @@ class CrScenarioResourceTest {
                 .body("linesRead", is(2)).body("linesFiltered", is(1)).body("linesLoaded", is(1));
     }
 
+    /** CR-38: the UMR July file's received commissions load as INSURER lines totalling 451,54 €. */
+    @Test
+    void cr38_received_commissions_match_the_bordereau_total() {
+        given().when().post("/api/test/cr-scenario?cr=CR-38&entity=UNEP&month=2026-07-01").then().statusCode(204);
+        String content = "CODE_MOUVEMENT;TYPE_MOUVEMENT;NUMERO_CONTRAT;DATE_MOUVEMENT;NOM_MUTUELLE;MONTANT_COMMISSION\n"
+                + "M10;VI;AD-1;2026-07-05;ALPTIS;449.08\n"
+                + "M11;FG;AD-1;2026-07-10;ALPTIS;2.46\n";
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body(java.util.Map.of("entityCode", "UNEP", "flowCode", "events", "sourceSystem", "UMR",
+                        "fileName", "umr_prod_202607.xlsx", "content", content))
+                .when().post("/api/ui/v1/imports").then().statusCode(201).body("linesLoaded", is(2));
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-07-01/run").then().statusCode(200);
+        search("2026-07-01").body("findAll { it.nature == 'INSURER' }.size()", is(2))
+                .body("findAll { it.nature == 'INSURER' }.amount", hasItems(449.08f, 2.46f));
+    }
+
     /** CR-67: a bad-line events file loads 1 line, rejects 3 and holds 1 (unknown contract). */
     @Test
     void cr67_bad_lines_rejected_or_held() {
