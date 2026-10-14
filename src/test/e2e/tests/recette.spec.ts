@@ -414,4 +414,40 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(complement.filter({ hasText: '351,00' })).toHaveCount(1);
     await expect(complement.filter({ hasText: '352,98' })).toHaveCount(1);
   });
+
+  test('CR-42 : la clôture de développement verse une surcommission RCD de 6 000,00 € @screen:calculations @screen:commissionSearch @cr:CR-42', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-42&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+    await page.getByTestId('close-development').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de développement calculée');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const rcd = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Développement (RCD)' });
+    await expect(rcd).toHaveCount(1);
+    await expect(rcd.first()).toContainText(/6.?000,00/);
+  });
+
+  test('CR-46 : la clôture de portefeuille verse une surcommission RCP de 8 000,00 € @screen:calculations @screen:commissionSearch @cr:CR-46', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-46&entity=UNEP&month=2026-12-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-12-01');
+    await page.getByTestId('close-portfolio').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Surcommission de portefeuille calculée');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-12-01');
+    await page.getByTestId('cs-search').click();
+    const rcp = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Portefeuille (RCP)' });
+    await expect(rcp).toHaveCount(1);
+    await expect(rcp.first()).toContainText(/8.?000,00/);
+  });
 });

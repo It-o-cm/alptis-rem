@@ -4,14 +4,19 @@ import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.AdvanceStatus;
+import fr.alptis.remuneration.domain.Agreement;
+import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.AssignmentRole;
 import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionPlan;
+import fr.alptis.remuneration.domain.ConditionOperator;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.Enrollment;
+import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.EventType;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
@@ -20,15 +25,19 @@ import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.domain.QualityIndicator;
+import fr.alptis.remuneration.domain.QualityIndicatorType;
 import fr.alptis.remuneration.domain.RemunerationChoice;
 import fr.alptis.remuneration.domain.RemunerationMode;
 import fr.alptis.remuneration.domain.Rule;
+import fr.alptis.remuneration.domain.RuleCondition;
 import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.Scale;
 import fr.alptis.remuneration.domain.ScaleMeasure;
 import fr.alptis.remuneration.domain.ScaleMode;
 import fr.alptis.remuneration.domain.ScaleOutput;
 import fr.alptis.remuneration.domain.ScaleTier;
+import fr.alptis.remuneration.domain.SignatureStatus;
 import fr.alptis.remuneration.domain.StaffCategory;
 import fr.alptis.remuneration.domain.RuleVersion;
 import fr.alptis.remuneration.domain.VersionStatus;
@@ -95,6 +104,8 @@ public class CrScenarioResource {
             case "CR-31" -> seedCr31(entity, periodMonth);
             case "CR-32" -> seedCr32(entity, periodMonth);
             case "CR-35" -> seedCr35(entity, periodMonth);
+            case "CR-42" -> seedCr42(entity, periodMonth);
+            case "CR-46" -> seedCr46(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -539,6 +550,158 @@ public class CrScenarioResource {
                 "3510.00");
         event(entity, c2, "CR35-E2", EventType.SCHEDULED_PAYMENT, LocalDate.of(periodMonth.getYear(), 6, 1),
                 "3529.80");
+    }
+
+    /** The santé surcommission perimeter. */
+    private String santeScope(LegalEntity entity) {
+        return "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"]}";
+    }
+
+    /**
+     * CR-42 (RCD santé, palier au premier euro) : une production cumulée de 120 000 € atteint le palier
+     * « à partir du premier euro » ; la clôture de développement, déclenchée depuis l'écran des
+     * exécutions, verse une seule ligne `RCD` de 6 000,00 € (120 000 × 5 %).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (the development close month)
+     */
+    private void seedCr42(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR42", product, LocalDate.of(year, 1, 10), "P-CR42", null);
+        coverage.annualPremium = new BigDecimal("120000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR42").firstResult();
+        RuleVersion version = version(entity, "PLAN-CR42", "R-CR42", RuleFamily.TIERED, LineNature.RCD,
+                santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
+                LocalDate.of(year, 1, 1), null, null);
+        santeDevelopmentScale(version);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT);
+        event(entity, coverage, "CR42-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
+    }
+
+    /**
+     * CR-46 (RCP santé) : une rémunération de portefeuille à 4 % sur 200 000 € de primes encaissées,
+     * toutes conditions de qualité remplies (P/C 82 % ≤ 95 %, taux de chute 14 % ≤ 20 %) ; la clôture de
+     * portefeuille, déclenchée depuis l'écran des exécutions, verse une ligne `RCP` de 8 000,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (the portfolio close month)
+     */
+    private void seedCr46(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR46", product, LocalDate.of(year, 1, 10), "P-CR46", null);
+        coverage.annualPremium = new BigDecimal("200000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR46").firstResult();
+        RuleVersion version = version(entity, "PLAN-CR46", "R-CR46", RuleFamily.PORTFOLIO, LineNature.RCP,
+                santeScope(entity), "{\"rate\":0.04}", LocalDate.of(year, 1, 1), null, null);
+        condition(version, QualityIndicatorType.LOSS_RATIO, ConditionOperator.LE, "0.95");
+        condition(version, QualityIndicatorType.PORTFOLIO_LAPSE_RATE, ConditionOperator.LE, "0.20");
+        enrol(version.rule, distributor, AgreementType.RCP_AMENDMENT);
+        indicator(entity, distributor, QualityIndicatorType.LOSS_RATIO, "0.82", year);
+        indicator(entity, distributor, QualityIndicatorType.PORTFOLIO_LAPSE_RATE, "0.14", year);
+        event(entity, coverage, "CR46-PREM", EventType.PREMIUM_COLLECTED, LocalDate.of(year, 6, 1), "200000");
+    }
+
+    /**
+     * Attaches the santé development marginal scale to a rule version: 3 % from 20 000 €, 4 % from
+     * 45 000 €, 5 % from 75 000 €, then 5 % from the first euro past 100 000 €.
+     *
+     * @param version the development rule version
+     */
+    private void santeDevelopmentScale(RuleVersion version) {
+        Scale scale = new Scale();
+        scale.ruleVersion = version;
+        scale.mode = ScaleMode.MARGINAL;
+        scale.measure = ScaleMeasure.AMOUNT;
+        scale.output = ScaleOutput.RATE;
+        scale.persist();
+        boundedTier(scale, "20000", "45000", "0.03", false);
+        boundedTier(scale, "45000", "75000", "0.04", false);
+        boundedTier(scale, "75000", "100000", "0.05", false);
+        boundedTier(scale, "100001", null, "0.05", true);
+    }
+
+    /**
+     * Adds one bounded tier to a scale.
+     *
+     * @param scale         the scale
+     * @param lowerBound    the included lower bound
+     * @param upperBound    the excluded upper bound, or null for the last tier
+     * @param rate          the tier rate, as a fraction
+     * @param fromFirstUnit whether the rate applies from the first unit
+     */
+    private void boundedTier(Scale scale, String lowerBound, String upperBound, String rate, boolean fromFirstUnit) {
+        ScaleTier tier = new ScaleTier();
+        tier.scale = scale;
+        tier.lowerBound = new BigDecimal(lowerBound);
+        tier.upperBound = upperBound == null ? null : new BigDecimal(upperBound);
+        tier.rate = new BigDecimal(rate);
+        tier.fromFirstUnit = fromFirstUnit;
+        tier.persist();
+    }
+
+    /**
+     * Enrols a distributor on a rule with a signed amendment of a type.
+     *
+     * @param rule        the rule
+     * @param distributor the distributor
+     * @param type        the amendment type
+     */
+    private void enrol(Rule rule, Distributor distributor, AgreementType type) {
+        Agreement agreement = new Agreement();
+        agreement.entity = rule.plan.entity;
+        agreement.agreementType = type;
+        agreement.distributor = distributor;
+        agreement.signatureStatus = SignatureStatus.SIGNED;
+        agreement.validFrom = LocalDate.of(2020, 1, 1);
+        agreement.persist();
+        Enrollment enrollment = new Enrollment();
+        enrollment.rule = rule;
+        enrollment.distributor = distributor;
+        enrollment.agreement = agreement;
+        enrollment.status = EnrollmentStatus.ACTIVE;
+        enrollment.validFrom = LocalDate.of(2020, 1, 1);
+        enrollment.persist();
+    }
+
+    /**
+     * Adds a quality condition to a rule version.
+     *
+     * @param version   the rule version
+     * @param type      the quality indicator type
+     * @param operator  the comparison operator
+     * @param threshold the threshold, as a fraction
+     */
+    private void condition(RuleVersion version, QualityIndicatorType type, ConditionOperator operator,
+                           String threshold) {
+        RuleCondition condition = new RuleCondition();
+        condition.ruleVersion = version;
+        condition.indicatorType = type;
+        condition.operator = operator;
+        condition.threshold = new BigDecimal(threshold);
+        condition.persist();
+    }
+
+    /**
+     * Records a yearly quality indicator for a distributor.
+     *
+     * @param entity      the entity
+     * @param distributor the distributor
+     * @param type        the quality indicator type
+     * @param value       the indicator value, as a fraction
+     * @param year        the year the indicator covers
+     */
+    private void indicator(LegalEntity entity, Distributor distributor, QualityIndicatorType type, String value,
+                           int year) {
+        QualityIndicator indicator = new QualityIndicator();
+        indicator.entity = entity;
+        indicator.distributor = distributor;
+        indicator.indicatorType = type;
+        indicator.periodFrom = LocalDate.of(year, 1, 1);
+        indicator.periodTo = LocalDate.of(year, 12, 31);
+        indicator.value = new BigDecimal(value);
+        indicator.persist();
     }
 
     /**

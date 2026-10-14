@@ -541,8 +541,8 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 27 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-32`,
-  `CR-35`, `CR-68`, `CR-70`).
+- **Rejeu par l'interface (`@cr:`) :** 29 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-32`,
+  `CR-35`, `CR-42`, `CR-46`, `CR-68`, `CR-70`).
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -560,8 +560,16 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   `close-annual` complément retraite ; §7.2 étape 4.7, CAL-05, CAL-06), chacune servie par un point
   d'accès `/api/ui/v1/calculations/{e}/{m}/close-*` partitionné et testé (JUnit : opérateur 200, hors
   périmètre 404). Elles lèvent le verrou qui empêchait le rejeu de CR-35 : la clôture annuelle est
-  pilotable par l'opérateur, plus seulement par le cycle de démonstration. Les rejeux RCD/RCP (CR-40…50)
-  pourront s'appuyer sur `close-development`/`close-portfolio`.
+  pilotable par l'opérateur, plus seulement par le cycle de démonstration.
+- **Surcommissions santé rejouées par l'interface (2026-10-14, §13.4)** : RCD palier au premier euro
+  (CR-42 → 6 000,00 € sur 120 000 € de production, déclenché par `close-development`) et RCP santé
+  (CR-46 → 8 000,00 € sur 200 000 € de primes, conditions de qualité P/C et taux de chute remplies,
+  déclenché par `close-portfolio`). Le chargeur `CrScenarioResource` gagne les barèmes marginaux, les
+  conditions de qualité, les indicateurs et l'inscription à avenant signé. Restent de §13.4 : CR-40/41
+  (paliers intermédiaires, cumul sur deux mois), CR-43/44 (condition non remplie, avenant non signé —
+  ligne à 0 € ou anomalie de contrôle), CR-45 (reprise de RCD), CR-47/48 (RCP condition non remplie,
+  palier prévoyance au nombre), CR-49 (partage avec groupement), CR-50 (rétrocession mandataire),
+  CR-51 (ligne externe).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

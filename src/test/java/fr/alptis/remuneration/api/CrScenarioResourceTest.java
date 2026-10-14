@@ -266,4 +266,24 @@ class CrScenarioResourceTest {
         search("2026-12-01").body("findAll { it.nature == 'COMPLEMENT' }.size()", is(2))
                 .body("findAll { it.nature == 'COMPLEMENT' }.amount", hasItems(351.00f, 352.98f));
     }
+
+    /** CR-42: a 120 000 € cumulative production yields one RCD line of 6 000,00 € at the development close. */
+    @Test
+    void cr42_development_whole_tier() {
+        given().when().post("/api/test/cr-scenario?cr=CR-42&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/close-development").then().statusCode(200);
+        search().body("findAll { it.nature == 'RCD' }.size()", is(1))
+                .body("find { it.nature == 'RCD' }.amount", is(6000.00f));
+    }
+
+    /** CR-46: a 4% portfolio rule on 200 000 € of premiums, conditions met, yields an RCP line of 8 000,00 €. */
+    @Test
+    void cr46_portfolio_health() {
+        given().when().post("/api/test/cr-scenario?cr=CR-46&entity=UNEP&month=2026-12-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-12-01/close-portfolio").then().statusCode(200);
+        search("2026-12-01").body("findAll { it.nature == 'RCP' }.size()", is(1))
+                .body("find { it.nature == 'RCP' }.amount", is(8000.00f));
+    }
 }
