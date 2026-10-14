@@ -310,3 +310,25 @@ paramètres de plan) :
   barèmes renseignés par des valeurs vraisemblables (RR : base 3000, paliers 2000/4000/6000 et
   1500/3000). Les montants attendus des tests sont calculés à la main depuis ces règles
   (SalesForceServiceTest.fdv09_*).
+
+## 2026-10-14 — FDV-10 : variable de la vente directe
+
+Section 8.14 (FDV-10) : « pourcentage de la marge brute des affaires nouvelles avec prime de dépassement ;
+barème sur la valeur du portefeuille ; versement de 70 % en janvier et régularisation en juin », sans
+montants ni seuils. `PERIMETRE.md` interdit le report ; choix retenus (le plus simple compatible, tout en
+paramètre de plan) :
+
+- **Composante** `ANNUAL_DIRECT_SALES`, réglée en janvier N+1 (fraction) et soldée en juin N+1 (solde du
+  delta), lancée par l'administrateur métier.
+- **Montant plein** = `marginRate` × marge brute des affaires nouvelles + prime de dépassement
+  (`overshootBonus` lorsque la marge atteint `overshootThreshold`) + montant du palier de valeur de
+  portefeuille (`portfolioTiers`, plus haut palier atteint). La marge des affaires nouvelles et la valeur
+  du portefeuille sont des mesures `MARGIN` lues sur les dimensions `marginDimension` (« nouvelles ») et
+  `portfolioDimension` (« portefeuille »).
+- **Échelonnement** : en janvier, on verse `januaryFraction` (70 % par défaut) du montant plein ; en juin,
+  on solde le montant plein, l'écriture de juin ne portant que le delta sur ce que janvier a déjà payé
+  (même mécanisme d'acompte que FDV-08). Le mois de règlement détermine la fraction (janvier → fraction,
+  sinon plein).
+- Taux, seuils, barème, dimensions et fraction de janvier sont des paramètres de plan, renseignés dans le
+  jeu de démonstration par des valeurs vraisemblables. Les montants attendus des tests sont calculés à la
+  main (SalesForceServiceTest.fdv10_*).

@@ -198,6 +198,19 @@ async function runManagerVariable(): Promise<void> {
   }
 }
 
+/** Settles the direct-sales variable in the selected month (FDV-10); 70 % in January, full in June. */
+async function runDirectSalesVariable(): Promise<void> {
+  message.value = '';
+  error.value = '';
+  try {
+    const result = await apiPost<{ directSales: number }>(
+      `/api/ui/v1/fdv/${entity.value}/${month.value}/direct-sales-variable`, {});
+    message.value = `Variable vente directe réglé : ${result.directSales} collaborateur(s).`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Règlement refusé';
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -236,6 +249,9 @@ onMounted(load);
       </AppButton>
       <AppButton variant="secondary" data-testid="fdvp-manager" @click="runManagerVariable">
         Animateurs et responsables
+      </AppButton>
+      <AppButton variant="secondary" data-testid="fdvp-direct" @click="runDirectSalesVariable">
+        Vente directe
       </AppButton>
     </div>
 

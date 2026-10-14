@@ -325,6 +325,25 @@ public class FdvResource {
     }
 
     /**
+     * Settles the direct-sales variable in a month (FDV-10), launched by the business administrator: paid
+     * at the January fraction in January N+1, settled in full in June N+1. The measured year is the
+     * month's year minus one.
+     *
+     * @param entityCode the entity code
+     * @param month      the settlement month (ISO date, January or June N+1)
+     * @return the number of direct-sales results written
+     */
+    @POST
+    @Path("/{entity}/{month}/direct-sales-variable")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public java.util.Map<String, Integer> directSalesVariable(@PathParam("entity") String entityCode,
+                                                              @PathParam("month") String month) {
+        requireScope(entityCode);
+        return java.util.Map.of("directSales", service.runDirectSalesVariable(entityCode, LocalDate.parse(month)));
+    }
+
+    /**
      * Validates a result (FDV-13), performed by the regional manager.
      *
      * @param id the result id

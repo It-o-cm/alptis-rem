@@ -904,4 +904,90 @@ class SalesForceServiceTest {
         assertEquals(0, BigDecimal.ZERO.compareTo(manager(badTiers).amount));
         assertEquals(0, new BigDecimal("3100.00").compareTo(manager(combo).amount));
     }
+
+    /** Creates a direct-sales plan for a post, with its scale parameters. */
+    private static void directPlan(JobCode jobCode, String parameters) {
+        VariablePlan plan = new VariablePlan();
+        plan.entity = unep();
+        plan.jobCode = jobCode;
+        plan.component = VariableComponent.ANNUAL_DIRECT_SALES;
+        plan.envelopeAmount = new BigDecimal("0");
+        plan.parameters = parameters;
+        plan.validFrom = LocalDate.of(2026, 1, 1);
+        plan.validTo = LocalDate.of(2026, 12, 31);
+        plan.persist();
+    }
+
+    /** Creates a yearly margin measure on a dimension for an employee. */
+    private static void margin(Employee employee, String dimension, String value) {
+        EmployeeMeasure measure = new EmployeeMeasure();
+        measure.employee = employee;
+        measure.measureType = MeasureType.MARGIN;
+        measure.dimension = dimension;
+        measure.periodFrom = LocalDate.of(2026, 1, 1);
+        measure.periodTo = LocalDate.of(2026, 12, 31);
+        measure.value = new BigDecimal(value);
+        measure.persist();
+    }
+
+    /** The direct-sales result of an employee in a settlement month. */
+    private static VariableResult directIn(Employee employee, LocalDate month) {
+        return VariableResult.<VariableResult>find(
+                "employee = ?1 and component = ?2 and period.periodMonth = ?3",
+                employee, VariableComponent.ANNUAL_DIRECT_SALES, month).firstResult();
+    }
+
+    /**
+     * FDV-10: the direct-sales variable is 10 % of a 50 000 € new-business margin (5000 €) plus a 1000 €
+     * overshoot bonus (margin over 40 000 €) plus a 1500 € portfolio tier (300 000 € reaches the
+     * 250 000 € tier), a 7500 € right. January pays 70 % (5250 €); June settles in full, writing the
+     * 2250 € balance.
+     */
+    @Test
+    @TestTransaction
+    void fdv10_direct_sales_pays_70_percent_then_settles_in_june() {
+        Employee e = employee("E1", JobCode.CAC);
+        directPlan(JobCode.CAC, "{\"marginRate\":0.10,\"overshootThreshold\":40000,\"overshootBonus\":1000,"
+                + "\"portfolioTiers\":{\"100000\":500,\"250000\":1500}}");
+        margin(e, "nouvelles", "50000");
+        margin(e, "portefeuille", "300000");
+        january(2027);
+
+        assertEquals(1, service.runDirectSalesVariable("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(0, new BigDecimal("5250.00").compareTo(directIn(e, LocalDate.of(2027, 1, 1)).amount));
+
+        june(2027);
+        assertEquals(1, service.runDirectSalesVariable("UNEP", LocalDate.of(2027, 6, 1)));
+        assertEquals(0, new BigDecimal("2250.00").compareTo(directIn(e, LocalDate.of(2027, 6, 1)).amount));
+
+        // A January rerun replaces the calculated result rather than doubling it.
+        assertEquals(1, service.runDirectSalesVariable("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(1, VariableResult.count("component = ?1 and period.periodMonth = ?2",
+                VariableComponent.ANNUAL_DIRECT_SALES, LocalDate.of(2027, 1, 1)));
+    }
+
+    /**
+     * FDV-10 edges: custom margin and portfolio dimensions and an explicit January fraction, with no
+     * overshoot threshold (A); the default dimensions and January fraction with an overshoot threshold
+     * not reached (B); and an employee without a direct-sales plan is skipped. A pays 2000 × 0,5 = 1000 €,
+     * B pays 1000 × 0,70 = 700 €.
+     */
+    @Test
+    @TestTransaction
+    void fdv10_direct_sales_edges() {
+        Employee a = employee("A", JobCode.CAC);
+        directPlan(JobCode.CAC, "{\"marginRate\":0.20,\"marginDimension\":\"md\",\"portfolioDimension\":\"pd\","
+                + "\"januaryFraction\":0.5,\"portfolioTiers\":{\"500000\":9000}}");
+        margin(a, "md", "10000");
+        margin(a, "pd", "100000");
+        Employee b = employee("B", JobCode.DR);
+        directPlan(JobCode.DR, "{\"marginRate\":0.10,\"overshootThreshold\":100000,\"overshootBonus\":5000}");
+        margin(b, "nouvelles", "10000");
+        employee("NOPLAN", JobCode.RB);
+        january(2027);
+
+        assertEquals(2, service.runDirectSalesVariable("UNEP", LocalDate.of(2027, 1, 1)));
+        assertEquals(0, new BigDecimal("1000.00").compareTo(directIn(a, LocalDate.of(2027, 1, 1)).amount));
+        assertEquals(0, new BigDecimal("700.00").compareTo(directIn(b, LocalDate.of(2027, 1, 1)).amount));
+    }
 }

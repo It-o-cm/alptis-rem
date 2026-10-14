@@ -128,6 +128,30 @@ test('l’administrateur règle le variable des animateurs et responsables @scre
   await admin.close();
 });
 
+test('l’administrateur règle le variable de la vente directe à 70 % en janvier @screen:fdvPlan @screen:fdvValidation @req:FDV-10', async ({
+  browser,
+}) => {
+  // The admin settles the direct-sales variable (FDV-10) in January N+1: 70 % of the full right.
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/plan');
+  await expect(page.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
+  await page.getByTestId('fdvp-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvp-direct').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('vente directe réglé');
+  await expect(page.getByTestId('fdvp-message')).toContainText('collaborateur');
+
+  // The result is visible on the validation screen for January 2027: 10 % of 50 000 € margin (5000 €)
+  // + 1000 € overshoot + 1500 € portfolio tier = 7500 € right, of which 70 % (5250 €) is paid.
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvv-refresh').click();
+  const row = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Vente directe' }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(/5.250,00/);
+  await admin.close();
+});
+
 test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16', async ({
   browser,
 }) => {

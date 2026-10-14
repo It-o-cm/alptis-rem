@@ -87,6 +87,10 @@ public class DemoSalesForceBuilder {
         managerPlan(entity, JobCode.RR, new BigDecimal("12000.00"),
                 "{\"growthBaseline\":3000,\"growthTiers\":{\"15\":2000,\"25\":4000,\"35\":6000},"
                         + "\"criteriaTiers\":{\"3\":1500,\"5\":3000}}");
+        managerPlan(entity, JobCode.DNV, new BigDecimal("16000.00"),
+                "{\"marginRate\":0.10,\"overshootThreshold\":40000,\"overshootBonus\":2000,"
+                        + "\"portfolioTiers\":{\"100000\":1000,\"250000\":2500}}",
+                VariableComponent.ANNUAL_DIRECT_SALES);
     }
 
     /**
@@ -99,10 +103,25 @@ public class DemoSalesForceBuilder {
      * @param parameters the growth and criteria scales (JSON)
      */
     private void managerPlan(LegalEntity entity, JobCode jobCode, BigDecimal envelope, String parameters) {
+        managerPlan(entity, jobCode, envelope, parameters, VariableComponent.ANNUAL_MANAGER);
+    }
+
+    /**
+     * Creates one parameterised annual variable-pay plan for a post (FDV-09/FDV-10), with its JSON scale
+     * parameters and component.
+     *
+     * @param entity     the entity
+     * @param jobCode    the post
+     * @param envelope   the indicative annual envelope
+     * @param parameters the scale parameters (JSON)
+     * @param component  the variable component
+     */
+    private void managerPlan(LegalEntity entity, JobCode jobCode, BigDecimal envelope, String parameters,
+                             VariableComponent component) {
         VariablePlan plan = new VariablePlan();
         plan.entity = entity;
         plan.jobCode = jobCode;
-        plan.component = VariableComponent.ANNUAL_MANAGER;
+        plan.component = component;
         plan.envelopeAmount = envelope;
         plan.parameters = parameters;
         plan.validFrom = LocalDate.of(2026, 1, 1);

@@ -36,6 +36,7 @@ describe('sales-force presentation', () => {
     expect(componentLabel('MONTHLY_INDIVIDUAL')).toBe('Mensuel individuel');
     expect(componentLabel('ANNUAL_COLLECTIVE')).toBe('Collectif');
     expect(componentLabel('ANNUAL_MANAGER')).toBe('Animateurs et responsables');
+    expect(componentLabel('ANNUAL_DIRECT_SALES')).toBe('Vente directe');
     expect(componentLabel('MANUAL_ADJUSTMENT')).toBe('Ajustement');
     expect(componentLabel('UNKNOWN')).toBe('UNKNOWN');
     expect(componentLabel(null)).toBe('—');

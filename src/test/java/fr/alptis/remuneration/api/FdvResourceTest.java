@@ -368,6 +368,36 @@ class FdvResourceTest {
     }
 
     /**
+     * FDV-10: the business administrator settles the direct-sales variable in January N+1; a sales rep may
+     * not. The seeded CAC has a direct-sales plan, so one result is written.
+     */
+    @Test
+    void settles_direct_sales_variable() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Period january = new Period();
+            january.entity = entity;
+            january.periodMonth = LocalDate.of(2027, 1, 1);
+            january.state = PeriodState.CONTROLLED;
+            january.persist();
+            VariablePlan directPlan = new VariablePlan();
+            directPlan.entity = entity;
+            directPlan.jobCode = JobCode.CAC;
+            directPlan.component = VariableComponent.ANNUAL_DIRECT_SALES;
+            directPlan.envelopeAmount = new BigDecimal("7500.00");
+            directPlan.parameters = "{\"marginRate\":0.10}";
+            directPlan.validFrom = LocalDate.of(2026, 1, 1);
+            directPlan.validTo = LocalDate.of(2026, 12, 31);
+            directPlan.persist();
+        });
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/direct-sales-variable")
+                .then().statusCode(200).body("directSales", is(1));
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+                .when().post("/api/ui/v1/fdv/" + ENTITY + "/2027-01-01/direct-sales-variable").then().statusCode(403);
+    }
+
+    /**
      * FDV-16: a commercial simulates a month with a hypothetical production (objective met) and the
      * measured one; a viewer is refused.
      */

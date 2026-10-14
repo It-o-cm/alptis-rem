@@ -146,6 +146,23 @@ public class FdvDemoResource {
         managerPlan.validFrom = LocalDate.of(2026, 1, 1);
         managerPlan.validTo = LocalDate.of(2026, 12, 31);
         managerPlan.persist();
+
+        // A direct-sales plan and its margin and portfolio measures (FDV-10): 10 % of a 50 000 €
+        // new-business margin (5000 €) plus a 1000 € overshoot bonus (margin over 40 000 €) plus a
+        // 1500 € portfolio tier (300 000 € reaches the 250 000 € tier) make a 7500 € right; 70 % is paid
+        // in January N+1, i.e. 5250 €.
+        VariablePlan directPlan = new VariablePlan();
+        directPlan.entity = entity;
+        directPlan.jobCode = JobCode.CAC;
+        directPlan.component = VariableComponent.ANNUAL_DIRECT_SALES;
+        directPlan.envelopeAmount = new BigDecimal("7500.00");
+        directPlan.parameters = "{\"marginRate\":0.10,\"overshootThreshold\":40000,\"overshootBonus\":1000,"
+                + "\"portfolioTiers\":{\"100000\":500,\"250000\":1500}}";
+        directPlan.validFrom = LocalDate.of(2026, 1, 1);
+        directPlan.validTo = LocalDate.of(2026, 12, 31);
+        directPlan.persist();
+        seedMargin(employee, "nouvelles", new BigDecimal("50000.00"));
+        seedMargin(employee, "portefeuille", new BigDecimal("300000.00"));
         return Response.noContent().build();
     }
 
@@ -166,5 +183,23 @@ public class FdvDemoResource {
         activity.periodTo = from.withDayOfMonth(from.lengthOfMonth());
         activity.value = value;
         activity.persist();
+    }
+
+    /**
+     * Seeds one yearly margin measure on a dimension for the demo collaborator (FDV-10).
+     *
+     * @param employee  the collaborator
+     * @param dimension the margin dimension (new business or portfolio)
+     * @param value     the measured value
+     */
+    private void seedMargin(Employee employee, String dimension, BigDecimal value) {
+        EmployeeMeasure margin = new EmployeeMeasure();
+        margin.employee = employee;
+        margin.measureType = MeasureType.MARGIN;
+        margin.dimension = dimension;
+        margin.periodFrom = LocalDate.of(2026, 1, 1);
+        margin.periodTo = LocalDate.of(2026, 12, 31);
+        margin.value = value;
+        margin.persist();
     }
 }

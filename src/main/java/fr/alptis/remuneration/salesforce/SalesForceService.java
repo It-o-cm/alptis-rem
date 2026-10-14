@@ -299,7 +299,7 @@ public class SalesForceService {
         BigDecimal proration = BigDecimal.valueOf(12L - absentMonths)
                 .divide(BigDecimal.valueOf(12), 6, RoundingMode.HALF_UP);
         BigDecimal right = plan.envelopeAmount.multiply(rate).multiply(proration).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal alreadyPaid = collectivePaid(employee, settlement.periodMonth);
+        BigDecimal alreadyPaid = priorSettlements(employee, VariableComponent.ANNUAL_COLLECTIVE, settlement.periodMonth);
         BigDecimal amount = right.subtract(alreadyPaid);
 
         VariableResult result = new VariableResult();
@@ -351,19 +351,21 @@ public class SalesForceService {
     }
 
     /**
-     * The sum of the employee's collective results already settled earlier in the settlement year, so a
-     * June regularization pays only the delta over the January settlement.
+     * The sum of a component's results already settled for the employee earlier in the settlement year,
+     * so a later settlement (June regularization, direct-sales balance) pays only the delta over the
+     * earlier one.
      *
      * @param employee        the employee
+     * @param component       the settled component
      * @param settlementMonth the current settlement month
-     * @return the collective amount already paid this settlement year before this month
+     * @return the amount already settled this year before this month
      */
-    private BigDecimal collectivePaid(Employee employee, LocalDate settlementMonth) {
+    private BigDecimal priorSettlements(Employee employee, VariableComponent component, LocalDate settlementMonth) {
         BigDecimal total = BigDecimal.ZERO;
         LocalDate yearStart = settlementMonth.withDayOfYear(1);
         for (VariableResult result : VariableResult.<VariableResult>list(
                 "employee = ?1 and component = ?2 and period.periodMonth >= ?3 and period.periodMonth < ?4",
-                employee, VariableComponent.ANNUAL_COLLECTIVE, yearStart, settlementMonth)) {
+                employee, component, yearStart, settlementMonth)) {
             total = total.add(result.amount);
         }
         return total;
@@ -497,6 +499,91 @@ public class SalesForceService {
         return met;
     }
 
+    /**
+     * Runs the direct-sales variable (FDV-10), launched by the business administrator and booked in the
+     * given settlement month: a share ({@code marginRate}) of the year's new-business gross margin plus an
+     * overshoot bonus ({@code overshootBonus} once the margin reaches {@code overshootThreshold}) plus a
+     * portfolio-value tier ({@code portfolioTiers}). It is paid at a January fraction ({@code
+     * januaryFraction}, 70 % by default) in January N+1 and settled in full in June N+1, a later
+     * settlement writing only the delta. Margin and portfolio value are {@code MARGIN} measures, read on
+     * the {@code marginDimension} ("nouvelles") and {@code portfolioDimension} ("portefeuille") dimensions.
+     * Every rate, threshold, scale and dimension is a plan parameter (section 8.14, DEC 2026-10-14).
+     * Idempotent: the period's non-validated direct-sales results are dropped first.
+     *
+     * @param entityCode      the entity code
+     * @param settlementMonth the settlement month (January or June N+1)
+     * @return the number of direct-sales results written
+     */
+    @Transactional
+    public int runDirectSalesVariable(String entityCode, LocalDate settlementMonth) {
+        LegalEntity entity = entity(entityCode);
+        Period settlement = period(entity, settlementMonth);
+        int year = settlementMonth.getYear() - 1;
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        VariableResult.delete("period = ?1 and component = ?2 and status = ?3", settlement,
+                VariableComponent.ANNUAL_DIRECT_SALES, VariableResultStatus.CALCULATED);
+        int count = 0;
+        for (Employee employee : activeEmployees(entity, yearStart)) {
+            VariablePlan plan = planOf(entity, employee, VariableComponent.ANNUAL_DIRECT_SALES, yearStart);
+            if (plan == null) {
+                continue;
+            }
+            computeDirectSalesVariable(settlement, employee, plan, yearStart, yearEnd);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Computes and persists one direct-sales result (FDV-10): the margin share plus the overshoot bonus
+     * plus the portfolio tier, scaled to the January fraction or settled in full, minus what the same
+     * year's earlier settlement already paid.
+     *
+     * @param settlement the settlement period the result is booked in
+     * @param employee   the employee
+     * @param plan       the direct-sales plan of the post
+     * @param yearStart  the first day of the measured year
+     * @param yearEnd    the last day of the measured year
+     */
+    private void computeDirectSalesVariable(Period settlement, Employee employee, VariablePlan plan,
+                                            LocalDate yearStart, LocalDate yearEnd) {
+        com.fasterxml.jackson.databind.JsonNode params = readParameters(mapper, plan.parameters);
+        String marginDim = params.hasNonNull("marginDimension") ? params.get("marginDimension").asText() : "nouvelles";
+        String portfolioDim = params.hasNonNull("portfolioDimension")
+                ? params.get("portfolioDimension").asText() : "portefeuille";
+        BigDecimal grossMargin = measureSum(employee, MeasureType.MARGIN, marginDim, yearStart, yearEnd);
+        BigDecimal portfolioValue = measureSum(employee, MeasureType.MARGIN, portfolioDim, yearStart, yearEnd);
+        BigDecimal marginAmount = decimalParam(params, "marginRate").multiply(grossMargin);
+        BigDecimal overshootThreshold = decimalParam(params, "overshootThreshold");
+        BigDecimal overshoot = overshootThreshold.signum() > 0 && grossMargin.compareTo(overshootThreshold) >= 0
+                ? decimalParam(params, "overshootBonus") : BigDecimal.ZERO;
+        BigDecimal portfolioAmount = tierAmount(params.get("portfolioTiers"), portfolioValue);
+        BigDecimal fullRight = marginAmount.add(overshoot).add(portfolioAmount).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal januaryFraction = params.hasNonNull("januaryFraction")
+                ? decimalParam(params, "januaryFraction") : new BigDecimal("0.70");
+        BigDecimal factor = settlement.periodMonth.getMonthValue() == 1 ? januaryFraction : BigDecimal.ONE;
+        BigDecimal target = fullRight.multiply(factor).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal alreadyPaid = priorSettlements(employee, VariableComponent.ANNUAL_DIRECT_SALES,
+                settlement.periodMonth);
+        BigDecimal amount = target.subtract(alreadyPaid);
+
+        VariableResult result = new VariableResult();
+        result.period = settlement;
+        result.employee = employee;
+        result.plan = plan;
+        result.component = VariableComponent.ANNUAL_DIRECT_SALES;
+        result.achievementRate = factor;
+        result.amount = amount;
+        result.status = VariableResultStatus.CALCULATED;
+        result.explanation = "{\"grossMargin\":" + grossMargin.toPlainString() + ",\"marginAmount\":"
+                + marginAmount.toPlainString() + ",\"overshoot\":" + overshoot.toPlainString()
+                + ",\"portfolioAmount\":" + portfolioAmount.toPlainString() + ",\"fullRight\":"
+                + fullRight.toPlainString() + ",\"factor\":" + factor.toPlainString() + ",\"alreadyPaid\":"
+                + alreadyPaid.toPlainString() + "}";
+        result.persist();
+    }
+
     /** The three qualitative criteria of the quarterly variable (FDV-07), as measure dimensions. */
     private static final List<String> QUALITATIVE_CRITERIA = List.of("productivite", "efficacite", "developpement");
 
@@ -613,10 +700,25 @@ public class SalesForceService {
      * @return the summed activity value
      */
     private BigDecimal activityValue(Employee employee, String criterion, LocalDate from, LocalDate to) {
+        return measureSum(employee, MeasureType.ACTIVITY, criterion, from, to);
+    }
+
+    /**
+     * The summed value of an employee's measures of a type and dimension over a window.
+     *
+     * @param employee  the employee
+     * @param type      the measure type
+     * @param dimension the measure dimension
+     * @param from      the window start
+     * @param to        the window end
+     * @return the summed value
+     */
+    private BigDecimal measureSum(Employee employee, MeasureType type, String dimension, LocalDate from,
+                                  LocalDate to) {
         BigDecimal total = BigDecimal.ZERO;
         for (EmployeeMeasure measure : EmployeeMeasure.<EmployeeMeasure>list(
                 "employee = ?1 and measureType = ?2 and dimension = ?3 and periodFrom >= ?4 and periodFrom <= ?5",
-                employee, MeasureType.ACTIVITY, criterion, from, to)) {
+                employee, type, dimension, from, to)) {
             total = total.add(measure.value);
         }
         return total;
@@ -1112,6 +1214,7 @@ public class SalesForceService {
             VariableComponent.QUARTERLY_QUALITATIVE, "Qualitatif",
             VariableComponent.ANNUAL_COLLECTIVE, "Collectif",
             VariableComponent.ANNUAL_MANAGER, "Animateurs et responsables",
+            VariableComponent.ANNUAL_DIRECT_SALES, "Vente directe",
             VariableComponent.ANNUAL_ADJUSTMENT, "Régularisation",
             VariableComponent.MANUAL_ADJUSTMENT, "Ajustement");
 
