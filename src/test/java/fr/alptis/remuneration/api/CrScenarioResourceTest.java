@@ -520,6 +520,21 @@ class CrScenarioResourceTest {
                 .body("ecart", is(0.00f)).body("linesReplayed", is(1)).body("linesModified", is(0));
     }
 
+    /** CR-37: the UMR file mapping keeps only the entity's (ALPTIS) part, dropping the UMR line. */
+    @Test
+    void cr37_only_the_entity_part_is_integrated() {
+        given().when().post("/api/test/cr-scenario?cr=CR-37&entity=UNEP&month=2026-07-01").then().statusCode(204);
+        String content = "CODE_MOUVEMENT;TYPE_MOUVEMENT;NUMERO_CONTRAT;DATE_MOUVEMENT;NOM_MUTUELLE;MONTANT_COMMISSION\n"
+                + "M1;FG;AD-1;2026-07-05;ALPTIS;0.24\n"
+                + "M1;FG;AD-1;2026-07-05;UMR;0.19\n";
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body(java.util.Map.of("entityCode", "UNEP", "flowCode", "events", "sourceSystem", "UMR",
+                        "fileName", "umr.xlsx", "content", content))
+                .when().post("/api/ui/v1/imports")
+                .then().statusCode(201)
+                .body("linesRead", is(2)).body("linesFiltered", is(1)).body("linesLoaded", is(1));
+    }
+
     /** CR-67: a bad-line events file loads 1 line, rejects 3 and holds 1 (unknown contract). */
     @Test
     void cr67_bad_lines_rejected_or_held() {

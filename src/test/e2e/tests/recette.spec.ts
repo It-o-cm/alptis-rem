@@ -688,6 +688,29 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(anomaly.first()).toContainText('1008.00');
   });
 
+  test('CR-37 : le mapping du fichier UMR ne garde que la part de l’entité @screen:imports @cr:CR-37', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-37&entity=UNEP&month=2026-07-01');
+    expect(seeded.ok()).toBeTruthy();
+    const content =
+      'CODE_MOUVEMENT;TYPE_MOUVEMENT;NUMERO_CONTRAT;DATE_MOUVEMENT;NOM_MUTUELLE;MONTANT_COMMISSION\n' +
+      'M1;FG;AD-1;2026-07-05;ALPTIS;0.24\n' +
+      'M1;FG;AD-1;2026-07-05;UMR;0.19\n';
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('UMR');
+    await page.getByTestId('upload-file').setInputFiles({
+      name: 'umr_prod.xlsx.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(content),
+    });
+    await page.getByTestId('upload-submit').click();
+    // Only the ALPTIS line is integrated; the UMR line is filtered out by the mapping.
+    await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 0 rejetée(s), 0 en attente');
+  });
+
   test('CR-67 : un fichier aux lignes fausses intègre 1 ligne, en rejette 3 et en met 1 en attente @screen:imports @cr:CR-67', async ({
     page,
     request,

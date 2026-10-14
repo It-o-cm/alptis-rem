@@ -1,6 +1,7 @@
 package fr.alptis.remuneration.integration;
 
 import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.ImportMapping;
 import fr.alptis.remuneration.domain.ValidationException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -22,6 +23,7 @@ public class ImportService {
     private final PayeeExternalImportService payeeAndCodes;
     private final OpeningBalanceImportService openingBalances;
     private final EmployeeImportService employees;
+    private final MappingImportService mappedEvents;
 
     /**
      * Creates the facade.
@@ -33,13 +35,16 @@ public class ImportService {
      * @param accountsAndQuality the bank-account and quality-indicator importer
      * @param transfers          the portfolio-transfer and replacement-order importer
      * @param payeeAndCodes      the payment-rule and external-code importer
+     * @param openingBalances    the opening-balance importer
+     * @param employees          the employee importer
+     * @param mappedEvents       the mapped (free-file) events importer
      */
     @Inject
     public ImportService(EventImportService events, CoverageImportService coverages,
                          ReferentialImportService referentials, ProductReferentialImportService products,
                          AccountQualityImportService accountsAndQuality, TransferImportService transfers,
                          PayeeExternalImportService payeeAndCodes, OpeningBalanceImportService openingBalances,
-                         EmployeeImportService employees) {
+                         EmployeeImportService employees, MappingImportService mappedEvents) {
         this.events = events;
         this.coverages = coverages;
         this.referentials = referentials;
@@ -49,6 +54,7 @@ public class ImportService {
         this.payeeAndCodes = payeeAndCodes;
         this.openingBalances = openingBalances;
         this.employees = employees;
+        this.mappedEvents = mappedEvents;
     }
 
     /**
@@ -65,7 +71,7 @@ public class ImportService {
     public ImportBatch importFile(String entityCode, String flowCode, String sourceSystem, String fileName,
                                   String content) {
         return switch (flowCode) {
-            case FlowCodes.EVENTS -> events.importEvents(entityCode, sourceSystem, fileName, content);
+            case FlowCodes.EVENTS -> importEventsFlow(entityCode, sourceSystem, fileName, content);
             case FlowCodes.COVERAGES -> coverages.importCoverages(entityCode, sourceSystem, fileName, content);
             case FlowCodes.DISTRIBUTORS -> referentials.importDistributors(entityCode, sourceSystem, fileName, content);
             case FlowCodes.DISTRIBUTOR_GROUPS -> referentials.importGroups(entityCode, sourceSystem, fileName, content);
@@ -85,5 +91,25 @@ public class ImportService {
             case EmployeeImportService.EMPLOYEE_MEASURES -> employees.importMeasures(entityCode, sourceSystem, fileName, content);
             default -> throw new ValidationException("Flux inconnu : " + flowCode);
         };
+    }
+
+    /**
+     * Imports an events file: through the source's active mapping when one is configured for the flow
+     * (a free, non-pivot file, section 9.4, IN-06), otherwise as a pivot file.
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param content      the file content
+     * @return the import batch
+     */
+    private ImportBatch importEventsFlow(String entityCode, String sourceSystem, String fileName, String content) {
+        ImportMapping mapping = ImportMapping.<ImportMapping>find(
+                "entity.code = ?1 and flowCode = ?2 and sourceSystem = ?3 order by versionNo desc",
+                entityCode, FlowCodes.EVENTS, sourceSystem).firstResult();
+        if (mapping != null) {
+            return mappedEvents.importMappedEvents(entityCode, sourceSystem, fileName, content, mapping.definition);
+        }
+        return events.importEvents(entityCode, sourceSystem, fileName, content);
     }
 }

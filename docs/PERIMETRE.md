@@ -541,10 +541,10 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Reste à les **rejouer
   par l'interface** (68 sur 70, étape 4).
-- **Rejeu par l'interface (`@cr:`) :** 52 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-36`,
+- **Rejeu par l'interface (`@cr:`) :** 53 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-37`,
   `CR-40` à `CR-51`, `CR-60` à `CR-71`).
-  **§13.1, §13.2, §13.4, §13.5 complètes ; §13.3 complète sauf CR-37/38 (fichier assureur réel, pilotés
-  par l'import).** Reste à rejouer : CR-37/38 seulement (CR-72 performance exclu).
+  **§13.1, §13.2, §13.4, §13.5 complètes ; §13.3 complète sauf CR-38.** Reste à rejouer : CR-38 seulement
+  (CR-72 performance exclu).
   **§13.1 et §13.2 complètes ; §13.3 entamée.** Escompte : versement (CR-20), apurement (CR-21),
   résiliation (CR-22), solde (CR-23), complément (CR-24), hors convention (CR-25), second impayé
   (CR-26 → −400), plafond (CR-27), déficit à 360 j (CR-28 → −30, réglé en décembre). La position
@@ -676,8 +676,16 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   pouvait jamais être réinscrit. L'import lit désormais `orias_status` (défaut : inscrit) ; la
   réinscription se fait par ré-import, comme le ferait la donnée ORIAS réelle. Test d'API + e2e
   multi-rôles (cycle, import de réinscription, lot hors cycle). **§13.5 est entièrement rejouée.**
-- **Reste à rejouer** : CR-37/38 seulement (fichier assureur réel UMR de juin/juillet 2026, par l'import ;
-  CR-72 performance exclu).
+- **Import mappé du fichier assureur rejoué par l'interface (2026-10-14, §13.3)** : CR-37 (le mapping du
+  fichier de production UMR ne garde que les lignes de la mutuelle de l'entité — part Alptis 0,24 €, la
+  ligne UMR 0,19 € étant filtrée — et dérive la commission reçue). **Vrai manque comblé** : l'import par
+  l'écran (`importFile`) ne résolvait jamais les mappings stockés (`ImportMapping`), alors que le
+  commentaire du service affirmait le contraire ; un fichier libre d'assureur (ING-02, IN-06) n'avait donc
+  aucun chemin opérateur. Le flux `events` résout désormais le mapping actif de la source (s'il existe) et
+  passe par l'import mappé, sinon l'import pivot ; la source `UMR` apparaît dans la liste dès qu'un mapping
+  la déclare. Test d'API (compteurs 2 lues / 1 filtrée / 1 intégrée) + e2e (import sur l'écran).
+- **Reste à rejouer** : CR-38 seulement (fichier de production UMR réel de juillet 2026 : commission reçue
+  = 451,54 € ; à lire via le calcul puis le rapprochement assureur ; CR-72 performance exclu).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème

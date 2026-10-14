@@ -26,6 +26,7 @@ import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.EventType;
 import fr.alptis.remuneration.domain.LegalEntity;
+import fr.alptis.remuneration.domain.ImportMapping;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.OriasStatus;
 import fr.alptis.remuneration.domain.PartnerStatus;
@@ -133,6 +134,7 @@ public class CrScenarioResource {
             case "CR-49" -> seedCr49(entity, periodMonth);
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
+            case "CR-37" -> seedCr37(entity, periodMonth);
             case "CR-60" -> seedCr60(entity, periodMonth);
             case "CR-61" -> seedCr61(entity, periodMonth);
             case "CR-62" -> seedCr62(entity, periodMonth);
@@ -1206,6 +1208,48 @@ public class CrScenarioResource {
         version(entity, "PLAN-CR63", "R-CR63", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         premium(entity, coverage, "CR63-E1", periodMonth.plusDays(4), "50.00");
+    }
+
+    /** The UMR insurer-file mapping: keep only the ALPTIS mutuelle's lines and derive the received commission. */
+    private static final String UMR_MAPPING = "{"
+            + "\"filter\": {\"column\": \"NOM_MUTUELLE\", \"equals\": \"ALPTIS\"},"
+            + "\"fields\": {"
+            + "\"source_key\": {\"column\": \"CODE_MOUVEMENT\"},"
+            + "\"event_type\": {\"column\": \"TYPE_MOUVEMENT\", \"transcode\": {\"VI\": \"INITIAL_PAYMENT\","
+            + " \"FG\": \"OUTSTANDING_FEE\"}},"
+            + "\"contract_number\": {\"column\": \"NUMERO_CONTRAT\"},"
+            + "\"event_date\": {\"column\": \"DATE_MOUVEMENT\"}},"
+            + "\"derived\": [{"
+            + "\"when\": {\"column\": \"MONTANT_COMMISSION\"},"
+            + "\"fields\": {"
+            + "\"source_key\": {\"column\": \"CODE_MOUVEMENT\", \"suffix\": \"-COM\"},"
+            + "\"event_type\": {\"const\": \"INSURER_COMMISSION\"},"
+            + "\"contract_number\": {\"column\": \"NUMERO_CONTRAT\"},"
+            + "\"event_date\": {\"column\": \"DATE_MOUVEMENT\"},"
+            + "\"precomputed_amount\": {\"column\": \"MONTANT_COMMISSION\"}}}]}";
+
+    /**
+     * CR-37 (part de l'entité) : sème le contrat UMR `AD-1` et le mapping du fichier de production UMR
+     * (flux `EVENTS`, source `UMR`), de sorte qu'un import libre par ce mapping ne garde que les lignes de
+     * la mutuelle de l'entité (part Alptis) et dérive la commission reçue.
+     *
+     * @param entity      the entity
+     * @param periodMonth the mapping's start of validity
+     */
+    private void seedCr37(LegalEntity entity, LocalDate periodMonth) {
+        Contract contract = new Contract();
+        contract.entity = entity;
+        contract.sourceSystem = "UMR";
+        contract.contractNumber = "AD-1";
+        contract.persist();
+        ImportMapping mapping = new ImportMapping();
+        mapping.entity = entity;
+        mapping.flowCode = "events";
+        mapping.sourceSystem = "UMR";
+        mapping.versionNo = 1;
+        mapping.definition = UMR_MAPPING;
+        mapping.validFrom = periodMonth;
+        mapping.persist();
     }
 
     /**
