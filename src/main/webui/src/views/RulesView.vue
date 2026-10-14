@@ -3,8 +3,9 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
-import { familyLabel, versionStatusClass, conflictLabel, schemaFields, repriseLabel, conditionsLabel } from '../presentation/rules';
+import { familyLabel, versionStatusLabel, versionStatusClass, conflictLabel, schemaFields, repriseLabel, conditionsLabel } from '../presentation/rules';
 import type { SchemaField, ConditionView } from '../presentation/rules';
+import { directionLabel } from '../presentation/lines';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -64,7 +65,7 @@ function removeConditionRow(index: number): void {
 const planColumns: Column<PlanView>[] = [
   { key: 'code', label: 'Code' },
   { key: 'label', label: 'Libellé' },
-  { key: 'direction', label: 'Sens', value: (p) => p.direction ?? '—' },
+  { key: 'direction', label: 'Sens', value: (p) => directionLabel(p.direction) },
   { key: 'vintage', label: 'Millésime', value: (p) => p.vintage ?? '—' },
 ];
 
@@ -364,7 +365,7 @@ onMounted(loadPlans);
       <DataTable :columns="versionColumns" :rows="versions" row-key="versionNo"
                  empty="Aucune version." empty-testid="versions-empty" :row-testid="(v) => `version-row-${v.versionNo}`">
         <template #cell-status="{ row }">
-          <span :class="versionStatusClass(row.status)" data-testid="version-status">{{ row.status ?? '—' }}</span>
+          <span :class="versionStatusClass(row.status)" data-testid="version-status">{{ versionStatusLabel(row.status) }}</span>
         </template>
         <template #cell-conflicts="{ row }">
           <span data-testid="version-conflicts">{{ conflictLabel(row.conflicts) }}</span>

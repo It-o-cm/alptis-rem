@@ -13,6 +13,7 @@ describe('event labels', () => {
     expect(eventStatusLabel('PROCESSED')).toBe('Traité');
     expect(eventStatusLabel('PENDING')).toBe('En attente de calcul');
     expect(eventStatusLabel('NOT_COMMISSIONABLE')).toBe('Non commissionnable');
+    expect(eventStatusLabel(null)).toBe('—');
     expect(eventStatusLabel('XXX')).toBe('XXX');
   });
 

@@ -3,6 +3,10 @@ import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, FilterBar, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
+import { contractStatusLabel, remunerationModeLabel } from '../presentation/coverage';
+import { eventTypeLabel, eventStatusLabel } from '../presentation/events';
+import { lineNatureLabel, lineStatusLabel } from '../presentation/lines';
+import { advanceStatusLabel } from '../presentation/advance';
 
 interface CoverageView {
   coverageCode: string;
@@ -49,7 +53,7 @@ const columns: Column<ContractView>[] = [
   { key: 'entityCode', label: 'Entité' },
   { key: 'contractNumber', label: 'Adhésion' },
   { key: 'sourceSystem', label: 'Source' },
-  { key: 'status', label: 'Statut', value: (c) => c.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (c) => contractStatusLabel(c.status) },
   { key: 'coverages', label: 'Garanties' },
 ];
 
@@ -102,7 +106,7 @@ const assignmentColumns: Column<AssignmentView>[] = [
 
 /** Columns of the remuneration-choices table. */
 const choiceColumns: Column<ChoiceView>[] = [
-  { key: 'mode', label: 'Mode', value: (c) => c.mode ?? '—' },
+  { key: 'mode', label: 'Mode', value: (c) => remunerationModeLabel(c.mode) },
   { key: 'linearRate', label: 'Taux linéaire', value: (c) => c.linearRate ?? '—' },
   { key: 'acquisitionRate', label: "Taux d'apport", value: (c) => c.acquisitionRate ?? '—' },
   { key: 'servicingRate', label: 'Taux de suivi', value: (c) => c.servicingRate ?? '—' },
@@ -111,16 +115,16 @@ const choiceColumns: Column<ChoiceView>[] = [
 
 /** Columns of the events table. */
 const eventColumns: Column<EventRefView>[] = [
-  { key: 'eventType', label: 'Type', value: (e) => e.eventType ?? '—' },
+  { key: 'eventType', label: 'Type', value: (e) => eventTypeLabel(e.eventType) },
   { key: 'eventDate', label: 'Date', value: (e) => e.eventDate ?? '—' },
-  { key: 'status', label: 'Statut', value: (e) => e.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (e) => eventStatusLabel(e.status) },
 ];
 
 /** Columns of the commission-lines table. */
 const lineColumns: Column<LineRefView>[] = [
-  { key: 'nature', label: 'Nature', value: (l) => l.nature ?? '—' },
+  { key: 'nature', label: 'Nature', value: (l) => lineNatureLabel(l.nature) },
   { key: 'amount', label: 'Montant', align: 'num' },
-  { key: 'status', label: 'Statut', value: (l) => l.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (l) => lineStatusLabel(l.status) },
 ];
 
 onMounted(search);
@@ -168,7 +172,7 @@ onMounted(search);
     <AppCard v-if="detail" data-testid="coverage-detail">
       <h2 class="cov-title">Adhésion {{ detail.contractNumber }} — garantie {{ detail.coverageCode }}</h2>
       <DetailList>
-        <DetailRow label="Statut">{{ detail.status ?? '—' }}</DetailRow>
+        <DetailRow label="Statut">{{ contractStatusLabel(detail.status) }}</DetailRow>
         <DetailRow label="Effet">{{ detail.effectDate ?? '—' }}</DetailRow>
         <DetailRow label="Fin">{{ detail.endDate ?? '—' }}</DetailRow>
         <DetailRow label="Prime annualisée">{{ detail.annualPremium ?? '—' }}</DetailRow>
@@ -192,7 +196,7 @@ onMounted(search);
 
       <h3 class="cov-sub">Position d'escompte</h3>
       <DetailList v-if="detail.position" data-testid="cov-position">
-        <DetailRow label="Statut">{{ detail.position.status ?? '—' }}</DetailRow>
+        <DetailRow label="Statut">{{ advanceStatusLabel(detail.position.status) }}</DetailRow>
         <DetailRow label="Escompté">{{ detail.position.advanced }}</DetailRow>
         <DetailRow label="Apuré">{{ detail.position.offset }}</DetailRow>
       </DetailList>

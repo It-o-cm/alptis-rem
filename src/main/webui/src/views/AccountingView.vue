@@ -4,6 +4,7 @@ import { apiGet, apiGetText, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canProduceExport } from '../presentation/reporting';
 import { formatAmount } from '../presentation/format';
+import { eventTypeLabel } from '../presentation/events';
 import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -282,7 +283,7 @@ onMounted(refresh);
     <AppCard v-if="chain" data-testid="acc-chain" title="Chaîne d'audit (flux → bordereau → ligne → écriture)">
       <DetailList>
         <DetailRow label="Flux (événement)">
-          {{ chain.eventType ? `${chain.eventType}${chain.eventKey ? ' · ' + chain.eventKey : ''}` : '—' }}
+          {{ chain.eventType ? `${eventTypeLabel(chain.eventType)}${chain.eventKey ? ' · ' + chain.eventKey : ''}` : '—' }}
         </DetailRow>
         <DetailRow label="Bordereau">{{ chain.statement ?? '—' }}</DetailRow>
         <DetailRow label="Ligne de commission">

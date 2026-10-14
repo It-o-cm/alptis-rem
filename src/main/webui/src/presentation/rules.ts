@@ -21,6 +21,20 @@ export function familyLabel(code: string | null): string {
   return FAMILY_LABELS[code] ?? code;
 }
 
+/** French labels of the rule-version statuses (section 5.4). */
+const VERSION_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  APPROVED: 'Approuvée',
+  ACTIVE: 'En vigueur',
+  RETIRED: 'Retirée',
+};
+
+/** French label of a rule-version status, a dash for none, or the raw code when unknown. */
+export function versionStatusLabel(status: string | null): string {
+  if (status === null) return '—';
+  return VERSION_STATUS_LABELS[status] ?? status;
+}
+
 /** CSS tag class for a version status, so the list reads at a glance. */
 export function versionStatusClass(status: string | null): string {
   switch (status) {

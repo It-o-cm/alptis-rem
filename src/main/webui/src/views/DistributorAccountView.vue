@@ -4,6 +4,7 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
+import { lineNatureLabel, lineStatusLabel, adjustmentStatusLabel } from '../presentation/lines';
 import LineChart from '../components/charts/LineChart.vue';
 import { AppButton, AppCard, AppMessage, DataTable, DistributorSelect, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
@@ -77,9 +78,9 @@ const accountColumns: Column<AccountView>[] = [
 /** Columns of the commission-lines table. */
 const lineColumns: Column<LineView>[] = [
   { key: 'attachmentMonth', label: 'Mois', value: (l) => l.attachmentMonth ?? '—' },
-  { key: 'nature', label: 'Nature', value: (l) => l.nature ?? '—' },
+  { key: 'nature', label: 'Nature', value: (l) => lineNatureLabel(l.nature) },
   { key: 'amount', label: 'Montant', align: 'num', value: (l) => amount(l.amount) },
-  { key: 'status', label: 'Statut', value: (l) => l.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (l) => lineStatusLabel(l.status) },
   { key: 'blocked', label: 'Bloquée', value: (l) => (l.blocked ? 'Oui' : 'Non') },
   { key: 'blockReason', label: 'Motif', value: (l) => l.blockReason ?? '—' },
   { key: 'blockedUntil', label: 'Levée le', value: (l) => l.blockedUntil ?? '—' },
@@ -110,7 +111,7 @@ const scheduleColumns: Column<RepaymentScheduleView>[] = [
   { key: 'holder', label: 'Distributeur' },
   { key: 'amount', label: 'Montant', align: 'num', value: (s) => amount(s.amount) },
   { key: 'schedule', label: 'Échéancier', value: (s) => scheduleText(s.schedule) },
-  { key: 'status', label: 'Statut', value: (s) => s.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (s) => adjustmentStatusLabel(s.status) },
 ];
 
 /** Loads a distributor's accounts and its balance series for the current filter. */

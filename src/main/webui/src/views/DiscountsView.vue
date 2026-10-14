@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import { advanceStatusLabel } from '../presentation/advance';
 import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -51,7 +52,7 @@ const columns: Column<ConventionSummary>[] = [
 /** Columns of the per-adherent (guarantee) detail of a convention. */
 const positionColumns: Column<PositionView>[] = [
   { key: 'coverageCode', label: 'Garantie' },
-  { key: 'status', label: 'Statut', value: (p) => p.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (p) => advanceStatusLabel(p.status) },
   { key: 'advanced', label: 'Versé', align: 'num', value: (p) => amount(p.advanced) },
   { key: 'offset', label: 'Apuré', align: 'num', value: (p) => amount(p.offset) },
 ];

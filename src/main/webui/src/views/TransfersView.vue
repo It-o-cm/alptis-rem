@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
+import { transferStatusLabel } from '../presentation/transfers';
 
 interface TransferView {
   entityCode: string;
@@ -82,7 +83,7 @@ onMounted(load);
       >
         <template #cell-fromPartnerCode="{ row }"><span class="mono">{{ row.fromPartnerCode ?? '—' }}</span></template>
         <template #cell-toPartnerCode="{ row }"><span class="mono">{{ row.toPartnerCode ?? '—' }}</span></template>
-        <template #cell-status="{ row }"><span class="tag info">{{ row.status ?? '—' }}</span></template>
+        <template #cell-status="{ row }"><span class="tag info">{{ transferStatusLabel(row.status) }}</span></template>
       </DataTable>
     </AppCard>
 

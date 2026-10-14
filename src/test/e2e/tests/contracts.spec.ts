@@ -46,7 +46,7 @@ test.describe('Contrats — opérateur', () => {
     await page.getByTestId('search-button').click();
 
     const row = page.getByTestId('contract-row-AD-1');
-    await expect(row).toContainText('IN_FORCE');
+    await expect(row).toContainText('En vigueur');
     await expect(row).toContainText('C1');
     await expect(row).toContainText('1000.00');
 

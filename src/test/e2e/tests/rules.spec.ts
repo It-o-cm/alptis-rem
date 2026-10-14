@@ -39,7 +39,7 @@ test.describe('Paramétrage des règles', () => {
     await admin.getByTestId('v-parameters').fill('{"allowedRates":[0.15]}');
     await admin.getByTestId('v-group').fill('TEST');
     await admin.getByTestId('version-create').click();
-    await expect(admin.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('DRAFT');
+    await expect(admin.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('Brouillon');
 
     // A second administrator approves it.
     const admin2Ctx = await browser.newContext({ httpCredentials: USERS.admin2Alptis });
@@ -48,7 +48,7 @@ test.describe('Paramétrage des règles', () => {
     await admin2.getByTestId('plan-open-E2E_PLAN').click();
     await admin2.getByTestId('rule-open-E2E_RULE').click();
     await admin2.getByTestId('version-approve-1').click();
-    await expect(admin2.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('APPROVED');
+    await expect(admin2.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('Approuvée');
 
     // PAR-11: generate the amendment from the version and send it for signature.
     await admin2.getByTestId('version-amendment-1').click();
@@ -100,7 +100,7 @@ test.describe('Paramétrage des règles', () => {
     await admin.getByTestId('version-create').click();
 
     const row = admin.getByTestId('version-row-1');
-    await expect(row.getByTestId('version-status')).toHaveText('DRAFT');
+    await expect(row.getByTestId('version-status')).toHaveText('Brouillon');
     await expect(row).toContainText('Reprise {"mode":"PRORATA"}');
     await expect(row).toContainText('Échéancier {"months":12}');
     await expect(row).toContainText('UNPAID_RATE LT 0.05 → Report');
@@ -139,7 +139,7 @@ test.describe('Paramétrage des règles', () => {
     await admin2.getByTestId('plan-open-CONF_PLAN').click();
     await admin2.getByTestId('rule-open-C1').click();
     await admin2.getByTestId('version-approve-1').click();
-    await expect(admin2.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('APPROVED');
+    await expect(admin2.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('Approuvée');
     await admin2.getByTestId('rule-open-C2').click();
     await admin2.getByTestId('version-approve-1').click();
     await expect(admin2.getByTestId('rules-error')).toContainText('conflit');

@@ -54,8 +54,9 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   EXTERNAL_COMMISSION: 'Commission externe',
 };
 
-/** French label of a processing status, or the raw code when unknown. */
-export function eventStatusLabel(status: string): string {
+/** French label of a processing status, a dash for none, or the raw code when unknown. */
+export function eventStatusLabel(status: string | null): string {
+  if (status === null) return '—';
   return STATUS_LABELS[status] ?? status;
 }
 

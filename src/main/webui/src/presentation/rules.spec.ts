@@ -1,11 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { familyLabel, versionStatusClass, schemaFields, conflictLabel, repriseLabel, conditionsLabel } from './rules';
+import { familyLabel, versionStatusLabel, versionStatusClass, schemaFields, conflictLabel, repriseLabel, conditionsLabel } from './rules';
 
 describe('rules presentation', () => {
   it('labels known families and falls back for the rest', () => {
     expect(familyLabel('UPFRONT')).toBe('Précomptée');
     expect(familyLabel('UNKNOWN')).toBe('UNKNOWN');
     expect(familyLabel(null)).toBe('—');
+  });
+
+  it('labels version statuses in French, a dash for none, and echoes an unknown one', () => {
+    expect(versionStatusLabel('DRAFT')).toBe('Brouillon');
+    expect(versionStatusLabel('APPROVED')).toBe('Approuvée');
+    expect(versionStatusLabel('ACTIVE')).toBe('En vigueur');
+    expect(versionStatusLabel('RETIRED')).toBe('Retirée');
+    expect(versionStatusLabel(null)).toBe('—');
+    expect(versionStatusLabel('XXX')).toBe('XXX');
   });
 
   it('maps version statuses to tag classes', () => {

@@ -32,6 +32,13 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
 
 État au 2026-10-14 (ADM-03 en cours) :
 
+- **Balayage complet des énumérations hors tableau et des passthroughs (7 écrans)** : ContractsView,
+  AccountingView, AdvanceAgreementsView, DiscountsView, DistributorAccountView, RulesView et TransfersView
+  n'affichent plus aucun code d'énumération brut (statuts d'adhésion/ligne/événement/position/convention/
+  version/cession, mode de rémunération, type d'événement, sens, nature, type d'ajustement). Nouveaux
+  helpers `advance.ts` et `transfers.ts`, `versionStatusLabel` (rules.ts), `eventStatusLabel` nullable —
+  vitest 100 % (176 tests), e2e 22/22 verts. Reste un seul point connu avant de clore ADM-03 : les codes
+  d'évènement comptable du schéma (`acc-scheme`).
 - **Balayage des colonnes de tableau (5 écrans)** : AdjustmentsView (type d'ajustement, nouveau
   `adjustmentTypeLabel` + options, 100 % vitest), FdvPlanView (type d'objectif), FdvCommercialView
   (statut de variable), RepriseView (statut d'import), SimulationView (nature) affichent désormais ces
@@ -444,8 +451,23 @@ de RulesView) :
   au libellé), FdvPlanView (type d'objectif → `objectiveTypeLabel`), FdvCommercialView (statut de variable →
   `variableStatusLabel`), RepriseView (statut d'import → `importStatusLabel`), SimulationView (nature →
   `lineNatureLabel`). Les autres colonnes repérées rendaient déjà par un slot `#cell-*` labellisé.
-- (reste de l'audit : les énumérations affichées hors tableau — valeurs de fiches `DetailRow` et
-  interpolations `{{ }}` directes — à passer en revue écran par écran avant de clore ADM-03.)
+- ~~Audit hors tableau + passthroughs `value: () => x.enum ?? '—'` (2026-10-14)~~ **fait** : relevé
+  exhaustif des rendus d'énumération dans les colonnes à `value:` qui renvoyaient le code brut, dans les
+  slots `#cell-*`, les `DetailRow` et les interpolations `{{ }}`. Corrigés — ContractsView (statut
+  d'adhésion, mode de rémunération, type d'événement, statut d'événement, nature et statut de ligne,
+  statut de position d'escompte), AccountingView (type d'événement dans la chaîne d'audit),
+  AdvanceAgreementsView (statut de convention + statut de position), DiscountsView (statut de position),
+  DistributorAccountView (nature/statut de ligne, statut d'échéancier = statut d'ajustement), RulesView
+  (statut de version → nouveau `versionStatusLabel`, sens → `directionLabel`), TransfersView (statut de
+  cession → nouveau `transferStatusLabel`). Nouveaux helpers `advance.ts` (statut de convention + de
+  position) et `transfers.ts`, `versionStatusLabel` dans `rules.ts`, `eventStatusLabel` rendu nullable —
+  tous 100 % vitest (176 tests). e2e des 6 specs touchées vertes (22/22), build serveur inchangé.
+  Les `reason`/`Motif` restants (CommissionSearchView, BordereauxView, PeriodsView) sont des champs de
+  texte libre, pas des énumérations — laissés tels quels à dessein.
+- **Reste pour clore ADM-03** : AccountingView « schéma comptable » (`acc-scheme`) affiche les codes
+  d'évènement comptable bruts (`FORECAST_RECOGNITION`, `PAYMENT`…) ; à décider — libellé FR d'un nouvel
+  `accountingEventLabel`, ou codes de domaine comptable admis. À traiter au prochain passage, puis
+  repasser l'audit complet une dernière fois avant de marquer ADM-03 `complet`.
 
 Socle « liste / sélection » complété le 2026-10-13 : stores Pinia `groupings`, `delegations`,
 `productionCodes`, `plans`, `rules` (100 % vitest) ; composants `GroupSelect`, `DelegationSelect`,

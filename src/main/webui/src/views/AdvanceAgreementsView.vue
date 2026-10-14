@@ -5,6 +5,7 @@ import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, DetailList, DetailRow, FormField, PageHeading } from '../components/ui';
 import { formatAmount } from '../presentation/format';
+import { advanceAgreementStatusLabel, advanceStatusLabel } from '../presentation/advance';
 import type { Column } from '../components/ui';
 
 interface AdvanceView {
@@ -55,7 +56,7 @@ const columns: Column<AdvanceView>[] = [
 /** Columns of the discounted guarantees table. */
 const positionColumns: Column<PositionView>[] = [
   { key: 'coverageCode', label: 'Garantie' },
-  { key: 'status', label: 'Statut', value: (p) => p.status ?? '—' },
+  { key: 'status', label: 'Statut', value: (p) => advanceStatusLabel(p.status) },
   { key: 'advanced', label: 'Escompté', align: 'num', value: (p) => formatAmount(p.advanced) },
   { key: 'offset', label: 'Apuré', align: 'num', value: (p) => formatAmount(p.offset) },
 ];
@@ -136,7 +137,7 @@ onMounted(load);
         :row-testid="(a) => `advance-row-${rows.indexOf(a)}`"
         @row-click="openDetail"
       >
-        <template #cell-status="{ row }"><span class="tag ok">{{ row.status ?? '—' }}</span></template>
+        <template #cell-status="{ row }"><span class="tag ok">{{ advanceAgreementStatusLabel(row.status) }}</span></template>
       </DataTable>
     </AppCard>
 
