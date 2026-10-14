@@ -32,6 +32,15 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Annulée',
 };
 
+/** French labels of the manual-adjustment types (section 5.6). */
+const ADJUSTMENT_TYPE_LABELS: Record<string, string> = {
+  EXCEPTIONAL_ADVANCE: 'Avance exceptionnelle',
+  MANUAL_CLAWBACK: 'Reprise manuelle',
+  CORRECTION: 'Correction',
+  EXCEPTIONAL_COMMISSION: 'Commission exceptionnelle',
+  ACCOUNT_TRANSFER: 'Transfert entre comptes',
+};
+
 /** French labels of the manual-adjustment statuses (section 5.6). */
 const ADJUSTMENT_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Brouillon',
@@ -70,6 +79,17 @@ export function adjustmentStatusLabel(status: string | null): string {
   if (status === null) return '—';
   return ADJUSTMENT_STATUS_LABELS[status] ?? status;
 }
+
+/** French label of a manual-adjustment type, a dash for none, or the raw code when unknown. */
+export function adjustmentTypeLabel(type: string | null): string {
+  if (type === null) return '—';
+  return ADJUSTMENT_TYPE_LABELS[type] ?? type;
+}
+
+/** The manual-adjustment types offered as options, with their French labels (ADM-03). */
+export const ADJUSTMENT_TYPE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = Object.entries(
+  ADJUSTMENT_TYPE_LABELS,
+).map(([value, label]) => ({ value, label }));
 
 /** The commission-line natures offered as a filter, with their French labels (ADM-03). */
 export const NATURE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = Object.entries(

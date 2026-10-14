@@ -21,6 +21,8 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   // ADM-03: the entity and month are chosen from lists shown by their names, never typed as codes.
   await expect(page.getByTestId('adj-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(page.getByTestId('adj-month').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
+  // ADM-03: the adjustment type is picked from a list shown by its French label, never a raw code.
+  await expect(page.getByTestId('adj-type').locator('option', { hasText: 'Correction' })).toHaveCount(1);
   await page.getByTestId('adj-type').selectOption('CORRECTION');
   await page.getByTestId('adj-amount').fill('9');
   await page.getByTestId('adj-payee').fill('1');

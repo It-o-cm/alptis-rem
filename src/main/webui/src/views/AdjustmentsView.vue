@@ -4,8 +4,8 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
-import { adjustmentStatusLabel } from '../presentation/lines';
-import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
+import { adjustmentStatusLabel, adjustmentTypeLabel, ADJUSTMENT_TYPE_OPTIONS } from '../presentation/lines';
+import { AppButton, AppCard, AppForm, AppMessage, CodeSelect, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
 interface AdjustmentView {
@@ -19,8 +19,6 @@ interface AdjustmentView {
   submitter: string;
   approver: string | null;
 }
-
-const TYPES = ['EXCEPTIONAL_ADVANCE', 'MANUAL_CLAWBACK', 'CORRECTION', 'EXCEPTIONAL_COMMISSION', 'ACCOUNT_TRANSFER'];
 
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 ? session.entities[0] : '');
@@ -39,7 +37,7 @@ const canOperate = (): boolean => canOperateCycle(session.roles);
 
 /** Columns of the adjustments table. */
 const columns: Column<AdjustmentView>[] = [
-  { key: 'type', label: 'Type' },
+  { key: 'type', label: 'Type', value: (a) => adjustmentTypeLabel(a.type) },
   { key: 'amount', label: 'Montant', align: 'num', value: (a) => amount(a.amount) },
   { key: 'reason', label: 'Motif' },
   { key: 'attachmentRef', label: 'Pièce jointe', value: (a) => a.attachmentRef ?? '—' },
@@ -163,9 +161,7 @@ onMounted(load);
     <AppCard v-if="canOperate()" title="Saisir un ajustement" data-testid="adj-form">
       <AppForm twoColumn @submit="submit">
         <FormField label="Type" width="short" v-slot="{ id }">
-          <select :id="id" data-testid="adj-type" v-model="form.type">
-            <option v-for="t in TYPES" :key="t" :value="t">{{ t }}</option>
-          </select>
+          <CodeSelect :id="id" data-testid="adj-type" v-model="form.type" :options="ADJUSTMENT_TYPE_OPTIONS" />
         </FormField>
         <FormField label="Montant" width="amount" v-slot="{ id }">
           <input :id="id" data-testid="adj-amount" type="number" v-model.number="form.amount" />

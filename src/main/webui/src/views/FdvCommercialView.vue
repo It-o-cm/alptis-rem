@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { formatAmount } from '../presentation/format';
+import { variableStatusLabel } from '../presentation/salesforce';
 import GaugeChart from '../components/charts/GaugeChart.vue';
 import { AppButton, AppCard, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
@@ -49,7 +50,7 @@ const columns: Column<Result>[] = [
   { key: 'component', label: 'Composante' },
   { key: 'achievementRate', label: 'Atteinte', align: 'num', value: (r) => `${(r.achievementRate * 100).toFixed(0)} %` },
   { key: 'amount', label: 'Montant', align: 'num', value: (r) => amount(r.amount) },
-  { key: 'status', label: 'Statut' },
+  { key: 'status', label: 'Statut', value: (r) => variableStatusLabel(r.status) },
   { key: 'adjustmentReason', label: 'Motif', value: (r) => r.adjustmentReason ?? '—' },
 ];
 

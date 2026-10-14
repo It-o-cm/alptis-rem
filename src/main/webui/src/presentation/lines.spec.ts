@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { lineNatureLabel, lineStatusLabel, directionLabel, adjustmentStatusLabel, NATURE_OPTIONS } from './lines';
+import {
+  lineNatureLabel,
+  lineStatusLabel,
+  directionLabel,
+  adjustmentStatusLabel,
+  adjustmentTypeLabel,
+  NATURE_OPTIONS,
+  ADJUSTMENT_TYPE_OPTIONS,
+} from './lines';
 
 describe('commission line labels', () => {
   it('labels natures, a dash for none, and echoes an unknown one', () => {
@@ -34,6 +42,22 @@ describe('commission line labels', () => {
     expect(adjustmentStatusLabel('APPLIED')).toBe('Appliqué');
     expect(adjustmentStatusLabel(null)).toBe('—');
     expect(adjustmentStatusLabel('XXX')).toBe('XXX');
+  });
+
+  it('labels adjustment types, a dash for none, and echoes an unknown one', () => {
+    expect(adjustmentTypeLabel('EXCEPTIONAL_ADVANCE')).toBe('Avance exceptionnelle');
+    expect(adjustmentTypeLabel('MANUAL_CLAWBACK')).toBe('Reprise manuelle');
+    expect(adjustmentTypeLabel('CORRECTION')).toBe('Correction');
+    expect(adjustmentTypeLabel('EXCEPTIONAL_COMMISSION')).toBe('Commission exceptionnelle');
+    expect(adjustmentTypeLabel('ACCOUNT_TRANSFER')).toBe('Transfert entre comptes');
+    expect(adjustmentTypeLabel(null)).toBe('—');
+    expect(adjustmentTypeLabel('XXX')).toBe('XXX');
+  });
+
+  it('offers every adjustment type as an option with its label', () => {
+    expect(ADJUSTMENT_TYPE_OPTIONS).toContainEqual({ value: 'CORRECTION', label: 'Correction' });
+    expect(ADJUSTMENT_TYPE_OPTIONS).toHaveLength(5);
+    expect(ADJUSTMENT_TYPE_OPTIONS.every((o) => o.value.length > 0 && o.label.length > 0)).toBe(true);
   });
 
   it('offers every nature as a filter option with its label', () => {

@@ -4,7 +4,7 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
 import { formatAmount } from '../presentation/format';
-import { jobCodeLabel, JOB_CODES, componentLabel, PLAN_COMPONENTS } from '../presentation/salesforce';
+import { jobCodeLabel, JOB_CODES, componentLabel, PLAN_COMPONENTS, objectiveTypeLabel } from '../presentation/salesforce';
 import {
   AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading,
 } from '../components/ui';
@@ -90,7 +90,7 @@ const collaboratorColumns: Column<Collaborator>[] = [
 /** Columns of the versioned objectives table. */
 const objectiveColumns: Column<Objective>[] = [
   { key: 'employee', label: 'Collaborateur', value: (o) => o.employee ?? 'Collectif' },
-  { key: 'type', label: 'Type' },
+  { key: 'type', label: 'Type', value: (o) => objectiveTypeLabel(o.type) },
   { key: 'periodFrom', label: 'Période', value: (o) => `${o.periodFrom} → ${o.periodTo}` },
   { key: 'target', label: 'Cible', align: 'num' },
   { key: 'versionNo', label: 'Version', value: (o) => `v${o.versionNo}` },

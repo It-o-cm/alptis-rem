@@ -32,6 +32,12 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
 
 État au 2026-10-14 (ADM-03 en cours) :
 
+- **Balayage des colonnes de tableau (5 écrans)** : AdjustmentsView (type d'ajustement, nouveau
+  `adjustmentTypeLabel` + options, 100 % vitest), FdvPlanView (type d'objectif), FdvCommercialView
+  (statut de variable), RepriseView (statut d'import), SimulationView (nature) affichent désormais ces
+  énumérations au libellé FR du glossaire via les helpers existants (`objectiveTypeLabel`,
+  `variableStatusLabel`, `importStatusLabel`, `lineNatureLabel`) ou le nouveau. vitest 100 % (172 tests),
+  e2e des 4 specs touchées vertes (16/16), build serveur inchangé.
 - **Balayage des libellés d'énum (EnrollmentsView, DistributorsView)** : helpers de présentation
   `agreements.ts` (type d'accord, état de signature, statut d'inscription) et `distributors.ts`
   (type de distributeur, statut de distributeur/code de production), tous deux 100 % vitest. Les deux
@@ -432,8 +438,14 @@ de RulesView) :
 - ~~DistributorsView~~ **converti (2026-10-14)** : `agreementType`, `signatureStatus`, statut d'inscription
   (helper `agreements.ts`) **et** type de distributeur + statut par entité + statut de code de production
   (helper `distributors.ts`, énums repérés en plus lors du balayage) affichés au libellé FR.
-- (poursuivre l'audit des autres tableaux : statuts, natures, sens encore affichés bruts — reste à passer
-  en revue les écrans non encore audités.)
+- ~~Audit des colonnes de tableau (2026-10-14)~~ **fait** : balayage systématique des colonnes `DataTable`
+  liées à une énumération (clés `status`/`type`/`nature`/`direction`/`reason`/`severity`/`decision`/`state`…).
+  Offenseurs réels corrigés — AdjustmentsView (type d'ajustement → `adjustmentTypeLabel`, sélecteur de type
+  au libellé), FdvPlanView (type d'objectif → `objectiveTypeLabel`), FdvCommercialView (statut de variable →
+  `variableStatusLabel`), RepriseView (statut d'import → `importStatusLabel`), SimulationView (nature →
+  `lineNatureLabel`). Les autres colonnes repérées rendaient déjà par un slot `#cell-*` labellisé.
+- (reste de l'audit : les énumérations affichées hors tableau — valeurs de fiches `DetailRow` et
+  interpolations `{{ }}` directes — à passer en revue écran par écran avant de clore ADM-03.)
 
 Socle « liste / sélection » complété le 2026-10-13 : stores Pinia `groupings`, `delegations`,
 `productionCodes`, `plans`, `rules` (100 % vitest) ; composants `GroupSelect`, `DelegationSelect`,

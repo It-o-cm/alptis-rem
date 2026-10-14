@@ -10,6 +10,7 @@ import {
   PageHeading, RuleSelect,
 } from '../components/ui';
 import type { Column } from '../components/ui';
+import { lineNatureLabel } from '../presentation/lines';
 
 interface NatureComparison {
   nature: string;
@@ -101,7 +102,7 @@ const compareSeries = computed(() => {
 
 /** Columns of the per-nature gap table. */
 const natureColumns: Column<NatureComparison>[] = [
-  { key: 'nature', label: 'Nature' },
+  { key: 'nature', label: 'Nature', value: (n) => lineNatureLabel(n.nature) },
   { key: 'real', label: 'Réel', align: 'num', value: (n) => amount(n.real) },
   { key: 'simulated', label: 'Simulé', align: 'num', value: (n) => amount(n.simulated) },
   { key: 'ecart', label: 'Écart', align: 'num', value: (n) => amount(n.ecart) },

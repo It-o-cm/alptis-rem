@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateImports } from '../presentation/access';
+import { importStatusLabel } from '../presentation/imports';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, EntitySelect, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -33,7 +34,7 @@ const columns: Column<UploadResponse>[] = [
   { key: 'linesLoaded', label: 'Chargées', align: 'num' },
   { key: 'linesRejected', label: 'Rejetées', align: 'num' },
   { key: 'linesOnHold', label: 'En attente', align: 'num' },
-  { key: 'status', label: 'Statut' },
+  { key: 'status', label: 'Statut', value: (r) => importStatusLabel(r.status) },
 ];
 
 /** Uploads the opening-balance file for the selected entity and source system. */
