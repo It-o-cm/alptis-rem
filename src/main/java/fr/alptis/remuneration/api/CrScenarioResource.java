@@ -127,6 +127,7 @@ public class CrScenarioResource {
             case "CR-50" -> seedCr50(entity, periodMonth);
             case "CR-51" -> seedCr51(entity, periodMonth);
             case "CR-63" -> seedCr63(entity, periodMonth);
+            case "CR-65" -> seedCr65(entity, periodMonth);
             case "CR-66" -> seedCr66(entity, periodMonth);
             case "CR-67" -> seedCr67(entity, periodMonth);
             default -> {
@@ -1012,6 +1013,34 @@ public class CrScenarioResource {
                 "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-65 (cycle comptable) : l'exemple de la §10.2 — une provision de prévisionnel de 180 €, puis un
+     * encaissement commissionné à 15 € (reconnaissance de l'acquisition puis du payable), enfin le
+     * paiement de 15 €, toutes les écritures équilibrées. La ligne `FORECAST` et la ligne `EARNED` (dotée
+     * d'un code de production pour alimenter un compte et un ordre) sont posées comme état d'entrée.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr65(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        forecastLine(entity, period, "180.00", null);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR65", product, periodMonth, "P-CR65", null);
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        CommissionLine earned = new CommissionLine();
+        earned.entity = entity;
+        earned.period = period;
+        earned.direction = Direction.OUTBOUND;
+        earned.nature = LineNature.LINEAR;
+        earned.status = LineStatus.EARNED;
+        earned.amount = new BigDecimal("15.00");
+        earned.coverage = coverage;
+        earned.originProductionCode = pc;
+        earned.persist();
     }
 
     /**

@@ -863,4 +863,42 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-65 : le cycle comptable écrit la provision de 180 € puis l’acquisition et le payable de 15 € @screen:periods @screen:accounting @cr:CR-65', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-65&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+
+    await admin.goto('/comptabilite');
+    await admin.getByTestId('acc-month').selectOption('2026-01-01');
+    await admin.getByTestId('acc-refresh').click();
+    const forecast = admin.locator('[data-testid^="entry-row-"]').filter({ hasText: 'FORECAST_RECOGNITION' });
+    await expect(forecast).toHaveCount(1);
+    await expect(forecast.first()).toContainText('180,00');
+    await expect(admin.locator('[data-testid^="entry-row-"]').filter({ hasText: 'EARNING' })).toContainText('15,00');
+    await expect(
+      admin.locator('[data-testid^="entry-row-"]').filter({ hasText: 'PAYABLE_RECOGNITION' }),
+    ).toContainText('15,00');
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });

@@ -369,6 +369,37 @@ class CrScenarioResourceTest {
                 .body("exclusions.find { it.reason == 'BELOW_THRESHOLD' }.amount", is(7.50f));
     }
 
+    /** The accounting entries of a UNEP period, ready for body assertions. */
+    private static io.restassured.response.ValidatableResponse entries(String month) {
+        return given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounting/UNEP/" + month + "/entries").then().statusCode(200);
+    }
+
+    /** CR-65: the accounting cycle posts the forecast provision of 180, the 15 earning/payable, then the 15 payment. */
+    @Test
+    void cr65_accounting_cycle() {
+        given().when().post("/api/test/cr-scenario?cr=CR-65&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        transition("admin-unep", "2026-01-01", "CALCULATED");
+        transition("operator-unep", "2026-01-01", "CONTROLLED");
+        transition("validator-unep", "2026-01-01", "BUSINESS_VALIDATED");
+        entries("2026-01-01")
+                .body("find { it.accountingEvent == 'FORECAST_RECOGNITION' }.amount", is(180.00f))
+                .body("find { it.accountingEvent == 'EARNING' }.amount", is(15.00f))
+                .body("find { it.accountingEvent == 'PAYABLE_RECOGNITION' }.amount", is(15.00f));
+        // Prepare, validate and settle the payment, which posts the 15,00 € payment entry.
+        transition("operator-unep", "2026-01-01", "PAYMENT_PREPARED");
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2026-01-01/lots").then().statusCode(200)
+                .body("size()", is(1)).extract().path("[0].id");
+        int orderId = given().auth().preemptive().basic("finance-unep", "finance-unep")
+                .when().post("/api/ui/v1/payment/lots/" + lotId + "/validate").then().statusCode(200)
+                .body("orders.size()", is(1)).extract().path("orders[0].id");
+        given().auth().preemptive().basic("finance-unep", "finance-unep").contentType("application/json")
+                .body(java.util.Map.of("settled", true))
+                .when().post("/api/ui/v1/payment/orders/" + orderId + "/result").then().statusCode(200);
+        entries("2026-01-01").body("find { it.accountingEvent == 'PAYMENT' }.amount", is(15.00f));
+    }
+
     /** CR-66: a sixth-month termination posts a forecast-adjustment entry of 90,00 € at business validation. */
     @Test
     void cr66_termination_forecast_adjustment() {
