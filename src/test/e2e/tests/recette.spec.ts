@@ -450,4 +450,39 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(rcp).toHaveCount(1);
     await expect(rcp.first()).toContainText(/8.?000,00/);
   });
+
+  test('CR-49 : le partage avec un groupement verse 27,00 € au distributeur et 3,00 € au groupement @screen:calculations @screen:commissionSearch @cr:CR-49', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-49&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const linear = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' });
+    await expect(linear).toHaveCount(2);
+    await expect(linear.filter({ hasText: '27,00' })).toHaveCount(1);
+    await expect(linear.filter({ hasText: '3,00' })).toHaveCount(1);
+  });
+
+  test('CR-51 : une commission externe est intégrée telle quelle, 17,50 € @screen:calculations @screen:commissionSearch @cr:CR-51', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-51&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const external = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Commission externe' });
+    await expect(external).toHaveCount(1);
+    await expect(external.first()).toContainText('17,50');
+  });
 });

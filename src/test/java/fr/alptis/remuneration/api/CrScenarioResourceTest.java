@@ -286,4 +286,20 @@ class CrScenarioResourceTest {
         search("2026-12-01").body("findAll { it.nature == 'RCP' }.size()", is(1))
                 .body("find { it.nature == 'RCP' }.amount", is(8000.00f));
     }
+
+    /** CR-49: a 30 € linear commission split 90/10 pays 27,00 € to the distributor and 3,00 € to its group. */
+    @Test
+    void cr49_share_with_group() {
+        plantAndRun("CR-49");
+        search().body("findAll { it.nature == 'LINEAR' }.size()", is(2))
+                .body("findAll { it.nature == 'LINEAR' }.amount", hasItems(27.00f, 3.00f));
+    }
+
+    /** CR-51: an external line is attributed as-is — one EXTERNAL line of 17,50 €, no recalculation. */
+    @Test
+    void cr51_external() {
+        plantAndRun("CR-51");
+        search().body("findAll { it.nature == 'EXTERNAL' }.size()", is(1))
+                .body("find { it.nature == 'EXTERNAL' }.amount", is(17.50f));
+    }
 }

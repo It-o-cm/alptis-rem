@@ -15,6 +15,7 @@ import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
+import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.EventType;
@@ -23,6 +24,9 @@ import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
+import fr.alptis.remuneration.domain.PayeeRule;
+import fr.alptis.remuneration.domain.PayeeRuleShare;
+import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.QualityIndicator;
@@ -106,6 +110,8 @@ public class CrScenarioResource {
             case "CR-35" -> seedCr35(entity, periodMonth);
             case "CR-42" -> seedCr42(entity, periodMonth);
             case "CR-46" -> seedCr46(entity, periodMonth);
+            case "CR-49" -> seedCr49(entity, periodMonth);
+            case "CR-51" -> seedCr51(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -702,6 +708,88 @@ public class CrScenarioResource {
         indicator.periodTo = LocalDate.of(year, 12, 31);
         indicator.value = new BigDecimal(value);
         indicator.persist();
+    }
+
+    /**
+     * CR-49 (partage avec un groupement) : une commission linéaire de 30 € (15 % de 200 €) partagée par
+     * la règle de bénéficiaire donne 27,00 € au distributeur (90 %) et 3,00 € à son groupement (10 %) ;
+     * deux lignes `LINEAR`.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr49(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR49", product, periodMonth, "P-CR49", null);
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CR49").firstResult();
+        DistributorGroup group = new DistributorGroup();
+        group.code = "G-CR49";
+        group.label = "G-CR49";
+        group.persist();
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        payeeRule(entity, pc, distributor, "0.9", group, "0.1");
+        linearChoice(coverage, "0.15", periodMonth, null);
+        version(entity, "PLAN-CR49", "R-CR49", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        event(entity, coverage, "CR49-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(14), "200");
+    }
+
+    /**
+     * CR-51 (commission externe) : une ligne reçue (assiette 500 €, taux 3,5 %, montant 17,50 €) est
+     * intégrée telle quelle, sans recalcul ; une ligne `EXTERNAL` de 17,50 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr51(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR51", product, periodMonth, "P-CR51", null);
+        version(entity, "PLAN-CR51", "R-CR51", RuleFamily.EXTERNAL, LineNature.EXTERNAL,
+                "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE_SELECT\"]}", "{}", periodMonth, null, null);
+        BusinessEvent e = event(entity, coverage, "CR51-E1", EventType.PREMIUM_COLLECTED, periodMonth.plusDays(4),
+                null);
+        e.precomputedBasis = new BigDecimal("500.00");
+        e.precomputedRate = new BigDecimal("0.035");
+        e.precomputedAmount = new BigDecimal("17.50");
+    }
+
+    /**
+     * Creates a payee rule on a production code splitting the commission between a distributor and a group.
+     *
+     * @param entity          the entity
+     * @param pc              the production code the rule keys off
+     * @param distributor     the distributor payee
+     * @param distributorShare the distributor share, as a fraction
+     * @param group           the group payee
+     * @param groupShare      the group share, as a fraction
+     */
+    private void payeeRule(LegalEntity entity, ProductionCode pc, Distributor distributor, String distributorShare,
+                           DistributorGroup group, String groupShare) {
+        PayeeRule rule = new PayeeRule();
+        rule.entity = entity;
+        rule.productionCode = pc;
+        rule.persist();
+        payeeShare(rule, PayeeType.DISTRIBUTOR, distributor.getId(), distributorShare);
+        payeeShare(rule, PayeeType.GROUP, group.getId(), groupShare);
+    }
+
+    /**
+     * Adds one share to a payee rule.
+     *
+     * @param rule    the payee rule
+     * @param type    the payee type
+     * @param payeeId the payee's technical id
+     * @param share   the share, as a fraction
+     */
+    private void payeeShare(PayeeRule rule, PayeeType type, Long payeeId, String share) {
+        PayeeRuleShare s = new PayeeRuleShare();
+        s.payeeRule = rule;
+        s.payeeType = type;
+        s.payeeId = payeeId;
+        s.share = new BigDecimal(share);
+        s.persist();
     }
 
     /**
