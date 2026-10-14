@@ -110,7 +110,10 @@ public class CrScenarioResource {
             case "CR-30" -> seedCr30(entity, periodMonth);
             case "CR-31" -> seedCr31(entity, periodMonth);
             case "CR-32" -> seedCr32(entity, periodMonth);
+            case "CR-33" -> seedCr33(entity, periodMonth);
+            case "CR-34" -> seedCr34(entity, periodMonth);
             case "CR-35" -> seedCr35(entity, periodMonth);
+            case "CR-36" -> seedCr36(entity, periodMonth);
             case "CR-42" -> seedCr42(entity, periodMonth);
             case "CR-46" -> seedCr46(entity, periodMonth);
             case "CR-40" -> seedCr40(entity, periodMonth);
@@ -525,6 +528,76 @@ public class CrScenarioResource {
     private static final String OUT_DISCOUNT =
             "{\"settlementRule\":\"FIFTH_ANNIVERSARY\",\"agreementRequired\":false,\"rate\":0.08,"
             + "\"offsetting\":false,\"annualReadjustment\":false}";
+
+    /** Parameters of an inbound (insurer) retirement discount at 10 % with a 1,95 % recall rate. */
+    private static final String IN_DISCOUNT =
+            "{\"settlementRule\":\"FIFTH_ANNIVERSARY\",\"agreementRequired\":false,\"rate\":0.10,"
+            + "\"recallRate\":0.0195,\"annualReadjustment\":false}";
+
+    /**
+     * CR-33 (rappel, commission reçue de l'assureur) : escompte de 120 € (25 versements de 100 € à
+     * 1,95 %) sur un plan suspendu ; le rappel attendu de −71,25 € est conservé comme **montant attendu**
+     * du contrôle CAL-13, sans ligne. Lu sur l'écran des contrôles (colonne « Attendu »).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr33(LegalEntity entity, LocalDate periodMonth) {
+        seedInsurerRecall(entity, periodMonth, "CR33", 25, "100.00");
+    }
+
+    /**
+     * CR-34 (rappel, commission reçue de l'assureur) : escompte de 240 € (21 versements de 200 € à
+     * 1,95 %) ; le rappel attendu de −158,10 € est conservé comme montant attendu du contrôle CAL-13.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr34(LegalEntity entity, LocalDate periodMonth) {
+        seedInsurerRecall(entity, periodMonth, "CR34", 21, "200.00");
+    }
+
+    /**
+     * Seeds an inbound retirement discount whose plan is suspended after a number of scheduled payments,
+     * so the real calculation records the expected insurer-commission recall (CAL-13, P17) without a line.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     * @param key         the scenario key (contract and partner suffix)
+     * @param payments    the number of scheduled payments before suspension
+     * @param amount      each scheduled payment amount
+     */
+    private void seedInsurerRecall(LegalEntity entity, LocalDate periodMonth, String key, int payments,
+                                   String amount) {
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, key, product, periodMonth, "P-" + key, null);
+        linearChoice(coverage, "0.0145", periodMonth, null);
+        version(entity, Direction.INBOUND, "PLAN-" + key, "R-" + key, RuleFamily.ADVANCE, LineNature.ADVANCE,
+                savingsScope(entity), IN_DISCOUNT, periodMonth, null, null);
+        for (int i = 1; i <= payments; i++) {
+            event(entity, coverage, key + "-S" + i, EventType.SCHEDULED_PAYMENT, periodMonth.plusDays(i), amount);
+        }
+        event(entity, coverage, key + "-SUS", EventType.PLAN_SUSPENDED, periodMonth.plusDays(27), null);
+    }
+
+    /**
+     * CR-36 (sur-commission assureur) : 28 % de 3 600 € de versements programmés, plafonné à 50 000 € ;
+     * la sur-commission attendue de 1 008,00 € est conservée comme montant attendu du contrôle CAL-13,
+     * sans ligne, au moment de la clôture annuelle.
+     *
+     * @param entity      the entity
+     * @param periodMonth the annual-close month
+     */
+    private void seedCr36(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, "CR36", product, LocalDate.of(year, 1, 1), "P-CR36", null);
+        version(entity, Direction.INBOUND, "PLAN-CR36", "R-CR36", RuleFamily.LINEAR, LineNature.LINEAR,
+                savingsScope(entity),
+                "{\"rateSource\":\"RULE\",\"rate\":0.28,\"calculationFrequency\":\"ANNUAL\",\"annualCap\":50000}",
+                LocalDate.of(year, 1, 1), null, null);
+        event(entity, coverage, "CR36-S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(year, 6, 1), "3600.00");
+    }
 
     /**
      * CR-32 (versement programmé, escompté) : un plan programmé de 300 €/mois escompté donne, l'année 1,
@@ -1290,11 +1363,34 @@ public class CrScenarioResource {
     private RuleVersion version(LegalEntity entity, String planCode, String ruleCode, RuleFamily family,
                                 LineNature nature, String scope, String parameters, LocalDate from, LocalDate to,
                                 String clawback) {
+        return version(entity, Direction.OUTBOUND, planCode, ruleCode, family, nature, scope, parameters, from, to,
+                clawback);
+    }
+
+    /**
+     * Creates an active rule version in a plan of the given direction, creating its plan and rule.
+     *
+     * @param entity     the entity
+     * @param direction  the plan direction (outbound paid, inbound received)
+     * @param planCode   the plan code
+     * @param ruleCode   the rule code
+     * @param family     the calculation family
+     * @param nature     the output nature
+     * @param scope      the scope JSON
+     * @param parameters the parameters JSON
+     * @param from       the start of validity
+     * @param to         the end of validity, or null
+     * @param clawback   the clawback policy JSON, or null when the rule has none
+     * @return the created rule version
+     */
+    private RuleVersion version(LegalEntity entity, Direction direction, String planCode, String ruleCode,
+                                RuleFamily family, LineNature nature, String scope, String parameters, LocalDate from,
+                                LocalDate to, String clawback) {
         CommissionPlan plan = new CommissionPlan();
         plan.entity = entity;
         plan.code = planCode;
         plan.label = planCode;
-        plan.direction = Direction.OUTBOUND;
+        plan.direction = direction;
         plan.vintage = (short) 2026;
         plan.persist();
         Rule rule = new Rule();

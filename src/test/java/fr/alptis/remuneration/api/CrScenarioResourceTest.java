@@ -255,6 +255,36 @@ class CrScenarioResourceTest {
                 .body("find { it.nature == 'ADVANCE' }.amount", is(288.00f));
     }
 
+    /** The anomalies of a UNEP period, ready for body assertions. */
+    private static io.restassured.response.ValidatableResponse anomalies(String month) {
+        return given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/controls/UNEP/" + month + "/anomalies").then().statusCode(200);
+    }
+
+    /** CR-33: a suspended discounted plan keeps an expected insurer-commission recall of −71,25 €. */
+    @Test
+    void cr33_expected_insurer_recall() {
+        plantAndRun("CR-33");
+        anomalies("2026-01-01").body("find { it.controlCode == 'CAL-13' }.expectedValue as double", is(-71.25));
+    }
+
+    /** CR-34: a suspended discounted plan keeps an expected insurer-commission recall of −158,10 €. */
+    @Test
+    void cr34_expected_insurer_recall() {
+        plantAndRun("CR-34");
+        anomalies("2026-01-01").body("find { it.controlCode == 'CAL-13' }.expectedValue as double", is(-158.1));
+    }
+
+    /** CR-36: the annual close keeps an expected insurer surcommission of 1 008,00 €, no line. */
+    @Test
+    void cr36_expected_surcommission() {
+        given().when().post("/api/test/cr-scenario?cr=CR-36&entity=UNEP&month=2026-12-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-12-01/close-annual").then().statusCode(200);
+        search("2026-12-01").body("size()", is(0));
+        anomalies("2026-12-01").body("find { it.controlCode == 'CAL-13' }.expectedValue as double", is(1008.0));
+    }
+
     /**
      * CR-35: closing the year on a distributor whose production stays under 10 000 € applies the 10% tier
      * to each contract, giving COMPLEMENT lines of 351,00 € and 352,98 €, 703,98 € in all.

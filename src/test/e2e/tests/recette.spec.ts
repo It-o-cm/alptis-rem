@@ -644,4 +644,47 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(clawback).toHaveCount(1);
     await expect(clawback.first()).toContainText('-40,00');
   });
+
+  // Insurer-commission recall (CR-33/34): the engine records an expected amount on the CAL-13 control
+  // rather than a commission line; it is read on the controls screen's "Attendu" column.
+  const insurerRecalls = [
+    { cr: 'CR-33', expected: '-71.25' },
+    { cr: 'CR-34', expected: '-158.10' },
+  ];
+  for (const c of insurerRecalls) {
+    test(`${c.cr} : le rappel attendu de ${c.expected} est conservé sur le contrôle CAL-13 @screen:calculations @screen:controls @cr:${c.cr}`, async ({
+      page,
+      request,
+    }) => {
+      const seeded = await request.post(`/api/test/cr-scenario?cr=${c.cr}&entity=UNEP&month=2026-01-01`);
+      expect(seeded.ok()).toBeTruthy();
+      await page.goto('/calculs');
+      await page.getByTestId('calc-run').click();
+      await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+      await page.goto('/controles');
+      await page.getByTestId('ctl-month').selectOption('2026-01-01');
+      await page.getByTestId('ctl-refresh').click();
+      const anomaly = page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'CAL-13' });
+      await expect(anomaly).toHaveCount(1);
+      await expect(anomaly.first()).toContainText(c.expected);
+    });
+  }
+
+  test('CR-36 : la sur-commission assureur attendue de 1 008,00 € est conservée sur le contrôle CAL-13 @screen:calculations @screen:controls @cr:CR-36', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-36&entity=UNEP&month=2026-12-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-12-01');
+    await page.getByTestId('close-annual').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Complément retraite calculé');
+    await page.goto('/controles');
+    await page.getByTestId('ctl-month').selectOption('2026-12-01');
+    await page.getByTestId('ctl-refresh').click();
+    const anomaly = page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'CAL-13' });
+    await expect(anomaly).toHaveCount(1);
+    await expect(anomaly.first()).toContainText('1008.00');
+  });
 });
