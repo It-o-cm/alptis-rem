@@ -765,7 +765,11 @@ implémenté côté moteur, `.min(1)`). 19 `@path`.
   liste des chèques (seul le virement avait son fichier SEPA) ; ajout d'un point d'accès
   `/payment/lots/{id}/cheque-list` (CSV bénéficiaire/montant/référence) et d'un bouton « Liste des
   chèques » sur l'écran de paiement, symétrique du fichier SEPA. Le test des chèques télécharge et lit la
-  liste avant de saisir l'émission et de régler. 30 `@path`.
+  liste avant de saisir l'émission et de régler.
+
+**FDV-06 étiqueté (2026-10-15).** Le test du variable collectif annuel règle l'enveloppe en janvier N+1
+et vérifie l'enveloppe du poste CAC (550,00 €) sur l'écran de validation. La proratisation par absence
+est prouvée au niveau unitaire (`SalesForceServiceTest`, `runAnnualCollective`). 31 `@path`.
 
 **CPT-02 étiqueté (2026-10-15).** Le rejeu CR-61 (compensation : deux lignes de transfert, paiement du
 net de 300,00 €) couvre aussi le parcours CPT-02 « Compensation entre deux comptes d'un même

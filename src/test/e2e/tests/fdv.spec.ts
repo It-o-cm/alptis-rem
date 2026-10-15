@@ -65,7 +65,7 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   await finance.close();
 });
 
-test('l’administrateur règle le variable collectif annuel en janvier N+1 @screen:fdvObjectives @screen:fdvPlan @screen:fdvValidation @req:FDV-08', async ({
+test('l’administrateur règle le variable collectif annuel en janvier N+1 @screen:fdvObjectives @screen:fdvPlan @screen:fdvValidation @req:FDV-08 @path:FDV-06', async ({
   browser,
 }) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
