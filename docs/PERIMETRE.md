@@ -886,14 +886,17 @@ re-soumet la même clé pour créer une **version 2** ; assertion ajoutée que l
 mais ne vérifie pas le montant pondéré ; à renforcer.)
 
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
-- **INT-02 — code de rejet `TYPE` manquant.** ING-04 (§8.2) impose **six** codes de rejet
-  (`STRUCTURE`, `TYPE`, `MISSING_FIELD`, `AMOUNT`, `FUTURE_DATE`, `DUPLICATE`) mais l'énumération
-  `RejectionReasonCode` n'en a que **cinq** : `TYPE` manque. Une valeur présente mais non convertible
-  (date ou nombre mal formé, énumération inconnue) retombe aujourd'hui sur `MISSING_FIELD`/`AMOUNT`/
-  `STRUCTURE` selon le champ. Combler `TYPE` touche les dix services d'import (distinguer « absent » de
-  « présent mais de mauvais type ») — chantier dédié, non entamé en fin de tour pour ne pas risquer un
-  changement transverse mal maîtrisé. **INT-02 reste non étiquetable** tant que les six codes ne sont pas
-  tous produisibles.
+- **INT-02 — les six codes sont répartis sur plusieurs imports (rectifié 2026-10-15).** *Correction d'un
+  relevé erroné du même jour : `TYPE` **existe** bien dans `RejectionReasonCode` (les six y sont :
+  `STRUCTURE`, `TYPE`, `MISSING_FIELD`, `AMOUNT`, `FUTURE_DATE`, `DUPLICATE`) — l'absence relevée venait
+  d'un `grep` qui excluait les mots de 4 lettres.* Le vrai obstacle à INT-02 : aucun import ne produit les
+  six motifs sur un seul fichier. L'import d'événements produit `TYPE`, `MISSING_FIELD`, `AMOUNT`,
+  `FUTURE_DATE`, `DUPLICATE` (cinq) ; `STRUCTURE` n'est produit que par l'import de coordonnées bancaires
+  (IBAN de structure invalide). Une ligne au format décalé (mauvais nombre de colonnes) est aujourd'hui
+  complétée par des vides par `CsvFile` (donc `MISSING_FIELD`), jamais rejetée en `STRUCTURE`. Pour
+  étiqueter INT-02 : soit détecter la ligne « ragged » → `STRUCTURE` dans l'import d'événements (modif de
+  `CsvFile`, partagé — à peser), soit interpréter le parcours par type d'import. À trancher dans une passe
+  dédiée.
 - **INT-23 — indicateurs « calculés en interne » non matérialisés.** Les indicateurs de qualité sont
   *reçus* (import) ou semés ; le moteur *lit* des valeurs pour les conditions de versement
   (`indicatorValue`) mais n'écrit aucun `QualityIndicator` calculé en interne. Le test de l'écran est
