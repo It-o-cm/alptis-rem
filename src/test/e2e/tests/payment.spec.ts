@@ -62,7 +62,7 @@ test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règ
   await finance.close();
 });
 
-test('la Finance saisit l’émission des chèques @screen:payment @req:PAY-04 @role-action:FINANCE_CONTROLLER-record-cheque-emission', async ({
+test('la Finance saisit l’émission des chèques @screen:payment @req:PAY-04 @path:PAI-05 @role-action:FINANCE_CONTROLLER-record-cheque-emission', async ({
   browser,
 }) => {
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
@@ -71,6 +71,10 @@ test('la Finance saisit l’émission des chèques @screen:payment @req:PAY-04 @
   const chequeRow = page.locator('[data-testid^="lot-row-"]', { hasText: 'CHEQUE' });
   await expect(chequeRow).toHaveCount(1);
   await chequeRow.getByRole('button', { name: 'Détail' }).click();
+
+  // PAI-05: the cheque list is downloaded and read before the emission is recorded.
+  await page.getByTestId('lot-cheque-list').click();
+  await expect(page.getByTestId('cheque-list-content')).toContainText('beneficiaire;montant;reference_cheque');
 
   await page.getByTestId('lot-cheque-emission').click();
   await expect(page.getByTestId('pay-message')).toContainText('Émission des chèques');

@@ -49,6 +49,7 @@ const month = ref('2026-09-01');
 const lots = ref<LotView[]>([]);
 const detail = ref<LotDetail | null>(null);
 const sepa = ref('');
+const chequeList = ref('');
 const error = ref('');
 const message = ref('');
 const loading = ref(false);
@@ -184,6 +185,17 @@ async function showSepa(): Promise<void> {
   }
 }
 
+/** Loads the cheque list of the open cheque lot (PAI-05). */
+async function showChequeList(): Promise<void> {
+  if (!detail.value) return;
+  error.value = '';
+  try {
+    chequeList.value = await apiGetText(`/api/ui/v1/payment/lots/${detail.value.id}/cheque-list`);
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Liste des chèques indisponible';
+  }
+}
+
 /**
  * Records the bank result of a payment order, then reloads the lot.
  * @param order the payment order
@@ -311,6 +323,14 @@ onMounted(loadLots);
         >
           Saisir l'émission des chèques
         </AppButton>
+        <AppButton
+          v-if="canFinance() && detail.batchType === 'CHEQUE'"
+          variant="secondary"
+          data-testid="lot-cheque-list"
+          @click="showChequeList"
+        >
+          Liste des chèques
+        </AppButton>
       </div>
 
       <h3 class="ui-detail-sub">Ordres</h3>
@@ -349,6 +369,7 @@ onMounted(loadLots);
       </DataTable>
 
       <pre v-if="sepa" data-testid="sepa-content" class="ui-code">{{ sepa }}</pre>
+      <pre v-if="chequeList" data-testid="cheque-list-content" class="ui-code">{{ chequeList }}</pre>
     </AppCard>
   </div>
 </template>

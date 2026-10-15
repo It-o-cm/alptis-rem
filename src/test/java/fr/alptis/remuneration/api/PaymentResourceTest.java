@@ -148,6 +148,17 @@ class PaymentResourceTest {
     }
 
     /**
+     * The Finance controller downloads the cheque list of the seeded cheque lot (PAI-05).
+     */
+    @Test
+    void finance_downloads_the_cheque_list() {
+        int chequeId = chequeLotId();
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/payment/lots/" + chequeId + "/cheque-list")
+                .then().statusCode(200).body(org.hamcrest.Matchers.containsString("beneficiaire;montant;reference_cheque"));
+    }
+
+    /**
      * A Finance controller of another entity cannot record an Alptis cheque emission.
      */
     @Test

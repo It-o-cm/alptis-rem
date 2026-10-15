@@ -356,6 +356,27 @@ public class PaymentService {
     }
 
     /**
+     * Returns the cheque list of a cheque lot (section 9.6): one line per order, with the beneficiary,
+     * its amount and the cheque reference (the end-to-end id), for printing and mailing (PAI-05).
+     *
+     * @param batchId the cheque batch id
+     * @return the cheque list CSV
+     */
+    public String chequeListCsv(Long batchId) {
+        PaymentBatch batch = PaymentBatch.findById(batchId);
+        if (batch == null) {
+            throw new ResourceNotFoundException("Lot inconnu : " + batchId);
+        }
+        StringBuilder csv = new StringBuilder("beneficiaire;montant;reference_cheque\n");
+        for (PaymentOrder order : PaymentOrder.<PaymentOrder>list("batch = ?1 order by id", batch)) {
+            csv.append(nullSafe(order.creditorName)).append(';')
+                    .append(order.amount.toPlainString()).append(';')
+                    .append(nullSafe(order.endToEndId)).append('\n');
+        }
+        return csv.toString();
+    }
+
+    /**
      * Builds the SEPA XML of a batch and its orders.
      *
      * @param batch  the batch

@@ -284,6 +284,11 @@ class PaymentServiceTest {
         PaymentBatch cheque = PaymentBatch.<PaymentBatch>find("period = ?1 and batchType = ?2", p,
                 fr.alptis.remuneration.domain.BatchType.CHEQUE).firstResult();
         assertEquals(0, cheque.totalAmount.compareTo(new BigDecimal("50.00")));
+        // The cheque list carries one line per cheque with its amount (PAI-05).
+        String chequeCsv = service.chequeListCsv(cheque.getId());
+        assertTrue(chequeCsv.contains("beneficiaire;montant;reference_cheque"));
+        assertTrue(chequeCsv.contains("50.00"));
+        assertThrows(ResourceNotFoundException.class, () -> service.chequeListCsv(999999L));
     }
 
     /**

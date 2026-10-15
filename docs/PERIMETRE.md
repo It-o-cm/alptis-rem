@@ -761,7 +761,11 @@ implémenté côté moteur, `.min(1)`). 19 `@path`.
   période UNEP (non encore clôturée, écritures non transmises) et lit le CSV OUT-02 : en-tête complet
   (§9.11), double partie débit/crédit, mois comptable `2026-01` et montant 180.00 — l'extraction du jeu de
   démonstration de septembre étant vide (déjà transmise). 20 `@path`.
-- PAI-05 : pas de téléchargement de la liste des chèques.
+- PAI-05 : **comblé et étiqueté (2026-10-15)**. Le lot de chèques n'avait pas de téléchargement de la
+  liste des chèques (seul le virement avait son fichier SEPA) ; ajout d'un point d'accès
+  `/payment/lots/{id}/cheque-list` (CSV bénéficiaire/montant/référence) et d'un bouton « Liste des
+  chèques » sur l'écran de paiement, symétrique du fichier SEPA. Le test des chèques télécharge et lit la
+  liste avant de saisir l'émission et de régler. 30 `@path`.
 
 **CPT-02 étiqueté (2026-10-15).** Le rejeu CR-61 (compensation : deux lignes de transfert, paiement du
 net de 300,00 €) couvre aussi le parcours CPT-02 « Compensation entre deux comptes d'un même

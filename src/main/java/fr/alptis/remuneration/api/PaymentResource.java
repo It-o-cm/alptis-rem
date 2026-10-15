@@ -132,6 +132,21 @@ public class PaymentResource {
     }
 
     /**
+     * Returns the cheque list of a cheque lot (section 9.6, PAI-05), for printing and mailing.
+     *
+     * @param batchId the cheque batch id
+     * @return the cheque list CSV
+     */
+    @GET
+    @Path("/lots/{batchId}/cheque-list")
+    @Produces("text/csv")
+    @RolesAllowed({"FINANCE_CONTROLLER", "AUDITOR"})
+    public String chequeList(@PathParam("batchId") Long batchId) {
+        requireBatchScope(batchId);
+        return payment.chequeListCsv(batchId);
+    }
+
+    /**
      * Records the emission of a cheque lot's cheques (PAY-04): the Finance controller marks the issued
      * cheques as settled.
      *
