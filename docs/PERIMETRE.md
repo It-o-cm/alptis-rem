@@ -768,6 +768,11 @@ net de 300,00 €) couvre aussi le parcours CPT-02 « Compensation entre deux co
 distributeur ». 21 `@path`. CPT-01 (report débiteur sur **trois** périodes) reste à compléter — CR-60
 n'en couvre que deux (février/mars).
 
+**CAL-01 étiqueté (2026-10-15).** Le test de l'écran des exécutions vérifie désormais que l'exécution
+porte ses compteurs (unités/lignes non nuls) en plus du type « Réel » et du statut « Terminé ». 22
+`@path`. La « période verrouillée pendant le calcul » de CAL-01 est un état transitoire d'un calcul
+synchrone, non observable en e2e (atomicité de l'endpoint de calcul).
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

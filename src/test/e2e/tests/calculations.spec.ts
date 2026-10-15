@@ -10,7 +10,7 @@ import { loadDemo, USERS } from '../support/helpers';
 test.describe('Exécutions de calcul — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
-  test('lance un calcul, le suit et relance un périmètre @screen:calculations @req:CAL-01 @req:CAL-12', async ({
+  test('lance un calcul, le suit et relance un périmètre @screen:calculations @req:CAL-01 @req:CAL-12 @path:CAL-01', async ({
     page,
   }) => {
     await loadDemo(page.request);
@@ -23,6 +23,8 @@ test.describe('Exécutions de calcul — opérateur', () => {
     const firstRun = page.locator('[data-testid^="run-row-"]').first();
     await expect(firstRun).toContainText('Réel');
     await expect(firstRun).toContainText('Terminé');
+    // CAL-01: the execution carries its counters (units processed and lines produced), both non-zero.
+    await expect(firstRun).toContainText(/[1-9]/);
 
     // The demo plants a held event per entity: it appears as a unit in failure.
     await expect(page.locator('[data-testid^="failed-row-"]').first()).toBeVisible();
