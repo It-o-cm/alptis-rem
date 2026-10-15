@@ -296,4 +296,49 @@ class AdjustmentServiceTest {
         assertEquals(1, service.claimDetail(claim.getId()).lines().size());
         assertThrows(ResourceNotFoundException.class, () -> service.claimDetail(-1L));
     }
+
+    /**
+     * A claim is taken into treatment (OPEN → IN_PROGRESS), only once, and the adjustment that corrects
+     * one of its contested lines shows up on its fiche as a linked regularisation (REG-06).
+     */
+    @Test
+    @TestTransaction
+    void claim_take_and_linked_adjustments() {
+        Period p = period(M);
+        Distributor d = new Distributor();
+        d.partnerCode = "D2";
+        d.legalName = "D2";
+        d.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = p;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal("15");
+        line.persist();
+
+        Claim claim = service.recordClaim(unep(), d, "taux contesté", List.of(line));
+        // Take it into treatment: OPEN → IN_PROGRESS; a second take is refused, an unknown claim not found.
+        assertEquals(ClaimStatus.IN_PROGRESS, service.takeClaim(claim.getId()).status);
+        assertThrows(ValidationException.class, () -> service.takeClaim(claim.getId()));
+        assertThrows(ResourceNotFoundException.class, () -> service.takeClaim(-1L));
+
+        // An adjustment correcting the contested line is listed as a linked regularisation.
+        service.create(unep(), p, AdjustmentType.CORRECTION, new BigDecimal("9"), account(),
+                "régularisation +9", null, false, line, null, "op1");
+        AdjustmentService.ClaimDetail detail = service.claimDetail(claim.getId());
+        assertEquals(1, detail.linkedAdjustments().size());
+        AdjustmentService.LinkedAdjustment linked = detail.linkedAdjustments().get(0);
+        assertNotNull(linked.id());
+        assertEquals("CORRECTION", linked.type());
+        assertEquals(0, new BigDecimal("9").compareTo(linked.amount()));
+        assertEquals("régularisation +9", linked.reason());
+        assertEquals("SUBMITTED", linked.status());
+        assertEquals(line.getId(), linked.correctedLineId());
+
+        // A claim with no contested lines has no linked adjustments (empty-lines branch).
+        Claim bare = service.recordClaim(unep(), d, "sans ligne", List.of());
+        assertEquals(0, service.claimDetail(bare.getId()).linkedAdjustments().size());
+    }
 }

@@ -80,9 +80,16 @@ test('la constitution du lot de cycle donne un ordre par bénéficiaire, son tot
   expect(new Set(payees).size).toBe(count);
 
   // PAI-01: the lot total equals the sum of its orders (each the sum of a beneficiary's lines, CR-64).
+  // Cancelled orders (excluded beneficiaries) stay listed but do not count toward the lot total, so the
+  // sum is taken over the orders that are not cancelled.
   const parseEuro = (s: string): number => parseFloat(s.replace(/[^0-9,]/g, '').replace(',', '.'));
-  const amounts = await page.locator('[data-testid^="order-amount-"]').allTextContents();
-  const sum = amounts.reduce((acc, s) => acc + parseEuro(s), 0);
+  let sum = 0;
+  for (let i = 0; i < count; i += 1) {
+    const row = orderRows.nth(i);
+    const status = ((await row.locator('[data-testid^="order-status-"]').textContent()) ?? '').trim();
+    if (status === 'Annulé') continue;
+    sum += parseEuro(((await row.locator('[data-testid^="order-amount-"]').textContent()) ?? ''));
+  }
   const total = parseEuro((await page.getByTestId('lot-total').textContent()) ?? '');
   expect(Math.abs(total - sum)).toBeLessThan(0.005);
   await operator.close();

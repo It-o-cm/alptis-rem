@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, claimStatusLabel } from '../presentation/cycle';
-import { lineNatureLabel, lineStatusLabel } from '../presentation/lines';
+import { adjustmentStatusLabel, adjustmentTypeLabel, lineNatureLabel, lineStatusLabel } from '../presentation/lines';
 import { formatAmount, formatDate } from '../presentation/format';
 import { AppButton, AppCard, AppForm, AppMessage, DataTable, DistributorSelect, FormField, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
@@ -27,9 +27,19 @@ interface ContestedLine {
   status: string | null;
 }
 
+interface LinkedAdjustment {
+  id: number;
+  type: string | null;
+  amount: number | null;
+  reason: string | null;
+  status: string | null;
+  correctedLineId: number;
+}
+
 interface ClaimDetail {
   claim: ClaimView;
   lines: ContestedLine[];
+  linkedAdjustments: LinkedAdjustment[];
 }
 
 const session = useSessionStore();
@@ -57,6 +67,14 @@ const lineColumns: Column<ContestedLine>[] = [
   { key: 'nature', label: 'Nature', value: (l) => lineNatureLabel(l.nature) },
   { key: 'status', label: 'Statut', value: (l) => lineStatusLabel(l.status) },
   { key: 'amount', label: 'Montant', align: 'num', value: (l) => formatAmount(l.amount ?? undefined) },
+];
+
+/** Columns of the linked (regularising) adjustments table. */
+const adjustmentColumns: Column<LinkedAdjustment>[] = [
+  { key: 'type', label: 'Type', value: (a) => adjustmentTypeLabel(a.type) },
+  { key: 'status', label: 'Statut', value: (a) => adjustmentStatusLabel(a.status) },
+  { key: 'reason', label: 'Motif', value: (a) => a.reason ?? '—' },
+  { key: 'amount', label: 'Montant', align: 'num', value: (a) => formatAmount(a.amount ?? undefined) },
 ];
 
 /** Loads the entity's claims. */
@@ -95,6 +113,21 @@ async function record(): Promise<void> {
     await load();
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Enregistrement refusé';
+  }
+}
+
+/** Takes the open claim into treatment (OPEN → IN_PROGRESS). */
+async function take(): Promise<void> {
+  if (!detail.value) return;
+  message.value = '';
+  error.value = '';
+  try {
+    await apiPost(`/api/ui/v1/claims/${detail.value.claim.id}/take`, {});
+    message.value = 'Réclamation prise en charge.';
+    await open(detail.value.claim);
+    await load();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Prise en charge refusée';
   }
 }
 
@@ -170,6 +203,24 @@ onMounted(load);
         empty-testid="no-contested-line"
         :row-testid="(l) => `contested-line-${l.lineId}`"
       />
+
+      <h3 class="ui-detail-sub">Régularisations liées</h3>
+      <DataTable
+        :columns="adjustmentColumns"
+        :rows="detail.linkedAdjustments"
+        empty="Aucune régularisation liée."
+        empty-testid="no-linked-adjustment"
+        :row-testid="(a) => `claim-adjustment-${a.id}`"
+      />
+
+      <AppButton
+        v-if="canOperate() && detail.claim.status === 'OPEN'"
+        variant="secondary"
+        data-testid="claim-take"
+        @click="take"
+      >
+        Prendre en charge
+      </AppButton>
       <AppForm v-if="canOperate() && detail.claim.status !== 'CLOSED'" @submit="resolve">
         <FormField label="Régularisation" width="long" v-slot="{ id }">
           <input :id="id" data-testid="claim-resolution" type="text" v-model="resolution" />

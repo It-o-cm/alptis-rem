@@ -108,6 +108,22 @@ public class ClaimsResource {
     }
 
     /**
+     * Takes a claim into treatment, moving it from open to in progress (REG-06).
+     *
+     * @param id the claim id
+     * @return the claim, now in progress
+     */
+    @POST
+    @Path("/{id}/take")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
+    public ClaimView take(@PathParam("id") Long id) {
+        requireScope(entityOfClaim(id));
+        adjustments.takeClaim(id);
+        return adjustments.claimDetail(id).claim();
+    }
+
+    /**
      * Closes a claim once resolved (REG-06).
      *
      * @param id      the claim id

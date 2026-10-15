@@ -885,6 +885,19 @@ re-soumet la même clé pour créer une **version 2** ; assertion ajoutée que l
 `@path`. (FDV-04, pondération par marché à 13 500 €, non étiqueté : le test principal porte `@req:FDV-04`
 mais ne vérifie pas le montant pondéré ; à renforcer.)
 
+**REC-01 comblé et étiqueté (2026-10-15).** Le parcours réclamation demandait « ouverture, lien aux
+lignes contestées, régularisation, clôture ; état à chaque étape ; ajustement lié ». Manquaient l'étape
+intermédiaire et le lien à l'ajustement. Ajouts (fonction d'abord) : `AdjustmentService.takeClaim`
+(transition `OPEN → IN_PROGRESS`, refusée hors `OPEN`) et point d'accès `POST /claims/{id}/take` ;
+`claimDetail` expose désormais les **ajustements liés** — ceux dont la ligne corrigée (`correctedLine`,
+REG-02) est une ligne contestée de la réclamation — sans inventer de clé étrangère absente de la
+spécification. L'écran porte un bouton « Prendre en charge » (visible à l'état `OPEN`) et une section
+« Régularisations liées ». Le test e2e ouvre la réclamation de démonstration, passe un ajustement
+`CORRECTION` sur sa ligne contestée, la prend en charge (Ouverte → En cours), voit la régularisation liée,
+puis la clôt (En cours → Close) — les trois états et l'ajustement lié sont vérifiés. Couverture unitaire
+`AdjustmentServiceTest.claim_take_and_linked_adjustments` (toutes branches de `takeClaim`, détail avec et
+sans lignes). 43 `@path`.
+
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 — les six codes sont répartis sur plusieurs imports (rectifié 2026-10-15).** *Correction d'un
   relevé erroné du même jour : `TYPE` **existe** bien dans `RejectionReasonCode` (les six y sont :

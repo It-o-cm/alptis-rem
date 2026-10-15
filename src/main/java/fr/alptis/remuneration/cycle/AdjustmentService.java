@@ -299,6 +299,28 @@ public class AdjustmentService {
     }
 
     /**
+     * Takes a claim into treatment: {@code OPEN} → {@code IN_PROGRESS} (REG-06). Only an open claim can
+     * be taken, so a claim's treatment is tracked step by step.
+     *
+     * @param claimId the claim id
+     * @return the claim, now in progress
+     * @throws ResourceNotFoundException when the claim is unknown
+     * @throws ValidationException       when the claim is not open
+     */
+    @Transactional
+    public Claim takeClaim(Long claimId) {
+        Claim claim = Claim.findById(claimId);
+        if (claim == null) {
+            throw new ResourceNotFoundException("Réclamation inconnue : " + claimId);
+        }
+        if (claim.status != ClaimStatus.OPEN) {
+            throw new ValidationException("Seule une réclamation ouverte peut être prise en charge.");
+        }
+        claim.status = ClaimStatus.IN_PROGRESS;
+        return claim;
+    }
+
+    /**
      * Closes a claim with its resolution (REG-06).
      *
      * @param claimId    the claim id
@@ -358,11 +380,24 @@ public class AdjustmentService {
             throw new ResourceNotFoundException("Réclamation inconnue : " + claimId);
         }
         List<ContestedLine> lines = new java.util.ArrayList<>();
+        List<CommissionLine> contestedLines = new java.util.ArrayList<>();
         for (ClaimLine claimLine : ClaimLine.<ClaimLine>list("claim = ?1 order by id", claim)) {
             CommissionLine line = claimLine.commissionLine;
+            contestedLines.add(line);
             lines.add(new ContestedLine(line.getId(), line.nature.name(), line.amount, line.status.name()));
         }
-        return new ClaimDetail(toClaimView(claim), lines);
+        // The regularising adjustments linked to the claim: those correcting one of its contested lines
+        // (REG-02 links an adjustment to the line it corrects), so the claim shows its regularisation.
+        List<LinkedAdjustment> linked = new java.util.ArrayList<>();
+        if (!contestedLines.isEmpty()) {
+            for (Adjustment adjustment : Adjustment.<Adjustment>list("correctedLine in ?1 order by id",
+                    contestedLines)) {
+                linked.add(new LinkedAdjustment(adjustment.getId(), adjustment.adjustmentType.name(),
+                        adjustment.amount, adjustment.reason, adjustment.status.name(),
+                        adjustment.correctedLine.getId()));
+            }
+        }
+        return new ClaimDetail(toClaimView(claim), lines, linked);
     }
 
     /**
@@ -396,12 +431,29 @@ public class AdjustmentService {
     }
 
     /**
-     * The detail of one claim: its view and the contested commission lines.
+     * The detail of one claim: its view, the contested commission lines and the adjustments that
+     * regularise them (REG-06).
      *
-     * @param claim the claim view
-     * @param lines the contested lines
+     * @param claim              the claim view
+     * @param lines              the contested lines
+     * @param linkedAdjustments  the adjustments correcting the contested lines
      */
-    public record ClaimDetail(ClaimView claim, List<ContestedLine> lines) {
+    public record ClaimDetail(ClaimView claim, List<ContestedLine> lines,
+                              List<LinkedAdjustment> linkedAdjustments) {
+    }
+
+    /**
+     * An adjustment linked to a claim because it corrects one of its contested lines (REG-02, REG-06).
+     *
+     * @param id              the adjustment id
+     * @param type            the adjustment type code
+     * @param amount          the adjustment amount
+     * @param reason          the adjustment reason
+     * @param status          the adjustment status code
+     * @param correctedLineId the contested line it corrects
+     */
+    public record LinkedAdjustment(Long id, String type, BigDecimal amount, String reason, String status,
+                                   Long correctedLineId) {
     }
 
     /**

@@ -38,6 +38,55 @@ test.describe('Réclamations — opérateur', () => {
     await expect(page.getByText('Commission sous-évaluée')).toBeVisible();
   });
 
+  // Parcours REC-01 (section 4.4): a claim is opened against a contested line, taken into treatment,
+  // regularised by an adjustment that corrects that line, and closed — its state is shown at each step
+  // (Ouverte → En cours → Close) and the regularising adjustment is visible on the fiche (ajustement lié).
+  test('une réclamation suit ses états et porte l’ajustement qui la régularise @screen:claims @req:REG-06 @path:REC-01', async ({
+    page,
+  }) => {
+    await loadDemo(page.request);
+    await page.goto('/reclamations');
+
+    // The demo-seeded claim is open and lists a contested line.
+    await page.locator('[data-testid^="claim-row-"]').first().getByRole('button', { name: 'Fiche' }).click();
+    await expect(page.getByTestId('claim-detail')).toBeVisible();
+    await expect(page.getByTestId('claim-detail-status')).toContainText('Ouverte');
+    const contested = page.locator('[data-testid^="contested-line-"]').first();
+    await expect(contested).toBeVisible();
+    const lineId = Number(((await contested.getAttribute('data-testid')) ?? '').replace('contested-line-', ''));
+
+    // An adjustment corrects that very line: the regularisation (REG-02).
+    const auth = 'Basic ' + Buffer.from(
+      `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+    const adj = await page.request.post('/api/ui/v1/adjustments/ALPTIS_ASSURANCES/2026-09-01', {
+      headers: { Authorization: auth },
+      data: {
+        type: 'CORRECTION',
+        amount: 9,
+        payeeType: 'DISTRIBUTOR',
+        payeeId: 1,
+        reason: 'Régularisation réclamation',
+        correctedLineId: lineId,
+      },
+    });
+    expect(adj.ok(), `${adj.status()} ${await adj.text()}`).toBeTruthy();
+
+    // Take the claim into treatment: Ouverte → En cours (état à chaque étape).
+    await page.getByTestId('claim-take').click();
+    await expect(page.getByTestId('claim-detail-status')).toContainText('En cours');
+
+    // The regularising adjustment is now linked on the fiche (ajustement lié).
+    const linked = page.locator('[data-testid^="claim-adjustment-"]').first();
+    await expect(linked).toBeVisible();
+    await expect(linked).toContainText('Correction');
+
+    // Close it: En cours → Close.
+    await page.getByTestId('claim-resolution').fill('Régularisé par ajustement +9');
+    await page.getByTestId('claim-resolve').click();
+    await expect(page.getByTestId('claim-message')).toContainText('close');
+    await expect(page.getByTestId('claim-detail-status')).toContainText('Close');
+  });
+
   test('aucune violation d’accessibilité grave ou critique @screen:claims', async ({ page }) => {
     await loadDemo(page.request);
     await page.goto('/reclamations');

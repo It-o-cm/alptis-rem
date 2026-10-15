@@ -75,6 +75,11 @@ class ClaimsResourceTest {
                 .then().statusCode(200).body("lines.size()", is(1))
                 .body("lines[0].nature", is("LINEAR"));
 
+        // Taken into treatment before closing: OPEN → IN_PROGRESS → CLOSED.
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().post("/api/ui/v1/claims/" + id + "/take")
+                .then().statusCode(200).body("status", is("IN_PROGRESS"));
+
         given().auth().preemptive().basic("operator-alptis", "operator-alptis")
                 .contentType(ContentType.JSON).body("{\"resolution\":\"Taux corrigé, ajustement passé\"}")
                 .when().post("/api/ui/v1/claims/" + id + "/resolve")
