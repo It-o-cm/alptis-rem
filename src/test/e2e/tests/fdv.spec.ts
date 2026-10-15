@@ -253,6 +253,54 @@ test('la pondération par marché porte 10 000 € et 5 000 € à 13 500 € @s
   await admin.close();
 });
 
+// Parcours FDV-01 (section 4.5): importing collaborators and their measures feeds the collaborator
+// fiches and the measures by period.
+test('l’import des collaborateurs et des mesures alimente les fiches et les mesures par période @screen:fdvCollaborators @screen:fdvMeasures @req:FDV-01 @req:FDV-02 @path:FDV-01', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  const auth = 'Basic ' + Buffer.from(
+    `${USERS.adminAlptis.username}:${USERS.adminAlptis.password}`).toString('base64');
+
+  // Import a collaborator (EMPLOYEES flow, section 9.9).
+  const collaborators =
+    'external_id;last_name;first_name;job_code;team;region;valid_from\n' +
+    'E2E-FDV01;Importé;Paul;CAC;Équipe I;Nord;2026-01-01\n';
+  const impCollab = await page.request.post(
+    '/api/v1/imports/employees?entity=ALPTIS_ASSURANCES&sourceSystem=HR&fileName=collaborateurs.csv',
+    { headers: { 'Content-Type': 'text/plain', Authorization: auth }, data: collaborators });
+  expect(impCollab.ok(), `${impCollab.status()} ${await impCollab.text()}`).toBeTruthy();
+
+  // Its fiche appears on the collaborators screen, with its post label (CAC → Conseiller).
+  await page.goto('/fdv/collaborateurs');
+  const fiche = page.getByTestId('collaborator-row-E2E-FDV01');
+  await expect(fiche).toBeVisible();
+  await expect(fiche).toContainText('Importé');
+  await expect(fiche).toContainText('Conseiller');
+
+  // Import its measures over two periods (EMPLOYEE_MEASURES flow).
+  const measures =
+    'external_id;measure_type;dimension;period_from;period_to;value\n' +
+    'E2E-FDV01;PRODUCTION;particulier;2026-08-01;2026-08-31;8000\n' +
+    'E2E-FDV01;PRODUCTION;particulier;2026-09-01;2026-09-30;12000\n';
+  const impMeasures = await page.request.post(
+    '/api/v1/imports/employee_measures?entity=ALPTIS_ASSURANCES&sourceSystem=HR&fileName=mesures-fdv01.csv',
+    { headers: { 'Content-Type': 'text/plain', Authorization: auth }, data: measures });
+  expect(impMeasures.ok(), `${impMeasures.status()} ${await impMeasures.text()}`).toBeTruthy();
+
+  // The measures appear on the measures screen, one row per period with its dates.
+  await page.goto('/fdv/mesures');
+  await page.getByTestId('fdvm-refresh').click();
+  const august = page.getByTestId('measure-row-E2E-FDV01-PRODUCTION-2026-08-01');
+  const september = page.getByTestId('measure-row-E2E-FDV01-PRODUCTION-2026-09-01');
+  await expect(august).toContainText('2026-08-01');
+  await expect(august).toContainText('2026-08-31');
+  await expect(september).toContainText('2026-09-01');
+  await expect(september).toContainText('2026-09-30');
+  await admin.close();
+});
+
 test('l’administrateur crée puis modifie un collaborateur @screen:fdvCollaborators @req:FDV-01', async ({
   browser,
 }) => {

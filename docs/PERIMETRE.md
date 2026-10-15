@@ -1025,6 +1025,15 @@ ses **trois membres** sont regroupés dessous, chacun portant son **compte à co
 (`P20001`/`PC-P20001`, `P20002`/`PC-P20002`, `P20003`/`PC-P20003`). Vérification seule, aucune feature.
 60 `@path`.
 
+**FDV-01 étiqueté (2026-10-16).** Parcours « import des collaborateurs et des mesures : fiches ; mesures
+par période ». Les imports (flux `employees` et `employee_measures`, §9.9) et les écrans
+(collaborateurs, mesures reçues) existaient, exercés en `@req` mais sans test niveau 3 de bout en bout.
+Nouveau test : import d'un collaborateur (`E2E-FDV01`, poste CAC) via `/api/v1/imports/employees` → sa
+**fiche** apparaît à l'écran des collaborateurs (nom, libellé de poste « Conseiller ») ; puis import de
+ses mesures sur **deux périodes** (août et septembre) via `/api/v1/imports/employee_measures` → les deux
+lignes de **mesure par période** apparaissent à l'écran des mesures reçues avec leurs dates. Vérification
+seule, aucune feature. 61 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
