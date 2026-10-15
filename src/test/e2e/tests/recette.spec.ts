@@ -332,7 +332,9 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(page.getByTestId('adv-position-row')).toContainText('Annulée');
   });
 
-  test('CR-28 : un déficit au 360e jour solde la position et reprend −30,00 € d’escompte indu @screen:calculations @screen:commissionSearch @screen:advance @cr:CR-28', async ({
+  // Also parcours CAL-14 (section 4.3): at the 360th-day deadline, with no event on the silent
+  // guarantee, the discount position is settled and a regularisation line is created.
+  test('CR-28 : un déficit au 360e jour solde la position et reprend −30,00 € d’escompte indu @screen:calculations @screen:commissionSearch @screen:advance @cr:CR-28 @path:CAL-14', async ({
     page,
     request,
   }) => {

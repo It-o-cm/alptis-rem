@@ -1098,6 +1098,42 @@ bénéficiaires égale l'acquis global (au centime). Un `data-testid="rec-acq-<b
 pour sommer précisément (les codes partenaires contiennent des chiffres, le texte de ligne n'est pas
 parsable). Vérification seule, aucune feature. 68 `@path`.
 
+**CAL-14 étiqueté (2026-10-16).** Parcours « échéance sans événement : solde d'un escompte au 360e jour
+sur une garantie silencieuse — escompte soldé, régularisation créée ». Le rejeu CR-28 (déficit à 360
+jours : position encore ouverte, contrat en vigueur, aucun événement au 360e jour) performe déjà ce
+parcours : le test voit la position passer à **Apurée** (escompte soldé) et une ligne **« Régularisation
+d'escompte » de −30,00 €** (régularisation créée). Étiquette `@path:CAL-14` posée sur le test CR-28
+existant. 69 `@path`.
+
+**État des parcours restants (relevé 2026-10-16).** 67 des 135 identifiants §4 sont étiquetés `@path`
+(69 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+« vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
+audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
+monté, documentés ici pour éviter de re-scoper :
+- **Manques de fonctionnalité (à combler avant d'étiqueter).** `ADM-04` (aucun modèle de « traitement en
+  échec » ni relance ; `RunStatus` n'a pas de `FAILED`), `CTL-04` (anomalie « non acceptable » non
+  modélisée — `decide` accepte tout), `BRD-04` (métadonnées GED déposées mais non affichées ; le
+  « lendemain de l'exécution » n'est pas une barrière mais un jalon §7.3), `BRD-07` (le rendu du
+  bordereau n'applique pas le modèle), `PAR-12` (convention d'escompte : ni suspension ni clôture),
+  `PAR-13` (aucun aller-retour export/import du paramétrage), `CPT-07` (pas de colonne « motif » ni de
+  scénario aux six statuts), `AJU-05` (l'échéancier est un libellé libre, pas d'échéances structurées),
+  `INT-03` (corriger-et-relancer ne retraite pas la ligne), `INT-08` (pas d'état « en retard » à
+  l'horloge), `INT-10`/`INT-22` (pas de libération/retraitement des événements en attente ;
+  `EXT-INSURER-MISMATCH`… `EXTERNAL_MISMATCH` jamais produit), `INT-24` (produits sans dates de validité
+  ni refus de chevauchement).
+- **Scénarios de calcul / paiement / cycle montés (test lourd, mécanisme présent).** `CAL-04/06..13`
+  (co-courtage, escompte fractionné, annulations, prévisionnel, échéance 360e jour…), `PAI-02` (le 6e
+  motif `NO_BANK_DETAILS` route vers le chèque, cf. décision), `PAI-03/04/07/08/09/11/12`, `CYC-01..05`
+  (machine à états complète par rôle, dont un refus après `FINANCE_VALIDATED` — exige une période
+  `FINANCE_VALIDATED` absente de la démo), `CTL-01` (une anomalie par **dix** familles — la démo en
+  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/08/09/10`, `HIS-01`, `CPT-01/03/04/06`
+  (`CPT-04` « exclu du lot » exige que `proposePayments` se rejoue après blocage ; `CPT-03` exige des
+  soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
+  `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`
+  (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
+  sélectionnable), `INT-09/12/14/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
+  `ADM-02/03`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
