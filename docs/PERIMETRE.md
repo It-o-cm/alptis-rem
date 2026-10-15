@@ -978,6 +978,8 @@ actions mutantes ; reste à étendre aux dernières avant l'étiquetage complet 
 
 **FIN-03 étiqueté (2026-10-15).** Même test du schéma : les **quatre variantes** du schéma comptable sont affichées avec le sens de leurs écritures — Standard, Montant négatif (contre-passation), Sans prévisionnel, Épargne retraite — chacune avec ses rôles débit/crédit. 53 `@path`.
 
+**FLX-04 étiqueté (2026-10-15).** Le test du catalogue des flux est renforcé : il lit le **catalogue des flux** (entrants/sortants, filtre par sens) puis consulte la **référence des formats d'échange** (§9.9 : fichiers et conventions communes, UTF-8) — « catalogue des flux et formats d'échange, conformes à la section 9 ». 54 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
