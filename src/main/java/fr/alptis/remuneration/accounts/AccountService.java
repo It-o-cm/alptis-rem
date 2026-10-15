@@ -265,7 +265,7 @@ public class AccountService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal net = balance(account).subtract(held);
             Statement statement = statement(entity, period, account, net);
-            PaymentExclusionReason reason = exclusionReason(account, net, threshold);
+            PaymentExclusionReason reason = exclusionReason(account, net, threshold, clock.today());
             if (reason == null) {
                 PaymentOrder order = new PaymentOrder();
                 order.batch = batch;
@@ -331,11 +331,14 @@ public class AccountService {
      * @param account   the account
      * @param net       the net balance
      * @param threshold the entity minimum
+     * @param today     the application day, for the block's lifting date
      * @return the exclusion reason, or null
      */
     private static PaymentExclusionReason exclusionReason(DistributorAccount account, BigDecimal net,
-                                                          BigDecimal threshold) {
-        if (Boolean.TRUE.equals(account.blocked)) {
+                                                          BigDecimal threshold, LocalDate today) {
+        // A block holds until its lifting date (CPT-04): once that date is reached it no longer excludes.
+        if (Boolean.TRUE.equals(account.blocked)
+                && (account.blockedUntil == null || today.isBefore(account.blockedUntil))) {
             return PaymentExclusionReason.ACCOUNT_BLOCKED;
         }
         if (net.signum() <= 0) {

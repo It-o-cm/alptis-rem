@@ -297,6 +297,30 @@ class AccountServiceTest {
     }
 
     /**
+     * A block holds until its lifting date (CPT-04): a block still in force excludes the account, one
+     * whose date has passed no longer does.
+     */
+    @Test
+    @TestTransaction
+    void blocked_account_respects_the_lifting_date() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Period p = period(LocalDate.of(2026, 3, 1));
+        DistributorAccount stillBlocked = accountOf(distributor("DF"), "PC-F");
+        stillBlocked.blocked = Boolean.TRUE;
+        stillBlocked.blockedUntil = LocalDate.of(2099, 1, 1);
+        line(stillBlocked, p, "500");
+        DistributorAccount lifted = accountOf(distributor("DP"), "PC-P");
+        lifted.blocked = Boolean.TRUE;
+        lifted.blockedUntil = LocalDate.of(2000, 1, 1);
+        line(lifted, p, "500");
+
+        PaymentBatch batch = service.proposePayments(unep(), p);
+        assertEquals(1, PaymentExclusion.count("batch = ?1 and account = ?2", batch, stillBlocked));
+        assertEquals(0, PaymentExclusion.count("batch = ?1 and account = ?2", batch, lifted));
+        assertEquals(1, PaymentOrder.count("batch = ?1 and account = ?2", batch, lifted));
+    }
+
+    /**
      * A manually blocked commission line (CPT-05) is held: the order pays only the unblocked lines,
      * the blocked line stays {@code EARNED}, and its amount stays at the account balance.
      */
