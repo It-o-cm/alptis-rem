@@ -818,6 +818,12 @@ les événements de la période (`eligiblePeriod`) restés `PROCESSED`/`NOT_COMM
 un test e2e (rejeu CR-50, deux calculs d'affilée) vérifie qu'il reste **une seule** ligne de rétrocession
 à 60,00 €. 33 `@path`.
 
+**CTL-03 étiqueté (2026-10-15).** Nouveau test (écran des contrôles, contexte admin-alptis qui porte
+BUSINESS_ADMIN + OPERATOR) : l'administrateur rend bloquant le contrôle de solde débiteur
+(`ACCOUNT-DEBTOR`, nouvelle version active), lance les contrôles — l'anomalie est alors **bloquante et
+reste ouverte** — puis tente de faire avancer la période de septembre depuis `CALCULATED` ; le garde-fou
+du cycle **refuse** (« une anomalie bloquante reste ouverte ») et la période reste `Calculée`. 34 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

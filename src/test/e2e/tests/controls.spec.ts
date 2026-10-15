@@ -113,4 +113,36 @@ test.describe('Contrôles — administrateur métier', () => {
     await expect(page.getByTestId('version-row-2')).toBeVisible();
     await expect(page.getByTestId('version-row-1')).toBeVisible();
   });
+
+  // Parcours CTL-03 (section 4.4): a blocking anomaly left open refuses the period's validation. The
+  // admin (also an operator) makes the debtor-balance control blocking, runs the controls so its
+  // anomaly is raised and left open, then tries to move the period on from CALCULATED — the cycle guard
+  // turns the transition down. admin-alptis holds BUSINESS_ADMIN and OPERATOR, so one context suffices.
+  test('une anomalie bloquante ouverte refuse l’avancement de la période @screen:controls @req:CTL-03 @path:CTL-03', async ({
+    page,
+  }) => {
+    // Make the debtor-balance control blocking (a new active version).
+    await page.goto('/controles');
+    await page.getByTestId('catalog-edit-ACCOUNT-DEBTOR').click();
+    await expect(page.getByTestId('catalog-edit-form')).toBeVisible();
+    await page.getByTestId('edit-severity').selectOption('BLOCKING');
+    await page.getByTestId('edit-save').click();
+    await expect(page.getByTestId('ctl-message')).toContainText('versionné');
+
+    // Run the controls: the debtor-balance anomaly is now blocking and stays open (no decision).
+    await page.getByTestId('ctl-run').click();
+    await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
+    const row = page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'ACCOUNT-DEBTOR' }).first();
+    await expect(row).toContainText('Bloquant');
+
+    // The period cannot move on from CALCULATED while the blocking anomaly is open.
+    await page.goto('/periodes');
+    await page.getByTestId('open-ALPTIS_ASSURANCES-2026-09-01').click();
+    await expect(page.getByTestId('period-detail')).toBeVisible();
+    await expect(page.getByTestId('detail-state')).toContainText('Calculée');
+    await page.getByTestId('advance-button').click();
+    await expect(page.getByTestId('periods-error')).toContainText('anomalie bloquante reste ouverte');
+    // The refusal left the period unchanged.
+    await expect(page.getByTestId('detail-state')).toContainText('Calculée');
+  });
 });
