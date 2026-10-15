@@ -930,8 +930,14 @@ est **refusée (403)** pour les autres — le `@RolesAllowed` du serveur étant 
 bidon fait jouer l'autorisation avant toute logique métier (indépendant de l'état). Premier lot : **10
 actions × 9 rôles = 90 couples** (purge → IT_ADMIN ; calcul/contrôles → OPERATOR/BUSINESS_ADMIN ;
 approbation d'ajustement → +BUSINESS_VALIDATOR ; validation lot → FINANCE_CONTROLLER ; validation métier
-→ BUSINESS_VALIDATOR ; variable → SALES_MANAGER/BUSINESS_ADMIN ; etc.). À étendre aux actions restantes
-d'ici l'étiquetage complet du couple rôle-action (condition de fin d'étape 4).
+→ BUSINESS_VALIDATOR ; variable → SALES_MANAGER/BUSINESS_ADMIN ; etc.). **Étendu le même jour à 21
+actions × 9 rôles = 189 couples** (compensation, déblocage de compte, préparation/hors-cycle de lot,
+correction de rejet, approbation de règle, régularisation annuelle, export paie FDV, rectification de
+bordereau, correspondance de rôles → IT_ADMIN, correspondance de mapping → BUSINESS_ADMIN). **Robustesse
+corrigée au passage** : `RoleMappingAdminService.parseRole` levait une `NullPointerException` (HTTP 500)
+sur un rôle absent ; il rejette désormais proprement en `ValidationException` (HTTP 400), couvert par
+`RoleMappingsResourceTest.a_mapping_without_a_role_is_rejected`. À étendre aux actions restantes d'ici
+l'étiquetage complet du couple rôle-action (condition de fin d'étape 4).
 
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 comblé et étiqueté (2026-10-15).** Les six codes de rejet (§8.2) existent tous dans

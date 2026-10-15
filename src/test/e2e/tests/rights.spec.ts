@@ -38,6 +38,17 @@ const ACTIONS: { name: string; path: string; roles: string[] }[] = [
   { name: 'run-fdv', path: `/api/ui/v1/fdv/${E}/${M}/run`, roles: ['BUSINESS_ADMIN'] },
   { name: 'publish-statement', path: '/api/ui/v1/documents/statements/999999/publish', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
   { name: 'extract-accounting', path: `/api/ui/v1/accounting/${E}/${M}/extract`, roles: ['OPERATOR', 'BUSINESS_ADMIN', 'FINANCE_CONTROLLER'] },
+  { name: 'compensate-accounts', path: `/api/ui/v1/accounts/${E}/${M}/distributor/P99999/compensate`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'unblock-account', path: '/api/ui/v1/accounts/999999/unblock', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'prepare-lot', path: '/api/ui/v1/payment/lots/999999/prepare', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'off-cycle-lot', path: `/api/ui/v1/payment/${E}/${M}/off-cycle/P99999`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'correct-rejection', path: '/api/ui/v1/imports/rejections/999999/correct', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'approve-rule', path: '/api/ui/v1/plans/P99/rules/R99/versions/1/approve', roles: ['BUSINESS_ADMIN'] },
+  { name: 'annual-regularization', path: `/api/ui/v1/fdv/${E}/2026/annual-regularization`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'pay-export-fdv', path: `/api/ui/v1/fdv/${E}/${M}/pay-export`, roles: ['FINANCE_CONTROLLER'] },
+  { name: 'rectify-statement', path: '/api/ui/v1/documents/statements/999999/rectify', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'set-role-mapping', path: '/api/ui/v1/role-mappings', roles: ['IT_ADMIN'] },
+  { name: 'set-mapping', path: '/api/ui/v1/mappings', roles: ['BUSINESS_ADMIN'] },
 ];
 
 const basic = (user: string): string => 'Basic ' + Buffer.from(`${user}:${user}`).toString('base64');

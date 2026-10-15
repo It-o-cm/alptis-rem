@@ -92,6 +92,18 @@ class RoleMappingsResourceTest {
     }
 
     /**
+     * A mapping submitted without a role is rejected as invalid (HTTP 400), not crashed (no NPE).
+     */
+    @Test
+    void a_mapping_without_a_role_is_rejected() {
+        given().auth().preemptive().basic("it-admin", "it-admin")
+                .contentType("application/json")
+                .body("{\"directoryGroup\":\"grp-x\",\"entityCode\":\"ALPTIS_ASSURANCES\"}")
+                .when().post("/api/ui/v1/role-mappings")
+                .then().statusCode(400);
+    }
+
+    /**
      * A global mapping (no entity) is created with a null entity code.
      */
     @Test

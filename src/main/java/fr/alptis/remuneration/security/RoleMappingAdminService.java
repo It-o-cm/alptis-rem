@@ -108,6 +108,9 @@ public class RoleMappingAdminService {
      * @throws ValidationException if the name is not a known role
      */
     private static Role parseRole(String roleName) {
+        if (roleName == null) {
+            throw new ValidationException("Rôle inconnu : " + roleName);
+        }
         try {
             return Role.valueOf(roleName);
         } catch (IllegalArgumentException e) {
