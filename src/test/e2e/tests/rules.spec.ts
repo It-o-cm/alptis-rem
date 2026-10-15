@@ -59,6 +59,47 @@ test.describe('Paramétrage des règles', () => {
     await admin2Ctx.close();
   });
 
+  // Parcours PAR-10 (section 4.2): the annual duplication of a plan copies every version as a project
+  // (DRAFT), at the dates of the following year. The seeded Guide barème (GUIDE_2026, vintage 2026, its
+  // versions ACTIVE over 2026) is duplicated into GUIDE_2027, vintage 2027.
+  test('la duplication annuelle d’un plan copie toutes les versions en projet aux dates de l’année suivante @screen:rules @req:PAR-01 @path:PAR-10', async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+    const admin = await ctx.newPage();
+    await admin.goto('/regles');
+
+    // The source plan's version is ACTIVE over 2026.
+    await admin.getByTestId('plan-open-GUIDE_2026').click();
+    await admin.getByTestId('rule-open-SANTE_EQUILIBRE_LINEAR').click();
+    const sourceVersion = admin.getByTestId('version-row-1');
+    await expect(sourceVersion.getByTestId('version-status')).toHaveText('En vigueur');
+    await expect(sourceVersion).toContainText('2026-01-01');
+
+    // Duplicate the whole plan to the next vintage.
+    await admin.getByTestId('dup-code').fill('GUIDE_2027');
+    await admin.getByTestId('dup-vintage').fill('2027');
+    await admin.getByTestId('plan-duplicate').click();
+    await expect(admin.getByTestId('rules-message')).toContainText('dupliqué');
+    await expect(admin.getByTestId('plan-row-GUIDE_2027')).toBeVisible();
+
+    // The copied plan carries the same rule, whose version is now a project at the following year's dates.
+    await admin.getByTestId('plan-open-GUIDE_2027').click();
+    await admin.getByTestId('rule-open-SANTE_EQUILIBRE_LINEAR').click();
+    const copiedVersion = admin.getByTestId('version-row-1');
+    await expect(copiedVersion.getByTestId('version-status')).toHaveText('Brouillon');
+    await expect(copiedVersion).toContainText('2027-01-01');
+    await expect(copiedVersion).toContainText('2027-12-31');
+    await expect(copiedVersion).not.toContainText('2026');
+
+    // The source plan is untouched: its version is still Active over 2026.
+    await admin.getByTestId('plan-open-GUIDE_2026').click();
+    await admin.getByTestId('rule-open-SANTE_EQUILIBRE_LINEAR').click();
+    await expect(admin.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('En vigueur');
+
+    await ctx.close();
+  });
+
   // Parcours PAR-02 (section 4.2): invalid parameters for each of the nine calculation families are
   // refused with the family's schema message. A non-object payload violates every family schema
   // (all are type:object), so each family rejects it, naming the family.

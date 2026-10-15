@@ -1007,6 +1007,15 @@ au centime prouve « chiffres égaux aux sommes du jeu de données ». Deux `dat
 précisément sans parser des lignes multi-nombres : `dash-nature-amount-<nature>` (cellule Montant du
 tableau par nature) et `cs-amount-<i>` (cellule Montant de la recherche). 58 `@path`.
 
+**PAR-10 étiqueté (2026-10-16).** Parcours « duplication annuelle d'un plan : toutes les versions copiées
+en projet, aux dates de l'année suivante ». Fonction déjà présente (`RuleConfigService.duplicatePlan` :
+copie plan + règles + versions, décale `validFrom`/`validTo` de l'écart de millésime, force le statut
+`DRAFT`) et écran déjà câblé (`dup-code`, `dup-vintage`, `plan-duplicate`). Nouveau test niveau 3 : le
+barème semé `GUIDE_2026` (millésime 2026, version `SANTE_EQUILIBRE_LINEAR` **En vigueur** sur 2026) est
+dupliqué en `GUIDE_2027` (millésime 2027) ; la version copiée est **Brouillon** aux dates **2027-01-01 →
+2027-12-31** (et ne porte aucune date 2026), tandis que le plan source **reste inchangé** (version
+toujours En vigueur sur 2026). Vérification seule, aucune feature. 59 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
