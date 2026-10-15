@@ -863,6 +863,10 @@ référentiel distributeurs avec `orias_status=REGISTERED`), un **lot hors cycle
 bloqués, sur la même période de janvier — sans attendre le mois suivant. Étiquette `@path:PAI-06` posée
 sur le test existant. 37 `@path`.
 
+**FIN-07 étiqueté (2026-10-15).** Le test du cut-off est renforcé : il lit le cut-off à ses **quatre
+mailles** (garantie, distributeur, produit, entité) et vérifie que le **total acquis est identique** aux
+quatre — seul le regroupement change, pas le montant. Étiquette `@path:FIN-07`. 38 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

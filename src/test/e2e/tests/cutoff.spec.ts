@@ -12,7 +12,7 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
-test('le contrôleur Finance lit le cut-off et change de maille @screen:cutoff @req:FIN-04 @req:FIN-09', async ({
+test('le contrôleur Finance lit le cut-off et change de maille @screen:cutoff @req:FIN-04 @req:FIN-09 @path:FIN-07', async ({
   browser,
 }) => {
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
@@ -21,9 +21,17 @@ test('le contrôleur Finance lit le cut-off et change de maille @screen:cutoff @
   // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
   await expect(page.getByTestId('cutoff-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
   await expect(page.getByTestId('cutoff-total-earned')).not.toBeEmpty();
-  // Reading by distributor gives the accrued-versus-paid reconciliation (FIN-06).
-  await page.getByTestId('cutoff-view-DISTRIBUTOR').click();
-  await expect(page.locator('[data-testid^="cutoff-row-"]').first()).toBeVisible();
+
+  // FIN-07: the cut-off reads at its four granularities (coverage, distributor, product, entity) and
+  // the accrued total is the same at each — only the grouping changes, not the amount.
+  const totals: string[] = [];
+  for (const view of ['COVERAGE', 'DISTRIBUTOR', 'PRODUCT', 'ENTITY']) {
+    await page.getByTestId(`cutoff-view-${view}`).click();
+    await expect(page.locator('[data-testid^="cutoff-row-"]').first()).toBeVisible();
+    totals.push(((await page.getByTestId('cutoff-total-earned').textContent()) ?? '').trim());
+  }
+  expect(totals[0]).not.toBe('');
+  expect(new Set(totals).size).toBe(1);
   await expect(page.getByTestId('chart-cutoff')).toBeVisible();
   await finance.close();
 });
