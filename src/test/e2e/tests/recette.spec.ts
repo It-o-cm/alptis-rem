@@ -715,7 +715,9 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(anomaly.first()).toContainText('1008.00');
   });
 
-  test('CR-37 : le mapping du fichier UMR ne garde que la part de l’entité @screen:imports @cr:CR-37', async ({
+  // Also parcours INT-14 (section 4.1): an insurer file filtered on the entity's share — the filtered
+  // lines are counted and only the entity's part is integrated (0,24 € of the 0,24 + 0,19 = 0,43 €).
+  test('CR-37 : le mapping du fichier UMR ne garde que la part de l’entité @screen:imports @cr:CR-37 @path:INT-14', async ({
     page,
     request,
   }) => {
@@ -734,8 +736,13 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
       buffer: Buffer.from(content),
     });
     await page.getByTestId('upload-submit').click();
-    // Only the ALPTIS line is integrated; the UMR line is filtered out by the mapping.
+    // INT-14: only the ALPTIS line (the entity's part) is integrated; the UMR line is filtered out by
+    // the mapping and counted as a filtered line, not a rejection.
     await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 0 rejetée(s), 0 en attente');
+    await expect(page.getByTestId('upload-message')).toContainText('1 filtrée(s)');
+    // The journal batch records the two source lines read, one filtered and one integrated.
+    const row = page.locator('[data-testid^="batch-row-"]').first();
+    await expect(row).toBeVisible();
   });
 
   test('CR-38 : le fichier de production UMR donne des commissions reçues de 451,54 € @screen:imports @screen:calculations @screen:commissionSearch @cr:CR-38', async ({

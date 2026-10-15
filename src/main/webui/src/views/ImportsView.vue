@@ -184,7 +184,7 @@ async function submitUpload(): Promise<void> {
   message.value = '';
   uploadError.value = '';
   try {
-    const result = await apiPost<{ linesRead: number; linesLoaded: number; linesRejected: number; linesOnHold: number }>(
+    const result = await apiPost<{ linesRead: number; linesFiltered: number; linesLoaded: number; linesRejected: number; linesOnHold: number }>(
       '/api/ui/v1/imports',
       {
         entityCode: entityCode(),
@@ -194,7 +194,8 @@ async function submitUpload(): Promise<void> {
         content: form.value.content,
       },
     );
-    message.value = `Importé : ${result.linesLoaded} intégrée(s), ${result.linesRejected} rejetée(s), ${result.linesOnHold} en attente.`;
+    message.value = `Importé : ${result.linesLoaded} intégrée(s), ${result.linesRejected} rejetée(s), `
+      + `${result.linesOnHold} en attente, ${result.linesFiltered} filtrée(s).`;
     await loadJournal();
   } catch (e) {
     uploadError.value = e instanceof ApiError ? e.message : "Échec de l'import";

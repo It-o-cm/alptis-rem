@@ -1105,8 +1105,17 @@ parcours : le test voit la position passer à **Apurée** (escompte soldé) et u
 d'escompte » de −30,00 €** (régularisation créée). Étiquette `@path:CAL-14` posée sur le test CR-28
 existant. 69 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 67 des 135 identifiants §4 sont étiquetés `@path`
-(69 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**INT-14 étiqueté (2026-10-16).** Parcours « fichier d'assureur avec filtre sur la part de l'entité :
+lignes filtrées comptées ; seule la part de l'entité intégrée (0,24 € sur 0,43 €) ». Le rejeu CR-37
+performe ce parcours : un fichier UMR portant une ligne `ALPTIS` (0,24 €) et une ligne `UMR` (0,19 €) est
+importé ; seule la part de l'entité est **intégrée** (0,24 €), la ligne hors périmètre est **filtrée**
+(pas rejetée). Le message d'import n'affichait pas le nombre de lignes **filtrées** — corrigé (fonction
+d'abord) : il porte désormais « … filtrée(s) » (ajout non intrusif, les anciennes assertions ne lisent
+que le préfixe). Le test CR-37 est renforcé (`1 intégrée(s) … 1 filtrée(s)`) et tagué `@path:INT-14`. 70
+`@path`.
+
+**État des parcours restants (relevé 2026-10-16).** 68 des 135 identifiants §4 sont étiquetés `@path`
+(70 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1131,7 +1140,7 @@ monté, documentés ici pour éviter de re-scoper :
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
   `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`
   (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
-  sélectionnable), `INT-09/12/14/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
+  sélectionnable), `INT-09/12/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
   `ADM-02/03`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
 
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
