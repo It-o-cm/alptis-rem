@@ -43,7 +43,7 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   await admin.close();
 });
 
-test('l’opérateur importe des ajustements en masse @screen:adjustments @req:REG-04 @role-action:OPERATOR-submit-adjustment', async ({
+test('l’opérateur importe des ajustements en masse @screen:adjustments @req:REG-04 @role-action:OPERATOR-submit-adjustment @path:AJU-07', async ({
   browser,
 }) => {
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
@@ -64,7 +64,7 @@ test('l’opérateur importe des ajustements en masse @screen:adjustments @req:R
   await operator.close();
 });
 
-test('un ajustement à contrepassation automatique crée sa reprise au mois suivant @screen:adjustments @req:REG-05', async ({
+test('un ajustement à contrepassation automatique crée sa reprise au mois suivant @screen:adjustments @req:REG-05 @path:AJU-04', async ({
   browser,
 }) => {
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });

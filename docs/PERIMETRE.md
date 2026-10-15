@@ -873,6 +873,12 @@ débiteur se déclenche une première fois, puis est **édité** (gravité) et *
 ne se déclenche plus (l'exécution n'itère que les contrôles actifs). Couvre gravité + désactivation +
 version + effet au calcul suivant. 39 `@path`.
 
+**AJU-04 et AJU-07 étiquetés (2026-10-15).** Deux tests existants de l'écran des ajustements performent
+déjà leur parcours : AJU-04 (contrepassation automatique) — un ajustement à contrepassation approuvé crée
+une **ligne « Contrepassation » dans la période suivante** (octobre), vérifiée après changement de mois ;
+AJU-07 (import en masse) — l'import crée les lignes valides (une importée, la ligne au code inconnu
+ignorée) **toutes au statut « Soumis » (à approuver)**. Étiquettes posées. 41 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
