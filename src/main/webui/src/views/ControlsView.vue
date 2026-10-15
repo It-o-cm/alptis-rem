@@ -127,6 +127,8 @@ const severityData = computed(() =>
 const familyData = computed(() =>
   breakdown.value ? breakdown.value.byFamily.map((c) => ({ label: c.label, value: c.count })) : [],
 );
+/** The number of anomalies still open (undecided), shown as a running counter. */
+const openAnomalyCount = computed(() => anomalies.value.filter((a) => a.decision === 'OPEN').length);
 
 /** Loads the control catalog of the selected entity. */
 async function loadCatalog(): Promise<void> {
@@ -274,6 +276,9 @@ onMounted(async () => {
     </div>
 
     <AppCard flush data-testid="anomalies">
+      <p class="page__subtitle">
+        Anomalies ouvertes : <span data-testid="ctl-open-count">{{ openAnomalyCount }}</span>
+      </p>
       <DataTable
         :columns="anomalyColumns"
         :rows="anomalies"
@@ -296,6 +301,12 @@ onMounted(async () => {
             />
             <AppButton variant="secondary" :data-testid="`anomaly-accept-${row.id}`" @click="decide(row, 'ACCEPTED')">
               Accepter
+            </AppButton>
+            <AppButton variant="secondary" :data-testid="`anomaly-fix-${row.id}`" @click="decide(row, 'FIXED')">
+              Corriger
+            </AppButton>
+            <AppButton variant="secondary" :data-testid="`anomaly-defer-${row.id}`" @click="decide(row, 'DEFERRED')">
+              Reporter
             </AppButton>
           </template>
         </template>

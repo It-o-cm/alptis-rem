@@ -743,13 +743,14 @@ l'auteur refusée / par un second administrateur) étiqueté sur ses deux tests 
 PAR-05 (deux versions même groupe/priorité, périmètres recouvrants → approbation refusée) : le message de
 refus **nomme désormais les règles en conflit** (`plan/règle vN`), non plus un simple décompte, et le test
 le vérifie. CTL-06 (liste de contrôle de la période : un contrôle coché et son état persisté) étiqueté sur
-le test existant de la liste de contrôle. 16 `@path`.
+le test existant de la liste de contrôle. CTL-02 (décision sur une anomalie) **complété** : l'écran des
+contrôles offrait seulement « Accepter » ; ajout des actions « Corriger » (FIXED) et « Reporter »
+(DEFERRED) et d'un **compteur d'anomalies ouvertes**, et un test décide trois anomalies — acceptée,
+corrigée, reportée — vérifie leurs libellés et le décompte des ouvertes (−3). 17 `@path`.
 
-**Audit §4.3–4.6 (2026-10-15).** Beaucoup de tests d'écran ne couvrent qu'une partie d'un parcours
-(p. ex. CTL-02 ne décide qu'une anomalie « acceptée », pas les trois décisions ; PAI-02 n'affiche que
-deux des six motifs d'exclusion ; FIN-05 ne vérifie pas encore équilibre/total de l'extraction ; PAI-05
-ne télécharge pas la liste des chèques). Ces parcours seront complétés (vérifications manquantes ajoutées)
-avant d'être étiquetés, un par passage.
+**Audit §4.3–4.6 (2026-10-15).** Beaucoup de tests d'écran ne couvrent qu'une partie d'un parcours ;
+restent à compléter avant étiquetage : PAI-02 n'affiche que deux des six motifs d'exclusion ; FIN-05 ne
+vérifie pas encore équilibre/total de l'extraction ; PAI-05 ne télécharge pas la liste des chèques.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :

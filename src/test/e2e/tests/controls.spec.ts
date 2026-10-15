@@ -54,6 +54,27 @@ test.describe('Contrôles — opérateur', () => {
     await expect(page.getByTestId('catalog-row-EXT-INSURER-MISMATCH')).toBeVisible();
   });
 
+  test('décide trois anomalies — acceptée, corrigée, reportée — et suit le compteur d’ouvertes (CTL-02) @screen:controls @req:CTL-02 @path:CTL-02', async ({
+    page,
+  }) => {
+    await page.goto('/controles');
+    await page.getByTestId('ctl-run').click();
+    await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
+    const openCount = async () => Number((await page.getByTestId('ctl-open-count').textContent())?.trim());
+    const start = await openCount();
+    expect(start).toBeGreaterThanOrEqual(3);
+    const rows = page.locator('[data-testid^="anomaly-row-"]');
+    // Accept the first, fix the second, defer the third; each decision is labelled and traced.
+    await rows.nth(0).locator('[data-testid^="anomaly-accept-"]').click();
+    await rows.nth(1).locator('[data-testid^="anomaly-fix-"]').click();
+    await rows.nth(2).locator('[data-testid^="anomaly-defer-"]').click();
+    await expect(page.locator('[data-testid^="anomaly-decision-"]').filter({ hasText: 'Acceptée' })).not.toHaveCount(0);
+    await expect(page.locator('[data-testid^="anomaly-decision-"]').filter({ hasText: 'Corrigée' })).not.toHaveCount(0);
+    await expect(page.locator('[data-testid^="anomaly-decision-"]').filter({ hasText: 'Reportée' })).not.toHaveCount(0);
+    // Three decisions close three open anomalies.
+    expect(await openCount()).toBe(start - 3);
+  });
+
   test('coche un contrôle dans la liste de contrôle de la période @screen:controls @req:CTL-03 @path:CTL-06', async ({
     page,
   }) => {
