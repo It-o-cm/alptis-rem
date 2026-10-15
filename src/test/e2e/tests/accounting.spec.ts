@@ -30,7 +30,7 @@ test('avant la validation métier la comptabilité ne porte aucune écriture @sc
   await finance.close();
 });
 
-test('le contrôleur Finance lit le schéma et produit l’extraction @screen:accounting @req:FIN-02 @req:FIN-03 @req:FIN-05 @path:FIN-02 @role-action:OPERATOR-extract-accounting', async ({
+test('le contrôleur Finance lit le schéma et produit l’extraction @screen:accounting @req:FIN-02 @req:FIN-03 @req:FIN-05 @path:FIN-02 @path:FIN-03 @role-action:OPERATOR-extract-accounting', async ({
   browser,
 }) => {
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
@@ -48,6 +48,12 @@ test('le contrôleur Finance lit le schéma et produit l’extraction @screen:ac
   await expect(page.getByTestId('acc-scheme')).toContainText('Charge de commission prévisionnelle');
   await expect(page.getByTestId('acc-scheme')).toContainText('Commissions acquises');
   await expect(page.getByTestId('acc-scheme')).toContainText('Produits de commissions');
+  // FIN-03: each scheme variant is shown with the direction of its entries — the standard case, the
+  // negative-amount reversal, the no-forecast earning and the retirement-savings advance.
+  await expect(page.getByTestId('acc-scheme')).toContainText('Standard');
+  await expect(page.getByTestId('acc-scheme')).toContainText('Montant négatif');
+  await expect(page.getByTestId('acc-scheme')).toContainText('Sans prévisionnel');
+  await expect(page.getByTestId('acc-scheme')).toContainText('Épargne retraite');
   // The extraction is produced and its CSV carries the OUT-02 columns (FIN-03).
   await page.getByTestId('acc-extract').click();
   await expect(page.getByTestId('acc-message')).toContainText('ALPTIS_ASSURANCES_ECR_202609.csv');

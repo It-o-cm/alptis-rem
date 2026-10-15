@@ -976,6 +976,8 @@ actions mutantes ; reste à étendre aux dernières avant l'étiquetage complet 
 
 **FIN-02 étiqueté (2026-10-15).** Le test du schéma comptable est renforcé : le schéma définit une **écriture en partie double équilibrée** (un rôle de débit et un rôle de crédit) pour **chacun des événements comptables de §10.2** — au moins six lignes d'événements, l'événement prévisionnel montrant ses deux sens (charge prévisionnelle / provision), plus « Commissions acquises » et « Produits de commissions ». Avec FIN-01 (rien avant validation), cela couvre « après la validation : écritures de chaque événement, équilibrées ». 52 `@path`.
 
+**FIN-03 étiqueté (2026-10-15).** Même test du schéma : les **quatre variantes** du schéma comptable sont affichées avec le sens de leurs écritures — Standard, Montant négatif (contre-passation), Sans prévisionnel, Épargne retraite — chacune avec ses rôles débit/crédit. 53 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
