@@ -757,11 +757,10 @@ implémenté côté moteur, `.min(1)`). 19 `@path`.
 **Audit §4.3–4.6 (2026-10-15).** Restent à compléter avant étiquetage :
 - PAI-02 : seulement deux des six motifs d'exclusion exercés (il en faut un par motif : compte bloqué,
   bénéficiaire inactif, solde non positif, sous le seuil, sans coordonnées bancaires, hors fréquence).
-- FIN-05 : le test de l'extraction vérifie désormais toutes les colonnes OUT-02 (§9.11) et la double
-  partie (débit/crédit), mais **l'extraction de septembre du jeu de démonstration est vide** (écritures
-  déjà transmises à la clôture — ré-extraction idempotente) ; vérifier mois comptable / équilibre / total
-  sur les lignes demande une période validée **non encore extraite** (p. ex. en prolongeant le pipeline
-  CR-65). Non étiqueté tant que les lignes ne sont pas vérifiées.
+- FIN-05 : **étiqueté** (2026-10-15). Le test CR-65, après validation métier, produit l'extraction de la
+  période UNEP (non encore clôturée, écritures non transmises) et lit le CSV OUT-02 : en-tête complet
+  (§9.11), double partie débit/crédit, mois comptable `2026-01` et montant 180.00 — l'extraction du jeu de
+  démonstration de septembre étant vide (déjà transmise). 20 `@path`.
 - PAI-05 : pas de téléchargement de la liste des chèques.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,

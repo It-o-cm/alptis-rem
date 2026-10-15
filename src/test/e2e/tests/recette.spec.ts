@@ -921,7 +921,7 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
   });
 
-  test('CR-65 : le cycle comptable écrit la provision de 180 € puis l’acquisition et le payable de 15 € @screen:periods @screen:accounting @cr:CR-65', async ({
+  test('CR-65 : le cycle comptable écrit la provision de 180 € puis l’acquisition et le payable de 15 € @screen:periods @screen:accounting @cr:CR-65 @path:FIN-05', async ({
     browser,
     request,
   }) => {
@@ -954,6 +954,16 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(
       admin.locator('[data-testid^="entry-row-"]').filter({ hasText: 'PAYABLE_RECOGNITION' }),
     ).toContainText('15,00');
+
+    // FIN-05: the extraction of this not-yet-closed period carries the OUT-02 columns, the accounting
+    // month and its balanced entries (a debit and a credit account, with the amounts).
+    await admin.getByTestId('acc-extract').click();
+    await expect(admin.getByTestId('acc-message')).toContainText('UNEP_ECR_202601.csv');
+    const csv = admin.getByTestId('acc-extract-csv');
+    await expect(csv).toContainText('entity_code;fiscal_year;accounting_month;journal;entry_date;accounting_event');
+    await expect(csv).toContainText('debit_account;credit_account;amount');
+    await expect(csv).toContainText('2026-01');
+    await expect(csv).toContainText('180.00');
 
     await adminCtx.close();
     await valCtx.close();
