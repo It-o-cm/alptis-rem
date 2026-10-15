@@ -30,7 +30,7 @@ test('avant la validation métier la comptabilité ne porte aucune écriture @sc
   await finance.close();
 });
 
-test('le contrôleur Finance lit le schéma et produit l’extraction @screen:accounting @req:FIN-02 @req:FIN-03 @req:FIN-05 @role-action:OPERATOR-extract-accounting', async ({
+test('le contrôleur Finance lit le schéma et produit l’extraction @screen:accounting @req:FIN-02 @req:FIN-03 @req:FIN-05 @path:FIN-02 @role-action:OPERATOR-extract-accounting', async ({
   browser,
 }) => {
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
@@ -42,6 +42,12 @@ test('le contrôleur Finance lit le schéma et produit l’extraction @screen:ac
   // The schema carries the accounting events, shown by their French label (FIN-02, ADM-03: no raw code).
   await expect(page.getByTestId('acc-scheme')).toContainText('Constatation du prévisionnel');
   await expect(page.getByTestId('acc-scheme')).toContainText('Provision pour commissions à payer');
+  // FIN-02: the scheme defines a balanced double-entry (a debit and a credit role) for each of the
+  // several section-10.2 accounting events; the forecast event shows both its debit and credit sides.
+  expect(await page.locator('[data-testid^="scheme-row-"]').count()).toBeGreaterThanOrEqual(6);
+  await expect(page.getByTestId('acc-scheme')).toContainText('Charge de commission prévisionnelle');
+  await expect(page.getByTestId('acc-scheme')).toContainText('Commissions acquises');
+  await expect(page.getByTestId('acc-scheme')).toContainText('Produits de commissions');
   // The extraction is produced and its CSV carries the OUT-02 columns (FIN-03).
   await page.getByTestId('acc-extract').click();
   await expect(page.getByTestId('acc-message')).toContainText('ALPTIS_ASSURANCES_ECR_202609.csv');
