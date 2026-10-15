@@ -91,6 +91,7 @@ public class EntityAdminService {
         entity.advanceSettlementDays = update.advanceSettlementDays();
         entity.advanceSettlementTolerance = update.advanceSettlementTolerance();
         entity.paymentCalendar = update.paymentCalendar();
+        entity.adjustmentApprovalThreshold = update.adjustmentApprovalThreshold();
         audit.record(currentUser.username(), entity, "UPDATE_ENTITY_PARAMETERS", "LegalEntity",
                 entity.getId(), before, snapshot(entity));
         return toView(entity);
@@ -120,7 +121,7 @@ public class EntityAdminService {
     private static EntityView toView(LegalEntity entity) {
         return new EntityView(entity.code, entity.name, entity.minPaymentAmount,
                 entity.advanceSettlementDays, entity.advanceSettlementTolerance, entity.paymentCalendar,
-                entity.getVersion());
+                entity.adjustmentApprovalThreshold, entity.getVersion());
     }
 
     /**
@@ -133,7 +134,8 @@ public class EntityAdminService {
         return "{\"minPaymentAmount\":" + entity.minPaymentAmount
                 + ",\"advanceSettlementDays\":" + entity.advanceSettlementDays
                 + ",\"advanceSettlementTolerance\":" + entity.advanceSettlementTolerance
-                + ",\"paymentCalendar\":" + jsonString(entity.paymentCalendar) + "}";
+                + ",\"paymentCalendar\":" + jsonString(entity.paymentCalendar)
+                + ",\"adjustmentApprovalThreshold\":" + entity.adjustmentApprovalThreshold + "}";
     }
 
     /**
@@ -158,11 +160,12 @@ public class EntityAdminService {
      * @param advanceSettlementDays      the advance settlement delay in days
      * @param advanceSettlementTolerance the advance settlement tolerance
      * @param paymentCalendar            the payment calendar JSON
+     * @param adjustmentApprovalThreshold the adjustment second-level approval threshold (REG-03)
      * @param version                    the optimistic-lock version
      */
     public record EntityView(String code, String name, BigDecimal minPaymentAmount,
                              Integer advanceSettlementDays, BigDecimal advanceSettlementTolerance,
-                             String paymentCalendar, long version) {
+                             String paymentCalendar, BigDecimal adjustmentApprovalThreshold, long version) {
     }
 
     /**
@@ -172,8 +175,10 @@ public class EntityAdminService {
      * @param advanceSettlementDays      the advance settlement delay in days
      * @param advanceSettlementTolerance the advance settlement tolerance
      * @param paymentCalendar            the payment calendar JSON
+     * @param adjustmentApprovalThreshold the adjustment second-level approval threshold (REG-03)
      */
     public record EntityUpdate(BigDecimal minPaymentAmount, Integer advanceSettlementDays,
-                               BigDecimal advanceSettlementTolerance, String paymentCalendar) {
+                               BigDecimal advanceSettlementTolerance, String paymentCalendar,
+                               BigDecimal adjustmentApprovalThreshold) {
     }
 }

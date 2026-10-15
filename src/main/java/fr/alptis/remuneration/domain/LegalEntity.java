@@ -60,4 +60,8 @@ public class LegalEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payment_calendar")
     public String paymentCalendar;
+
+    /** Amount above which an adjustment's approval is reserved to the business validator (REG-03). */
+    @Column(name = "adjustment_approval_threshold", precision = 14, scale = 2)
+    public BigDecimal adjustmentApprovalThreshold;
 }

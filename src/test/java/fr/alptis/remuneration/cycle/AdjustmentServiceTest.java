@@ -10,7 +10,6 @@ import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
-import fr.alptis.remuneration.domain.EntityParameter;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
@@ -72,12 +71,7 @@ class AdjustmentServiceTest {
 
     /** Sets the entity's adjustment approval threshold. */
     private static void threshold(String value) {
-        EntityParameter parameter = new EntityParameter();
-        parameter.entity = unep();
-        parameter.paramKey = "ADJUSTMENT_APPROVAL_THRESHOLD";
-        parameter.paramValue = value;
-        parameter.validFrom = LocalDate.of(2020, 1, 1);
-        parameter.persist();
+        unep().adjustmentApprovalThreshold = new BigDecimal(value);
     }
 
     /**

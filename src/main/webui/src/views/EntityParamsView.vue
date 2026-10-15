@@ -14,6 +14,7 @@ interface EntityView {
   advanceSettlementDays: number | null;
   advanceSettlementTolerance: number | null;
   paymentCalendar: string | null;
+  adjustmentApprovalThreshold: number | null;
   version: number;
 }
 
@@ -22,7 +23,7 @@ const entities = ref<EntityView[]>([]);
 const loading = ref(true);
 const loadError = ref('');
 const selected = ref<EntityView | null>(null);
-const form = ref({ minPaymentAmount: 0, advanceSettlementDays: 0, advanceSettlementTolerance: 0, paymentCalendar: '' });
+const form = ref({ minPaymentAmount: 0, advanceSettlementDays: 0, advanceSettlementTolerance: 0, paymentCalendar: '', adjustmentApprovalThreshold: 0 });
 const message = ref('');
 const formError = ref('');
 
@@ -69,6 +70,7 @@ function select(entity: EntityView) {
     advanceSettlementDays: entity.advanceSettlementDays ?? 0,
     advanceSettlementTolerance: entity.advanceSettlementTolerance ?? 0,
     paymentCalendar: entity.paymentCalendar ?? '',
+    adjustmentApprovalThreshold: entity.adjustmentApprovalThreshold ?? 0,
   };
 }
 
@@ -87,6 +89,7 @@ async function save() {
         advanceSettlementDays: form.value.advanceSettlementDays,
         advanceSettlementTolerance: form.value.advanceSettlementTolerance,
         paymentCalendar: form.value.paymentCalendar,
+        adjustmentApprovalThreshold: form.value.adjustmentApprovalThreshold,
       },
       { 'X-Version': String(selected.value.version) },
     );
@@ -139,6 +142,9 @@ onMounted(reload);
         </FormField>
         <FormField label="Calendrier de paiement (JSON)" width="long" v-slot="{ id }">
           <input :id="id" data-testid="field-calendar" type="text" v-model="form.paymentCalendar" :disabled="!canEdit()" />
+        </FormField>
+        <FormField label="Seuil d'approbation des ajustements" width="amount" v-slot="{ id }">
+          <input :id="id" data-testid="field-approval-threshold" type="number" step="0.01" v-model.number="form.adjustmentApprovalThreshold" :disabled="!canEdit()" />
         </FormField>
         <AppButton v-if="canEdit()" type="submit" data-testid="save-entity">Enregistrer</AppButton>
       </AppForm>

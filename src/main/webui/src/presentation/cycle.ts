@@ -50,6 +50,16 @@ export function canOperateCycle(roles: readonly string[]): boolean {
   return roles.includes('OPERATOR') || roles.includes('BUSINESS_ADMIN');
 }
 
+/**
+ * Tells whether a user holding the given roles may approve an adjustment: an operator or business
+ * admin as a second signatory, or the business validator for an amount above the entity threshold
+ * (REG-03).
+ */
+export function canApproveAdjustment(roles: readonly string[]): boolean {
+  return roles.includes('OPERATOR') || roles.includes('BUSINESS_ADMIN')
+    || roles.includes('BUSINESS_VALIDATOR');
+}
+
 /** Tells whether a user holding the given roles may validate a lot for Finance and record results. */
 export function canValidateFinance(roles: readonly string[]): boolean {
   return roles.includes('FINANCE_CONTROLLER');

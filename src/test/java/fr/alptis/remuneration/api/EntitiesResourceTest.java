@@ -95,15 +95,18 @@ class EntitiesResourceTest {
                 .header("X-Version", version)
                 .contentType("application/json")
                 .body("{\"minPaymentAmount\":25.00,\"advanceSettlementDays\":360,"
-                        + "\"advanceSettlementTolerance\":1.00,\"paymentCalendar\":\"{}\"}")
+                        + "\"advanceSettlementTolerance\":1.00,\"paymentCalendar\":\"{}\","
+                        + "\"adjustmentApprovalThreshold\":500.00}")
                 .when().put("/api/ui/v1/entities/ALPTIS_ASSURANCES")
                 .then().statusCode(200)
-                .body("minPaymentAmount", org.hamcrest.Matchers.is(25.00f));
+                .body("minPaymentAmount", org.hamcrest.Matchers.is(25.00f))
+                .body("adjustmentApprovalThreshold", org.hamcrest.Matchers.is(500.00f));
 
         given().auth().preemptive().basic("admin-alptis", "admin-alptis")
                 .when().get("/api/ui/v1/entities/ALPTIS_ASSURANCES")
                 .then().statusCode(200)
-                .body("minPaymentAmount", org.hamcrest.Matchers.is(25.00f));
+                .body("minPaymentAmount", org.hamcrest.Matchers.is(25.00f))
+                .body("adjustmentApprovalThreshold", org.hamcrest.Matchers.is(500.00f));
     }
 
     /**

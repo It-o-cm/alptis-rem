@@ -903,15 +903,17 @@ _LINEAR v1) de la période calculée : renforcé pour vérifier que l'**écart e
 ligne n'est modifiée** — le rejeu avec le paramétrage d'origine reproduit les lignes réelles au centime
 (SIM-03, reproductibilité D8/CR-69 vue par l'interface). 44 `@path`.
 
-**Séparation des tâches — ajustement, cas « auteur » renforcé (2026-10-15).** Le test d'approbation des
-ajustements vérifie désormais que **l'auteur ne peut pas approuver son propre ajustement** (§3 règle 4,
-§5 séparation des tâches) : l'opérateur qui a saisi clique « Approuver » → refus (« un second utilisateur
-doit approuver »), puis un administrateur approuve. **AJU-03 reste non étiqueté** : son troisième cas
-(« au-delà du seuil par un non-valideur → refus ») exige un **seuil d'approbation configurable**
-(`ADJUSTMENT_APPROVAL_THRESHOLD`), aujourd'hui lu par `AdjustmentService` mais **réglable nulle part**
-(ni écran ni API ; REG-03 « seuil paramétrable » non exposé). Passe dédiée à venir : exposer le seuil sur
-l'écran « Entités et paramètres » (feature contenue : vue/màj `EntityAdminService` + champ écran), puis
-tester les trois cas d'AJU-03.
+**AJU-03 comblé et étiqueté (2026-10-15).** Le seuil d'approbation des ajustements (REG-03) était lu par
+`AdjustmentService` mais **réglable nulle part** (ancien `EntityParameter ADJUSTMENT_APPROVAL_THRESHOLD`
+jamais exposé). Correctif (fonction d'abord) : le seuil devient une **colonne** `adjustmentApproval
+Threshold` de `LegalEntity` (cohérent avec les autres paramètres), exposée sur l'écran « Entités et
+paramètres » (champ `field-approval-threshold`, vue/màj/audit `EntityAdminService`). Deuxième manque : le
+bouton « Approuver » n'était visible que pour `OPERATOR`/`BUSINESS_ADMIN` (`canOperateCycle`) alors que le
+**valideur métier** doit approuver au-dessus du seuil — ajout de `canApproveAdjustment`
+(OPERATOR/BUSINESS_ADMIN/BUSINESS_VALIDATOR) pour la visibilité du bouton. Le test e2e AJU-03 règle le
+seuil à 50 €, soumet un ajustement de 100 €, et vérifie les trois cas : **auteur → refus**, **second
+non-valideur au-dessus du seuil → refus**, **valideur métier → appliqué**. Couverture : unitaire (seuil
+via colonne, EntitiesResource lit/écrit le seuil), vitest (`canApproveAdjustment`). 45 `@path`.
 
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 — les six codes sont répartis sur plusieurs imports (rectifié 2026-10-15).** *Correction d'un

@@ -3,6 +3,7 @@ import {
   periodStateLabel,
   nextState,
   canDrivePeriod,
+  canApproveAdjustment,
   canOperateCycle,
   canValidateFinance,
   paymentStatusLabel,
@@ -45,6 +46,13 @@ describe('cycle access', () => {
   it('lets only the finance controller validate for finance', () => {
     expect(canValidateFinance(['FINANCE_CONTROLLER'])).toBe(true);
     expect(canValidateFinance(['OPERATOR'])).toBe(false);
+  });
+
+  it('lets an operator, admin or business validator approve an adjustment', () => {
+    expect(canApproveAdjustment(['OPERATOR'])).toBe(true);
+    expect(canApproveAdjustment(['BUSINESS_ADMIN'])).toBe(true);
+    expect(canApproveAdjustment(['BUSINESS_VALIDATOR'])).toBe(true);
+    expect(canApproveAdjustment(['VIEWER'])).toBe(false);
   });
 });
 

@@ -11,7 +11,6 @@ import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
-import fr.alptis.remuneration.domain.EntityParameter;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
@@ -37,9 +36,6 @@ import java.util.List;
  */
 @ApplicationScoped
 public class AdjustmentService {
-
-    /** The entity parameter carrying the second-level approval threshold. */
-    private static final String THRESHOLD_KEY = "ADJUSTMENT_APPROVAL_THRESHOLD";
 
     private final DateTimeProvider clock;
 
@@ -346,9 +342,7 @@ public class AdjustmentService {
      * @return the threshold, or null
      */
     private static BigDecimal threshold(LegalEntity entity) {
-        EntityParameter parameter = EntityParameter.find("entity = ?1 and paramKey = ?2", entity, THRESHOLD_KEY)
-                .firstResult();
-        return parameter == null ? null : new BigDecimal(parameter.paramValue);
+        return entity.adjustmentApprovalThreshold;
     }
 
     /**

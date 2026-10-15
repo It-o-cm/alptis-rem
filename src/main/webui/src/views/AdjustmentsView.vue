@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
-import { canOperateCycle } from '../presentation/cycle';
+import { canApproveAdjustment, canOperateCycle } from '../presentation/cycle';
 import { formatAmount } from '../presentation/format';
 import { adjustmentStatusLabel, adjustmentTypeLabel, ADJUSTMENT_TYPE_OPTIONS } from '../presentation/lines';
 import { AppButton, AppCard, AppForm, AppMessage, CodeSelect, DataTable, EntitySelect, FilterBar, FormField, MonthSelect, PageHeading } from '../components/ui';
@@ -32,8 +32,11 @@ const form = ref({
   autoReverse: false, repaymentSchedule: '',
 });
 
-/** Whether the current user may operate the cycle (submit, approve). */
+/** Whether the current user may operate the cycle (submit an adjustment). */
 const canOperate = (): boolean => canOperateCycle(session.roles);
+
+/** Whether the current user may approve an adjustment (includes the business validator, REG-03). */
+const canApprove = (): boolean => canApproveAdjustment(session.roles);
 
 /** Columns of the adjustments table. */
 const columns: Column<AdjustmentView>[] = [
@@ -212,7 +215,7 @@ onMounted(load);
         </template>
         <template #actions="{ row }">
           <AppButton
-            v-if="canOperate() && row.status === 'SUBMITTED'"
+            v-if="canApprove() && row.status === 'SUBMITTED'"
             variant="secondary"
             :data-testid="`adjustment-approve-${row.id}`"
             @click="approve(row)"

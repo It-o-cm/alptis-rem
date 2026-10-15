@@ -46,6 +46,53 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   await admin.close();
 });
 
+// Parcours AJU-03 (section 4.4): approval of an adjustment above the entity threshold. The author
+// cannot approve (refus), a non-validator second above the threshold cannot either (refus), and the
+// business validator approves (approuvé). The threshold is first set on the entity-parameters screen.
+test('l’approbation d’un ajustement au-dessus du seuil est refusée sauf au valideur métier @screen:adjustments @req:REG-03 @path:AJU-03', async ({
+  browser,
+}) => {
+  // A business admin sets the entity's adjustment approval threshold to 50,00 €.
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const adminPage = await admin.newPage();
+  await adminPage.goto('/entites');
+  await adminPage.getByTestId('entity-row-ALPTIS_ASSURANCES').click();
+  await expect(adminPage.getByTestId('entity-form')).toBeVisible();
+  await adminPage.getByTestId('field-approval-threshold').fill('50');
+  await adminPage.getByTestId('save-entity').click();
+  await expect(adminPage.getByTestId('save-message')).toHaveText('Paramètres enregistrés.');
+
+  // An operator submits an adjustment of 100,00 €, above the threshold.
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const opPage = await operator.newPage();
+  await opPage.goto('/ajustements');
+  await opPage.getByTestId('adj-type').selectOption('CORRECTION');
+  await opPage.getByTestId('adj-amount').fill('100');
+  await opPage.getByTestId('adj-payee').fill('1');
+  await opPage.getByTestId('adj-reason').fill('Correction au-dessus du seuil');
+  await opPage.getByTestId('adj-submit').click();
+  await expect(opPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Soumis');
+
+  // Case 1: the author cannot approve their own adjustment.
+  await opPage.locator('[data-testid^="adjustment-approve-"]').first().click();
+  await expect(opPage.getByTestId('adj-error')).toContainText('second utilisateur');
+  await operator.close();
+
+  // Case 3: a non-validator second, above the threshold, is refused.
+  await adminPage.goto('/ajustements');
+  await adminPage.locator('[data-testid^="adjustment-approve-"]').first().click();
+  await expect(adminPage.getByTestId('adj-error')).toContainText('seuil');
+  await admin.close();
+
+  // Case 2: the business validator approves — applied.
+  const validator = await browser.newContext({ httpCredentials: USERS.validatorAlptis });
+  const valPage = await validator.newPage();
+  await valPage.goto('/ajustements');
+  await valPage.locator('[data-testid^="adjustment-approve-"]').first().click();
+  await expect(valPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Appliqué');
+  await validator.close();
+});
+
 test('l’opérateur importe des ajustements en masse @screen:adjustments @req:REG-04 @role-action:OPERATOR-submit-adjustment @path:AJU-07', async ({
   browser,
 }) => {
