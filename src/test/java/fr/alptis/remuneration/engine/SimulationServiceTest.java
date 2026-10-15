@@ -24,6 +24,7 @@ import fr.alptis.remuneration.engine.SimulationService.Substitution;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -47,8 +48,24 @@ class SimulationServiceTest {
     @Inject
     SimulationService service;
 
+    @Inject
+    EntityManager em;
+
     private static final LocalDate M = LocalDate.of(2026, 9, 1);
     private long seq;
+
+    /** Counts a run's lines straight from the table, bypassing the simulation {@code @SQLRestriction}. */
+    private long nativeLineCount(long runId) {
+        return ((Number) em.createNativeQuery("select count(*) from commission_line where run_id = ?1")
+                .setParameter(1, runId).getSingleResult()).longValue();
+    }
+
+    /** Counts simulation-space lines straight from the table, bypassing the restriction. */
+    private long nativeSimLineCount() {
+        return ((Number) em.createNativeQuery("select count(*) from commission_line cl "
+                + "join calculation_run r on cl.run_id = r.id where r.run_type = 'SIMULATION'")
+                .getSingleResult()).longValue();
+    }
 
     /** Returns the UNEP entity. */
     private static LegalEntity unep() {
@@ -142,7 +159,10 @@ class SimulationServiceTest {
         assertEquals(1, result.linesReplayed());
         assertEquals(0, new BigDecimal("0.00").compareTo(result.ecart()));
         assertEquals(0, new BigDecimal("84300.00").compareTo(result.simulatedTotal()));
-        assertEquals(1, CommissionLine.count("run.id = ?1", result.runId()));
+        // The simulated line is written to the separate space (D7) but hidden from ordinary reads: a
+        // plain query sees nothing, the table holds it.
+        assertEquals(0, CommissionLine.count("run.id = ?1", result.runId()));
+        assertEquals(1, nativeLineCount(result.runId()));
     }
 
     /**
@@ -241,7 +261,11 @@ class SimulationServiceTest {
         // Re-simulating for every distributor replaces the prior run's lines, not adding to them.
         SimulationResult all = service.simulate("UNEP", M, "APPORT", 2, table, null);
         assertEquals(2, all.linesModified());
-        assertEquals(2, CommissionLine.count("run.runType = ?1", RunType.SIMULATION));
+        // The simulation space holds the two replaced lines (native count), yet they are hidden from
+        // every ordinary read: a run-type query and a period query see only the two real lines.
+        assertEquals(2, nativeSimLineCount());
+        assertEquals(0, CommissionLine.count("run.runType = ?1", RunType.SIMULATION));
+        assertEquals(2, CommissionLine.count("period = ?1", run.period));
     }
 
     /** Creates a raw real line with nullable basis/rate, version and distributor. */

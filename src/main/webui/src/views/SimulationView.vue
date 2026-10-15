@@ -220,7 +220,7 @@ onMounted(loadHistory);
         <AppCard class="sim-tile">
           <div class="sim-tile__label">Lignes modifiées</div>
           <div class="sim-tile__value" data-testid="sim-modified">{{ result.linesModified }}</div>
-          <div class="sim-tile__sub">sur {{ result.linesReplayed }} rejouées</div>
+          <div class="sim-tile__sub">sur <span data-testid="sim-replayed">{{ result.linesReplayed }}</span> rejouées</div>
           <div class="sim-tile__sub">Événements en attente : {{ result.held }}</div>
         </AppCard>
       </div>

@@ -16,6 +16,7 @@ import fr.alptis.remuneration.domain.ValidationException;
 import io.quarkus.runtime.util.HashUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
@@ -43,14 +44,19 @@ public class SimulationService {
     /** The application date/time provider. */
     private final DateTimeProvider clock;
 
+    /** The entity manager, used to clean the previous simulation's hidden lines natively. */
+    private final EntityManager em;
+
     /**
      * Creates the service.
      *
      * @param clock the application date/time provider
+     * @param em    the entity manager
      */
     @Inject
-    public SimulationService(DateTimeProvider clock) {
+    public SimulationService(DateTimeProvider clock, EntityManager em) {
         this.clock = clock;
+        this.em = em;
     }
 
     /**
@@ -91,8 +97,13 @@ public class SimulationService {
         }
         List<Substitution> table = substitutions == null ? List.of() : substitutions;
 
-        // A separate space: drop any previous simulation of the period and open a simulation run.
-        CommissionLine.delete("period = ?1 and run.runType = ?2", period, RunType.SIMULATION);
+        // A separate space: drop any previous simulation of the period and open a simulation run. The
+        // simulated lines are hidden by the @SQLRestriction, so a plain HQL delete would not reach them;
+        // a native statement removes them before their runs (whose foreign key they carry).
+        em.createNativeQuery("delete from commission_line where run_id in "
+                        + "(select id from calculation_run where period_id = ?1 and run_type = 'SIMULATION')")
+                .setParameter(1, period.getId())
+                .executeUpdate();
         CalculationRun.delete("period = ?1 and runType = ?2", period, RunType.SIMULATION);
         CalculationRun run = new CalculationRun();
         run.period = period;
@@ -235,6 +246,8 @@ public class SimulationService {
         line.entity = entity;
         line.period = period;
         line.run = run;
+        // Belongs to the simulation space: hidden from every real read by the @SQLRestriction (D7).
+        line.simulated = true;
         line.nature = real.nature;
         line.direction = real.direction;
         line.status = real.status;

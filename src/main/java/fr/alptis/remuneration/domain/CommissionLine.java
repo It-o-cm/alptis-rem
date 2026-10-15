@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 /**
@@ -21,9 +22,16 @@ import org.hibernate.type.SqlTypes;
  * <p>Persistent entity backed by table {@code commission_line}; it inherits the common bookkeeping columns
  * and the optimistic-lock version from {@link BaseEntity}. Fields are public (Panache active record);
  * foreign keys are {@code @ManyToOne} associations.</p>
+ *
+ * <p>Lines produced by a simulation run (D7) live in the same table but belong to the separate
+ * simulation space; they carry {@link #simulated} set and are hidden from every ordinary query by the
+ * class-level {@code @SQLRestriction}, so real reads (reporting, controls, accounting, payment) never
+ * see them. The simulation that writes them computes its comparison in memory and cleans the previous
+ * simulation's rows with a native statement that bypasses the restriction.</p>
  */
 @Entity
 @Table(name = "commission_line")
+@SQLRestriction("simulated = false")
 public class CommissionLine extends BaseEntity {
 
     /** The legal entity this row belongs to, for data partitioning (section 12.2). */
@@ -163,4 +171,12 @@ public class CommissionLine extends BaseEntity {
     /** When the line was paid. */
     @Column(name = "paid_at")
     public OffsetDateTime paidAt;
+
+    /**
+     * Whether the line belongs to the simulation space (D7) rather than the real calculation. A
+     * simulated line is hidden from every ordinary query by the class-level {@code @SQLRestriction};
+     * real lines leave this false.
+     */
+    @Column(name = "simulated", nullable = false)
+    public boolean simulated;
 }
