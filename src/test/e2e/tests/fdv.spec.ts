@@ -279,7 +279,7 @@ test('l’administrateur enregistre un plan de variable par poste @screen:fdvPla
   await admin.close();
 });
 
-test('l’administrateur crée un objectif collectif versionné @screen:fdvObjectives @req:FDV-03', async ({
+test('l’administrateur crée un objectif collectif versionné @screen:fdvObjectives @req:FDV-03 @path:FDV-02', async ({
   browser,
 }) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
@@ -300,9 +300,10 @@ test('l’administrateur crée un objectif collectif versionné @screen:fdvObjec
   await expect(page.getByTestId('fdvo-message')).toContainText('enregistré');
   await expect(page.getByTestId('objective-row-collectif-COLLECTIVE_QUANTITATIVE-v1')).toBeVisible();
 
-  // Submitting the same key again creates version 2 (append-only versioning).
+  // Submitting the same key again creates version 2 (append-only versioning); version 1 is kept.
   await page.getByTestId('obj-submit').click();
   await expect(page.getByTestId('objective-row-collectif-COLLECTIVE_QUANTITATIVE-v2')).toBeVisible();
+  await expect(page.getByTestId('objective-row-collectif-COLLECTIVE_QUANTITATIVE-v1')).toBeVisible();
   await admin.close();
 });
 

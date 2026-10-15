@@ -879,6 +879,12 @@ une **ligne « Contrepassation » dans la période suivante** (octobre), vérifi
 AJU-07 (import en masse) — l'import crée les lignes valides (une importée, la ligne au code inconnu
 ignorée) **toutes au statut « Soumis » (à approuver)**. Étiquettes posées. 41 `@path`.
 
+**FDV-02 étiqueté (2026-10-15).** Le test de l'objectif collectif versionné crée une version 1, puis
+re-soumet la même clé pour créer une **version 2** ; assertion ajoutée que la **version 1 reste visible**
+(ajout seul). Couvre §4 FDV-02 « Objectifs versionnés : nouvelle version ; ancienne conservée ». 42
+`@path`. (FDV-04, pondération par marché à 13 500 €, non étiqueté : le test principal porte `@req:FDV-04`
+mais ne vérifie pas le montant pondéré ; à renforcer.)
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
