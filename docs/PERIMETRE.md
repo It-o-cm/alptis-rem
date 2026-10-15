@@ -964,6 +964,8 @@ actions mutantes ; reste à étendre aux dernières avant l'étiquetage complet 
   **renforcé** (valeurs par distributeur `P13897` et par période `2026-01-31`, en pourcentage — première
   moitié d'INT-23), mais l'étiquette `@path:INT-23` attend la matérialisation des indicateurs calculés.
 
+**AJU-02 étiqueté (2026-10-15).** Nouveau test : un ajustement sans motif est **refusé** (« un motif est exigé »), puis un ajustement avec motif, **pièce jointe** (`GED-2026-09-77`, consultable à la liste) et **lien à la ligne corrigée** (identifiant de ligne réel lu depuis la réclamation de démonstration, affiché « #id » à la colonne « Ligne corrigée ») est accepté. 48 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

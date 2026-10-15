@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { resetDb, seedCycle, USERS } from '../support/helpers';
+import { loadDemo, resetDb, seedCycle, USERS } from '../support/helpers';
 
 // Per-screen tests for the adjustments: submission, the two-signature approval, bulk import and the
 // automatic reversal (REG-01 to REG-05).
@@ -44,6 +44,43 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   await adminPage.locator('[data-testid^="adjustment-approve-"]').first().click();
   await expect(adminPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Appliqué');
   await admin.close();
+});
+
+// Parcours AJU-02 (section 4.4): an adjustment requires a reason (refused without one), accepts an
+// attachment reference (shown back) and links to the corrected line (shown as #id). The corrected line
+// is a real demo line, read from the seeded claim's contested line.
+test('un ajustement exige un motif, porte une pièce jointe et le lien à la ligne corrigée @screen:adjustments @req:REG-02 @path:AJU-02', async ({
+  browser,
+}) => {
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const page = await operator.newPage();
+  await loadDemo(page.request);
+
+  // Read a real commission line id from the demo claim's contested line.
+  await page.goto('/reclamations');
+  await page.locator('[data-testid^="claim-row-"]').first().getByRole('button', { name: 'Fiche' }).click();
+  const contested = page.locator('[data-testid^="contested-line-"]').first();
+  await expect(contested).toBeVisible();
+  const lineId = ((await contested.getAttribute('data-testid')) ?? '').replace('contested-line-', '');
+
+  await page.goto('/ajustements');
+  // Reason absent: the adjustment is refused.
+  await page.getByTestId('adj-type').selectOption('CORRECTION');
+  await page.getByTestId('adj-amount').fill('9');
+  await page.getByTestId('adj-payee').fill('1');
+  await page.getByTestId('adj-reason').fill('');
+  await page.getByTestId('adj-submit').click();
+  await expect(page.getByTestId('adj-error')).toContainText('motif');
+
+  // With a reason, an attachment and a corrected line: accepted, both shown back.
+  await page.getByTestId('adj-reason').fill('Correction du taux');
+  await page.getByTestId('adj-attachment').fill('GED-2026-09-77');
+  await page.getByTestId('adj-corrected-line').fill(lineId);
+  await page.getByTestId('adj-submit').click();
+  await expect(page.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Soumis');
+  await expect(page.getByText('GED-2026-09-77').first()).toBeVisible();
+  await expect(page.getByText(`#${lineId}`).first()).toBeVisible();
+  await operator.close();
 });
 
 // Parcours AJU-03 (section 4.4): approval of an adjustment above the entity threshold. The author
