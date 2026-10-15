@@ -923,6 +923,16 @@ collaborateur dédié, importe ses mesures de septembre (10 000 particulier + 5 
 flux `employee_measures`) puis simule sans hypothèse (production mesurée) → **13 500,00 €** affichés. 46
 `@path`.
 
+**Niveau 4 — matrice des droits amorcée (2026-10-15).** Nouveau `rights.spec.ts` : un tableau en code
+(d'après la spécification §3) donne, par action, les rôles habilités ; un **test généré** parcourt le
+tableau et vérifie, pour chaque couple rôle-action, que l'action aboutit (≠ 403) pour un rôle habilité et
+est **refusée (403)** pour les autres — le `@RolesAllowed` du serveur étant la cible, un identifiant
+bidon fait jouer l'autorisation avant toute logique métier (indépendant de l'état). Premier lot : **10
+actions × 9 rôles = 90 couples** (purge → IT_ADMIN ; calcul/contrôles → OPERATOR/BUSINESS_ADMIN ;
+approbation d'ajustement → +BUSINESS_VALIDATOR ; validation lot → FINANCE_CONTROLLER ; validation métier
+→ BUSINESS_VALIDATOR ; variable → SALES_MANAGER/BUSINESS_ADMIN ; etc.). À étendre aux actions restantes
+d'ici l'étiquetage complet du couple rôle-action (condition de fin d'étape 4).
+
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 comblé et étiqueté (2026-10-15).** Les six codes de rejet (§8.2) existent tous dans
   `RejectionReasonCode` ; l'import d'événements en produisait cinq (`TYPE`, `MISSING_FIELD`, `AMOUNT`,
