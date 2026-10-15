@@ -750,7 +750,9 @@ corrigée, reportée — vérifie leurs libellés et le décompte des ouvertes (
 virements) **complété** : le fichier SEPA pain.001 ne portait ni le nombre d'ordres, ni la somme de
 contrôle, ni la date d'exécution (champ `executionDate` jamais renseigné) ; ajout de `<NbOfTxs>`,
 `<CtrlSum>`, `<ReqdExctnDt>` (date posée à la validation Finance), et le test lit ces champs plus
-l'identifiant de bout en bout et le libellé. 18 `@path`.
+l'identifiant de bout en bout et le libellé. FDV-11 (simulateur du variable) : le test simule une
+production très au-dessus de l'objectif et vérifie que l'atteinte est **plafonnée à 100 %** (déjà
+implémenté côté moteur, `.min(1)`). 19 `@path`.
 
 **Audit §4.3–4.6 (2026-10-15).** Restent à compléter avant étiquetage : PAI-02 (seulement deux des six
 motifs d'exclusion), FIN-05 (équilibre/total de l'extraction), PAI-05 (téléchargement de la liste des

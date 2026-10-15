@@ -176,7 +176,7 @@ test('l’administrateur applique la réduction sur résiliation @screen:fdvPlan
   await admin.close();
 });
 
-test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16', async ({
+test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16 @path:FDV-11', async ({
   browser,
 }) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
@@ -203,6 +203,10 @@ test('le commercial consulte son variable et le simule @screen:fdvCommercial @re
   await page.getByTestId('sim-run').click();
   await expect(page.getByTestId('sim-alert')).toContainText('Objectif atteint');
   await expect(page.getByTestId('sim-amount')).toContainText('€');
+  // FDV-11: a production far above the objective caps the attainment at 100 %.
+  await page.getByTestId('sim-production').fill('9999999');
+  await page.getByTestId('sim-run').click();
+  await expect(page.getByTestId('sim-amount')).toContainText('atteinte 100 %');
   await rep.close();
 });
 
