@@ -1016,6 +1016,15 @@ dupliqué en `GUIDE_2027` (millésime 2027) ; la version copiée est **Brouillon
 2027-12-31** (et ne porte aucune date 2026), tandis que le plan source **reste inchangé** (version
 toujours En vigueur sur 2026). Vérification seule, aucune feature. 59 `@path`.
 
+**CPT-05 étiqueté (2026-10-16).** Parcours « vue d'un groupement : comptes de ses membres regroupés ».
+La maquette (écran 21) montre les membres avec **leurs codes de production** (les comptes, de type
+`PRODUCTION_CODE`), pas des soldes — le plus simple compatible avec la maquette (hypothèse par défaut).
+Le test d'écran existant ouvrait un groupement et voyait « une » ligne membre sans vérifier le
+regroupement. Renforcé : le groupement **GRP-NORD** (tête *Cabinet Dubois*) est ouvert explicitement et
+ses **trois membres** sont regroupés dessous, chacun portant son **compte à code de production**
+(`P20001`/`PC-P20001`, `P20002`/`PC-P20002`, `P20003`/`PC-P20003`). Vérification seule, aucune feature.
+60 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
