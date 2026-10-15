@@ -915,6 +915,14 @@ seuil à 50 €, soumet un ajustement de 100 €, et vérifie les trois cas : **
 non-valideur au-dessus du seuil → refus**, **valideur métier → appliqué**. Couverture : unitaire (seuil
 via colonne, EntitiesResource lit/écrit le seuil), vitest (`canApproveAdjustment`). 45 `@path`.
 
+**FDV-04 comblé et étiqueté (2026-10-15).** La pondération par marché (CR-87 : 10 000 € particulier +
+5 000 € professionnel → 13 500 €) était calculée (`SalesForceService.weightedProduction`) et portée par
+`SimulationResult.weightedProduction`, mais **non affichée**. Ajout (fonction d'abord) : la ligne
+« Production pondérée par marché » (`sim-weighted`) sur le simulateur commercial. Le test e2e crée un
+collaborateur dédié, importe ses mesures de septembre (10 000 particulier + 5 000 professionnel via le
+flux `employee_measures`) puis simule sans hypothèse (production mesurée) → **13 500,00 €** affichés. 46
+`@path`.
+
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 — les six codes sont répartis sur plusieurs imports (rectifié 2026-10-15).** *Correction d'un
   relevé erroné du même jour : `TYPE` **existe** bien dans `RejectionReasonCode` (les six y sont :

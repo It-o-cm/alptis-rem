@@ -141,6 +141,9 @@ async function simulate(): Promise<void> {
       <AppMessage v-if="simulation" :variant="simulation.achieved ? 'success' : 'info'" data-testid="sim-alert">
         {{ simulation.alert }}
       </AppMessage>
+      <p v-if="simulation" data-testid="sim-weighted" class="sim-amount">
+        Production pondérée par marché : <strong>{{ amount(simulation.weightedProduction) }}</strong>
+      </p>
       <p v-if="simulation" data-testid="sim-amount" class="sim-amount">
         Variable simulé : <strong>{{ amount(simulation.amount) }}</strong>
         (atteinte {{ (simulation.achievementRate * 100).toFixed(0) }} %)

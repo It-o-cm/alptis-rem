@@ -210,6 +210,49 @@ test('le commercial consulte son variable et le simule @screen:fdvCommercial @re
   await rep.close();
 });
 
+// Parcours FDV-04 (section 4.7): market weighting. A collaborator with 10 000 € on the particulier
+// market and 5 000 € on the professionnel market weighs 10 000 × 0,7 + 5 000 × 1,3 = 13 500 € against
+// the objective (CR-87). The simulator shows that weighted production.
+test('la pondération par marché porte 10 000 € et 5 000 € à 13 500 € @screen:fdvCommercial @req:FDV-16 @path:FDV-04', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+
+  // Create a dedicated collaborator (no other measures) to read its weighting in isolation.
+  await page.goto('/fdv/collaborateurs');
+  await page.getByTestId('collab-external-id').fill('E2E-FDV04');
+  await page.getByTestId('collab-last-name').fill('Marché');
+  await page.getByTestId('collab-first-name').fill('Léa');
+  await page.getByTestId('collab-job').selectOption('CAC');
+  await page.getByTestId('collab-team').fill('Équipe M');
+  await page.getByTestId('collab-region').fill('Est');
+  await page.getByTestId('collab-valid-from').fill('2026-01-01');
+  await page.getByTestId('collab-submit').click();
+  await expect(page.getByTestId('fdvcol-message')).toContainText('créé');
+
+  // Import its September production, split across the two markets.
+  const csv =
+    'external_id;measure_type;dimension;period_from;period_to;value\n'
+    + 'E2E-FDV04;PRODUCTION;particulier;2026-09-01;2026-09-30;10000\n'
+    + 'E2E-FDV04;PRODUCTION;professionnel;2026-09-01;2026-09-30;5000\n';
+  const auth = 'Basic ' + Buffer.from(
+    `${USERS.adminAlptis.username}:${USERS.adminAlptis.password}`).toString('base64');
+  const imported = await page.request.post(
+    '/api/v1/imports/employee_measures?entity=ALPTIS_ASSURANCES&sourceSystem=HR&fileName=mesures.csv',
+    { headers: { 'Content-Type': 'text/plain', Authorization: auth }, data: csv });
+  expect(imported.ok(), `${imported.status()} ${await imported.text()}`).toBeTruthy();
+
+  // Simulate September with no hypothetical, so the measured weighted production is read: 13 500 €.
+  await page.goto('/fdv/commercial');
+  await page.getByTestId('fdvc-id').fill('E2E-FDV04');
+  await page.getByTestId('fdvc-load').click();
+  await page.getByTestId('sim-month').selectOption('2026-09-01');
+  await page.getByTestId('sim-run').click();
+  await expect(page.getByTestId('sim-weighted')).toContainText(/13.?500,00/);
+  await admin.close();
+});
+
 test('l’administrateur crée puis modifie un collaborateur @screen:fdvCollaborators @req:FDV-01', async ({
   browser,
 }) => {
