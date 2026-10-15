@@ -132,7 +132,9 @@ test.describe('Distributeurs — opérateur', () => {
     await expect(page.getByTestId('agreement-row-ACC-RCD-ALPTIS_ASSURANCES')).toBeVisible();
   });
 
-  test('la fiche historise un changement de hiérarchie @screen:production-hierarchy @req:REF-03', async ({
+  // Parcours INT-21 (section 4.1): a change of grouping is historised on the distributor and the
+  // grouping fiche is up to date (the member moves from one grouping to the other).
+  test('un changement de groupement est historisé et la fiche du groupement est à jour @screen:production-hierarchy @screen:groupings @req:REF-03 @path:INT-21', async ({
     page,
   }) => {
     const post = (flow: string, content: string) =>
@@ -147,6 +149,7 @@ test.describe('Distributeurs — opérateur', () => {
     // A later import moves the distributor to another grouping — this is historised (REF-03).
     await post('distributors', dh + 'ALPTIS_ASSURANCES;SESAME;P13897;Cabinet Martin;INDEPENDENT;ACTIVE;2026-01-01;GB\n');
 
+    // The distributor fiche historises the change, from GA to GB, with its date.
     await page.goto('/distributeurs');
     await page.getByTestId('search-term').fill('P13897');
     await page.getByTestId('search-button').click();
@@ -154,6 +157,18 @@ test.describe('Distributeurs — opérateur', () => {
     const history = page.getByTestId('history-row').first();
     await expect(history).toBeVisible();
     await expect(history).toContainText('Changement de groupement');
+    await expect(history).toContainText('GA');
+    await expect(history).toContainText('GB');
+    await expect(history).toContainText('2026');
+
+    // The grouping fiche is up to date: P13897 now belongs to GB, no longer to GA.
+    await page.goto('/groupements');
+    await page.getByTestId('open-group-GB').click();
+    await expect(page.getByTestId('group-detail')).toBeVisible();
+    await expect(page.getByTestId('member-row-P13897')).toBeVisible();
+    await page.getByTestId('open-group-GA').click();
+    await expect(page.getByTestId('group-detail')).toBeVisible();
+    await expect(page.getByTestId('member-row-P13897')).toHaveCount(0);
   });
 });
 

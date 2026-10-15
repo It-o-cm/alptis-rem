@@ -1045,6 +1045,14 @@ le CRM ré-importe le distributeur en *Cabinet Dubois Rénové* (même hiérarch
 affiche la **nouvelle raison sociale** et son **groupement**, et **conserve** inscription, indicateur et
 accord. Vérification seule, aucune feature. 62 `@path`.
 
+**INT-21 étiqueté (2026-10-16).** Parcours « changement de groupement à une date : hiérarchie historisée ;
+fiche du groupement à jour ». Le test d'écran existant (ré-import déplaçant `P13897` de `GA` vers `GB`)
+vérifiait l'historisation côté fiche distributeur mais pas la mise à jour de la fiche du groupement.
+Renforcé en couvrant les **deux volets** : la ligne d'historique de la fiche distributeur porte
+« Changement de groupement », **avant `GA`**, **après `GB`** et la **date** (2026) ; puis, sur l'écran des
+groupements, `P13897` est désormais membre de **`GB`** et **ne l'est plus de `GA`**. Vérification seule,
+aucune feature. 63 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
