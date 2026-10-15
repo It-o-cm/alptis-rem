@@ -1034,6 +1034,17 @@ ses mesures sur **deux périodes** (août et septembre) via `/api/v1/imports/emp
 lignes de **mesure par période** apparaissent à l'écran des mesures reçues avec leurs dates. Vérification
 seule, aucune feature. 61 `@path`.
 
+**INT-16 étiqueté (2026-10-16).** Parcours « mise à jour d'un distributeur par le CRM : fiche à jour ;
+attributs propres à l'application conservés ». L'upsert CRM (`ReferentialImportService.upsertDistributor`)
+ne touche que les champs du flux (raison sociale, type, groupement, ORIAS, statut d'entité) et laisse
+intacts les attributs gérés par l'application (accords de règle réservée, inscriptions, indicateurs de
+qualité). Vérifié d'abord à l'API (ré-import de `P20001` avec une nouvelle raison sociale → fiche à jour,
+groupement `GRP-NORD` conservé, 3 accords / 2 inscriptions / 3 indicateurs intacts, statut non dupliqué).
+Nouveau test e2e : la fiche de `P20001` (*Cabinet Dubois*) porte ses inscriptions, indicateurs et accords ;
+le CRM ré-importe le distributeur en *Cabinet Dubois Rénové* (même hiérarchie et statut) ; la fiche
+affiche la **nouvelle raison sociale** et son **groupement**, et **conserve** inscription, indicateur et
+accord. Vérification seule, aucune feature. 62 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,

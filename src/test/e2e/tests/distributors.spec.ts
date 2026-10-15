@@ -90,6 +90,48 @@ test.describe('Distributeurs — opérateur', () => {
     await expect(page.getByTestId('account-ALPTIS_ASSURANCES')).toBeVisible();
   });
 
+  // Parcours INT-16 (section 4.1): a CRM update of a distributor refreshes its fiche while the
+  // application's own attributes (reserved-rule agreements, enrollments, quality indicators) are kept.
+  test('une mise à jour CRM rafraîchit la fiche en conservant les attributs propres à l’application @screen:distributor-search @req:REF-10 @path:INT-16', async ({
+    page,
+  }) => {
+    await loadDemo(page.request);
+    const open = async () => {
+      await page.goto('/distributeurs');
+      await page.getByTestId('search-term').fill('P20001');
+      await page.getByTestId('search-button').click();
+      await page.getByTestId('distributor-row-P20001').click();
+      return page.getByTestId('distributor-detail');
+    };
+
+    // Before: the fiche names the distributor and carries the application's own data.
+    const before = await open();
+    await expect(before).toContainText('Cabinet Dubois');
+    await expect(before).not.toContainText('Rénové');
+    await expect(page.locator('[data-testid^="enrollment-row-"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid="indicator-row"]').first()).toBeVisible();
+    await expect(page.getByTestId('agreement-row-ACC-RCD-ALPTIS_ASSURANCES')).toBeVisible();
+
+    // The CRM re-imports the distributor with a new legal name, same hierarchy and status.
+    const auth = 'Basic ' + Buffer.from(
+      `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+    const crm =
+      'partner_code;legal_name;distributor_type;status;valid_from;group_code\n' +
+      'P20001;Cabinet Dubois Rénové;INDEPENDENT;ACTIVE;2025-01-01;GRP-NORD\n';
+    const res = await page.request.post(
+      '/api/v1/imports/distributors?entity=ALPTIS_ASSURANCES&sourceSystem=SESAME&fileName=crm-p20001.csv',
+      { headers: { 'Content-Type': 'text/plain', Authorization: auth }, data: crm });
+    expect(res.ok(), `${res.status()} ${await res.text()}`).toBeTruthy();
+
+    // After: the fiche is refreshed (new legal name, same grouping) and the application attributes are kept.
+    const after = await open();
+    await expect(after).toContainText('Cabinet Dubois Rénové');
+    await expect(after).toContainText('GRP-NORD');
+    await expect(page.locator('[data-testid^="enrollment-row-"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid="indicator-row"]').first()).toBeVisible();
+    await expect(page.getByTestId('agreement-row-ACC-RCD-ALPTIS_ASSURANCES')).toBeVisible();
+  });
+
   test('la fiche historise un changement de hiérarchie @screen:production-hierarchy @req:REF-03', async ({
     page,
   }) => {
