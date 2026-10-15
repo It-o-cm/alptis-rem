@@ -846,8 +846,16 @@ Le jeu de démonstration n'ayant que des règles `MONTHLY`, le comportement exis
 couverture JaCoCo 100 % tenue par `PaymentServiceTest.frequency_*` (chaque périodicité échue/non échue,
 résolution code de production / distributeur / groupement). **`NO_BANK_DETAILS` n'est pas un manque** :
 §10 (p. 1211-1212) règle les bénéficiaires sans coordonnées par le lot de chèques du trimestre, non par
-une exclusion ; le motif ne vaudrait que pour des coordonnées *invalides*. **PAI-02 reste non étiqueté**
-tant que ce dernier cas et le test e2e des six motifs ne sont pas faits.
+une exclusion ; le motif ne vaudrait que pour des coordonnées *invalides*. **`NO_BANK_DETAILS` :
+contradiction de spécification tranchée en faveur du lot de chèques (2026-10-15).** Une première tentative
+d'exclure comme `NO_BANK_DETAILS` un bénéficiaire aux coordonnées échues a été **retirée** : §10 (p. 1211)
+règle tout bénéficiaire sans coordonnées *utilisables* par le lot de chèques du trimestre, et l'exclure
+plutôt que le router cassait le flux (compteurs du lot de cycle sensibles à la dérive d'horloge de la
+suite e2e partagée). Décision : coordonnées absentes **ou échues** → lot de chèques ; le motif
+`NO_BANK_DETAILS` ne vaut que pour des coordonnées structurellement invalides, cas non produit dans le
+flux de cycle. **PAI-02 reste donc non étiquetable** tel quel : cinq motifs sont produits dans le lot de
+cycle, le sixième (`NO_BANK_DETAILS`) est traité par le routage chèque. À revoir si une validation d'IBAN
+est introduite.
 
 **PAI-06 étiqueté (2026-10-15).** Le rejeu CR-62 performe déjà le parcours : un distributeur radié de
 l'ORIAS est exclu du lot de cycle (« Bénéficiaire inactif »), puis, après réinscription (ré-import du
