@@ -17,7 +17,10 @@ test('l’administrateur exporte le plan de base et le réimporte sous un nouvea
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
   const page = await admin.newPage();
   await page.goto('/parametrage-transfert');
-  await page.getByTestId('pt-plan').fill('GUIDE_2026');
+  // ADM-03: the entity and plan are chosen from lists; the new code stays a typed identifier.
+  await expect(page.getByTestId('pt-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
+  await expect(page.getByTestId('pt-plan').locator('option', { hasText: 'GUIDE_2026' })).toHaveCount(1);
+  await page.getByTestId('pt-plan').selectOption('GUIDE_2026');
   await page.getByTestId('pt-export').click();
   await expect(page.getByTestId('pt-json')).toHaveValue(/GUIDE_2026/);
 

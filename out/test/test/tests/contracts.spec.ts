@@ -39,7 +39,7 @@ test.beforeEach(async ({ request }) => {
 test.describe('Contrats — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
-  test('recherche une adhésion et montre ses garanties @screen:contract-search @req:5.2', async ({ page }) => {
+  test('recherche une adhésion, montre ses garanties et ouvre la fiche @screen:contract-search @req:5.2 @req:5.5', async ({ page }) => {
     await seed(page);
     await page.goto('/contrats');
     await page.getByTestId('search-term').fill('AD-1');
@@ -49,6 +49,13 @@ test.describe('Contrats — opérateur', () => {
     await expect(row).toContainText('IN_FORCE');
     await expect(row).toContainText('C1');
     await expect(row).toContainText('1000.00');
+
+    // Open the adhésion/guarantee fiche (sections 5.2, 5.5).
+    await page.getByTestId('coverage-AD-1-C1').click();
+    const fiche = page.getByTestId('coverage-detail');
+    await expect(fiche).toBeVisible();
+    await expect(fiche).toContainText('AD-1');
+    await expect(fiche).toContainText('C1');
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:contract-search', async ({ page }) => {

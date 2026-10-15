@@ -18,7 +18,8 @@ test('l’administrateur technique lit la supervision @screen:supervision @req:A
   const itAdmin = await browser.newContext({ httpCredentials: USERS.itAdmin });
   const page = await itAdmin.newPage();
   await page.goto('/supervision');
-  await expect(page.getByTestId('sup-status')).toHaveText('UP');
+  // ADM-03: the health status reads as its French label, never the raw code.
+  await expect(page.getByTestId('sup-status')).toHaveText('Opérationnel');
   await expect(page.getByTestId('sup-pending')).toBeVisible();
   await itAdmin.close();
 });

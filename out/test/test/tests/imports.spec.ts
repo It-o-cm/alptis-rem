@@ -26,7 +26,8 @@ test.describe('Imports — opérateur', () => {
     await expect(page.getByTestId('page-title')).toHaveText('Imports et rejets');
 
     await page.getByTestId('upload-flow').selectOption('distributors');
-    await page.getByTestId('upload-source').fill('SESAME');
+    // The source system is chosen from a list (ING-01), not typed as a free-text code.
+    await page.getByTestId('upload-source').selectOption('SESAME');
     await page.getByTestId('upload-file').setInputFiles({
       name: 'ALPTIS_ASSURANCES_distributors_20260930.csv',
       mimeType: 'text/csv',
@@ -35,10 +36,11 @@ test.describe('Imports — opérateur', () => {
     await page.getByTestId('upload-submit').click();
     await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 1 rejetée(s)');
 
-    // Journal shows the batch with the PARTIALLY_LOADED state.
+    // Journal shows the batch with the partially-loaded state at its French label (ADM-03); the flow
+    // reads as its French label too.
     const batchRow = page.locator('[data-testid^="batch-row-"]').first();
-    await expect(batchRow).toContainText('distributors');
-    await expect(batchRow.getByTestId('batch-state')).toHaveText('PARTIALLY_LOADED');
+    await expect(batchRow).toContainText('Distributeurs');
+    await expect(batchRow.getByTestId('batch-state')).toHaveText('Intégré partiellement');
 
     // Open the batch, correct the rejected line.
     await batchRow.click();

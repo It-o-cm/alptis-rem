@@ -21,6 +21,14 @@ export async function resetDb(request: APIRequestContext): Promise<void> {
   expect(response.ok()).toBeTruthy();
 }
 
+/** Resets then loads the full demonstration dataset through the dev-only test endpoints. */
+export async function loadDemo(request: APIRequestContext): Promise<void> {
+  const reset = await request.post('/api/test/reset');
+  expect(reset.ok()).toBeTruthy();
+  const demo = await request.post('/api/test/demo');
+  expect(demo.ok()).toBeTruthy();
+}
+
 /** The month of the seeded cycle scene. */
 export const DEMO_MONTH = '2026-09-01';
 

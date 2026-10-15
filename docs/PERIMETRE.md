@@ -801,6 +801,12 @@ auteur (l'opérateur), lignes et total, et le téléchargement du fichier.
 commission, comptes), chacun estampillé de la fenêtre `INCR:2026-09-01` — « un fichier par objet,
 incrément du jour seulement ». 29 `@path`.
 
+**CAL-05 étiqueté (2026-10-15).** Nouveau test : le rejeu CR-41 crée deux périodes UNEP consécutives
+(janvier et février, toutes deux `LOADED`) ; un administrateur métier qui demande le calcul de février
+tant que janvier n'est pas validé par le métier est **refusé par le garde-fou du cycle** (« la période
+précédente n'est pas encore validée par le métier »), le refus s'affiche sur l'écran des périodes et
+février reste `LOADED`. 32 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

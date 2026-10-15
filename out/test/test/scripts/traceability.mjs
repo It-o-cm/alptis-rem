@@ -122,8 +122,8 @@ const REQUIREMENTS_BY_STEP = {
   // treatment/flow supervision (OUT-07) and personal-data purge (ADM-06). Cross-entity isolation
   // (CR-70) is also verified by PublicApiResourceTest / ReportingResourceTest on the server.
   13: {
-    screens: ['dashboards', 'commissionSearch', 'groupView', 'indicators', 'supervision', 'purge'],
-    reqs: ['REP-01', 'REP-02', 'REP-03', 'REP-07', 'REP-09', 'ADM-06'],
+    screens: ['dashboards', 'commissionSearch', 'groupView', 'margin', 'indicators', 'supervision', 'purge'],
+    reqs: ['REP-01', 'REP-02', 'REP-03', 'REP-04', 'REP-07', 'REP-08', 'REP-09', 'ADM-06'],
     crs: [],
     paths: [],
     roleActions: ['IT_ADMIN-purge'],

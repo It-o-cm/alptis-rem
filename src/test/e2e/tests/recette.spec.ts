@@ -1133,3 +1133,33 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
   });
 });
+
+// Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet
+// business-validated is refused. CR-41 seeds two consecutive UNEP periods (January and February),
+// both LOADED; a business administrator who tries to move February to CALCULATED while January is
+// still unvalidated is turned down by the cycle guard, and the refusal is shown on the screen.
+test('un calcul de février est refusé tant que janvier n’est pas validé par le métier @screen:periods @path:CAL-05', async ({
+  browser,
+  request,
+}) => {
+  const seeded = await request.post('/api/test/cr-scenario?cr=CR-41&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/periodes');
+  // February exists and is still LOADED, as is its predecessor January.
+  await admin.getByTestId('open-UNEP-2026-02-01').click();
+  await expect(admin.getByTestId('period-detail')).toBeVisible();
+  await expect(admin.getByTestId('detail-state')).toContainText('Données gelées');
+
+  // The administrator asks to calculate February; the guard refuses because January is unvalidated.
+  await admin.getByTestId('advance-button').click();
+  await expect(admin.getByTestId('periods-error')).toContainText(
+    'pas encore validée par le métier',
+  );
+  // The refusal left February unchanged: it is still LOADED, not CALCULATED.
+  await expect(admin.getByTestId('detail-state')).toContainText('Données gelées');
+
+  await adminCtx.close();
+});

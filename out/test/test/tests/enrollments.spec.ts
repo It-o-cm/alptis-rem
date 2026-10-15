@@ -47,16 +47,21 @@ test.describe('Accords et inscriptions', () => {
     await page.goto('/inscriptions');
     await expect(page.getByTestId('page-title')).toHaveText('Accords et inscriptions');
 
+    // ADM-03: the distributor is picked from a list by its name, the reference is a new code typed.
     await page.getByTestId('ag-ref').fill('AGR-1');
-    await page.getByTestId('ag-partner').fill('P13897');
+    await expect(page.getByTestId('ag-partner').locator('option', { hasText: 'Cabinet Martin (P13897)' })).toHaveCount(1);
+    await page.getByTestId('ag-partner').selectOption('P13897');
     await page.getByTestId('ag-from').fill('2026-01-01');
     await page.getByTestId('ag-create').click();
     await expect(page.getByTestId('agreement-row-AGR-1')).toContainText('SIGNED');
 
-    await page.getByTestId('en-plan').fill('RESP');
-    await page.getByTestId('en-rule').fill('RCD');
-    await page.getByTestId('en-partner').fill('P13897');
-    await page.getByTestId('en-ref').fill('AGR-1');
+    // ADM-03: plan, rule, distributor and agreement are all picked from lists, never typed.
+    await expect(page.getByTestId('en-plan').locator('option', { hasText: 'Réservé (RESP)' })).toHaveCount(1);
+    await page.getByTestId('en-plan').selectOption('RESP');
+    await expect(page.getByTestId('en-rule').locator('option', { hasText: 'RCD (RCD)' })).toHaveCount(1);
+    await page.getByTestId('en-rule').selectOption('RCD');
+    await page.getByTestId('en-partner').selectOption('P13897');
+    await page.getByTestId('en-ref').selectOption('AGR-1');
     await page.getByTestId('en-from').fill('2026-01-01');
     await page.getByTestId('en-enroll').click();
     await expect(page.getByTestId('enrollment-row-0')).toContainText('ACTIVE');

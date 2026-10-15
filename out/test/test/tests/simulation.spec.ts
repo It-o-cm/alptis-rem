@@ -19,12 +19,20 @@ test('l’administrateur lance une simulation et lit la comparaison @screen:simu
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
   const page = await admin.newPage();
   await page.goto('/simulation');
-  await page.getByTestId('sim-rule').fill('SANTE_EQUILIBRE_LINEAR');
+  // ADM-03: the rule is chosen from the list (the baseline barème rule) by its French label, never typed.
+  await expect(
+    page.getByTestId('sim-rule').locator('option', { hasText: 'Santé Équilibre — linéaire (SANTE_EQUILIBRE_LINEAR)' }),
+  ).toHaveCount(1);
+  await page.getByTestId('sim-rule').selectOption('SANTE_EQUILIBRE_LINEAR');
   await page.getByTestId('sim-version').fill('1');
   await page.getByTestId('sim-run').click();
   // The comparison cards appear, computed by the server in the separate simulation space.
   await expect(page.getByTestId('sim-real')).toBeVisible();
   await expect(page.getByTestId('sim-ecart')).toBeVisible();
+  await expect(page.getByTestId('chart-sim')).toBeVisible();
+  // The simulation is kept in the history (PAR-13).
+  await expect(page.getByTestId('sim-history')).toBeVisible();
+  await expect(page.locator('[data-testid="sim-history-row"]').first()).toBeVisible();
   await admin.close();
 });
 
