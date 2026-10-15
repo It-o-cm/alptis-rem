@@ -763,6 +763,11 @@ implémenté côté moteur, `.min(1)`). 19 `@path`.
   démonstration de septembre étant vide (déjà transmise). 20 `@path`.
 - PAI-05 : pas de téléchargement de la liste des chèques.
 
+**CPT-02 étiqueté (2026-10-15).** Le rejeu CR-61 (compensation : deux lignes de transfert, paiement du
+net de 300,00 €) couvre aussi le parcours CPT-02 « Compensation entre deux comptes d'un même
+distributeur ». 21 `@path`. CPT-01 (report débiteur sur **trois** périodes) reste à compléter — CR-60
+n'en couvre que deux (février/mars).
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

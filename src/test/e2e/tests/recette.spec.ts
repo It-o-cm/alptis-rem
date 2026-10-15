@@ -969,7 +969,7 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
   });
 
-  test('CR-61 : la compensation des comptes d’un distributeur paie 300,00 € sur le code créditeur @screen:periods @screen:distributor @screen:payment @cr:CR-61', async ({
+  test('CR-61 : la compensation des comptes d’un distributeur paie 300,00 € sur le code créditeur @screen:periods @screen:distributor @screen:payment @cr:CR-61 @path:CPT-02', async ({
     browser,
     request,
   }) => {
