@@ -849,6 +849,12 @@ résolution code de production / distributeur / groupement). **`NO_BANK_DETAILS`
 une exclusion ; le motif ne vaudrait que pour des coordonnées *invalides*. **PAI-02 reste non étiqueté**
 tant que ce dernier cas et le test e2e des six motifs ne sont pas faits.
 
+**PAI-06 étiqueté (2026-10-15).** Le rejeu CR-62 performe déjà le parcours : un distributeur radié de
+l'ORIAS est exclu du lot de cycle (« Bénéficiaire inactif »), puis, après réinscription (ré-import du
+référentiel distributeurs avec `orias_status=REGISTERED`), un **lot hors cycle** règle les 110,00 € restés
+bloqués, sur la même période de janvier — sans attendre le mois suivant. Étiquette `@path:PAI-06` posée
+sur le test existant. 37 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

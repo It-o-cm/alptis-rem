@@ -1092,7 +1092,7 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
   });
 
-  test('CR-62 : un distributeur radié de l’ORIAS est bloqué puis réglé par un lot hors cycle @screen:periods @screen:payment @screen:imports @cr:CR-62', async ({
+  test('CR-62 : un distributeur radié de l’ORIAS est bloqué puis réglé par un lot hors cycle @screen:periods @screen:payment @screen:imports @cr:CR-62 @path:PAI-06', async ({
     browser,
     request,
   }) => {
