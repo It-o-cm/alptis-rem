@@ -188,6 +188,8 @@ class AccountingQueryServiceTest {
         assertEquals("LINEAR", chain.lineNature());
         assertEquals("CH-RULE v1", chain.ruleVersion());
         assertEquals(0, chain.basis().compareTo(new BigDecimal("100.00")));
+        // The line carries no payment order yet, so the commission entry's chain has no virement.
+        assertNull(chain.paymentOrder());
 
         AccountingEntry orderEntry = AccountingEntry.<AccountingEntry>find("paymentOrder", order).firstResult();
         var bareChain = query.entryChain("UNEP", orderEntry.getId());
@@ -214,6 +216,31 @@ class AccountingQueryServiceTest {
         assertNull(sparseChain.statement());
         assertNull(sparseChain.lineNature());
         assertNull(sparseChain.ruleVersion());
+
+        // A paid commission line: its entry carries no payment order directly, but the chain traces to
+        // the virement that settled the line (REP-02 full chain from one commission entry).
+        PaymentOrder lineOrder = new PaymentOrder();
+        lineOrder.amount = new BigDecimal("15.00");
+        lineOrder.status = PaymentOrderStatus.ISSUED;
+        lineOrder.endToEndId = "E2E-LINE";
+        lineOrder.persist();
+        CommissionLine paid = new CommissionLine();
+        paid.entity = unep();
+        paid.period = period;
+        paid.direction = Direction.OUTBOUND;
+        paid.status = LineStatus.PAID;
+        paid.amount = new BigDecimal("15.00");
+        paid.paymentOrder = lineOrder;
+        paid.persist();
+        entry(period, AccountingEvent.EARNING, paid, null);
+        AccountingEntry paidEntry = AccountingEntry.<AccountingEntry>find("commissionLine", paid).firstResult();
+        assertEquals("E2E-LINE", query.entryChain("UNEP", paidEntry.getId()).paymentOrder());
+
+        // An entry with neither a commission line nor a payment order: the chain has no virement.
+        entry(period, AccountingEvent.EARNING, null, null);
+        AccountingEntry bare = AccountingEntry.<AccountingEntry>find(
+                "commissionLine is null and paymentOrder is null and entity = ?1", unep()).firstResult();
+        assertNull(query.entryChain("UNEP", bare.getId()).paymentOrder());
 
         // An entry of another entity, and one with no entity at all, are not found for UNEP.
         AccountingEntry crossEntity = new AccountingEntry();

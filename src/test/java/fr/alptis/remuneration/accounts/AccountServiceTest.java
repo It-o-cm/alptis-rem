@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -341,6 +342,12 @@ class AccountServiceTest {
         // The blocked line is not made payable; its amount stays at the account.
         assertEquals(LineStatus.EARNED, CommissionLine.<CommissionLine>findById(blocked.getId()).status);
         assertEquals(0, service.balance(a).compareTo(new BigDecimal("700")));
+        // The swept line links to the bordereau it is carried by (REP-02); the held line does not.
+        CommissionLine payable = CommissionLine.<CommissionLine>find(
+                "account = ?1 and status = ?2", a, LineStatus.PAYABLE).firstResult();
+        assertNotNull(payable.statement);
+        assertEquals(order.statement.getId(), payable.statement.getId());
+        assertNull(CommissionLine.<CommissionLine>findById(blocked.getId()).statement);
     }
 
     /**

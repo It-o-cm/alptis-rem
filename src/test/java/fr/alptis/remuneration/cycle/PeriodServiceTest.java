@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -214,8 +215,10 @@ class PeriodServiceTest {
 
         assertEquals(0, PaymentBatch.count());
         assertEquals(0, PaymentOrder.count());
-        assertEquals(LineStatus.EARNED,
-                CommissionLine.<CommissionLine>findById(line.getId()).status);
+        CommissionLine reopened = CommissionLine.<CommissionLine>findById(line.getId());
+        assertEquals(LineStatus.EARNED, reopened.status);
+        // The draft bordereau was removed on the refusal, so the line no longer references it.
+        assertNull(reopened.statement);
     }
 
     /**

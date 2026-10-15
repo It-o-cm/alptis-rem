@@ -111,8 +111,28 @@ public class AccountingQueryService {
                 line == null ? null : line.amount,
                 line == null || line.ruleVersion == null ? null
                         : line.ruleVersion.rule.code + " v" + line.ruleVersion.versionNo,
-                entry.paymentOrder == null ? null : entry.paymentOrder.endToEndId,
+                // The payment order carried by the entry, or the one that paid its line, so a commission
+                // entry still traces to its virement (REP-02, full chain from one entry).
+                paymentReference(entry, line),
                 entry.debitAccount, entry.creditAccount, entry.amount);
+    }
+
+    /**
+     * The end-to-end reference of the payment order attached to an entry, or failing that the one that
+     * paid the entry's commission line, so a commission entry still traces to its payment (REP-02).
+     *
+     * @param entry the accounting entry
+     * @param line  the entry's commission line, possibly null
+     * @return the payment reference, or null
+     */
+    private static String paymentReference(AccountingEntry entry, CommissionLine line) {
+        if (entry.paymentOrder != null) {
+            return entry.paymentOrder.endToEndId;
+        }
+        if (line != null && line.paymentOrder != null) {
+            return line.paymentOrder.endToEndId;
+        }
+        return null;
     }
 
     /**

@@ -143,8 +143,11 @@ class PaymentServiceTest {
         PaymentBatch batch = batch(p, "110.00");
         PaymentOrder order = order(batch, "110.00");
         service.validateFinance(batch.getId(), "fin");
-        // Emission paid the line and debited the account.
+        // Emission paid the line, debited the account and linked the line to its payment order (REP-02).
         assertEquals(0, accounts.balance(order.account).compareTo(BigDecimal.ZERO));
+        CommissionLine paidLine = CommissionLine.<CommissionLine>find("account = ?1", order.account).firstResult();
+        assertEquals(LineStatus.PAID, paidLine.status);
+        assertEquals(order.getId(), paidLine.paymentOrder.getId());
 
         service.recordBankResult(order.getId(), false, "IBAN invalide");
 

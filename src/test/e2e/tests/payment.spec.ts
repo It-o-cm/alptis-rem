@@ -72,8 +72,10 @@ test('la constitution du lot de cycle donne un ordre par bénéficiaire, son tot
   await cycleRow.getByRole('button', { name: 'Détail' }).click();
   await page.getByTestId('lot-prepare').click();
 
-  // PAI-01: the preparation yields one order per beneficiary (distinct payees).
+  // PAI-01: the preparation yields one order per beneficiary (distinct payees). Wait for the prepared
+  // orders to render before reading, so the assertions see the settled state and not a mid-prepare one.
   const orderRows = page.locator('[data-testid^="order-row-"]');
+  await expect(orderRows.first()).toBeVisible();
   const count = await orderRows.count();
   expect(count).toBeGreaterThan(0);
   const payees = await page.locator('[data-testid^="order-payee-"]').allTextContents();
@@ -81,17 +83,23 @@ test('la constitution du lot de cycle donne un ordre par bénéficiaire, son tot
 
   // PAI-01: the lot total equals the sum of its orders (each the sum of a beneficiary's lines, CR-64).
   // Cancelled orders (excluded beneficiaries) stay listed but do not count toward the lot total, so the
-  // sum is taken over the orders that are not cancelled.
+  // sum is taken over the orders that are not cancelled. The total and the rows are re-read together
+  // under a poll so the comparison always sees a consistent snapshot, never a partial re-render.
   const parseEuro = (s: string): number => parseFloat(s.replace(/[^0-9,]/g, '').replace(',', '.'));
-  let sum = 0;
-  for (let i = 0; i < count; i += 1) {
-    const row = orderRows.nth(i);
-    const status = ((await row.locator('[data-testid^="order-status-"]').textContent()) ?? '').trim();
-    if (status === 'Annulé') continue;
-    sum += parseEuro(((await row.locator('[data-testid^="order-amount-"]').textContent()) ?? ''));
-  }
-  const total = parseEuro((await page.getByTestId('lot-total').textContent()) ?? '');
-  expect(Math.abs(total - sum)).toBeLessThan(0.005);
+  await expect
+    .poll(async () => {
+      let sum = 0;
+      const n = await orderRows.count();
+      for (let i = 0; i < n; i += 1) {
+        const row = orderRows.nth(i);
+        const status = ((await row.locator('[data-testid^="order-status-"]').textContent()) ?? '').trim();
+        if (status === 'Annulé') continue;
+        sum += parseEuro(((await row.locator('[data-testid^="order-amount-"]').textContent()) ?? ''));
+      }
+      const total = parseEuro((await page.getByTestId('lot-total').textContent()) ?? '');
+      return Math.abs(total - sum);
+    })
+    .toBeLessThan(0.005);
   await operator.close();
 });
 

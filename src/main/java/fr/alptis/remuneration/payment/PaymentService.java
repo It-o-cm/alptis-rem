@@ -392,6 +392,9 @@ public class PaymentService {
                 order.account, LineStatus.PAYABLE)) {
             line.status = LineStatus.PAID;
             line.paidAt = clock.now();
+            // Link the line to the order that settled it, so the audit chain traces a paid line back to
+            // its virement (REP-02).
+            line.paymentOrder = order;
         }
         entry(order.account, AccountEntryType.PAYMENT, order.amount.negate());
         accounting.recordPayment(order, clock.now().toLocalDate());

@@ -278,6 +278,9 @@ public class AccountService {
                 for (CommissionLine line : earned) {
                     if (!Boolean.TRUE.equals(line.blocked)) {
                         line.status = LineStatus.PAYABLE;
+                        // Link the line to the bordereau carrying it, so the audit chain traces a paid
+                        // line back to its statement (REP-02).
+                        line.statement = statement;
                     }
                 }
                 total = total.add(net);

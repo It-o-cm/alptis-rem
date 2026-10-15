@@ -285,18 +285,18 @@ onMounted(refresh);
     <AppCard v-if="chain" data-testid="acc-chain" title="Chaîne d'audit (flux → bordereau → ligne → écriture)">
       <DetailList>
         <DetailRow label="Flux (événement)">
-          {{ chain.eventType ? `${eventTypeLabel(chain.eventType)}${chain.eventKey ? ' · ' + chain.eventKey : ''}` : '—' }}
+          <span data-testid="chain-event">{{ chain.eventType ? `${eventTypeLabel(chain.eventType)}${chain.eventKey ? ' · ' + chain.eventKey : ''}` : '—' }}</span>
         </DetailRow>
-        <DetailRow label="Bordereau">{{ chain.statement ?? '—' }}</DetailRow>
+        <DetailRow label="Bordereau"><span data-testid="chain-statement">{{ chain.statement ?? '—' }}</span></DetailRow>
         <DetailRow label="Ligne de commission">
-          {{ chain.lineId ? `#${chain.lineId}${chain.lineNature ? ' · ' + lineNatureLabel(chain.lineNature) : ''}` : '—' }}
+          <span data-testid="chain-line">{{ chain.lineId ? `#${chain.lineId}${chain.lineNature ? ' · ' + lineNatureLabel(chain.lineNature) : ''}` : '—' }}</span>
         </DetailRow>
         <DetailRow label="Assiette">{{ chain.basis !== null ? amount(chain.basis) : '—' }}</DetailRow>
         <DetailRow label="Taux">{{ chain.rate ?? '—' }}</DetailRow>
-        <DetailRow label="Version de règle">{{ chain.ruleVersion ?? '—' }}</DetailRow>
-        <DetailRow label="Ordre de paiement">{{ chain.paymentOrder ?? '—' }}</DetailRow>
+        <DetailRow label="Version de règle"><span data-testid="chain-rule">{{ chain.ruleVersion ?? '—' }}</span></DetailRow>
+        <DetailRow label="Ordre de paiement"><span data-testid="chain-payment">{{ chain.paymentOrder ?? '—' }}</span></DetailRow>
         <DetailRow label="Écriture">
-          {{ `${chain.debitAccount} / ${chain.creditAccount} · ${amount(chain.amount)}` }}
+          <span data-testid="chain-entry">{{ `${chain.debitAccount} / ${chain.creditAccount} · ${amount(chain.amount)}` }}</span>
         </DetailRow>
       </DetailList>
     </AppCard>

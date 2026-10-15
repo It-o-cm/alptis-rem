@@ -65,22 +65,42 @@ test('le contrôleur Finance lit le schéma et produit l’extraction @screen:ac
   await finance.close();
 });
 
-test('le contrôleur Finance recherche une écriture et remonte la chaîne @screen:accounting @req:FIN-05 @req:FIN-07', async ({
+test('le contrôleur Finance remonte la chaîne du virement au bordereau, à la ligne, à l’événement, à la règle et à l’écriture @screen:accounting @req:FIN-05 @req:FIN-07 @path:REP-02', async ({
   browser,
 }) => {
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
   const page = await finance.newPage();
-  // The full demo runs the real cycle, which writes auxiliary accounting entries (FIN-01).
+  // The full demo runs the real cycle and pays past periods, so paid entries carry a full chain.
   await loadDemo(page.request);
   await page.goto('/comptabilite');
 
   // Cross-month search across the entity's entries (FIN-05).
   await page.getByTestId('acc-cross-search').click();
-  const row = page.locator('[data-testid^="cross-entry-row-"]').first();
-  await expect(row).toBeVisible();
-  // Open the audit chain flux → bordereau → ligne → écriture (FIN-07).
-  await row.click();
-  await expect(page.getByTestId('acc-chain')).toBeVisible();
+  const rows = page.locator('[data-testid^="cross-entry-row-"]');
+  await expect(rows.first()).toBeVisible();
+  const count = await rows.count();
+  expect(count).toBeGreaterThan(0);
+
+  // REP-02: find a paid commission entry and read its full audit chain on a single entry — from the
+  // payment order (virement) to the bordereau, the commission line, the source event, the rule version
+  // and the accounting entry. A paid commission entry carries its line (bordereau/ligne/événement/règle)
+  // and, through that line, the payment order that settled it.
+  let found = false;
+  for (let i = 0; i < count && !found; i += 1) {
+    await rows.nth(i).click();
+    await expect(page.getByTestId('acc-chain')).toBeVisible();
+    const statement = ((await page.getByTestId('chain-statement').textContent()) ?? '').trim();
+    const payment = ((await page.getByTestId('chain-payment').textContent()) ?? '').trim();
+    const settled = (v: string) => v !== '' && v !== '—';
+    if (settled(statement) && settled(payment)) {
+      found = true;
+      await expect(page.getByTestId('chain-line')).not.toHaveText('—');
+      await expect(page.getByTestId('chain-event')).not.toHaveText('—');
+      await expect(page.getByTestId('chain-rule')).not.toHaveText('—');
+      await expect(page.getByTestId('chain-entry')).not.toHaveText('—');
+    }
+  }
+  expect(found, 'une écriture de commission payée dont la chaîne remonte au virement').toBeTruthy();
   await finance.close();
 });
 

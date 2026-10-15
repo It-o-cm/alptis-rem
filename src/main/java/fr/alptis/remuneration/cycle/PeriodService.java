@@ -169,13 +169,16 @@ public class PeriodService {
             PaymentExclusion.<PaymentExclusion>list("batch = ?1", batch).forEach(PaymentExclusion::delete);
             batch.delete();
         }
-        fr.alptis.remuneration.domain.Statement.<fr.alptis.remuneration.domain.Statement>list(
-                "period = ?1 and status = ?2", period, StatementStatus.DRAFT)
-                .forEach(fr.alptis.remuneration.domain.Statement::delete);
+        // Drop each payable line's link to its draft bordereau and return it to earned before the
+        // statements are removed, so no line is left referencing a deleted statement at flush time.
         for (CommissionLine line : CommissionLine.<CommissionLine>list("period = ?1 and status = ?2",
                 period, LineStatus.PAYABLE)) {
             line.status = LineStatus.EARNED;
+            line.statement = null;
         }
+        fr.alptis.remuneration.domain.Statement.<fr.alptis.remuneration.domain.Statement>list(
+                "period = ?1 and status = ?2", period, StatementStatus.DRAFT)
+                .forEach(fr.alptis.remuneration.domain.Statement::delete);
         accounting.discardForPeriod(period);
     }
 
