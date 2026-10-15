@@ -33,6 +33,9 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   // ADM-03: the status is shown by its French label, not the raw enum code.
   await expect(page.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Soumis');
   await expect(page.getByText('GED-2026-07-123').first()).toBeVisible();
+  // Separation of duties (section 3, rule 4): the author cannot approve their own adjustment.
+  await page.locator('[data-testid^="adjustment-approve-"]').first().click();
+  await expect(page.getByTestId('adj-error')).toContainText('second utilisateur');
   await operator.close();
 
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });

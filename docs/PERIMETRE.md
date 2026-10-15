@@ -903,6 +903,16 @@ _LINEAR v1) de la période calculée : renforcé pour vérifier que l'**écart e
 ligne n'est modifiée** — le rejeu avec le paramétrage d'origine reproduit les lignes réelles au centime
 (SIM-03, reproductibilité D8/CR-69 vue par l'interface). 44 `@path`.
 
+**Séparation des tâches — ajustement, cas « auteur » renforcé (2026-10-15).** Le test d'approbation des
+ajustements vérifie désormais que **l'auteur ne peut pas approuver son propre ajustement** (§3 règle 4,
+§5 séparation des tâches) : l'opérateur qui a saisi clique « Approuver » → refus (« un second utilisateur
+doit approuver »), puis un administrateur approuve. **AJU-03 reste non étiqueté** : son troisième cas
+(« au-delà du seuil par un non-valideur → refus ») exige un **seuil d'approbation configurable**
+(`ADJUSTMENT_APPROVAL_THRESHOLD`), aujourd'hui lu par `AdjustmentService` mais **réglable nulle part**
+(ni écran ni API ; REG-03 « seuil paramétrable » non exposé). Passe dédiée à venir : exposer le seuil sur
+l'écran « Entités et paramètres » (feature contenue : vue/màj `EntityAdminService` + champ écran), puis
+tester les trois cas d'AJU-03.
+
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 — les six codes sont répartis sur plusieurs imports (rectifié 2026-10-15).** *Correction d'un
   relevé erroné du même jour : `TYPE` **existe** bien dans `RejectionReasonCode` (les six y sont :
