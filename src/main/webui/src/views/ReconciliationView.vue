@@ -90,7 +90,11 @@ onMounted(load);
         empty="Aucune commission acquise."
         empty-testid="rec-empty"
         :row-testid="(b) => `rec-row-${b.distributor}`"
-      />
+      >
+        <template #cell-acquired="{ row }">
+          <span :data-testid="`rec-acq-${row.distributor}`">{{ amount(row.acquired) }}</span>
+        </template>
+      </DataTable>
     </AppCard>
   </div>
 </template>

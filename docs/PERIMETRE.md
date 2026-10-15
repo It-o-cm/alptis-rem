@@ -1090,6 +1090,14 @@ compteurs de l'exécution restent **non nuls** (les autres unités ont été cal
 le **recalcul partiel** ne relance qu'un périmètre (un produit), pas toute la période. Vérification seule,
 aucune feature. 67 `@path`.
 
+**FIN-08 étiqueté (2026-10-16).** Parcours « rapprochement acquis et payé : par bénéficiaire et au
+global ». L'écran de rapprochement (`ReconciliationView`, FIN-06 côté exigence) existait, exercé en
+`@req` mais sans preuve niveau 3 du « par bénéficiaire ET au global ». Renforcé : **au global**, l'écart
+affiché égale **acquises − payées** ; **par bénéficiaire**, la somme des montants acquis des lignes
+bénéficiaires égale l'acquis global (au centime). Un `data-testid="rec-acq-<bénéficiaire>"` est ajouté
+pour sommer précisément (les codes partenaires contiennent des chiffres, le texte de ligne n'est pas
+parsable). Vérification seule, aucune feature. 68 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
