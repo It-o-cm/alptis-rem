@@ -93,12 +93,13 @@ test.describe('Imports — opérateur', () => {
     });
     await page.getByTestId('upload-submit').click();
     await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 0 rejetée(s), 0 en attente');
-    // The journal batch carries its fingerprint and the operator who deposited it.
+    // The journal batch carries its fingerprint and the operator who actually deposited it — not a
+    // generic placeholder but the authenticated user (INT-01).
     const row = page.locator('[data-testid^="batch-row-"]').first();
     await expect(row).toContainText('CLEVA');
     await row.click();
     await expect(page.getByTestId('batch-fingerprint')).not.toBeEmpty();
-    await expect(page.getByTestId('batch-author')).not.toBeEmpty();
+    await expect(page.getByTestId('batch-author')).toHaveText('operator-alptis');
     // The loaded event is visible with its status on the events screen.
     await page.goto('/evenements');
     await page.getByTestId('events-search').click();

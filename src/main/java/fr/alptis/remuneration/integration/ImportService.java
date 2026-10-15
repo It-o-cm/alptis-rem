@@ -3,8 +3,10 @@ package fr.alptis.remuneration.integration;
 import fr.alptis.remuneration.domain.ImportBatch;
 import fr.alptis.remuneration.domain.ImportMapping;
 import fr.alptis.remuneration.domain.ValidationException;
+import fr.alptis.remuneration.security.CurrentUser;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
 /**
  * Entry point of the import engine: dispatches a received or uploaded file to the right pivot
@@ -24,6 +26,7 @@ public class ImportService {
     private final OpeningBalanceImportService openingBalances;
     private final EmployeeImportService employees;
     private final MappingImportService mappedEvents;
+    private final CurrentUser currentUser;
 
     /**
      * Creates the facade.
@@ -38,13 +41,15 @@ public class ImportService {
      * @param openingBalances    the opening-balance importer
      * @param employees          the employee importer
      * @param mappedEvents       the mapped (free-file) events importer
+     * @param currentUser        the authenticated user, recorded as the import author (INT-01)
      */
     @Inject
     public ImportService(EventImportService events, CoverageImportService coverages,
                          ReferentialImportService referentials, ProductReferentialImportService products,
                          AccountQualityImportService accountsAndQuality, TransferImportService transfers,
                          PayeeExternalImportService payeeAndCodes, OpeningBalanceImportService openingBalances,
-                         EmployeeImportService employees, MappingImportService mappedEvents) {
+                         EmployeeImportService employees, MappingImportService mappedEvents,
+                         CurrentUser currentUser) {
         this.events = events;
         this.coverages = coverages;
         this.referentials = referentials;
@@ -55,6 +60,7 @@ public class ImportService {
         this.openingBalances = openingBalances;
         this.employees = employees;
         this.mappedEvents = mappedEvents;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -68,9 +74,10 @@ public class ImportService {
      * @return the journalled batch
      * @throws ValidationException if the flow code is not a known pivot flow
      */
+    @Transactional
     public ImportBatch importFile(String entityCode, String flowCode, String sourceSystem, String fileName,
                                   String content) {
-        return switch (flowCode) {
+        ImportBatch batch = switch (flowCode) {
             case FlowCodes.EVENTS -> importEventsFlow(entityCode, sourceSystem, fileName, content);
             case FlowCodes.COVERAGES -> coverages.importCoverages(entityCode, sourceSystem, fileName, content);
             case FlowCodes.DISTRIBUTORS -> referentials.importDistributors(entityCode, sourceSystem, fileName, content);
@@ -91,6 +98,10 @@ public class ImportService {
             case EmployeeImportService.EMPLOYEE_MEASURES -> employees.importMeasures(entityCode, sourceSystem, fileName, content);
             default -> throw new ValidationException("Flux inconnu : " + flowCode);
         };
+        // Record the authenticated user who deposited the file as the batch author (INT-01); the
+        // importers leave a generic placeholder that this facade overrides on the managed batch.
+        batch.importedBy = currentUser.username();
+        return batch;
     }
 
     /**
