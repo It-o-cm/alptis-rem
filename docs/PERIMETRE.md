@@ -936,8 +936,14 @@ correction de rejet, approbation de règle, régularisation annuelle, export pai
 bordereau, correspondance de rôles → IT_ADMIN, correspondance de mapping → BUSINESS_ADMIN). **Robustesse
 corrigée au passage** : `RoleMappingAdminService.parseRole` levait une `NullPointerException` (HTTP 500)
 sur un rôle absent ; il rejette désormais proprement en `ValidationException` (HTTP 400), couvert par
-`RoleMappingsResourceTest.a_mapping_without_a_role_is_rejected`. À étendre aux actions restantes d'ici
-l'étiquetage complet du couple rôle-action (condition de fin d'étape 4).
+`RoleMappingsResourceTest.a_mapping_without_a_role_is_rejected`. **Troisième extension (2026-10-15) :
+38 actions × 9 rôles = 342 couples** (ajout des clôtures développement/portefeuille/annuelle, recalcul
+partiel, variables FDV trimestriel/collectif/animateurs/vente directe/résiliation, plan et collaborateur
+FDV, émission chèque, résultat d'ordre, blocage compte/ligne, écartement de rejet). Le recalcul partiel
+exige ses paramètres de périmètre (`type`/`value`) sous peine de `NullPointerException` ; le test les
+fournit (gap de robustesse mineur relevé, non bloquant pour la matrice). Couvre la quasi-totalité des
+actions mutantes ; reste à étendre aux dernières avant l'étiquetage complet du couple rôle-action
+(condition de fin d'étape 4).
 
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 comblé et étiqueté (2026-10-15).** Les six codes de rejet (§8.2) existent tous dans

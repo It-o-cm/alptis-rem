@@ -49,6 +49,23 @@ const ACTIONS: { name: string; path: string; roles: string[] }[] = [
   { name: 'rectify-statement', path: '/api/ui/v1/documents/statements/999999/rectify', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
   { name: 'set-role-mapping', path: '/api/ui/v1/role-mappings', roles: ['IT_ADMIN'] },
   { name: 'set-mapping', path: '/api/ui/v1/mappings', roles: ['BUSINESS_ADMIN'] },
+  { name: 'close-development', path: `/api/ui/v1/calculations/${E}/${M}/close-development`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'close-portfolio', path: `/api/ui/v1/calculations/${E}/${M}/close-portfolio`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'close-annual', path: `/api/ui/v1/calculations/${E}/${M}/close-annual`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'recalc', path: `/api/ui/v1/calculations/${E}/${M}/recalc?type=DISTRIBUTOR&value=P99999`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'quarterly-qualitative', path: `/api/ui/v1/fdv/${E}/${M}/quarterly-qualitative`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'annual-collective', path: `/api/ui/v1/fdv/${E}/${M}/annual-collective`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'manager-variable', path: `/api/ui/v1/fdv/${E}/${M}/manager-variable`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'direct-sales-variable', path: `/api/ui/v1/fdv/${E}/${M}/direct-sales-variable`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'termination-reduction', path: `/api/ui/v1/fdv/${E}/${M}/termination-reduction`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'save-fdv-plan', path: `/api/ui/v1/fdv/${E}/plans`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'create-collaborator', path: `/api/ui/v1/fdv/${E}/collaborators`, roles: ['BUSINESS_ADMIN'] },
+  { name: 'cheque-emission', path: '/api/ui/v1/payment/lots/999999/cheque-emission', roles: ['FINANCE_CONTROLLER'] },
+  { name: 'order-result', path: '/api/ui/v1/payment/orders/999999/result', roles: ['FINANCE_CONTROLLER'] },
+  { name: 'block-account', path: '/api/ui/v1/accounts/999999/block', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'block-line', path: '/api/ui/v1/accounts/lines/999999/block', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'unblock-line', path: '/api/ui/v1/accounts/lines/999999/unblock', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
+  { name: 'discard-rejection', path: '/api/ui/v1/imports/rejections/999999/discard', roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
 ];
 
 const basic = (user: string): string => 'Basic ' + Buffer.from(`${user}:${user}`).toString('base64');
