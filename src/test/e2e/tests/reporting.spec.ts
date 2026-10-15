@@ -117,13 +117,22 @@ test('les listes de restitution s’exportent en CSV @screen:dashboards @screen:
   await viewer.close();
 });
 
-test('l’auditeur lit la vision consolidée, le consultant en est écarté @screen:groupView @req:REP-07', async ({
+test('l’auditeur lit la vision consolidée, le consultant en est écarté @screen:groupView @req:REP-07 @path:REP-03', async ({
   browser,
 }) => {
   const auditor = await browser.newContext({ httpCredentials: USERS.auditor });
   const auditorPage = await auditor.newPage();
+  // The full demo runs the cycle for both group entities, so the consolidated view totals each one.
+  await loadDemo(auditorPage.request);
   await auditorPage.goto('/vision-groupe');
-  await expect(auditorPage.locator('[data-testid^="group-row-"]').first()).toBeVisible();
+  // REP-03: the consolidated view is reserved to the entitled auditor and shows a total per entity —
+  // both group entities appear with their own commission total, each a euro amount.
+  const alptisRow = auditorPage.getByTestId('group-row-ALPTIS_ASSURANCES');
+  const unepRow = auditorPage.getByTestId('group-row-UNEP');
+  await expect(alptisRow).toBeVisible();
+  await expect(unepRow).toBeVisible();
+  await expect(alptisRow).toContainText('€');
+  await expect(unepRow).toContainText('€');
   await expect(auditorPage.getByTestId('chart-group')).toBeVisible();
   await auditor.close();
 

@@ -824,6 +824,11 @@ BUSINESS_ADMIN + OPERATOR) : l'administrateur rend bloquant le contrôle de sold
 reste ouverte** — puis tente de faire avancer la période de septembre depuis `CALCULATED` ; le garde-fou
 du cycle **refuse** (« une anomalie bloquante reste ouverte ») et la période reste `Calculée`. 34 `@path`.
 
+**REP-03 étiqueté (2026-10-15).** Le test de la vision consolidée est renforcé : il charge le jeu de
+démonstration complet (cycle des deux entités du groupe) et vérifie que la vue réservée à l'auditeur
+affiche **un total par entité** — les lignes `ALPTIS_ASSURANCES` et `UNEP` apparaissent chacune avec son
+montant en euros — tandis que le consultant mono-entité en reste écarté (`group-forbidden`). 35 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
