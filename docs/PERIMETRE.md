@@ -1072,6 +1072,14 @@ renvoyées dans un bandeau `v-plausibility` (non bloquant). Le test e2e saisit u
 `rate`, au-dessus du plafond 0,60) → l'alerte « Taux peu vraisemblable (0.9) … » apparaît ; un taux
 plausible la fait disparaître. 65 `@path`.
 
+**SIM-02 étiqueté (2026-10-16).** Parcours « version qui retire un taux : avec table de substitution ;
+sans — recalcul au nouveau taux ; événements comptés en attente ». Construit sur le simulateur (SIM-01/03).
+Sur `DEMO_2026_LINEAR` d'octobre : **avec** substitution `0,10 → 0,05`, les lignes portées à 0,10 sont
+**recalculées** au nouveau taux (écart non nul, lignes modifiées, **aucun en attente**) ; **sans**
+substitution (nouveau taux vide = taux retiré), les **16 événements** porteurs sont **mis en attente**
+(comptés à part, aucune ligne recalculée). Ajout d'un `data-testid="sim-held"` (événements en attente).
+Vérification seule, aucune feature. 66 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,

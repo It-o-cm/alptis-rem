@@ -88,6 +88,37 @@ test('l’administrateur simule un taux modifié : écart limité au taux, aucun
   await admin.close();
 });
 
+// Parcours SIM-02 (section 4.4): a version that drops a rate — with a substitution table the lines are
+// recomputed at the new rate; without one the carrying events are held and counted apart.
+test('une version qui retire un taux : recalcul avec substitution, mise en attente sans @screen:simulation @req:PAR-13 @path:SIM-02', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await loadDemo(page.request);
+  await page.goto('/simulation');
+  await page.getByTestId('sim-month').selectOption('2026-10-01');
+  await page.getByTestId('sim-rule').selectOption('DEMO_2026_LINEAR');
+  await page.getByTestId('sim-version').fill('1');
+
+  // With a substitution (0,10 → 0,05): the lines carried at 0,10 are recomputed at the new rate — a
+  // non-zero gap, lines modified, nothing held.
+  await page.getByTestId('sim-old-0').fill('0.1');
+  await page.getByTestId('sim-new-0').fill('0.05');
+  await page.getByTestId('sim-run').click();
+  await expect(page.getByTestId('sim-ecart')).not.toHaveText('0,00 €');
+  await expect(page.getByTestId('sim-held')).toHaveText('0');
+  await expect(page.getByTestId('sim-modified')).not.toHaveText('0');
+
+  // Without a substitution (the rate is simply dropped): the carrying events are held and counted apart,
+  // so no line is recomputed.
+  await page.getByTestId('sim-new-0').fill('');
+  await page.getByTestId('sim-run').click();
+  await expect(page.getByTestId('sim-held')).not.toHaveText('0');
+  await expect(page.getByTestId('sim-modified')).toHaveText('0');
+  await admin.close();
+});
+
 test.describe('Simulation — accessibilité', () => {
   test.use({ httpCredentials: USERS.adminAlptis });
 
