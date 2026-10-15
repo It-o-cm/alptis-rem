@@ -783,7 +783,11 @@ vérification que la version d'origine reste listée et consultable à côté de
 
 **BRD-06 et BRD-08 étiquetés (2026-10-15).** BRD-06 (relevé informatif d'un membre payé par son
 groupement : sa part) sur le test du relevé membre ; BRD-08 (attestation fiscale annuelle) renforcé pour
-vérifier l'exercice (2026) et le total payé (€). 27 `@path`.
+vérifier l'exercice (2026) et le total payé (€).
+
+**FLX-01 étiqueté (2026-10-15).** Le test des exports produit chacun des trois exports à la demande de la
+§9.12 (lignes de commission, comptes, données des contrôles), vérifie l'inscription au journal avec
+auteur (l'opérateur), lignes et total, et le téléchargement du fichier. 28 `@path`.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
