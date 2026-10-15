@@ -787,7 +787,11 @@ vérifier l'exercice (2026) et le total payé (€).
 
 **FLX-01 étiqueté (2026-10-15).** Le test des exports produit chacun des trois exports à la demande de la
 §9.12 (lignes de commission, comptes, données des contrôles), vérifie l'inscription au journal avec
-auteur (l'opérateur), lignes et total, et le téléchargement du fichier. 28 `@path`.
+auteur (l'opérateur), lignes et total, et le téléchargement du fichier.
+
+**FLX-02 étiqueté (2026-10-15).** L'export Data produit un fichier incrémental par objet (lignes de
+commission, comptes), chacun estampillé de la fenêtre `INCR:2026-09-01` — « un fichier par objet,
+incrément du jour seulement ». 29 `@path`.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :

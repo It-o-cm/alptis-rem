@@ -52,19 +52,22 @@ test('l’opérateur exporte les données des contrôles de niveau 2 et 3 @scree
   await operator.close();
 });
 
-test('l’opérateur produit un export Data incrémental depuis une date @screen:exports @req:REP-05 @role-action:OPERATOR-produce-export', async ({
+test('l’opérateur produit un export Data incrémental depuis une date @screen:exports @req:REP-05 @path:FLX-02 @role-action:OPERATOR-produce-export', async ({
   browser,
 }) => {
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
   const page = await operator.newPage();
   await page.goto('/exports');
-  await page.getByTestId('exports-object').selectOption('COMMISSION_LINES');
   await page.getByTestId('exports-data').check();
   await page.getByTestId('exports-since').fill('2026-09-01');
-  await page.getByTestId('exports-produce').click();
-  await expect(page.getByTestId('exports-message')).toContainText('produit');
-  // The journal shows the incremental Data flow for that window.
-  await expect(page.locator('[data-testid^="export-row-"]', { hasText: 'INCR:2026-09-01' }).first()).toBeVisible();
+  // FLX-02: Export Data produces one incremental file per object, for the day's window only.
+  for (const object of ['COMMISSION_LINES', 'ACCOUNTS']) {
+    await page.getByTestId('exports-object').selectOption(object);
+    await page.getByTestId('exports-produce').click();
+    await expect(page.getByTestId('exports-message')).toContainText('produit');
+  }
+  // One incremental Data file per object, each stamped with the since-window.
+  await expect(page.locator('[data-testid^="export-row-"]', { hasText: 'INCR:2026-09-01' })).toHaveCount(2);
   await operator.close();
 });
 
