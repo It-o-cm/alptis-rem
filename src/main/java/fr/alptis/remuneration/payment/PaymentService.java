@@ -314,6 +314,7 @@ public class PaymentService {
         batch.status = BatchStatus.ISSUED;
         batch.validatedBy = userId;
         batch.validatedAt = clock.now();
+        batch.executionDate = clock.now().toLocalDate();
         batch.sepaFileRef = batch.entity.code + "_SEPA_" + batch.period.periodMonth + "_" + batch.batchReference;
         batch.sepaFileHash = HashUtil.sha256(sepaXml(batch, orders));
         for (PaymentOrder order : orders) {
@@ -367,6 +368,10 @@ public class PaymentService {
         xml.append("<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pain.001.001.03\">\n");
         xml.append("<CstmrCdtTrfInitn><PmtInf>");
         xml.append("<PmtInfId>").append(batch.batchReference).append("</PmtInfId>");
+        BigDecimal controlSum = orders.stream().map(o -> o.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        xml.append("<NbOfTxs>").append(orders.size()).append("</NbOfTxs>");
+        xml.append("<CtrlSum>").append(controlSum.toPlainString()).append("</CtrlSum>");
+        xml.append("<ReqdExctnDt>").append(batch.executionDate).append("</ReqdExctnDt>");
         xml.append("<Dbtr><Nm>").append(batch.entity.name).append("</Nm></Dbtr>");
         xml.append("<DbtrAcct><Id><IBAN>").append(nullSafe(batch.entity.debtorIban)).append("</IBAN></Id></DbtrAcct>");
         for (PaymentOrder order : orders) {

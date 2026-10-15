@@ -746,11 +746,15 @@ le vérifie. CTL-06 (liste de contrôle de la période : un contrôle coché et 
 le test existant de la liste de contrôle. CTL-02 (décision sur une anomalie) **complété** : l'écran des
 contrôles offrait seulement « Accepter » ; ajout des actions « Corriger » (FIXED) et « Reporter »
 (DEFERRED) et d'un **compteur d'anomalies ouvertes**, et un test décide trois anomalies — acceptée,
-corrigée, reportée — vérifie leurs libellés et le décompte des ouvertes (−3). 17 `@path`.
+corrigée, reportée — vérifie leurs libellés et le décompte des ouvertes (−3). PAI-10 (fichier de
+virements) **complété** : le fichier SEPA pain.001 ne portait ni le nombre d'ordres, ni la somme de
+contrôle, ni la date d'exécution (champ `executionDate` jamais renseigné) ; ajout de `<NbOfTxs>`,
+`<CtrlSum>`, `<ReqdExctnDt>` (date posée à la validation Finance), et le test lit ces champs plus
+l'identifiant de bout en bout et le libellé. 18 `@path`.
 
-**Audit §4.3–4.6 (2026-10-15).** Beaucoup de tests d'écran ne couvrent qu'une partie d'un parcours ;
-restent à compléter avant étiquetage : PAI-02 n'affiche que deux des six motifs d'exclusion ; FIN-05 ne
-vérifie pas encore équilibre/total de l'extraction ; PAI-05 ne télécharge pas la liste des chèques.
+**Audit §4.3–4.6 (2026-10-15).** Restent à compléter avant étiquetage : PAI-02 (seulement deux des six
+motifs d'exclusion), FIN-05 (équilibre/total de l'extraction), PAI-05 (téléchargement de la liste des
+chèques).
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :

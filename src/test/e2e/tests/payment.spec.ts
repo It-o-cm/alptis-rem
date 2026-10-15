@@ -13,7 +13,7 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
-test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règle l’ordre @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @req:REF-08 @role-action:OPERATOR-prepare-lot @role-action:FINANCE_CONTROLLER-validate-lot @role-action:FINANCE_CONTROLLER-record-bank-result', async ({
+test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règle l’ordre @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @req:REF-08 @role-action:OPERATOR-prepare-lot @role-action:FINANCE_CONTROLLER-validate-lot @role-action:FINANCE_CONTROLLER-record-bank-result @path:PAI-10', async ({
   browser,
 }) => {
   // The operator prepares the cycle lot: an order gets a resolved IBAN and exclusions are listed.
@@ -46,7 +46,15 @@ test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règ
   await expect(financePage.locator('[data-testid^="order-status-"]').first()).toContainText('Émis');
 
   await financePage.getByTestId('lot-sepa').click();
-  await expect(financePage.getByTestId('sepa-content')).toContainText('pain.001.001.03');
+  // PAI-10: the SEPA file carries the number of orders, the control sum, each end-to-end id, a label
+  // and the requested execution date.
+  const sepa = financePage.getByTestId('sepa-content');
+  await expect(sepa).toContainText('pain.001.001.03');
+  await expect(sepa).toContainText('<NbOfTxs>');
+  await expect(sepa).toContainText('<CtrlSum>');
+  await expect(sepa).toContainText('<EndToEndId>');
+  await expect(sepa).toContainText('<ReqdExctnDt>2026-');
+  await expect(sepa).toContainText('<Ustrd>');
 
   // The bank settles the order; re-reading the lot shows it settled (effect seen on reload).
   await financePage.locator('[data-testid^="order-settle-"]').first().click();
