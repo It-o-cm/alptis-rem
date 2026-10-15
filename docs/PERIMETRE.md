@@ -966,6 +966,8 @@ actions mutantes ; reste à étendre aux dernières avant l'étiquetage complet 
 
 **AJU-02 étiqueté (2026-10-15).** Nouveau test : un ajustement sans motif est **refusé** (« un motif est exigé »), puis un ajustement avec motif, **pièce jointe** (`GED-2026-09-77`, consultable à la liste) et **lien à la ligne corrigée** (identifiant de ligne réel lu depuis la réclamation de démonstration, affiché « #id » à la colonne « Ligne corrigée ») est accepté. 48 `@path`.
 
+**PAR-02 étiqueté (2026-10-15).** Nouveau test : pour **chacune des neuf familles** de calcul, une version aux paramètres invalides (charge utile non-objet, qui viole le schéma `type:object` de toutes) est **refusée avec le message du schéma** nommant la famille (« Paramètres invalides pour la famille X : … »). 49 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

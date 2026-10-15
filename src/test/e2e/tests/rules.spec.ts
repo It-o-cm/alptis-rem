@@ -59,6 +59,44 @@ test.describe('Paramétrage des règles', () => {
     await admin2Ctx.close();
   });
 
+  // Parcours PAR-02 (section 4.2): invalid parameters for each of the nine calculation families are
+  // refused with the family's schema message. A non-object payload violates every family schema
+  // (all are type:object), so each family rejects it, naming the family.
+  test('des paramètres invalides sont refusés pour chacune des neuf familles @screen:rules @req:PAR-02 @path:PAR-02', async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+    const admin = await ctx.newPage();
+    await admin.goto('/regles');
+    await admin.getByTestId('plan-code').fill('PAR02_PLAN');
+    await admin.getByTestId('plan-label').fill('Plan PAR-02');
+    await admin.getByTestId('plan-vintage').fill('2026');
+    await admin.getByTestId('plan-create').click();
+    await expect(admin.getByTestId('plan-row-PAR02_PLAN')).toBeVisible();
+    await admin.getByTestId('plan-open-PAR02_PLAN').click();
+
+    const families = ['LINEAR', 'UPFRONT', 'ADVANCE', 'TIERED', 'PORTFOLIO', 'SHARE', 'OUTSTANDING', 'FIXED', 'EXTERNAL'];
+    for (let i = 0; i < families.length; i += 1) {
+      const family = families[i];
+      const code = `PAR02_R${i}`;
+      await admin.getByTestId('rule-code').fill(code);
+      await admin.getByTestId('rule-label').fill(code);
+      await admin.getByTestId('rule-family').selectOption(family);
+      await admin.getByTestId('rule-create').click();
+      await expect(admin.getByTestId(`rule-row-${code}`)).toBeVisible();
+      await admin.getByTestId(`rule-open-${code}`).click();
+      await admin.getByTestId('v-from').fill('2026-01-01');
+      await admin.getByTestId('v-to').fill('2026-12-31');
+      await admin.getByTestId('v-scope').fill('{"product":["PAR02"]}');
+      // A non-object payload violates every family's type:object schema.
+      await admin.getByTestId('v-parameters').fill('[]');
+      await admin.getByTestId('v-group').fill('TEST');
+      await admin.getByTestId('version-create').click();
+      await expect(admin.getByTestId('rules-error')).toContainText(`Paramètres invalides pour la famille ${family}`);
+    }
+    await ctx.close();
+  });
+
   test('CR-71 : un administrateur ne peut approuver sa propre version de règle '
     + '@screen:rules @req:PAR-04 @cr:CR-71 @path:PAR-03', async ({ browser }) => {
     const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
