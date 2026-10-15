@@ -10,7 +10,7 @@ import { loadDemo, USERS } from '../support/helpers';
 test.describe('Créances d’escompte — contrôleur Finance', () => {
   test.use({ httpCredentials: USERS.financeAlptis });
 
-  test('liste la synthèse par convention et ouvre le détail par adhérent @screen:discounts @req:BRD-09 @req:CPT-08', async ({
+  test('liste la synthèse par convention et ouvre le détail par adhérent @screen:discounts @req:BRD-09 @req:CPT-08 @path:BRD-09', async ({
     page,
   }) => {
     await loadDemo(page.request);
@@ -19,8 +19,12 @@ test.describe('Créances d’escompte — contrôleur Finance', () => {
 
     const row = page.locator('[data-testid^="discount-row-"]').first();
     await expect(row).toBeVisible();
+    // BRD-09: the convention synthesis shows versé, apuré and créance as amounts.
+    await expect(row).toContainText('€');
     await row.click();
     await expect(page.getByTestId('discount-detail')).toBeVisible();
+    // ... and the detail breaks it down per adhérent (one position per covered guarantee).
+    await expect(page.locator('[data-testid="discount-position-row"]').first()).toBeVisible();
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:discounts', async ({ page }) => {

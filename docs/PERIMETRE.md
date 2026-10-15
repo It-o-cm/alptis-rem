@@ -773,6 +773,10 @@ porte ses compteurs (unités/lignes non nuls) en plus du type « Réel » et du 
 `@path`. La « période verrouillée pendant le calcul » de CAL-01 est un état transitoire d'un calcul
 synchrone, non observable en e2e (atomicité de l'endpoint de calcul).
 
+**BRD-09 étiqueté (2026-10-15).** Le test des créances d'escompte vérifie désormais que la synthèse par
+convention affiche versé/apuré/créance (montants) et que le détail ouvre une ligne par adhérent
+(`discount-position-row`). 23 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
