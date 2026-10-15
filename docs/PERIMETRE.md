@@ -829,6 +829,12 @@ démonstration complet (cycle des deux entités du groupe) et vérifie que la vu
 affiche **un total par entité** — les lignes `ALPTIS_ASSURANCES` et `UNEP` apparaissent chacune avec son
 montant en euros — tandis que le consultant mono-entité en reste écarté (`group-forbidden`). 35 `@path`.
 
+**PAI-01 étiqueté (2026-10-15).** Nouveau test : l'opérateur prépare le lot de cycle et le test vérifie
+les deux points du parcours — **un ordre par bénéficiaire** (les libellés bénéficiaire des ordres sont
+tous distincts, autant que d'ordres) et **le total du lot égal à la somme de ses ordres** (chacun la
+somme des lignes rattachées d'un bénéficiaire, invariant CR-64 réaligné à la préparation). Testids
+ajoutés à l'écran de paiement : `lot-total`, `order-amount-*`, `order-payee-*`. 36 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

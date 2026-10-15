@@ -62,6 +62,32 @@ test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règ
   await finance.close();
 });
 
+test('la constitution du lot de cycle donne un ordre par bénéficiaire, son total égal à la somme des lignes @screen:payment @req:PAY-01 @path:PAI-01', async ({
+  browser,
+}) => {
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const page = await operator.newPage();
+  await page.goto('/paiement');
+  const cycleRow = page.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' });
+  await cycleRow.getByRole('button', { name: 'Détail' }).click();
+  await page.getByTestId('lot-prepare').click();
+
+  // PAI-01: the preparation yields one order per beneficiary (distinct payees).
+  const orderRows = page.locator('[data-testid^="order-row-"]');
+  const count = await orderRows.count();
+  expect(count).toBeGreaterThan(0);
+  const payees = await page.locator('[data-testid^="order-payee-"]').allTextContents();
+  expect(new Set(payees).size).toBe(count);
+
+  // PAI-01: the lot total equals the sum of its orders (each the sum of a beneficiary's lines, CR-64).
+  const parseEuro = (s: string): number => parseFloat(s.replace(/[^0-9,]/g, '').replace(',', '.'));
+  const amounts = await page.locator('[data-testid^="order-amount-"]').allTextContents();
+  const sum = amounts.reduce((acc, s) => acc + parseEuro(s), 0);
+  const total = parseEuro((await page.getByTestId('lot-total').textContent()) ?? '');
+  expect(Math.abs(total - sum)).toBeLessThan(0.005);
+  await operator.close();
+});
+
 test('la Finance saisit l’émission des chèques @screen:payment @req:PAY-04 @path:PAI-05 @role-action:FINANCE_CONTROLLER-record-cheque-emission', async ({
   browser,
 }) => {

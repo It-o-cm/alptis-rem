@@ -303,7 +303,7 @@ onMounted(loadLots);
 
     <AppCard v-if="detail" data-testid="lot-detail">
       <h2 class="ui-detail-title">
-        Lot {{ detail.batchType }} — {{ statusLabel(detail.status) }} — {{ amount(detail.total) }}
+        Lot {{ detail.batchType }} — {{ statusLabel(detail.status) }} — <span data-testid="lot-total">{{ amount(detail.total) }}</span>
       </h2>
       <div class="ui-action-row">
         <AppButton v-if="canOperate() && detail.status === 'DRAFT'" variant="secondary" data-testid="lot-prepare" @click="prepare">
@@ -342,6 +342,8 @@ onMounted(loadLots);
         empty-testid="no-order"
         :row-testid="(o) => `order-row-${o.id}`"
       >
+        <template #cell-amount="{ row }"><span :data-testid="`order-amount-${row.id}`">{{ amount(row.amount) }}</span></template>
+        <template #cell-payee="{ row }"><span :data-testid="`order-payee-${row.id}`">{{ `${row.payeeType} #${row.payeeId}` }}</span></template>
         <template #cell-iban="{ row }"><span :data-testid="`order-iban-${row.id}`">{{ row.iban ?? '—' }}</span></template>
         <template #cell-status="{ row }">
           <span :data-testid="`order-status-${row.id}`">{{ statusLabel(row.status) }}</span>
