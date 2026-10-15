@@ -74,6 +74,42 @@ test.describe('Référentiels — opérateur', () => {
     await expect(page.getByTestId('bank-changed')).toHaveCount(0);
   });
 
+  // Parcours INT-18 (section 4.1): a structurally invalid IBAN is refused at import; a valid one loads
+  // and is flagged "À vérifier" as changed since the last payment.
+  test('un IBAN de structure invalide est refusé ; un changement est signalé avant le paiement suivant @screen:bank-accounts @req:REF-05 @path:INT-18', async ({
+    page,
+  }) => {
+    await importFile(page, 'distributors',
+      'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n'
+      + 'ALPTIS_ASSURANCES;SESAME;P13897;Cabinet Martin;INDEPENDENT;ACTIVE;2026-01-01\n');
+
+    // A structurally invalid IBAN (too short, fails the ISO 7064 control) is refused at import.
+    const bad = await page.request.post('/api/ui/v1/imports', {
+      headers: { Authorization: OPERATOR_AUTH },
+      data: {
+        entityCode: 'ALPTIS_ASSURANCES', flowCode: 'bank_accounts', sourceSystem: 'SESAME',
+        fileName: 'bank-bad.csv',
+        content: 'entity_code;holder_type;holder_code;iban;bic;holder_name;valid_from\n'
+          + 'ALPTIS_ASSURANCES;DISTRIBUTOR;P13897;FR00INVALID;AGRIFRPP;Cabinet Martin;2026-01-01\n',
+      },
+    });
+    expect(bad.ok()).toBeTruthy();
+    const badResult = await bad.json();
+    expect(badResult.linesRejected).toBe(1);
+    expect(badResult.linesLoaded).toBe(0);
+    // No bank account was created by the refused import.
+    await page.goto('/coordonnees-bancaires');
+    await expect(page.getByTestId('bank-iban')).toHaveCount(0);
+
+    // A valid IBAN loads and is flagged "À vérifier" (in effect after the holder's last payment).
+    await importFile(page, 'bank_accounts',
+      'entity_code;holder_type;holder_code;iban;bic;holder_name;valid_from\n'
+      + 'ALPTIS_ASSURANCES;DISTRIBUTOR;P13897;FR7630006000011234567890189;AGRIFRPP;Cabinet Martin;2026-01-01\n');
+    await page.goto('/coordonnees-bancaires');
+    await expect(page.getByTestId('bank-iban').first()).toContainText('FR76');
+    await expect(page.getByText('À vérifier')).toBeVisible();
+  });
+
   test('aucune violation d’accessibilité grave ou critique @screen:products', async ({ page }) => {
     await page.goto('/produits');
     const results = await new AxeBuilder({ page }).analyze();

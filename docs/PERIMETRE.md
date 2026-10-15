@@ -1053,6 +1053,16 @@ Renforcé en couvrant les **deux volets** : la ligne d'historique de la fiche di
 groupements, `P13897` est désormais membre de **`GB`** et **ne l'est plus de `GA`**. Vérification seule,
 aucune feature. 63 `@path`.
 
+**INT-18 étiqueté (2026-10-16).** Parcours « coordonnées bancaires : IBAN de structure invalide ;
+changement depuis le dernier paiement : refus ; signalement avant le paiement suivant ». Les deux
+mécanismes existaient — contrôle de structure IBAN (longueur + ISO 7064 mod-97,
+`AccountQualityImportService.validIban`, rejet `STRUCTURE`) et colonne « À vérifier » d'une coordonnée
+entrée en vigueur après le dernier paiement — mais le test d'écran ne couvrait que le second. Nouveau
+test : l'import d'un **IBAN invalide** (`FR00INVALID`, trop court) est **refusé** (`linesRejected = 1`,
+`linesLoaded = 0`, aucune coordonnée créée) ; un **IBAN valide** est ensuite intégré et **signalé
+« À vérifier »** (en vigueur après le dernier paiement du titulaire). Vérification seule, aucune feature.
+64 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
