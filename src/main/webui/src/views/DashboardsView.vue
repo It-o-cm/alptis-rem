@@ -307,7 +307,11 @@ onMounted(load);
           empty="Aucune commission."
           empty-testid="no-nature"
           :row-testid="(n) => `dash-nature-${n.label}`"
-        />
+        >
+          <template #cell-amount="{ row }">
+            <span :data-testid="`dash-nature-amount-${row.label}`">{{ amount(row.amount) }}</span>
+          </template>
+        </DataTable>
       </AppCard>
 
       <AppCard>

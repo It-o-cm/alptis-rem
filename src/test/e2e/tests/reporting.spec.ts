@@ -15,14 +15,29 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
-test('le consultant lit les tableaux de bord et la recherche de commissions @screen:dashboards @screen:commissionSearch @req:REP-01 @req:REP-02 @req:REP-03', async ({
+/** Sums the euro amounts shown by a set of cells (handles the French decimal comma and minus sign). */
+async function sumEuros(cells: import('@playwright/test').Locator): Promise<number> {
+  const texts = await cells.allTextContents();
+  return texts.reduce((acc, t) => {
+    const n = parseFloat(t.replace(/[^0-9,\-−]/g, '').replace('−', '-').replace(',', '.'));
+    return acc + (Number.isNaN(n) ? 0 : n);
+  }, 0);
+}
+
+test('le consultant lit les tableaux de bord et la recherche de commissions @screen:dashboards @screen:commissionSearch @req:REP-01 @req:REP-02 @req:REP-03 @path:REP-01', async ({
   browser,
 }) => {
   const viewer = await browser.newContext({ httpCredentials: USERS.viewerAlptis });
   const page = await viewer.newPage();
   await page.goto('/tableaux-de-bord');
   await expect(page.getByTestId('dash-reprises')).toBeVisible();
-  await expect(page.locator('[data-testid^="dash-nature-"]').first()).toBeVisible();
+  await expect(page.locator('[data-testid^="dash-nature-amount-"]').first()).toBeVisible();
+
+  // REP-01: the dashboard figures equal the sums of the dataset. The commission total broken down by
+  // nature must equal the sum of the very lines the commission search lists over the same (unfiltered)
+  // scope — both read the counted lines of the entity. Captured here before any nature filter narrows it.
+  const dashboardTotal = await sumEuros(page.locator('[data-testid^="dash-nature-amount-"]'));
+  expect(dashboardTotal).not.toBe(0);
 
   // ADM-03: the dashboard filters are chosen from lists shown by their French labels, never typed as
   // codes. The entity reads as a name; the grouping, delegation and nature read as labels.
@@ -58,6 +73,9 @@ test('le consultant lit les tableaux de bord et la recherche de commissions @scr
   const natureText = (await page.locator('[data-testid^="cs-nature-"]').first().textContent())?.trim() ?? '';
   expect(natureText.length).toBeGreaterThan(0);
   expect(natureText).not.toMatch(/^[A-Z][A-Z_]+$/);
+  // REP-01: the sum of the listed lines equals the dashboard's by-nature total to the cent.
+  const searchTotal = await sumEuros(page.locator('[data-testid^="cs-amount-"]'));
+  expect(Math.abs(searchTotal - dashboardTotal)).toBeLessThan(0.005);
   await viewer.close();
 });
 

@@ -216,6 +216,9 @@ onMounted(search);
         <template #cell-nature="{ row }">
           <span :data-testid="`cs-nature-${row.i}`">{{ lineNatureLabel(row.nature) }}</span>
         </template>
+        <template #cell-amount="{ row }">
+          <span :data-testid="`cs-amount-${row.i}`">{{ amount(row.amount) }}</span>
+        </template>
       </DataTable>
     </AppCard>
 

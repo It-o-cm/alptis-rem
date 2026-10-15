@@ -998,6 +998,15 @@ cloisonnement par `EntityScope` existaient ; seule manquait la preuve niveau 3. 
 en-tête `Authorization: Basic` explicite, l'« handshake » `httpCredentials` d'un `APIRequestContext`
 n'étant pas fiable sur un point d'accès `@Authenticated`.) 57 `@path`.
 
+**REP-01 étiqueté (2026-10-16).** Parcours « chaque tableau de bord : chiffres égaux aux sommes du jeu de
+données ». Le test d'écran lisait les graphiques mais ne vérifiait **aucun chiffre** contre le jeu de
+données — étiquette seulement `@req`. Renforcé (preuve, pas de feature) : le **total des commissions par
+nature** du tableau de bord est comparé à la **somme des lignes** que la recherche de commissions liste
+sur le même périmètre (sans filtre) — les deux parcourent les lignes comptées de l'entité, donc l'égalité
+au centime prouve « chiffres égaux aux sommes du jeu de données ». Deux `data-testid` ajoutés pour sommer
+précisément sans parser des lignes multi-nombres : `dash-nature-amount-<nature>` (cellule Montant du
+tableau par nature) et `cs-amount-<i>` (cellule Montant de la recherche). 58 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
