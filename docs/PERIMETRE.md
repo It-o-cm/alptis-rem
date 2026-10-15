@@ -968,6 +968,8 @@ actions mutantes ; reste à étendre aux dernières avant l'étiquetage complet 
 
 **PAR-02 étiqueté (2026-10-15).** Nouveau test : pour **chacune des neuf familles** de calcul, une version aux paramètres invalides (charge utile non-objet, qui viole le schéma `type:object` de toutes) est **refusée avec le message du schéma** nommant la famille (« Paramètres invalides pour la famille X : … »). 49 `@path`.
 
+**AJU-06 comblé et étiqueté (2026-10-15).** Le transfert entre comptes (REG-01) était géré côté serveur (`AdjustmentService` écrit deux lignes `TRANSFER` de somme nulle, contrepartie via `accountFor`) mais le **formulaire d'ajustement n'exposait pas le compte de contrepartie**. Ajout du champ `adj-counterpart` (contrepartie `DISTRIBUTOR`) à l'écran. Le test e2e saisit un `ACCOUNT_TRANSFER` de 50 entre les comptes 1 et 2, le fait approuver par un second, puis vérifie à la recherche de commissions **deux lignes « Compensation » dont la somme est nulle**. 50 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

@@ -46,6 +46,46 @@ test('l’opérateur saisit un ajustement, un administrateur l’approuve @scree
   await admin.close();
 });
 
+// Parcours AJU-06 (section 4.4): a transfer between two accounts writes two lines summing to zero.
+test('un transfert entre comptes écrit deux lignes de somme nulle @screen:adjustments @req:REG-01 @path:AJU-06', async ({
+  browser,
+}) => {
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const opPage = await operator.newPage();
+  await opPage.goto('/ajustements');
+  await opPage.getByTestId('adj-type').selectOption('ACCOUNT_TRANSFER');
+  await opPage.getByTestId('adj-amount').fill('50');
+  await opPage.getByTestId('adj-payee').fill('1');
+  await opPage.getByTestId('adj-counterpart').fill('2');
+  await opPage.getByTestId('adj-reason').fill('Transfert entre comptes');
+  await opPage.getByTestId('adj-submit').click();
+  await expect(opPage.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Soumis');
+  await operator.close();
+
+  // A second user approves it, applying the two transfer lines.
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/ajustements');
+  await page.locator('[data-testid^="adjustment-approve-"]').first().click();
+  await expect(page.locator('[data-testid^="adjustment-status-"]').first()).toContainText('Appliqué');
+
+  // The two transfer lines (nature Compensation) are listed, and their amounts sum to zero.
+  await page.goto('/recherche-commissions');
+  await page.getByTestId('cs-nature-filter').selectOption('TRANSFER');
+  await page.getByTestId('cs-search').click();
+  const rows = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Compensation' });
+  await expect(rows).toHaveCount(2);
+  const parseEuro = (s: string): number => {
+    const neg = s.includes('-');
+    const n = parseFloat(s.replace(/[^0-9,]/g, '').replace(',', '.'));
+    return neg ? -n : n;
+  };
+  const texts = await rows.allTextContents();
+  const sum = texts.reduce((acc, t) => acc + parseEuro(t), 0);
+  expect(Math.abs(sum)).toBeLessThan(0.005);
+  await admin.close();
+});
+
 // Parcours AJU-02 (section 4.4): an adjustment requires a reason (refused without one), accepts an
 // attachment reference (shown back) and links to the corrected line (shown as #id). The corrected line
 // is a real demo line, read from the seeded claim's contested line.

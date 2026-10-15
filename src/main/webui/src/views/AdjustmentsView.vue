@@ -29,6 +29,7 @@ const message = ref('');
 const loading = ref(false);
 const form = ref({
   type: 'CORRECTION', amount: 0, payeeId: 0, reason: '', attachmentRef: '', correctedLineId: null as number | null,
+  counterpartPayeeId: null as number | null,
   autoReverse: false, repaymentSchedule: '',
 });
 
@@ -73,6 +74,8 @@ async function submit(): Promise<void> {
       amount: form.value.amount,
       payeeType: 'DISTRIBUTOR',
       payeeId: form.value.payeeId,
+      counterpartPayeeType: form.value.counterpartPayeeId === null ? null : 'DISTRIBUTOR',
+      counterpartPayeeId: form.value.counterpartPayeeId,
       reason: form.value.reason,
       attachmentRef: form.value.attachmentRef === '' ? null : form.value.attachmentRef,
       correctedLineId: form.value.correctedLineId,
@@ -180,6 +183,9 @@ onMounted(load);
         </FormField>
         <FormField label="Ligne corrigée (identifiant)" width="short" v-slot="{ id }">
           <input :id="id" data-testid="adj-corrected-line" type="number" v-model.number="form.correctedLineId" />
+        </FormField>
+        <FormField label="Compte de contrepartie (transfert)" width="short" v-slot="{ id }">
+          <input :id="id" data-testid="adj-counterpart" type="number" v-model.number="form.counterpartPayeeId" />
         </FormField>
         <FormField label="Contrepassation" width="short" v-slot="{ id }">
           <input :id="id" data-testid="adj-reverse" type="checkbox" v-model="form.autoReverse" />
