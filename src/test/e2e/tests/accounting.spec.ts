@@ -28,7 +28,11 @@ test('le contrôleur Finance lit le schéma et produit l’extraction @screen:ac
   // The extraction is produced and its CSV carries the OUT-02 columns (FIN-03).
   await page.getByTestId('acc-extract').click();
   await expect(page.getByTestId('acc-message')).toContainText('ALPTIS_ASSURANCES_ECR_202609.csv');
-  await expect(page.getByTestId('acc-extract-csv')).toContainText('accounting_event');
+  // The extraction carries the OUT-02 columns (section 9.11): entity, fiscal year, accounting month,
+  // journal, event, the double-entry debit/credit accounts and the amount.
+  const csv = page.getByTestId('acc-extract-csv');
+  await expect(csv).toContainText('entity_code;fiscal_year;accounting_month;journal;entry_date;accounting_event');
+  await expect(csv).toContainText('debit_account;credit_account;amount');
   await finance.close();
 });
 

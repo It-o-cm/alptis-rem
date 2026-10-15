@@ -754,9 +754,15 @@ l'identifiant de bout en bout et le libellé. FDV-11 (simulateur du variable) : 
 production très au-dessus de l'objectif et vérifie que l'atteinte est **plafonnée à 100 %** (déjà
 implémenté côté moteur, `.min(1)`). 19 `@path`.
 
-**Audit §4.3–4.6 (2026-10-15).** Restent à compléter avant étiquetage : PAI-02 (seulement deux des six
-motifs d'exclusion), FIN-05 (équilibre/total de l'extraction), PAI-05 (téléchargement de la liste des
-chèques).
+**Audit §4.3–4.6 (2026-10-15).** Restent à compléter avant étiquetage :
+- PAI-02 : seulement deux des six motifs d'exclusion exercés (il en faut un par motif : compte bloqué,
+  bénéficiaire inactif, solde non positif, sous le seuil, sans coordonnées bancaires, hors fréquence).
+- FIN-05 : le test de l'extraction vérifie désormais toutes les colonnes OUT-02 (§9.11) et la double
+  partie (débit/crédit), mais **l'extraction de septembre du jeu de démonstration est vide** (écritures
+  déjà transmises à la clôture — ré-extraction idempotente) ; vérifier mois comptable / équilibre / total
+  sur les lignes demande une période validée **non encore extraite** (p. ex. en prolongeant le pipeline
+  CR-65). Non étiqueté tant que les lignes ne sont pas vérifiées.
+- PAI-05 : pas de téléchargement de la liste des chèques.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
