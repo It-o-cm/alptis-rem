@@ -27,7 +27,11 @@ const E = 'ALPTIS_ASSURANCES';
 const M = '2026-09-01';
 
 /** The rights table: for each action, the roles the specification (section 3) entitles to it. */
-const ACTIONS: { name: string; path: string; roles: string[] }[] = [
+const ACTIONS: { name: string; path: string; roles: string[]; method?: string }[] = [
+  // Read actions with a role restriction (section 3): consulting these lists is reserved.
+  { name: 'read-role-mappings', path: '/api/ui/v1/role-mappings', method: 'get', roles: ['IT_ADMIN', 'AUDITOR'] },
+  { name: 'read-mappings', path: '/api/ui/v1/mappings', method: 'get', roles: ['BUSINESS_ADMIN', 'OPERATOR', 'AUDITOR'] },
+  { name: 'read-audit', path: '/api/ui/v1/audit', method: 'get', roles: ['AUDITOR', 'IT_ADMIN', 'BUSINESS_ADMIN', 'OPERATOR', 'BUSINESS_VALIDATOR', 'FINANCE_CONTROLLER'] },
   { name: 'purge', path: '/api/ui/v1/admin/purge', roles: ['IT_ADMIN'] },
   { name: 'run-calc', path: `/api/ui/v1/calculations/${E}/${M}/run`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
   { name: 'run-controls', path: `/api/ui/v1/controls/${E}/${M}/run`, roles: ['OPERATOR', 'BUSINESS_ADMIN'] },
@@ -76,10 +80,11 @@ test('chaque couple rôle-action du tableau des droits est offert au rôle habil
   await resetDb(request);
   for (const action of ACTIONS) {
     for (const u of USERS) {
+      const method = action.method ?? 'POST';
       const res = await request.fetch(action.path, {
-        method: 'POST',
+        method,
         headers: { Authorization: basic(u.user), 'Content-Type': 'application/json' },
-        data: '{}',
+        ...(method.toUpperCase() === 'GET' ? {} : { data: '{}' }),
       });
       const entitled = u.roles.some((r) => action.roles.includes(r));
       const label = `${u.user} → ${action.name} (statut ${res.status()})`;
