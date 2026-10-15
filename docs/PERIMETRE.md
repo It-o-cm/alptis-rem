@@ -1063,6 +1063,15 @@ test : l'import d'un **IBAN invalide** (`FR00INVALID`, trop court) est **refusé
 « À vérifier »** (en vigueur après le dernier paiement du titulaire). Vérification seule, aucune feature.
 64 `@path`.
 
+**PAR-07 comblé et étiqueté (2026-10-16).** Parcours « taux hors bornes de vraisemblance : alerte à la
+saisie ». Le contrôle de vraisemblance existait côté serveur (`RuleConfigService.plausibilityAlerts`,
+plafond 0,60, point d'accès `/rule-versions/plausibility`, PAR-14) mais **l'écran des règles ne
+l'appelait jamais** — aucune alerte à la saisie. Correctif (fonction d'abord) : l'écran observe désormais
+le champ « Paramètres (JSON) » et, à chaque frappe, interroge le point d'accès et affiche les alertes
+renvoyées dans un bandeau `v-plausibility` (non bloquant). Le test e2e saisit un taux de **0,9** (clé
+`rate`, au-dessus du plafond 0,60) → l'alerte « Taux peu vraisemblable (0.9) … » apparaît ; un taux
+plausible la fait disparaître. 65 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,

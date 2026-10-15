@@ -138,6 +138,35 @@ test.describe('Paramétrage des règles', () => {
     await ctx.close();
   });
 
+  // Parcours PAR-07 (section 4.2): a rate beyond the plausibility bounds raises an alert as it is typed.
+  test('un taux hors des bornes de vraisemblance déclenche une alerte à la saisie @screen:rules @req:PAR-07 @path:PAR-07', async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+    const admin = await ctx.newPage();
+    await admin.goto('/regles');
+    await admin.getByTestId('plan-code').fill('PAR07_PLAN');
+    await admin.getByTestId('plan-label').fill('Plan PAR-07');
+    await admin.getByTestId('plan-vintage').fill('2026');
+    await admin.getByTestId('plan-create').click();
+    await admin.getByTestId('plan-open-PAR07_PLAN').click();
+    await admin.getByTestId('rule-code').fill('PAR07_RULE');
+    await admin.getByTestId('rule-label').fill('Règle PAR-07');
+    await admin.getByTestId('rule-family').selectOption('LINEAR');
+    await admin.getByTestId('rule-create').click();
+    await admin.getByTestId('rule-open-PAR07_RULE').click();
+
+    // A rate above the plausibility ceiling (0.60) raises a non-blocking alert as it is typed.
+    await admin.getByTestId('v-parameters').fill('{"allowedRates":[0.15],"rateSource":"RULE","rate":0.9}');
+    await expect(admin.getByTestId('v-plausibility')).toContainText('peu vraisemblable');
+    await expect(admin.getByTestId('v-plausibility')).toContainText('0.9');
+
+    // A plausible rate clears the alert.
+    await admin.getByTestId('v-parameters').fill('{"allowedRates":[0.15]}');
+    await expect(admin.getByTestId('v-plausibility')).toHaveCount(0);
+    await ctx.close();
+  });
+
   test('CR-71 : un administrateur ne peut approuver sa propre version de règle '
     + '@screen:rules @req:PAR-04 @cr:CR-71 @path:PAR-03', async ({ browser }) => {
     const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });

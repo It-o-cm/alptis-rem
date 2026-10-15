@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canEditEntityParameters } from '../presentation/access';
@@ -45,6 +45,21 @@ const versionForm = ref({
   priority: 10, exclusionGroup: 'BASE', clawbackPolicy: '', paymentSchedule: '',
 });
 const conditionRows = ref<ConditionRow[]>([]);
+
+/** Plausibility alerts (PAR-07/PAR-14) for the parameters being entered: rates above the ceiling. */
+const plausibilityAlerts = ref<string[]>([]);
+// As the parameters are typed, surface an alert for any implausible rate (non-blocking, at input).
+watch(() => versionForm.value.parameters, async (params) => {
+  if (!params || params.trim() === '') {
+    plausibilityAlerts.value = [];
+    return;
+  }
+  try {
+    plausibilityAlerts.value = await apiPost<string[]>('/api/ui/v1/rule-versions/plausibility', { parameters: params });
+  } catch {
+    plausibilityAlerts.value = [];
+  }
+});
 
 /** Adds an empty payment-condition row to the version form (PAR-07). */
 function addConditionRow(): void {
@@ -402,6 +417,9 @@ onMounted(loadPlans);
         <FormField label="Paramètres (JSON)" width="long" v-slot="{ id }">
           <input :id="id" data-testid="v-parameters" v-model="versionForm.parameters" />
         </FormField>
+        <AppMessage v-if="plausibilityAlerts.length" variant="warning" data-testid="v-plausibility">
+          <p v-for="(alert, i) in plausibilityAlerts" :key="i">{{ alert }}</p>
+        </AppMessage>
         <FormField label="Priorité" width="short" v-slot="{ id }">
           <input :id="id" data-testid="v-priority" type="number" v-model.number="versionForm.priority" />
         </FormField>
