@@ -775,7 +775,12 @@ synchrone, non observable en e2e (atomicité de l'endpoint de calcul).
 
 **BRD-09 étiqueté (2026-10-15).** Le test des créances d'escompte vérifie désormais que la synthèse par
 convention affiche versé/apuré/créance (montants) et que le détail ouvre une ligne par adhérent
-(`discount-position-row`). 23 `@path`.
+(`discount-position-row`).
+
+**BRD-01 et BRD-05 étiquetés (2026-10-15).** Le test des bordereaux couvre déjà BRD-01 (PDF et tableur
+téléchargés — signatures `%PDF`/`PK` — avec rubriques, pied solde reporté/net) ; ajout pour BRD-05 de la
+vérification que la version d'origine reste listée et consultable à côté de la rectificative v2. 25
+`@path`.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :

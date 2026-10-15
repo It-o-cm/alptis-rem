@@ -14,7 +14,7 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
-test('l’opérateur consulte un bordereau, l’exporte, le publie puis le rectifie @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-04 @req:BRD-07 @req:BRD-12 @req:BRD-06 @role-action:OPERATOR-publish-statement @role-action:OPERATOR-rectify-statement', async ({
+test('l’opérateur consulte un bordereau, l’exporte, le publie puis le rectifie @screen:statements @req:BRD-01 @req:BRD-02 @req:BRD-04 @req:BRD-07 @req:BRD-12 @req:BRD-06 @path:BRD-01 @path:BRD-05 @role-action:OPERATOR-publish-statement @role-action:OPERATOR-rectify-statement', async ({
   browser,
 }) => {
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
@@ -60,6 +60,11 @@ test('l’opérateur consulte un bordereau, l’exporte, le publie puis le recti
   await page.locator('[data-testid^="statement-rectify-"]').first().click();
   await expect(page.getByTestId('brd-message')).toContainText('rectificative');
   await expect(page.locator('[data-testid^="statement-row-"]', { hasText: 'v2' })).toHaveCount(1);
+  // BRD-05: the original version stays listed and consultable alongside the rectificative v2.
+  await expect(page.locator('[data-testid^="statement-row-"]')).not.toHaveCount(1);
+  const original = page.locator('[data-testid^="statement-row-"]').filter({ hasNotText: 'v2' }).first();
+  await original.locator('[data-testid^="statement-open-"]').click();
+  await expect(page.getByTestId('statement-detail')).toBeVisible();
   await operator.close();
 });
 
