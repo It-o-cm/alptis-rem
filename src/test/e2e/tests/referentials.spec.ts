@@ -48,7 +48,12 @@ test.describe('Référentiels — opérateur', () => {
       'entity_code;partner_code;indicator_type;range_code;period_from;period_to;value\n'
       + 'ALPTIS_ASSURANCES;P13897;UNPAID_RATE;;2026-01-01;2026-01-31;0.06\n');
     await page.goto('/indicateurs');
-    await expect(page.getByTestId('indicator-row').first().getByTestId('indicator-type')).toHaveText('UNPAID_RATE');
+    // The indicator is shown by distributor and by period, with its value (INT-23, first half).
+    const row = page.getByTestId('indicator-row').first();
+    await expect(row.getByTestId('indicator-type')).toHaveText('UNPAID_RATE');
+    await expect(row).toContainText('P13897');
+    await expect(row).toContainText('2026-01-31');
+    await expect(row).toContainText('%');
   });
 
   test('liste les coordonnées bancaires avec IBAN masqué @screen:bank-accounts @req:REF-05', async ({ page }) => {

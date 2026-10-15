@@ -885,6 +885,21 @@ re-soumet la même clé pour créer une **version 2** ; assertion ajoutée que l
 `@path`. (FDV-04, pondération par marché à 13 500 €, non étiqueté : le test principal porte `@req:FDV-04`
 mais ne vérifie pas le montant pondéré ; à renforcer.)
 
+**Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
+- **INT-02 — code de rejet `TYPE` manquant.** ING-04 (§8.2) impose **six** codes de rejet
+  (`STRUCTURE`, `TYPE`, `MISSING_FIELD`, `AMOUNT`, `FUTURE_DATE`, `DUPLICATE`) mais l'énumération
+  `RejectionReasonCode` n'en a que **cinq** : `TYPE` manque. Une valeur présente mais non convertible
+  (date ou nombre mal formé, énumération inconnue) retombe aujourd'hui sur `MISSING_FIELD`/`AMOUNT`/
+  `STRUCTURE` selon le champ. Combler `TYPE` touche les dix services d'import (distinguer « absent » de
+  « présent mais de mauvais type ») — chantier dédié, non entamé en fin de tour pour ne pas risquer un
+  changement transverse mal maîtrisé. **INT-02 reste non étiquetable** tant que les six codes ne sont pas
+  tous produisibles.
+- **INT-23 — indicateurs « calculés en interne » non matérialisés.** Les indicateurs de qualité sont
+  *reçus* (import) ou semés ; le moteur *lit* des valeurs pour les conditions de versement
+  (`indicatorValue`) mais n'écrit aucun `QualityIndicator` calculé en interne. Le test de l'écran est
+  **renforcé** (valeurs par distributeur `P13897` et par période `2026-01-31`, en pourcentage — première
+  moitié d'INT-23), mais l'étiquette `@path:INT-23` attend la matérialisation des indicateurs calculés.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
