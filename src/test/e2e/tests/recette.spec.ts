@@ -529,6 +529,31 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(retro.first()).toContainText('60,00');
   });
 
+  // Parcours CAL-02 (section 4.3): a calculation re-run with nothing changed yields the same lines and
+  // the same amounts, with no duplicate. CR-50 produces a single retrocession line of 60,00 €; running
+  // the calculation twice must still leave exactly one such line (a recalculation deletes the period's
+  // unvalidated lines before recreating them — D8 idempotence).
+  test('un calcul relancé sans rien changer ne crée pas de doublon @screen:calculations @screen:commissionSearch @path:CAL-02', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-50&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    // Re-run the whole period with nothing changed.
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const retro = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Rétrocession' });
+    // Still exactly one line, same amount — no duplicate from the second run.
+    await expect(retro).toHaveCount(1);
+    await expect(retro.first()).toContainText('60,00');
+  });
+
   test('CR-48 : douze adhésions atteignent le palier 2 % et versent une RCP de 1 000,00 € @screen:calculations @screen:commissionSearch @cr:CR-48', async ({
     page,
     request,
@@ -1142,6 +1167,9 @@ test('un calcul de février est refusé tant que janvier n’est pas validé par
   browser,
   request,
 }) => {
+  // This test lives outside the replay describe, so it resets the database itself before seeding
+  // (the cr-scenario endpoint only seeds; it does not reset) to avoid leaked state from a prior test.
+  await resetDb(request);
   const seeded = await request.post('/api/test/cr-scenario?cr=CR-41&entity=UNEP&month=2026-01-01');
   expect(seeded.ok()).toBeTruthy();
 

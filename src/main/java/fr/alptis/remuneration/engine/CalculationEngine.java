@@ -142,6 +142,13 @@ public class CalculationEngine {
         CommissionLine.delete("period = ?1 and status in ?2", period,
                 List.of(LineStatus.EARNED, LineStatus.FORECAST));
 
+        // D8: a bare rerun must reproduce the same lines. Return this period's already-calculated and
+        // non-commissionable events to PENDING so they are replayed in full; events held, or calculated
+        // for another period, keep their state.
+        BusinessEvent.update("processingStatus = ?1 where eligiblePeriod = ?2 and processingStatus in ?3",
+                ProcessingStatus.PENDING, period,
+                List.of(ProcessingStatus.PROCESSED, ProcessingStatus.NOT_COMMISSIONABLE));
+
         // Apply the portfolio transfers that take effect by this period (REF-09, CR-80): reassign the
         // ceded garanties to the transferee, so their later premiums go to it, and settle the discount
         // receivable on the transferor when it repays it.

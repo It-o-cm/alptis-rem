@@ -803,7 +803,8 @@ class CalculationEngineTest {
     }
 
     /**
-     * A rerun deletes the non-validated lines first (D13), so the result is stable.
+     * A bare rerun deletes the non-validated lines first (D13) and replays the period's events (D8),
+     * so a second run with nothing changed reproduces the same single line, with no duplicate.
      */
     @Test
     @TestTransaction
@@ -816,11 +817,11 @@ class CalculationEngineTest {
         premium(c, "E1", LocalDate.of(2026, 1, 5), "100.00");
 
         engine.runReal("UNEP", MONTH);
-        // Re-open the processed event so the second run reprocesses it, then rerun.
-        BusinessEvent.update("processingStatus = ?1 where entity = ?2", ProcessingStatus.PENDING, unep());
+        // A bare rerun, with nothing changed and no manual re-opening of the processed event.
         engine.runReal("UNEP", MONTH);
 
         assertEquals(1, lines().size());
+        assertEquals(0, lines().get(0).amount.compareTo(new BigDecimal("15.00")));
     }
 
     /**

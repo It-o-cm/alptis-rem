@@ -807,6 +807,17 @@ tant que janvier n'est pas validé par le métier est **refusé par le garde-fou
 précédente n'est pas encore validée par le métier »), le refus s'affiche sur l'écran des périodes et
 février reste `LOADED`. 32 `@path`.
 
+**CAL-02 comblé et étiqueté (2026-10-15).** Manque de fond relevé au rejeu : `runReal` (plein calcul de
+période, bouton « Lancer un calcul ») supprimait bien les lignes non validées (D13) mais ne rejouait que
+les événements `PENDING` ; les événements déjà calculés passant à `PROCESSED`, **un second calcul sans
+rien changer effaçait les lignes sans les recréer** — violation de D8 (« un calcul relancé dix fois donne
+dix fois le même résultat »). Le test unitaire `rerun_is_idempotent` masquait le défaut en rouvrant les
+événements à la main avant le second passage. Correctif (fonction d'abord) : `runReal` ramène à `PENDING`
+les événements de la période (`eligiblePeriod`) restés `PROCESSED`/`NOT_COMMISSIONABLE` avant de rejouer,
+à l'image de `runPartial`. Le test unitaire est renforcé (second passage nu, même ligne, même montant) et
+un test e2e (rejeu CR-50, deux calculs d'affilée) vérifie qu'il reste **une seule** ligne de rétrocession
+à 60,00 €. 33 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
