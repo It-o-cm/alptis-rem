@@ -349,3 +349,22 @@ report ; mécanisme paramétré retenu (le plus simple compatible) :
 - **Durée paramétrée** : conservée au plan (`minimumDurationMonths`) pour la traçabilité ; elle est
   appliquée à la source, la mesure reflétant déjà les résiliations précoces. Taux et dimension sont des
   paramètres de plan. Montants des tests calculés à la main (SalesForceServiceTest.fdv12_*).
+
+## 2026-10-15 — PAY-02 : ancrage de la périodicité de paiement
+
+Section 10.5 et PAY-02 : « Respecter aussi la périodicité de paiement du bénéficiaire » (motif d'exclusion
+`FREQUENCY`, « périodicité de paiement non échue »). La `PayeeRule` porte `paymentFrequency`
+(`MONTHLY`, `QUARTERLY`, `HALF_YEARLY`, `YEARLY`) mais la spécification ne dit pas sur quel mois une
+périodicité est « échue ». Choix le plus simple compatible (§6, §12.3), à défaut d'hypothèse §15 :
+
+- **Ancrage sur le calendrier civil.** Un bénéficiaire mensuel est toujours échu ; un trimestriel est échu
+  sur un mois de clôture de trimestre civil (mars, juin, septembre, décembre) ; un semestriel en juin et
+  décembre ; un annuel en décembre. Un bénéficiaire non échu est exclu du lot avec le motif `FREQUENCY`,
+  ses sommes restant au compte jusqu'au mois échu suivant (§10.5).
+- **Règle applicable.** La `PayeeRule` en vigueur qui vise le bénéficiaire du compte (code de production ou
+  distributeur), la plus récente ; à défaut de règle — compte de groupement ou bénéficiaire sans règle —
+  périodicité `MONTHLY` par défaut (paiement chaque mois, comportement antérieur inchangé).
+- `NO_BANK_DETAILS` **non traité ici** : §10 (p. 1211-1212) règle les bénéficiaires sans coordonnées
+  bancaires par le lot de chèques du trimestre, non par une exclusion ; le motif `NO_BANK_DETAILS` ne
+  vaudrait que pour des coordonnées *invalides* — reste à traiter avant d'étiqueter PAI-02.
+- Montants et branches couverts à la main (PaymentServiceTest.frequency_*).

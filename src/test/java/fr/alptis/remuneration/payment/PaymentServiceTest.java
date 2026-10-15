@@ -17,8 +17,11 @@ import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
+import fr.alptis.remuneration.domain.PayeeRule;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.PaymentBatch;
+import fr.alptis.remuneration.domain.PaymentExclusionReason;
+import fr.alptis.remuneration.domain.PaymentFrequency;
 import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.PaymentOrderStatus;
 import fr.alptis.remuneration.domain.Period;
@@ -256,6 +259,105 @@ class PaymentServiceTest {
         PaymentBatch off = service.offCycleLot("UNEP", "P13897", LocalDate.of(2026, 10, 1));
         assertEquals(0, off.totalAmount.compareTo(new BigDecimal("110.00")));
         assertEquals(1, PaymentOrder.count("batch", off));
+    }
+
+    /** Posts a payee rule carrying a payment frequency on a production-code account's payee. */
+    private static void pcPayeeRule(DistributorAccount account, PaymentFrequency frequency) {
+        PayeeRule rule = new PayeeRule();
+        rule.entity = unep();
+        rule.productionCode = ProductionCode.findById(account.payeeId);
+        rule.paymentFrequency = frequency;
+        rule.validFrom = LocalDate.of(2020, 1, 1);
+        rule.persist();
+    }
+
+    /**
+     * PAY-02: the payment frequency gates the September lot. A quarterly payee is due (September closes
+     * a calendar quarter) and a payee whose rule carries no frequency defaults to monthly, so both are
+     * paid; a half-yearly and a yearly payee are not due and are excluded with the FREQUENCY reason,
+     * their amounts kept on the account.
+     */
+    @Test
+    @TestTransaction
+    void frequency_gates_the_september_lot() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Period p = period(PeriodState.CONTROLLED);
+        DistributorAccount quarterly = pcAccount(distributor("Q", OriasStatus.REGISTERED), "PC-Q");
+        DistributorAccount halfYearly = pcAccount(distributor("H", OriasStatus.REGISTERED), "PC-H");
+        DistributorAccount yearly = pcAccount(distributor("Y", OriasStatus.REGISTERED), "PC-Y");
+        DistributorAccount noFrequency = pcAccount(distributor("N", OriasStatus.REGISTERED), "PC-N");
+        // A group account has no payee rule, so it defaults to monthly and is due.
+        DistributorAccount group = new DistributorAccount();
+        group.entity = unep();
+        group.payeeType = PayeeType.GROUP;
+        group.payeeId = 999L;
+        group.persist();
+        for (DistributorAccount a : new DistributorAccount[]{quarterly, halfYearly, yearly, noFrequency, group}) {
+            earnedLine(p, a, "100.00");
+            bank(a, "FR7630001007941234567890185");
+        }
+        pcPayeeRule(quarterly, PaymentFrequency.QUARTERLY);
+        pcPayeeRule(halfYearly, PaymentFrequency.HALF_YEARLY);
+        pcPayeeRule(yearly, PaymentFrequency.YEARLY);
+        pcPayeeRule(noFrequency, null);
+
+        PaymentBatch cycle = accounts.proposePayments(unep(), p);
+        service.prepareOrderDetails(cycle.getId());
+
+        // The half-yearly and yearly payees are excluded for frequency; the quarterly and no-frequency
+        // payees are paid.
+        assertEquals(2, PaymentExclusion.count("batch = ?1 and reason = ?2", cycle,
+                PaymentExclusionReason.FREQUENCY));
+        assertEquals(PaymentOrderStatus.CANCELLED,
+                PaymentOrder.<PaymentOrder>find("batch = ?1 and account = ?2", cycle, halfYearly).firstResult().status);
+        assertEquals(PaymentOrderStatus.CANCELLED,
+                PaymentOrder.<PaymentOrder>find("batch = ?1 and account = ?2", cycle, yearly).firstResult().status);
+        assertEquals(PaymentOrderStatus.TO_VALIDATE,
+                PaymentOrder.<PaymentOrder>find("batch = ?1 and account = ?2", cycle, quarterly).firstResult().status);
+        assertEquals(PaymentOrderStatus.TO_VALIDATE,
+                PaymentOrder.<PaymentOrder>find("batch = ?1 and account = ?2", cycle, noFrequency).firstResult().status);
+    }
+
+    /**
+     * PAY-02: the half-yearly and yearly payees are both due at the year end (December), so neither is
+     * excluded for frequency.
+     */
+    @Test
+    @TestTransaction
+    void frequency_due_at_year_end() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Period december = period(LocalDate.of(2026, 12, 1), PeriodState.CONTROLLED);
+        DistributorAccount halfYearly = pcAccount(distributor("H2", OriasStatus.REGISTERED), "PC-H2");
+        DistributorAccount yearly = pcAccount(distributor("Y2", OriasStatus.REGISTERED), "PC-Y2");
+        for (DistributorAccount a : new DistributorAccount[]{halfYearly, yearly}) {
+            earnedLine(december, a, "100.00");
+            bank(a, "FR7630001007941234567890185");
+        }
+        pcPayeeRule(halfYearly, PaymentFrequency.HALF_YEARLY);
+        pcPayeeRule(yearly, PaymentFrequency.YEARLY);
+        PaymentBatch decemberLot = accounts.proposePayments(unep(), december);
+        service.prepareOrderDetails(decemberLot.getId());
+        assertEquals(0, PaymentExclusion.count("batch = ?1 and reason = ?2", decemberLot,
+                PaymentExclusionReason.FREQUENCY));
+    }
+
+    /**
+     * PAY-02: a quarterly payee is not due in an off-quarter month (October) and is excluded with the
+     * FREQUENCY reason.
+     */
+    @Test
+    @TestTransaction
+    void frequency_skipped_off_quarter() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Period october = period(LocalDate.of(2026, 10, 1), PeriodState.CONTROLLED);
+        DistributorAccount quarterly = pcAccount(distributor("Q3", OriasStatus.REGISTERED), "PC-Q3");
+        earnedLine(october, quarterly, "100.00");
+        bank(quarterly, "FR7630001007941234567890185");
+        pcPayeeRule(quarterly, PaymentFrequency.QUARTERLY);
+        PaymentBatch octoberLot = accounts.proposePayments(unep(), october);
+        service.prepareOrderDetails(octoberLot.getId());
+        assertEquals(1, PaymentExclusion.count("batch = ?1 and reason = ?2", octoberLot,
+                PaymentExclusionReason.FREQUENCY));
     }
 
     /**

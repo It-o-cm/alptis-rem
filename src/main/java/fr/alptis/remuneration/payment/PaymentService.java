@@ -19,10 +19,12 @@ import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.OriasStatus;
 import fr.alptis.remuneration.domain.PartnerStatus;
+import fr.alptis.remuneration.domain.PayeeRule;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.PaymentBatch;
 import fr.alptis.remuneration.domain.PaymentExclusion;
 import fr.alptis.remuneration.domain.PaymentExclusionReason;
+import fr.alptis.remuneration.domain.PaymentFrequency;
 import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.PaymentOrderStatus;
 import fr.alptis.remuneration.domain.Period;
@@ -95,6 +97,13 @@ public class PaymentService {
             if (distributor != null && !payable(distributor, batch.entity, batch.period.periodMonth)) {
                 order.status = PaymentOrderStatus.CANCELLED;
                 exclusion(batch, order.account, PaymentExclusionReason.PAYEE_INACTIVE, order.amount);
+                continue;
+            }
+            // PAY-02 / section 10.5: respect the beneficiary's payment frequency. A payee not due this
+            // month is excluded and its amount stays on the account until its next due month.
+            if (!paymentDue(batch.entity, order.account, batch.period.periodMonth)) {
+                order.status = PaymentOrderStatus.CANCELLED;
+                exclusion(batch, order.account, PaymentExclusionReason.FREQUENCY, order.amount);
                 continue;
             }
             BankAccount bank = findBank(batch.entity, order.account);
@@ -232,6 +241,55 @@ public class PaymentService {
                 "distributor = ?1 and entity = ?2 and validFrom <= ?3 and (validTo is null or validTo >= ?3)",
                 distributor, entity, date).firstResult();
         return link == null || link.status == PartnerStatus.ACTIVE;
+    }
+
+    /**
+     * Tells whether a beneficiary is due for payment this month given its payment frequency (PAY-02,
+     * section 10.5). A monthly payee is always due; the others are due on the closing month of their
+     * cycle — the calendar quarter for a quarterly payee (March, June, September, December), the
+     * half-year for a half-yearly one (June, December) and December for a yearly one. The anchor
+     * follows the civil calendar, the specification being silent (see docs/DECISIONS.md, 2026-10-15).
+     *
+     * @param entity      the paying entity
+     * @param account     the beneficiary account
+     * @param periodMonth the first day of the paid month
+     * @return {@code true} when a payment is due this month
+     */
+    private boolean paymentDue(LegalEntity entity, DistributorAccount account, LocalDate periodMonth) {
+        int month = periodMonth.getMonthValue();
+        return switch (paymentFrequencyOf(entity, account, periodMonth)) {
+            case MONTHLY -> true;
+            case QUARTERLY -> month % 3 == 0;
+            case HALF_YEARLY -> month % 6 == 0;
+            case YEARLY -> month == 12;
+        };
+    }
+
+    /**
+     * Resolves the payment frequency applicable to a beneficiary: the most recent payee rule in force
+     * that targets the account's payee — a production code or a distributor — defaulting to
+     * {@code MONTHLY} when none applies, so a group account or a payee without a rule is paid monthly.
+     *
+     * @param entity      the paying entity
+     * @param account     the beneficiary account
+     * @param periodMonth the first day of the paid month
+     * @return the applicable payment frequency
+     */
+    private PaymentFrequency paymentFrequencyOf(LegalEntity entity, DistributorAccount account,
+                                                LocalDate periodMonth) {
+        PayeeRule rule = null;
+        if (account.payeeType == PayeeType.PRODUCTION_CODE) {
+            rule = PayeeRule.find(
+                    "entity = ?1 and productionCode.id = ?2 and validFrom <= ?3"
+                            + " and (validTo is null or validTo >= ?3) order by validFrom desc",
+                    entity, account.payeeId, periodMonth).firstResult();
+        } else if (account.payeeType == PayeeType.DISTRIBUTOR) {
+            rule = PayeeRule.find(
+                    "entity = ?1 and distributor.id = ?2 and productionCode is null and validFrom <= ?3"
+                            + " and (validTo is null or validTo >= ?3) order by validFrom desc",
+                    entity, account.payeeId, periodMonth).firstResult();
+        }
+        return rule == null || rule.paymentFrequency == null ? PaymentFrequency.MONTHLY : rule.paymentFrequency;
     }
 
     /**

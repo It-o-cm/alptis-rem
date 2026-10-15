@@ -835,6 +835,20 @@ tous distincts, autant que d'ordres) et **le total du lot égal à la somme de s
 somme des lignes rattachées d'un bénéficiaire, invariant CR-64 réaligné à la préparation). Testids
 ajoutés à l'écran de paiement : `lot-total`, `order-amount-*`, `order-payee-*`. 36 `@path`.
 
+**PAI-02 — motif `FREQUENCY` comblé (2026-10-15), étiquetage différé.** Audit du parcours « les six
+motifs d'exclusion » : deux des six motifs n'étaient jamais produits. `FREQUENCY` (« périodicité de
+paiement non échue », exigé par PAY-02) était un vrai manque — `PayeeRule.paymentFrequency` était importé
+et affiché mais **jamais consulté** à la préparation du lot. Correctif (fonction d'abord) : `PaymentService`
+exclut désormais un bénéficiaire dont la périodicité n'est pas échue le mois courant (`paymentDue` +
+`paymentFrequencyOf`), les sommes restant au compte (§10.5) ; l'ancrage sur le calendrier civil
+(trimestre → mars/juin/sept/déc, semestre → juin/déc, an → déc) est consigné dans `docs/DECISIONS.md`.
+Le jeu de démonstration n'ayant que des règles `MONTHLY`, le comportement existant est inchangé ;
+couverture JaCoCo 100 % tenue par `PaymentServiceTest.frequency_*` (chaque périodicité échue/non échue,
+résolution code de production / distributeur / groupement). **`NO_BANK_DETAILS` n'est pas un manque** :
+§10 (p. 1211-1212) règle les bénéficiaires sans coordonnées par le lot de chèques du trimestre, non par
+une exclusion ; le motif ne vaudrait que pour des coordonnées *invalides*. **PAI-02 reste non étiqueté**
+tant que ce dernier cas et le test e2e des six motifs ne sont pas faits.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur
