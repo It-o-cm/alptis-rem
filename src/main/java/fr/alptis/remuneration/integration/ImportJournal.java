@@ -10,6 +10,7 @@ import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.RejectionReasonCode;
 import io.quarkus.runtime.util.HashUtil;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -76,9 +77,13 @@ public final class ImportJournal {
         int rejected = 0;
         int onHold = 0;
         int lineNumber = 1;
-        for (Map<String, String> row : csv.rows()) {
+        List<Map<String, String>> parsedRows = csv.rows();
+        for (int i = 0; i < parsedRows.size(); i++) {
+            Map<String, String> row = parsedRows.get(i);
             lineNumber++;
-            RejectionReasonCode reason = rejector.apply(row);
+            // A row with more fields than the header is a structural error (section 8.2); otherwise the
+            // per-flow validator decides.
+            RejectionReasonCode reason = csv.malformed(i) ? RejectionReasonCode.STRUCTURE : rejector.apply(row);
             if (reason != null) {
                 ImportRejection rejection = new ImportRejection();
                 rejection.importBatch = batch;

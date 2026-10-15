@@ -95,6 +95,26 @@ class EventImportServiceTest {
     }
 
     /**
+     * A row carrying more fields than the header is rejected as a structural error (section 8.2), the
+     * well-formed rows loading as usual.
+     */
+    @Test
+    @TestTransaction
+    void a_row_with_an_extra_field_is_a_structure_error() {
+        seedContract();
+        String content = HEADER + "\n"
+                + row("ENC-1", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100.00") + "\n"
+                + row("ENC-2", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100.00") + ";surplus\n";
+
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "struct.csv", content);
+
+        assertEquals(1, batch.linesLoaded);
+        assertEquals(1, batch.linesRejected);
+        assertEquals(List.of(RejectionReasonCode.STRUCTURE), ImportRejection.<ImportRejection>list("importBatch", batch)
+                .stream().map(r -> r.reasonCode).toList());
+    }
+
+    /**
      * CR-68: depositing the same file twice is refused and creates no duplicate event.
      */
     @Test

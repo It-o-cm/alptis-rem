@@ -52,4 +52,16 @@ class CsvFileTest {
         CsvFile csv = CsvFile.parse("a;b\n");
         assertEquals(0, csv.rows().size());
     }
+
+    /**
+     * A row with more fields than the header is malformed (a structural error); a matching or shorter
+     * row is not.
+     */
+    @Test
+    void flags_a_row_with_more_fields_than_the_header() {
+        CsvFile csv = CsvFile.parse("a;b\n1;2\n3;4;5\n6\n");
+        assertEquals(false, csv.malformed(0));
+        assertEquals(true, csv.malformed(1));
+        assertEquals(false, csv.malformed(2));
+    }
 }

@@ -136,6 +136,44 @@ test.describe('Imports — opérateur', () => {
     await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'Prime encaissée' })).toHaveCount(1);
   });
 
+  test('un fichier à une ligne fautive par motif : six rejets codés avec leur ligne brute, le reste intégré (INT-02) @screen:imports @path:INT-02', async ({ page, request }) => {
+    // CR-67 seeds the AD-1 contract so the valid line loads and the duplicate can be detected.
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=ALPTIS_ASSURANCES&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    const header =
+      'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount\n';
+    const lines = [
+      'ALPTIS_ASSURANCES;CLEVA;OK-1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00', // loads
+      'ALPTIS_ASSURANCES;CLEVA;OK-1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00', // DUPLICATE
+      'ALPTIS_ASSURANCES;CLEVA;;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00', // MISSING_FIELD
+      'ALPTIS_ASSURANCES;CLEVA;BAD-T;BOGUS;AD-1;C1;2020-01-05;100.00', // TYPE
+      'ALPTIS_ASSURANCES;CLEVA;BAD-F;PREMIUM_COLLECTED;AD-1;C1;2999-01-01;100.00', // FUTURE_DATE
+      'ALPTIS_ASSURANCES;CLEVA;BAD-A;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;0.00', // AMOUNT
+      'ALPTIS_ASSURANCES;CLEVA;BAD-S;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00;surplus', // STRUCTURE
+    ].join('\n') + '\n';
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('CLEVA');
+    await page.getByTestId('upload-file').setInputFiles({
+      name: 'six-motifs.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(header + lines, 'utf-8'),
+    });
+    await page.getByTestId('upload-submit').click();
+    // One line integrated, six rejected — one per reject code of section 8.2.
+    await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 6 rejetée(s)');
+    await page.locator('[data-testid^="batch-row-"]').first().click();
+    // One rejection per reject code (matched on the code cell, not the raw line which echoes columns).
+    const codeCells = page.locator('[data-testid^="detail-code-"]');
+    await expect(codeCells).toHaveCount(6);
+    for (const code of ['STRUCTURE', 'MISSING_FIELD', 'TYPE', 'FUTURE_DATE', 'AMOUNT', 'DUPLICATE']) {
+      await expect(codeCells.filter({ hasText: new RegExp(`^${code}$`) })).toHaveCount(1);
+    }
+    // Each rejection carries its raw line: the structural one shows its source key.
+    await expect(page.locator('[data-testid^="rejection-row-"]').filter({ hasText: 'BAD-S' }))
+      .toContainText('STRUCTURE');
+  });
+
   test('un même nom de fichier de deux systèmes source est accepté et distingué au journal (INT-06) @screen:imports @path:INT-06', async ({ page }) => {
     await page.goto('/imports');
     const header = 'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n';

@@ -60,10 +60,12 @@ test.describe('Contrôles — opérateur', () => {
     await page.goto('/controles');
     await page.getByTestId('ctl-run').click();
     await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
+    const rows = page.locator('[data-testid^="anomaly-row-"]');
+    // Wait for the anomalies to render before reading the open counter (the message lands first).
+    await expect(rows.nth(2)).toBeVisible();
     const openCount = async () => Number((await page.getByTestId('ctl-open-count').textContent())?.trim());
     const start = await openCount();
     expect(start).toBeGreaterThanOrEqual(3);
-    const rows = page.locator('[data-testid^="anomaly-row-"]');
     // Accept the first, fix the second, defer the third; each decision is labelled and traced.
     await rows.nth(0).locator('[data-testid^="anomaly-accept-"]').click();
     await rows.nth(1).locator('[data-testid^="anomaly-fix-"]').click();

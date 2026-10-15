@@ -58,10 +58,14 @@ public class EventImportService {
      */
     @Transactional
     public ImportBatch importEvents(String entityCode, String sourceSystem, String fileName, String content) {
-        List<List<Map<String, String>>> groups = CsvFile.parse(content).rows().stream()
-                .map(row -> java.util.List.of(row))
-                .collect(java.util.stream.Collectors.toList());
-        return importGroups(entityCode, sourceSystem, fileName, fileName + "\n" + content, groups, 0);
+        CsvFile csv = CsvFile.parse(content);
+        List<List<Map<String, String>>> groups = new java.util.ArrayList<>();
+        List<Boolean> malformed = new java.util.ArrayList<>();
+        for (int i = 0; i < csv.rows().size(); i++) {
+            groups.add(java.util.List.of(csv.rows().get(i)));
+            malformed.add(csv.malformed(i));
+        }
+        return importGroups(entityCode, sourceSystem, fileName, fileName + "\n" + content, groups, 0, malformed);
     }
 
     /**
@@ -78,9 +82,29 @@ public class EventImportService {
      * @return the journalled batch
      * @throws ConflictException if the entity is unknown or the file was already imported
      */
-    @Transactional
     public ImportBatch importGroups(String entityCode, String sourceSystem, String fileName, String hashSource,
                                     List<List<Map<String, String>>> groups, int filtered) {
+        return importGroups(entityCode, sourceSystem, fileName, hashSource, groups, filtered,
+                java.util.Collections.nCopies(groups.size(), false));
+    }
+
+    /**
+     * Imports pre-mapped event groups, rejecting as {@code STRUCTURE} the source lines flagged as
+     * carrying more fields than the header (section 8.2).
+     *
+     * @param entityCode   the entity code
+     * @param sourceSystem the source system
+     * @param fileName     the file name
+     * @param hashSource   the text whose SHA-256 is the idempotency fingerprint (the original file)
+     * @param groups       the pivot-row groups, one per kept source line
+     * @param filtered     the number of source lines dropped by the mapping filter
+     * @param malformed    per group, whether its source line is structurally malformed
+     * @return the journalled batch
+     * @throws ConflictException if the entity is unknown or the file was already imported
+     */
+    @Transactional
+    public ImportBatch importGroups(String entityCode, String sourceSystem, String fileName, String hashSource,
+                                    List<List<Map<String, String>>> groups, int filtered, List<Boolean> malformed) {
         LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
         if (entity == null) {
             throw new ConflictException("Entité inconnue : " + entityCode);
@@ -108,9 +132,15 @@ public class EventImportService {
         int rejected = 0;
         int onHold = 0;
         int lineNumber = 1;
-        for (List<Map<String, String>> group : groups) {
+        for (int g = 0; g < groups.size(); g++) {
+            List<Map<String, String>> group = groups.get(g);
             lineNumber++;
             Map<String, String> primary = group.get(0);
+            if (Boolean.TRUE.equals(malformed.get(g))) {
+                reject(batch, lineNumber, primary.toString(), RejectionReasonCode.STRUCTURE);
+                rejected++;
+                continue;
+            }
             Outcome outcome = classify(entity, sourceSystem, primary, today);
             if (outcome.rejection != null) {
                 reject(batch, lineNumber, primary.toString(), outcome.rejection);

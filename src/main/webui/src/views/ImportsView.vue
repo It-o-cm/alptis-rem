@@ -317,7 +317,7 @@ onMounted(async () => {
         :row-testid="(r) => r.testid"
       >
         <template #cell-motif="{ row }"><span class="mono">{{ row.motif }}</span></template>
-        <template #cell-code="{ row }"><span :class="row.codeClass">{{ row.code }}</span></template>
+        <template #cell-code="{ row }"><span :class="row.codeClass" :data-testid="`detail-code-${row.key}`">{{ row.code }}</span></template>
         <template #cell-action="{ row }">
           <template v-if="row.kind === 'rejection' && canOperate() && row.status === 'OPEN' && row.rejection">
             <AppButton variant="secondary" :data-testid="`correct-${row.rejection.id}`" @click="correct(row.rejection)">

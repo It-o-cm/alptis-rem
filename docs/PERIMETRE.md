@@ -924,17 +924,18 @@ flux `employee_measures`) puis simule sans hypothèse (production mesurée) → 
 `@path`.
 
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
-- **INT-02 — les six codes sont répartis sur plusieurs imports (rectifié 2026-10-15).** *Correction d'un
-  relevé erroné du même jour : `TYPE` **existe** bien dans `RejectionReasonCode` (les six y sont :
-  `STRUCTURE`, `TYPE`, `MISSING_FIELD`, `AMOUNT`, `FUTURE_DATE`, `DUPLICATE`) — l'absence relevée venait
-  d'un `grep` qui excluait les mots de 4 lettres.* Le vrai obstacle à INT-02 : aucun import ne produit les
-  six motifs sur un seul fichier. L'import d'événements produit `TYPE`, `MISSING_FIELD`, `AMOUNT`,
-  `FUTURE_DATE`, `DUPLICATE` (cinq) ; `STRUCTURE` n'est produit que par l'import de coordonnées bancaires
-  (IBAN de structure invalide). Une ligne au format décalé (mauvais nombre de colonnes) est aujourd'hui
-  complétée par des vides par `CsvFile` (donc `MISSING_FIELD`), jamais rejetée en `STRUCTURE`. Pour
-  étiqueter INT-02 : soit détecter la ligne « ragged » → `STRUCTURE` dans l'import d'événements (modif de
-  `CsvFile`, partagé — à peser), soit interpréter le parcours par type d'import. À trancher dans une passe
-  dédiée.
+- **INT-02 comblé et étiqueté (2026-10-15).** Les six codes de rejet (§8.2) existent tous dans
+  `RejectionReasonCode` ; l'import d'événements en produisait cinq (`TYPE`, `MISSING_FIELD`, `AMOUNT`,
+  `FUTURE_DATE`, `DUPLICATE`) mais jamais `STRUCTURE` : une ligne au nombre de colonnes **supérieur** à
+  l'en-tête était tronquée silencieusement. Correctif (fonction d'abord, ING-04 « erreur de structure ») :
+  `CsvFile` marque une ligne **plus longue** que l'en-tête (`malformed(index)`) ; `ImportJournal`
+  (imports par rejecteur) et l'import d'événements (boucle propre, via une liste `malformed` alignée aux
+  groupes) rejettent une telle ligne en `STRUCTURE` **avant** la validation métier. Une ligne plus courte
+  reste complétée par des vides (colonnes optionnelles → `MISSING_FIELD` si un champ requis manque), donc
+  aucun import existant n'est cassé. Test e2e : un fichier d'événements à une ligne fautive par motif →
+  **six rejets, chacun avec son code et sa ligne brute**, la ligne valide intégrée. Couverture unitaire
+  `CsvFileTest.flags_a_row_with_more_fields`, `EventImportServiceTest` et `EmployeeImportServiceTest`
+  (chemin `ImportJournal`). 47 `@path`.
 - **INT-23 — indicateurs « calculés en interne » non matérialisés.** Les indicateurs de qualité sont
   *reçus* (import) ou semés ; le moteur *lit* des valeurs pour les conditions de versement
   (`indicatorValue`) mais n'écrit aucun `QualityIndicator` calculé en interne. Le test de l'écran est

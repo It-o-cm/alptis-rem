@@ -20,15 +20,20 @@ public final class CsvFile {
     /** Data rows, each mapping a header to its value. */
     private final List<Map<String, String>> rows;
 
+    /** Per row, whether it carries more fields than the header (a structural error, section 8.2). */
+    private final List<Boolean> malformed;
+
     /**
      * Creates a parsed file.
      *
-     * @param headers the header column names
-     * @param rows    the data rows keyed by header
+     * @param headers   the header column names
+     * @param rows      the data rows keyed by header
+     * @param malformed per row, whether it has more fields than the header
      */
-    private CsvFile(List<String> headers, List<Map<String, String>> rows) {
+    private CsvFile(List<String> headers, List<Map<String, String>> rows, List<Boolean> malformed) {
         this.headers = headers;
         this.rows = rows;
+        this.malformed = malformed;
     }
 
     /**
@@ -45,6 +50,7 @@ public final class CsvFile {
         }
         List<String> headers = parseLine(lines.get(0));
         List<Map<String, String>> rows = new ArrayList<>();
+        List<Boolean> malformed = new ArrayList<>();
         for (int i = 1; i < lines.size(); i++) {
             List<String> values = parseLine(lines.get(i));
             Map<String, String> row = new LinkedHashMap<>();
@@ -52,8 +58,9 @@ public final class CsvFile {
                 row.put(headers.get(c), c < values.size() ? values.get(c) : "");
             }
             rows.add(row);
+            malformed.add(values.size() > headers.size());
         }
-        return new CsvFile(headers, rows);
+        return new CsvFile(headers, rows, malformed);
     }
 
     /**
@@ -124,5 +131,16 @@ public final class CsvFile {
      */
     public List<Map<String, String>> rows() {
         return rows;
+    }
+
+    /**
+     * Tells whether the row at the given index carries more fields than the header, which is a
+     * structural error (section 8.2, reject code {@code STRUCTURE}).
+     *
+     * @param index the zero-based row index
+     * @return {@code true} when the row has more fields than the header
+     */
+    public boolean malformed(int index) {
+        return malformed.get(index);
     }
 }

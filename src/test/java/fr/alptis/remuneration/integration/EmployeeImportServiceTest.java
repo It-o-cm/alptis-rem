@@ -1,10 +1,14 @@
 package fr.alptis.remuneration.integration;
 
 import fr.alptis.remuneration.domain.ImportBatch;
+import fr.alptis.remuneration.domain.ImportRejection;
+import fr.alptis.remuneration.domain.RejectionReasonCode;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -70,5 +74,25 @@ class EmployeeImportServiceTest {
         assertEquals(1, batch.linesLoaded);
         assertEquals(1, batch.linesOnHold);
         assertEquals(9, batch.linesRejected);
+    }
+
+    /**
+     * A row with more fields than the header is rejected as a structural error (section 8.2), routed
+     * through the shared import journal.
+     */
+    @Test
+    @TestTransaction
+    void a_row_with_an_extra_field_is_a_structure_error() {
+        imports.importFile("UNEP", EmployeeImportService.EMPLOYEES, "SYS", "employees.csv",
+                "entity_code;external_id;last_name;first_name;job_code;valid_from\nUNEP;E1;Dupont;Jean;CAC;2026-01-01\n");
+        String csv = "external_id;measure_type;dimension;period_from;period_to;value\n"
+                + "E1;PRODUCTION;particulier;2026-09-01;2026-09-30;10000.00\n"
+                + "E1;PRODUCTION;particulier;2026-09-01;2026-09-30;10000.00;surplus\n";
+        ImportBatch batch = imports.importFile("UNEP", EmployeeImportService.EMPLOYEE_MEASURES, "SYS",
+                "struct.csv", csv);
+        assertEquals(1, batch.linesLoaded);
+        assertEquals(1, batch.linesRejected);
+        assertEquals(List.of(RejectionReasonCode.STRUCTURE), ImportRejection.<ImportRejection>list("importBatch", batch)
+                .stream().map(r -> r.reasonCode).toList());
     }
 }
