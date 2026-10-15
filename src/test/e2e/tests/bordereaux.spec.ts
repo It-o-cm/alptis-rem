@@ -68,7 +68,7 @@ test('l’opérateur consulte un bordereau, l’exporte, le publie puis le recti
   await operator.close();
 });
 
-test('l’opérateur consulte le relevé informatif d’un membre @screen:statements @req:BRD-11', async ({
+test('l’opérateur consulte le relevé informatif d’un membre @screen:statements @req:BRD-11 @path:BRD-06', async ({
   browser,
 }) => {
   const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });

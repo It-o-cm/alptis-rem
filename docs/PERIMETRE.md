@@ -779,8 +779,11 @@ convention affiche versé/apuré/créance (montants) et que le détail ouvre une
 
 **BRD-01 et BRD-05 étiquetés (2026-10-15).** Le test des bordereaux couvre déjà BRD-01 (PDF et tableur
 téléchargés — signatures `%PDF`/`PK` — avec rubriques, pied solde reporté/net) ; ajout pour BRD-05 de la
-vérification que la version d'origine reste listée et consultable à côté de la rectificative v2. 25
-`@path`.
+vérification que la version d'origine reste listée et consultable à côté de la rectificative v2.
+
+**BRD-06 et BRD-08 étiquetés (2026-10-15).** BRD-06 (relevé informatif d'un membre payé par son
+groupement : sa part) sur le test du relevé membre ; BRD-08 (attestation fiscale annuelle) renforcé pour
+vérifier l'exercice (2026) et le total payé (€). 27 `@path`.
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :

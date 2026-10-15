@@ -10,14 +10,17 @@ import { loadDemo, USERS } from '../support/helpers';
 test.describe('Attestations fiscales — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
-  test('liste les attestations fiscales par bénéficiaire @screen:taxCertificates @req:BRD-08', async ({ page }) => {
+  test('liste les attestations fiscales par bénéficiaire @screen:taxCertificates @req:BRD-08 @path:BRD-08', async ({ page }) => {
     await loadDemo(page.request);
     await page.goto('/attestations-fiscales');
     await expect(page.getByTestId('page-title')).toHaveText('Attestations fiscales annuelles');
     // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
     await expect(page.getByTestId('tax-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
-    // The full demo settles payments, so at least one beneficiary has a certificate for the year.
-    await expect(page.locator('[data-testid^="tax-row-"]').first()).toBeVisible();
+    // BRD-08: the certificate carries the civil-year total of commissions paid to the beneficiary.
+    const row = page.locator('[data-testid^="tax-row-"]').first();
+    await expect(row).toBeVisible();
+    await expect(row).toContainText('2026');
+    await expect(row).toContainText('€');
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:taxCertificates', async ({ page }) => {
