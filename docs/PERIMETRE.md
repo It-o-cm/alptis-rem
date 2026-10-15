@@ -972,6 +972,8 @@ actions mutantes ; reste à étendre aux dernières avant l'étiquetage complet 
 
 **CPT-04 — « levé à la date » comblé en fonction (2026-10-15).** Le blocage d'un compte stockait sa date de levée (`blockedUntil`) mais l'exclusion de paiement ne regardait que le drapeau `blocked` : un blocage n'était **jamais levé automatiquement** à sa date. Correctif (fonction d'abord) : l'exclusion `ACCOUNT_BLOCKED` ne vaut plus que si `blockedUntil` est nul ou postérieur à aujourd'hui (daté à l'effet, comme les liens ORIAS/entité). Couvert par `AccountServiceTest.blocked_account_respects_the_lifting_date` (date future → exclu ; date passée → payé). **CPT-04 non encore étiqueté** : l'« exclu du lot » vu de bout en bout exige de bloquer avant la proposition de paiement puis de dérouler le lot (flux de cycle) — e2e à faire.
 
+**FIN-01 étiqueté (2026-10-15).** Nouveau test : la période de septembre, seulement calculée (non validée par le métier sous `seedCycle`), produit une extraction comptable **sans aucune écriture** (en-tête seul, aucun code de compte à six chiffres) — les écritures ne sont générées qu'à la validation métier (`generateForValidation`). 51 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

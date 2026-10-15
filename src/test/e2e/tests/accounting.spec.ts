@@ -13,6 +13,23 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
+// Parcours FIN-01 (section 4.6): before the business validation of a period, the accounting carries no
+// entry. September is only calculated under seedCycle, so its extraction is header-only.
+test('avant la validation métier la comptabilité ne porte aucune écriture @screen:accounting @req:FIN-01 @path:FIN-01', async ({
+  browser,
+}) => {
+  const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
+  const page = await finance.newPage();
+  await page.goto('/comptabilite');
+  await expect(page.getByTestId('acc-month').locator('option', { hasText: 'septembre 2026' })).toHaveCount(1);
+  await page.getByTestId('acc-extract').click();
+  await expect(page.getByTestId('acc-message')).toContainText('ALPTIS_ASSURANCES_ECR_202609.csv');
+  const csv = (await page.getByTestId('acc-extract-csv').textContent()) ?? '';
+  // No entry: the CSV is header-only, so no six-digit account code appears (headers are column names).
+  expect(csv).not.toMatch(/\d{6}/);
+  await finance.close();
+});
+
 test('le contrôleur Finance lit le schéma et produit l’extraction @screen:accounting @req:FIN-02 @req:FIN-03 @req:FIN-05 @role-action:OPERATOR-extract-accounting', async ({
   browser,
 }) => {
