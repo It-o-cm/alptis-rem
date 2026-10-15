@@ -867,6 +867,12 @@ sur le test existant. 37 `@path`.
 mailles** (garantie, distributeur, produit, entité) et vérifie que le **total acquis est identique** aux
 quatre — seul le regroupement change, pas le montant. Étiquette `@path:FIN-07`. 38 `@path`.
 
+**CTL-05 étiqueté (2026-10-15).** Nouveau test (écran des contrôles, admin-alptis) : le contrôle de solde
+débiteur se déclenche une première fois, puis est **édité** (gravité) et **désactivé** — ce qui écrit une
+**nouvelle version** (version-row-2) et met le catalogue à « Actif = Non » — et **au calcul suivant** il
+ne se déclenche plus (l'exécution n'itère que les contrôles actifs). Couvre gravité + désactivation +
+version + effet au calcul suivant. 39 `@path`.
+
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
 - INT-01 : l'auteur du lot est le libellé générique « import », pas l'opérateur (propager l'utilisateur

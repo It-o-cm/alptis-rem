@@ -114,6 +114,41 @@ test.describe('Contrôles — administrateur métier', () => {
     await expect(page.getByTestId('version-row-1')).toBeVisible();
   });
 
+  // Parcours CTL-05 (section 4.4): editing a control in the catalogue (its severity, then its
+  // deactivation) writes a new version and takes effect at the next run. The debtor-balance control
+  // fires once, is then edited and deactivated, and no longer fires on a second run.
+  test('éditer puis désactiver un contrôle du catalogue le versionne et prend effet au calcul suivant @screen:controls @req:CTL-05 @path:CTL-05', async ({
+    page,
+  }) => {
+    await page.goto('/controles');
+    // Baseline: the debtor-balance control fires on the demo period.
+    await page.getByTestId('ctl-run').click();
+    await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
+    await expect(
+      page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'ACCOUNT-DEBTOR' }),
+    ).toHaveCount(1);
+
+    // Edit its severity, then deactivate it, saving a new active version.
+    await page.getByTestId('catalog-edit-ACCOUNT-DEBTOR').click();
+    await expect(page.getByTestId('catalog-edit-form')).toBeVisible();
+    await page.getByTestId('edit-severity').selectOption('WARNING');
+    await page.getByTestId('edit-active').uncheck();
+    await page.getByTestId('edit-save').click();
+    await expect(page.getByTestId('ctl-message')).toContainText('versionné');
+    // The catalogue now shows the control inactive, and a second version is recorded.
+    await expect(page.getByTestId('catalog-row-ACCOUNT-DEBTOR')).toContainText('Non');
+    await page.getByTestId('catalog-versions-ACCOUNT-DEBTOR').click();
+    await expect(page.getByTestId('version-row-2')).toBeVisible();
+    await expect(page.getByTestId('version-row-1')).toBeVisible();
+
+    // Effect at the next run: the deactivated control no longer raises its anomaly.
+    await page.getByTestId('ctl-run').click();
+    await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
+    await expect(
+      page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'ACCOUNT-DEBTOR' }),
+    ).toHaveCount(0);
+  });
+
   // Parcours CTL-03 (section 4.4): a blocking anomaly left open refuses the period's validation. The
   // admin (also an operator) makes the debtor-balance control blocking, runs the controls so its
   // anomaly is raised and left open, then tries to move the period on from CALCULATED — the cycle guard
