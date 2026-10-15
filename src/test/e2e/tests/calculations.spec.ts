@@ -10,7 +10,7 @@ import { loadDemo, USERS } from '../support/helpers';
 test.describe('Exécutions de calcul — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
-  test('lance un calcul, le suit et relance un périmètre @screen:calculations @req:CAL-01 @req:CAL-12 @path:CAL-01', async ({
+  test('lance un calcul, le suit, voit les unités en échec et relance un périmètre @screen:calculations @req:CAL-01 @req:CAL-12 @path:CAL-01 @path:CAL-03', async ({
     page,
   }) => {
     await loadDemo(page.request);
@@ -23,13 +23,18 @@ test.describe('Exécutions de calcul — opérateur', () => {
     const firstRun = page.locator('[data-testid^="run-row-"]').first();
     await expect(firstRun).toContainText('Réel');
     await expect(firstRun).toContainText('Terminé');
-    // CAL-01: the execution carries its counters (units processed and lines produced), both non-zero.
+    // CAL-01/CAL-03: the execution carries its counters (units processed and lines produced), both
+    // non-zero — the units that could be placed were calculated despite the failures.
     await expect(firstRun).toContainText(/[1-9]/);
 
-    // The demo plants a held event per entity: it appears as a unit in failure.
+    // CAL-03: the units the engine could not place are flagged, each with its motif (hold reason). The
+    // demo leaves several: an unknown reference and a rate off the grid, among others.
     await expect(page.locator('[data-testid^="failed-row-"]').first()).toBeVisible();
+    const failed = page.getByTestId('calc-failed');
+    await expect(failed).toContainText('Référence inconnue');
+    await expect(failed).toContainText('Taux hors grille');
 
-    // Launch a partial recalc scoped to a product.
+    // CAL-03/CAL-01: a partial recalc relaunches only a scope (here a product), not the whole period.
     await page.getByTestId('recalc-type').selectOption('PRODUCT');
     await page.getByTestId('recalc-value').fill('DEMO_SANTE');
     await page.getByTestId('recalc-run').click();

@@ -1080,6 +1080,16 @@ substitution (nouveau taux vide = taux retiré), les **16 événements** porteur
 (comptés à part, aucune ligne recalculée). Ajout d'un `data-testid="sim-held"` (événements en attente).
 Vérification seule, aucune feature. 66 `@path`.
 
+**CAL-03 étiqueté (2026-10-16).** Parcours « unité en échec : signalée avec son motif ; les autres sont
+calculées ; relance de la seule unité fautive ». Le test d'écran CAL-01 lançait déjà le calcul, voyait
+une ligne d'unité en échec et relançait un périmètre, mais sans vérifier le **motif** ni « les autres
+calculées ». Renforcé (et tagué `@path:CAL-03` aux côtés de CAL-01) : après le calcul, les unités que le
+moteur n'a pu placer sont **signalées avec leur motif** — la table des unités en échec porte
+« Référence inconnue » et « Taux hors grille » (deux motifs distincts du jeu de démonstration) ; les
+compteurs de l'exécution restent **non nuls** (les autres unités ont été calculées malgré les échecs) ;
+le **recalcul partiel** ne relance qu'un périmètre (un produit), pas toute la période. Vérification seule,
+aucune feature. 67 `@path`.
+
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
 `EventImportService`, `ImportJournal` et `CoverageImportService`) ; le test ne vérifiait que « non vide »,
