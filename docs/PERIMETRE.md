@@ -898,6 +898,11 @@ puis la clôt (En cours → Close) — les trois états et l'ajustement lié son
 `AdjustmentServiceTest.claim_take_and_linked_adjustments` (toutes branches de `takeClaim`, détail avec et
 sans lignes). 43 `@path`.
 
+**SIM-03 étiqueté (2026-10-15).** Le test de simulation rejoue la version **active** (SANTE_EQUILIBRE
+_LINEAR v1) de la période calculée : renforcé pour vérifier que l'**écart est 0,00 €** et qu'**aucune
+ligne n'est modifiée** — le rejeu avec le paramétrage d'origine reproduit les lignes réelles au centime
+(SIM-03, reproductibilité D8/CR-69 vue par l'interface). 44 `@path`.
+
 **Deux manques relevés à l'audit des parcours « six motifs » / indicateurs (2026-10-15).**
 - **INT-02 — les six codes sont répartis sur plusieurs imports (rectifié 2026-10-15).** *Correction d'un
   relevé erroné du même jour : `TYPE` **existe** bien dans `RejectionReasonCode` (les six y sont :

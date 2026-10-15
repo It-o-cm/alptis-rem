@@ -13,7 +13,7 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
-test('l’administrateur lance une simulation et lit la comparaison @screen:simulation @req:PAR-13 @role-action:OPERATOR-run-simulation', async ({
+test('l’administrateur lance une simulation et lit la comparaison @screen:simulation @req:PAR-13 @role-action:OPERATOR-run-simulation @path:SIM-03', async ({
   browser,
 }) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
@@ -29,6 +29,10 @@ test('l’administrateur lance une simulation et lit la comparaison @screen:simu
   // The comparison cards appear, computed by the server in the separate simulation space.
   await expect(page.getByTestId('sim-real')).toBeVisible();
   await expect(page.getByTestId('sim-ecart')).toBeVisible();
+  // SIM-03: replaying the past period with its own (active) parameterization reproduces the real lines
+  // to the cent — zero écart, and no line changed.
+  await expect(page.getByTestId('sim-ecart')).toHaveText('0,00 €');
+  await expect(page.getByTestId('sim-modified')).toHaveText('0');
   await expect(page.getByTestId('chart-sim')).toBeVisible();
   // The simulation is kept in the history (PAR-13).
   await expect(page.getByTestId('sim-history')).toBeVisible();
