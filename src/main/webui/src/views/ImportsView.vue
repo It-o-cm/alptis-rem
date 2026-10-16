@@ -41,6 +41,7 @@ interface HeldView {
 interface ExpectedFlow {
   code: string;
   label: string;
+  situation: string;
 }
 
 interface DetailRowView {
@@ -60,11 +61,7 @@ const FLOWS = [
   'insurers', 'product_ranges', 'products', 'product_options', 'bank_accounts', 'quality_indicators',
   'portfolio_transfers', 'replacement_orders', 'payee_rules', 'external_codes',
 ];
-const EXPECTED: ExpectedFlow[] = [
-  { code: 'coverages', label: 'Garanties' },
-  { code: 'events', label: 'Événements' },
-  { code: 'distributors', label: 'Distributeurs' },
-];
+const expectedFlows = ref<ExpectedFlow[]>([]);
 
 const session = useSessionStore();
 const batches = ref<BatchView[]>([]);
@@ -89,7 +86,6 @@ const canOperate = (): boolean => canOperateImports(session.roles);
 const entityCode = (): string => (session.entities.length > 0 ? session.entities[0] : '');
 
 /** The set of flow codes already received, to flag expected flows. */
-const receivedFlows = computed(() => new Set(batches.value.map((b) => b.flowCode)));
 
 /** Columns of the imports journal. */
 const journalColumns: Column<BatchView>[] = [
@@ -153,6 +149,7 @@ async function loadJournal(): Promise<void> {
   try {
     const page = await apiGet<{ items: BatchView[] }>('/api/ui/v1/imports');
     batches.value = page.items;
+    expectedFlows.value = await apiGet<ExpectedFlow[]>('/api/ui/v1/imports/expected-flows');
   } catch (e) {
     loadError.value = e instanceof ApiError ? e.message : 'Erreur de chargement';
   } finally {
@@ -359,12 +356,13 @@ onMounted(async () => {
     <AppCard title="Flux attendus sur la période">
       <DataTable
         :columns="expectedColumns"
-        :rows="EXPECTED"
+        :rows="expectedFlows"
         row-key="code"
         :row-testid="(f) => `flow-${f.code}`"
       >
         <template #cell-situation="{ row }">
-          <span v-if="receivedFlows.has(row.code)" class="tag ok">Reçu</span>
+          <span v-if="row.situation === 'RECEIVED'" class="tag ok">Reçu</span>
+          <span v-else-if="row.situation === 'LATE'" class="tag ko">En retard</span>
           <span v-else class="tag warn">Manquant</span>
         </template>
       </DataTable>

@@ -162,6 +162,65 @@ class ImportQueryServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> alptis.discard(unepRejection.getId()));
     }
 
+    /** Returns the situation of an expected flow by its code. */
+    private static String situationOf(java.util.List<ImportQueryService.ExpectedFlowView> flows, String code) {
+        return flows.stream().filter(f -> f.code().equals(code)).findFirst().orElseThrow().situation();
+    }
+
+    /**
+     * INT-08: with the clock at the 15th, a flow received this month is RECEIVED, one past its due day
+     * is LATE and one before it is MISSING; the partition is respected.
+     */
+    @Test
+    @TestTransaction
+    void expected_flows_reflect_the_clock() {
+        clock.fixAt(java.time.OffsetDateTime.of(2026, 6, 15, 12, 0, 0, 0, java.time.ZoneOffset.UTC));
+        try {
+            // A coverages batch with no received date is ignored; a dated one this month counts.
+            ImportBatch undated = batch("ALPTIS_ASSURANCES", "cov-undated.csv");
+            undated.flowCode = "coverages";
+            undated.receivedAt = null;
+            ImportBatch cov = batch("ALPTIS_ASSURANCES", "cov.csv");
+            cov.flowCode = "coverages";
+            cov.receivedAt = clock.now();
+            // A coverages batch received in another entity must not count for Alptis (partition).
+            ImportBatch other = batch("UNEP", "events-unep.csv");
+            other.flowCode = "events";
+            other.receivedAt = clock.now();
+
+            java.util.List<ImportQueryService.ExpectedFlowView> flows =
+                    service(List.of("ALPTIS_ASSURANCES")).expectedFlows();
+
+            assertEquals("RECEIVED", situationOf(flows, "coverages"));
+            assertEquals("LATE", situationOf(flows, "events"));
+            assertEquals("MISSING", situationOf(flows, "distributors"));
+            // The unrestricted partition sees the UNEP events batch, so events is RECEIVED there.
+            assertEquals("RECEIVED", situationOf(service(List.of("*")).expectedFlows(), "events"));
+        } finally {
+            clock.reset();
+        }
+    }
+
+    /** A batch received in a previous month does not count as received this month (INT-08). */
+    @Test
+    @TestTransaction
+    void a_flow_received_last_month_is_not_received_this_month() {
+        clock.fixAt(java.time.OffsetDateTime.of(2026, 6, 3, 12, 0, 0, 0, java.time.ZoneOffset.UTC));
+        try {
+            ImportBatch cov = batch("ALPTIS_ASSURANCES", "cov-old.csv");
+            cov.flowCode = "coverages";
+            cov.receivedAt = java.time.OffsetDateTime.of(2026, 5, 20, 12, 0, 0, 0, java.time.ZoneOffset.UTC);
+            // Another coverages batch received in a previous year also does not count this month.
+            ImportBatch older = batch("ALPTIS_ASSURANCES", "cov-2025.csv");
+            older.flowCode = "coverages";
+            older.receivedAt = java.time.OffsetDateTime.of(2025, 6, 20, 12, 0, 0, 0, java.time.ZoneOffset.UTC);
+            // On the 3rd, before the coverages due day (5th), an unreceived flow is MISSING, not LATE.
+            assertEquals("MISSING", situationOf(service(List.of("ALPTIS_ASSURANCES")).expectedFlows(), "coverages"));
+        } finally {
+            clock.reset();
+        }
+    }
+
     /** The events pivot header used to build reprocessable batches. */
     private static final String EVENTS_HEADER =
             "entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount";

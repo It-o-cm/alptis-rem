@@ -5,6 +5,7 @@ import fr.alptis.remuneration.domain.PageResult;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.integration.ImportQueryService;
 import fr.alptis.remuneration.integration.ImportQueryService.BatchView;
+import fr.alptis.remuneration.integration.ImportQueryService.ExpectedFlowView;
 import fr.alptis.remuneration.integration.ImportQueryService.HeldEventView;
 import fr.alptis.remuneration.integration.ImportQueryService.RejectionView;
 import fr.alptis.remuneration.integration.ImportService;
@@ -111,6 +112,19 @@ public class ImportsResource {
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
     public List<RejectionView> rejections(@PathParam("id") long id) {
         return query.rejections(id);
+    }
+
+    /**
+     * Lists the expected flows of the period with their situation relative to the clock (INT-08).
+     *
+     * @return the expected-flow views
+     */
+    @GET
+    @Path("/expected-flows")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR"})
+    public List<ExpectedFlowView> expectedFlows() {
+        return query.expectedFlows();
     }
 
     /**

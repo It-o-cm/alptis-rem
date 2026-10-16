@@ -19,6 +19,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -72,6 +73,55 @@ public class ImportQueryService {
         List<BatchView> items = query.page(Page.of(safePage, safeSize)).<ImportBatch>list().stream()
                 .map(ImportQueryService::toView).toList();
         return new PageResult<>(items, safePage, safeSize, total);
+    }
+
+    /**
+     * The flows expected every period, with their French label and the day of the month by which they
+     * are due (section 7.3 import calendar; the exact days are a reasonable default, see
+     * docs/DECISIONS.md). A flow not received by its due day shows as late, before it as awaited.
+     */
+    private static final List<ExpectedFlowDef> EXPECTED_FLOWS = List.of(
+            new ExpectedFlowDef("coverages", "Garanties", 5),
+            new ExpectedFlowDef("events", "Événements", 10),
+            new ExpectedFlowDef("distributors", "Distributeurs", 25));
+
+    /** An expected flow's code, label and monthly due day. */
+    private record ExpectedFlowDef(String code, String label, int dueDay) {
+    }
+
+    /**
+     * The expected flows of the current period with their situation relative to the clock (INT-08):
+     * {@code RECEIVED} once a batch of the flow was received this month, else {@code LATE} when the due
+     * day has passed, else {@code MISSING} (still awaited). Partitioned by entity.
+     *
+     * @return the expected flows with their situation
+     */
+    @Transactional
+    public List<ExpectedFlowView> expectedFlows() {
+        LocalDate today = clock.today();
+        List<ExpectedFlowView> out = new java.util.ArrayList<>();
+        for (ExpectedFlowDef def : EXPECTED_FLOWS) {
+            String situation;
+            if (receivedThisMonth(def.code(), today)) {
+                situation = "RECEIVED";
+            } else if (today.getDayOfMonth() > def.dueDay()) {
+                situation = "LATE";
+            } else {
+                situation = "MISSING";
+            }
+            out.add(new ExpectedFlowView(def.code(), def.label(), situation));
+        }
+        return out;
+    }
+
+    /** Whether a batch of the flow was received in the clock's current month, within the partition. */
+    private boolean receivedThisMonth(String flowCode, LocalDate today) {
+        List<ImportBatch> batches = scope.unrestricted()
+                ? ImportBatch.list("flowCode", flowCode)
+                : ImportBatch.list("entity.code in ?1 and flowCode = ?2", scope.visibleCodes(), flowCode);
+        return batches.stream().anyMatch(b -> b.receivedAt != null
+                && b.receivedAt.toLocalDate().getYear() == today.getYear()
+                && b.receivedAt.toLocalDate().getMonthValue() == today.getMonthValue());
     }
 
     /**
@@ -248,6 +298,10 @@ public class ImportQueryService {
      * @param status     the rejection status
      */
     public record RejectionView(long id, Integer lineNumber, String rawLine, String reasonCode, String status) {
+    }
+
+    /** An expected flow of the period with its situation relative to the clock (RECEIVED/LATE/MISSING). */
+    public record ExpectedFlowView(String code, String label, String situation) {
     }
 
     /**

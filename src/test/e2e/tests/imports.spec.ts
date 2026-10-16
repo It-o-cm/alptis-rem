@@ -50,9 +50,9 @@ test.describe('Imports — opérateur', () => {
     await rejectionRow.getByRole('button', { name: 'Corriger et relancer' }).click();
     await expect(page.locator('[data-testid^="rejection-row-"]').first()).toContainText('CORRECTED');
 
-    // Expected flows: distributors is now received.
+    // Expected flows: distributors is now received (the clock-driven late/missing states are
+    // asserted deterministically by the INT-08 test with a frozen clock).
     await expect(page.getByTestId('flow-distributors')).toContainText('Reçu');
-    await expect(page.getByTestId('flow-events')).toContainText('Manquant');
   });
 
   test('refuse un fichier déjà intégré, sans doublon (CR-68, INT-05) @screen:imports @cr:CR-68 @path:INT-05', async ({ page }) => {
@@ -135,6 +135,29 @@ test.describe('Imports — opérateur', () => {
     await page.goto('/evenements');
     await page.getByTestId('events-search').click();
     await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'ENC-FIX' })).toHaveCount(1);
+  });
+
+  test('les flux attendus sont reçu / en retard / manquant selon l’horloge (INT-08) @screen:imports @path:INT-08', async ({ page, request }) => {
+    // Freeze the clock at the 15th: coverages (due the 5th) and events (due the 10th) are past due,
+    // distributors (due the 25th) is still awaited.
+    await request.put('/api/test/clock', { data: { instant: '2026-06-15T12:00:00Z' } });
+    try {
+      // A coverages file received this month makes that flow "Reçu" (header only is enough).
+      const covHeader =
+        'contract_number;coverage_code;product_code;policyholder_id;status;remuneration_mode;effect_date;registration_date\n';
+      await page.goto('/imports');
+      await page.getByTestId('upload-flow').selectOption('coverages');
+      await page.getByTestId('upload-source').selectOption('CLEVA');
+      await page.getByTestId('upload-file').setInputFiles({ name: 'cov.csv', mimeType: 'text/csv', buffer: Buffer.from(covHeader, 'utf-8') });
+      await page.getByTestId('upload-submit').click();
+      await expect(page.getByTestId('upload-message')).toBeVisible();
+
+      await expect(page.getByTestId('flow-coverages')).toContainText('Reçu');
+      await expect(page.getByTestId('flow-events')).toContainText('En retard');
+      await expect(page.getByTestId('flow-distributors')).toContainText('Manquant');
+    } finally {
+      await request.delete('/api/test/clock');
+    }
   });
 
   test('mise à l’écart d’un doublon : statut du rejet, aucun événement créé (INT-04) @screen:imports @path:INT-04', async ({ page, request }) => {

@@ -369,3 +369,12 @@ périodicité est « échue ». Choix le plus simple compatible (§6, §12.3), �
   bancaires par le lot de chèques du trimestre, non par une exclusion ; le motif `NO_BANK_DETAILS` ne
   vaudrait que pour des coordonnées *invalides* — reste à traiter avant d'étiqueter PAI-02.
 - Montants et branches couverts à la main (PaymentServiceTest.frequency_*).
+
+## 2026-10-16 — Jours d'échéance des flux attendus (INT-08)
+
+La spécification (§7.3) impose un état « en retard » des flux attendus selon l'horloge mais ne fixe
+pas le jour d'échéance de chaque flux. Choix par défaut (le plus simple, consigné comme l'exige
+`CLAUDE.md`) : un jour d'échéance mensuel par flux attendu — garanties le 5, événements le 10,
+distributeurs le 25. Un flux non reçu dans le mois est « en retard » passé son jour d'échéance,
+« manquant » (attendu) avant. Calcul côté serveur par `ImportQueryService.expectedFlows` à partir du
+`DateTimeProvider`, prouvé horloge figée (`EventImportServiceTest`/`ImportQueryServiceTest`, `@path:INT-08`).
