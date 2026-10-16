@@ -349,7 +349,8 @@ public class AccountsResource {
     private AccountView accountView(DistributorAccount account) {
         return new AccountView(account.getId(), account.payeeType, account.payeeId, accounts.balance(account),
                 Boolean.TRUE.equals(account.blocked), account.blockReason,
-                account.blockedUntil == null ? null : account.blockedUntil.toString());
+                account.blockedUntil == null ? null : account.blockedUntil.toString(),
+                accounts.withoutActivePortfolio(account));
     }
 
     /**
@@ -362,9 +363,11 @@ public class AccountsResource {
      * @param blocked     whether the account is blocked
      * @param blockReason the block reason, possibly null
      * @param blockedUntil the lifting date (ISO), possibly null
+     * @param repaymentDemand whether the account has no active portfolio and is signalled for a
+     *                        repayment demand (CPT-07)
      */
     public record AccountView(Long id, PayeeType payeeType, Long payeeId, BigDecimal balance, boolean blocked,
-                              String blockReason, String blockedUntil) {
+                              String blockReason, String blockedUntil, boolean repaymentDemand) {
     }
 
     /**

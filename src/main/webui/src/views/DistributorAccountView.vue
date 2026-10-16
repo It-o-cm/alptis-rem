@@ -22,6 +22,7 @@ interface AccountView {
   blocked: boolean;
   blockReason: string | null;
   blockedUntil: string | null;
+  repaymentDemand: boolean;
 }
 
 interface LineView {
@@ -90,6 +91,11 @@ const lineColumns: Column<LineView>[] = [
 const debtorColumns: Column<AccountView>[] = [
   { key: 'account', label: 'Compte', value: (a) => `${a.payeeType} #${a.payeeId}` },
   { key: 'balance', label: 'Solde', align: 'num', value: (a) => amount(a.balance) },
+  {
+    key: 'repaymentDemand',
+    label: 'Portefeuille',
+    value: (a) => (a.repaymentDemand ? 'Sans portefeuille actif — demande de remboursement' : 'Actif'),
+  },
 ];
 
 /**

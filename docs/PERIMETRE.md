@@ -1114,8 +1114,20 @@ d'abord) : il porte désormais « … filtrée(s) » (ajout non intrusif, les an
 que le préfixe). Le test CR-37 est renforcé (`1 intégrée(s) … 1 filtrée(s)`) et tagué `@path:INT-14`. 70
 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 68 des 135 identifiants §4 sont étiquetés `@path`
-(70 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**CPT-06 comblé et étiqueté (2026-10-16).** Parcours « débiteurs sans portefeuille actif : liste ;
+échéancier d'apurement » (§6.4 point 7 : « un distributeur débiteur sans portefeuille actif est signalé
+pour demande de remboursement »). La liste des débiteurs renvoyait **tous** les comptes débiteurs sans
+distinguer ceux à signaler. Correctif (fonction d'abord) : `AccountService.withoutActivePortfolio`
+signale un compte à code de production dont le **code n'est plus actif** (ou inconnu) — il ne peut plus
+absorber sa dette par les commissions futures ; un code actif ou un compte de type distributeur n'est
+pas signalé. Le drapeau `repaymentDemand` est porté par `AccountView` et affiché à l'écran
+(colonne « Portefeuille » : « Sans portefeuille actif — demande de remboursement »). Le test e2e vérifie
+que le débiteur (code de production non actif dans le jeu `seedCycle`) est **signalé** et porte son
+**échéancier d'apurement** (3 × 100 €). Couverture unitaire : `AccountServiceTest` (les quatre jambes —
+code non actif, code actif, code inconnu, compte distributeur). 71 `@path`.
+
+**État des parcours restants (relevé 2026-10-16).** 69 des 135 identifiants §4 sont étiquetés `@path`
+(71 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1135,7 +1147,7 @@ monté, documentés ici pour éviter de re-scoper :
   motif `NO_BANK_DETAILS` route vers le chèque, cf. décision), `PAI-03/04/07/08/09/11/12`, `CYC-01..05`
   (machine à états complète par rôle, dont un refus après `FINANCE_VALIDATED` — exige une période
   `FINANCE_VALIDATED` absente de la démo), `CTL-01` (une anomalie par **dix** familles — la démo en
-  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/08/09/10`, `HIS-01`, `CPT-01/03/04/06`
+  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/08/09/10`, `HIS-01`, `CPT-01/03/04`
   (`CPT-04` « exclu du lot » exige que `proposePayments` se rejoue après blocage ; `CPT-03` exige des
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
   `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`

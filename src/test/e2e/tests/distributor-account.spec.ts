@@ -47,9 +47,33 @@ test.describe('Compte distributeur — opérateur', () => {
       .toContainText('Litige en cours');
   });
 
-  test('liste les comptes débiteurs @screen:distributor-account @req:CPT-07', async ({ page }) => {
+  // Parcours CPT-06 (section 4.3): the debtors without an active portfolio are listed and signalled for
+  // a repayment demand, each carrying its repayment schedule (échéancier d'apurement).
+  test('liste les débiteurs sans portefeuille actif et leur échéancier d’apurement @screen:distributor-account @req:CPT-07 @path:CPT-06', async ({
+    page,
+  }) => {
+    // Record an exceptional advance with a repayment schedule (an apurement for a debtor).
+    const auth = 'Basic ' + Buffer.from(
+      `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+    const response = await page.request.post('/api/ui/v1/adjustments/ALPTIS_ASSURANCES/2026-09-01', {
+      headers: { Authorization: auth },
+      data: {
+        type: 'EXCEPTIONAL_ADVANCE', amount: 300, payeeType: 'DISTRIBUTOR', payeeId: 1,
+        reason: 'Avance exceptionnelle', repaymentSchedule: JSON.stringify('3 × 100 € mensuels'),
+      },
+    });
+    expect(response.ok(), `${response.status()} ${await response.text()}`).toBeTruthy();
+
     await page.goto('/distributeur');
-    await expect(page.locator('[data-testid^="debtor-row-"]').first()).toBeVisible();
+    // CPT-06: the debtor account, whose production code is no longer active, is flagged for a repayment
+    // demand (section 6.4 point 7).
+    const debtor = page.locator('[data-testid^="debtor-row-"]').first();
+    await expect(debtor).toBeVisible();
+    await expect(debtor).toContainText('Sans portefeuille actif');
+    // Its repayment schedule is shown.
+    const schedule = page.getByTestId('schedule-row').first();
+    await expect(schedule).toBeVisible();
+    await expect(schedule).toContainText('3 × 100');
   });
 
   test('enregistre et affiche un échéancier d’apurement @screen:distributor-account @req:CPT-07 @req:CAL-14', async ({

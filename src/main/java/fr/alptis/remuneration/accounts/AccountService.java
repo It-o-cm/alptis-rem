@@ -18,6 +18,7 @@ import fr.alptis.remuneration.domain.PaymentExclusionReason;
 import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.PaymentOrderStatus;
 import fr.alptis.remuneration.domain.Period;
+import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.Statement;
@@ -472,6 +473,23 @@ public class AccountService {
             }
         }
         return debtors;
+    }
+
+    /**
+     * Whether a debtor account has no active portfolio (CPT-07, section 6.4 point 7): a production-code
+     * account whose production code is no longer active can no longer absorb its debt through future
+     * commissions, so the distributor is signalled for a repayment demand. Any other account, or one on
+     * an active production code, is not signalled.
+     *
+     * @param account the account
+     * @return true when the account has no active portfolio
+     */
+    public boolean withoutActivePortfolio(DistributorAccount account) {
+        if (account.payeeType != PayeeType.PRODUCTION_CODE) {
+            return false;
+        }
+        ProductionCode pc = ProductionCode.findById(account.payeeId);
+        return pc == null || pc.status != PartnerStatus.ACTIVE;
     }
 
     /**

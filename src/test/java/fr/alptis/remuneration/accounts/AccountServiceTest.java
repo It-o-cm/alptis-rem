@@ -9,6 +9,7 @@ import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.LineNature;
 import fr.alptis.remuneration.domain.LineStatus;
+import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.PaymentBatch;
 import fr.alptis.remuneration.domain.PaymentExclusion;
@@ -27,9 +28,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Acceptance tests of the distributor account (sections 8.8, 10.5, step 9): the debtor balance
@@ -379,6 +382,35 @@ class AccountServiceTest {
                 () -> service.blockLine(-1L, "x", null));
         assertThrows(fr.alptis.remuneration.domain.ResourceNotFoundException.class,
                 () -> service.unblockLine(-1L));
+    }
+
+    /**
+     * CPT-07: a debtor account is signalled for a repayment demand only when it has no active portfolio —
+     * a production-code account whose code is not active, or whose code is unknown; an active code or a
+     * distributor-type account is not signalled.
+     */
+    @Test
+    @TestTransaction
+    void signals_a_debtor_without_an_active_portfolio() {
+        Distributor d = distributor("WAP");
+        // A production-code account whose code is not active (no status) is signalled.
+        DistributorAccount inactive = accountOf(d, "PC-INACTIVE");
+        assertTrue(service.withoutActivePortfolio(inactive));
+        // A production-code account whose code is active is not signalled.
+        DistributorAccount active = accountOf(d, "PC-ACTIVE");
+        ProductionCode activeCode = ProductionCode.findById(active.payeeId);
+        activeCode.status = PartnerStatus.ACTIVE;
+        assertFalse(service.withoutActivePortfolio(active));
+        // A production-code account whose code is unknown is signalled.
+        DistributorAccount orphan = new DistributorAccount();
+        orphan.entity = unep();
+        orphan.payeeType = PayeeType.PRODUCTION_CODE;
+        orphan.payeeId = -1L;
+        orphan.persist();
+        assertTrue(service.withoutActivePortfolio(orphan));
+        // A distributor-type account is never signalled.
+        DistributorAccount distributorAccount = service.accountFor(unep(), PayeeType.DISTRIBUTOR, d.getId());
+        assertFalse(service.withoutActivePortfolio(distributorAccount));
     }
 
     /** Posts a blocked earned commission line on an account for a period and returns it. */
