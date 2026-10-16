@@ -1134,8 +1134,8 @@ bouton d'export** (seul le contrôleur Finance), et le message d'export porte un
 nul** (`(N lignes)`, fichier lu), après la validation du résultat. Vérification seule, aucune feature.
 72 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 75 des 135 identifiants §4 sont étiquetés `@path`
-(77 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**État des parcours restants (relevé 2026-10-16).** 76 des 135 identifiants §4 sont étiquetés `@path`
+(78 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1160,8 +1160,18 @@ monté, documentés ici pour éviter de re-scoper :
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
   `BRD-02/03`, `FIN-06`
   (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
-  sélectionnable), `INT-09/12/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
+  sélectionnable), `INT-09/12/15/17/20/23` (mapping, parts, co-assurance 0,24/0,43…),
   `ADM-02`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+
+**INT-19 — règle de versement : parts et périodicité (comblé 2026-10-16).** Le parcours §4.2 exige
+« parts dont le total n'est pas 100 % ; périodicité | Refus ; périodicité appliquée au lot ». Les deux
+mécanismes existaient : l'import des règles de versement (`PayeeExternalImportService`) refuse une ligne
+dont les parts ne somment pas à 1, et `PaymentService.prepareOrderDetails` exclut du lot un bénéficiaire
+non échu selon la fréquence de sa règle (`FREQUENCY`). Vérifié par le test seul (aucun code métier
+modifié) : on importe deux règles sur le code créditeur — l'une aux parts à 80 % (refusée,
+`linesRejected = 1`), l'autre semestrielle valide (intégrée) — puis la préparation du lot de septembre
+exclut le créditeur « Hors fréquence de versement » (septembre n'est pas une clôture semestrielle), son
+montant restant au compte. `@path:INT-19` posé. 76 `@path`.
 
 **AJU-01 — un ajustement de chacun des cinq types (comblé 2026-10-16).** Le parcours §4.4 exige, pour
 chacun des cinq types (`CORRECTION`, `MANUAL_CLAWBACK`, `EXCEPTIONAL_COMMISSION`, `EXCEPTIONAL_ADVANCE`,

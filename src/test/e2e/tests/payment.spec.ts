@@ -136,6 +136,45 @@ test('l’opérateur crée un lot hors-cycle pour un distributeur @screen:paymen
   await operator.close();
 });
 
+// Parcours INT-19 (section 4.2): a payment rule whose beneficiary shares do not total 100 % is
+// refused, and a rule's periodicity is applied to the lot — a half-yearly payee is excluded from a
+// month that is not a half-year close, its amount staying on the account.
+test('une règle de versement aux parts ≠ 100 % est refusée, sa périodicité exclut du lot hors échéance @screen:payment @req:PAY-02 @path:INT-19', async ({
+  browser,
+}) => {
+  const OP_AUTH = 'Basic ' + Buffer.from(
+    `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const page = await operator.newPage();
+
+  // Two payment rules on the creditor production code: one whose shares total 80 % (refused), and a
+  // valid half-yearly rule in force from January.
+  const imp = await page.request.post('/api/ui/v1/imports', {
+    headers: { Authorization: OP_AUTH },
+    data: {
+      entityCode: 'ALPTIS_ASSURANCES', flowCode: 'payee_rules', sourceSystem: 'SESAME', fileName: 'r.csv',
+      content: 'production_code;partner_code;payment_frequency;shares;valid_from;valid_to\n'
+        + 'PC-CREDIT;;MONTHLY;PRODUCTION_CODE:PC-CREDIT:0.5|PRODUCTION_CODE:PC-DEBIT:0.3;;\n'
+        + 'PC-CREDIT;;HALF_YEARLY;PRODUCTION_CODE:PC-CREDIT:1;2026-01-01;\n',
+    },
+  });
+  expect(imp.ok(), `${imp.status()} ${await imp.text()}`).toBeTruthy();
+  const result = await imp.json();
+  // The parts-≠-100 % line is refused; the valid half-yearly rule is integrated.
+  expect(result.linesRejected).toBe(1);
+  expect(result.linesLoaded).toBe(1);
+
+  // Preparing the lot applies the periodicity: September is not a half-year close, so the creditor is
+  // excluded from the lot with its frequency reason.
+  await page.goto('/paiement');
+  const cycleRow = page.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' });
+  await cycleRow.getByRole('button', { name: 'Détail' }).click();
+  await page.getByTestId('lot-prepare').click();
+  await expect(page.locator('[data-testid^="exclusion-reason-"]', { hasText: 'Hors fréquence de versement' }))
+    .toHaveCount(1);
+  await operator.close();
+});
+
 test.describe('Paiement — accessibilité', () => {
   test.use({ httpCredentials: USERS.financeAlptis });
 
