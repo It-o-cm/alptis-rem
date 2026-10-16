@@ -136,6 +136,52 @@ test('l’administrateur accorde une prime malgré un objectif manqué : refus s
   await admin.close();
 });
 
+// Parcours FDV-05 (section 4.9): the quarterly qualitative variable pays an amount per met criterion;
+// six weeks of absence in the quarter block it to nothing.
+test('le variable trimestriel qualitatif paie par critère atteint, et rien après six semaines d’absence @screen:fdvPlan @screen:fdvValidation @req:FDV-07 @path:FDV-05', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+
+  // The seeded collaborator meets criteria with no absence, so the quarterly qualitative run pays a
+  // per-criterion amount.
+  await page.goto('/fdv/plan');
+  await expect(page.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
+  await page.getByTestId('fdvp-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvp-quarterly').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('trimestriel qualitatif lancé');
+
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvv-refresh').click();
+  await expect(page.getByTestId('result-amount-QUARTERLY_QUALITATIVE')).toHaveText(/[1-9]/);
+
+  // Six weeks of absence in the quarter (35 days, past the 30-day block): re-running pays nothing.
+  const OP_AUTH = 'Basic ' + Buffer.from(
+    `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+  const imp = await page.request.post('/api/ui/v1/imports', {
+    headers: { Authorization: OP_AUTH },
+    data: {
+      entityCode: 'ALPTIS_ASSURANCES', flowCode: 'employee_measures', sourceSystem: 'SIRH', fileName: 'm.csv',
+      content: 'external_id;measure_type;period_from;period_to;value;dimension\n'
+        + 'C-DEMO;ABSENCE;2026-07-01;2026-09-30;35;absence\n',
+    },
+  });
+  expect(imp.ok(), `${imp.status()} ${await imp.text()}`).toBeTruthy();
+
+  await page.goto('/fdv/plan');
+  await page.getByTestId('fdvp-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvp-quarterly').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('trimestriel qualitatif lancé');
+
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvv-refresh').click();
+  await expect(page.getByTestId('result-amount-QUARTERLY_QUALITATIVE')).not.toHaveText(/[1-9]/);
+  await admin.close();
+});
+
 test('l’administrateur règle le variable des animateurs et responsables @screen:fdvPlan @screen:fdvValidation @req:FDV-09', async ({
   browser,
 }) => {

@@ -1134,8 +1134,8 @@ bouton d'export** (seul le contrôleur Finance), et le message d'export porte un
 nul** (`(N lignes)`, fichier lu), après la validation du résultat. Vérification seule, aucune feature.
 72 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 76 des 135 identifiants §4 sont étiquetés `@path`
-(78 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**État des parcours restants (relevé 2026-10-16).** 77 des 135 identifiants §4 sont étiquetés `@path`
+(79 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1155,13 +1155,22 @@ monté, documentés ici pour éviter de re-scoper :
   motif `NO_BANK_DETAILS` route vers le chèque, cf. décision), `PAI-03/04/07/08/09/11/12`, `CYC-01..05`
   (machine à états complète par rôle, dont un refus après `FINANCE_VALIDATED` — exige une période
   `FINANCE_VALIDATED` absente de la démo), `CTL-01` (une anomalie par **dix** familles — la démo en
-  produit six), `PAR-04/06/08/09`, `FDV-03/05/07/10`, `HIS-01`, `CPT-03/04`
+  produit six), `PAR-04/06/08/09`, `FDV-03/07/10`, `HIS-01`, `CPT-03/04`
   (`CPT-04` « exclu du lot » exige que `proposePayments` se rejoue après blocage ; `CPT-03` exige des
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
   `BRD-02/03`, `FIN-06`
   (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
   sélectionnable), `INT-09/12/15/17/20/23` (mapping, parts, co-assurance 0,24/0,43…),
   `ADM-02`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+
+**FDV-05 — variable trimestriel qualitatif (comblé 2026-10-16).** Le parcours §4.9 exige « Trimestriel
+qualitatif : par critère ; six semaines d'absence | Montant par critère atteint ; rien ». Le calcul
+trimestriel qualitatif existait (`SalesForceService.runQuarterlyQualitative` : montant =
+`criterionAmount × critères atteints`, mis à zéro au-delà du seuil d'absence `absenceDaysBlocking` =
+30 jours), relançable (il efface puis recalcule les résultats du trimestre). Vérifié par le test (seul
+ajout : un `data-testid` sur la cellule « Montant » de l'écran validation) : on lance le trimestriel sur
+le collaborateur démo sans absence → montant > 0 (par critère), puis on importe une absence de 35 jours
+sur le trimestre et on relance → montant 0 (rien). `@path:FDV-05` posé. 77 `@path`.
 
 **INT-19 — règle de versement : parts et périodicité (comblé 2026-10-16).** Le parcours §4.2 exige
 « parts dont le total n'est pas 100 % ; périodicité | Refus ; périodicité appliquée au lot ». Les deux

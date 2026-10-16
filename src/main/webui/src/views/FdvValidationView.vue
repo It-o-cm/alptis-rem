@@ -199,6 +199,7 @@ onMounted(load);
         empty-testid="no-result"
         :row-testid="(r) => `result-row-${r.id}`"
       >
+        <template #cell-amount="{ row }"><span :data-testid="`result-amount-${row.component}`">{{ amount(row.amount) }}</span></template>
         <template #cell-status="{ row }"><span :data-testid="`result-status-${row.id}`">{{ variableStatusLabel(row.status) }}</span></template>
         <template #actions="{ row }">
           <AppButton
