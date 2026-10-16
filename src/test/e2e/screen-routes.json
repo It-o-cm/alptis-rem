@@ -1,0 +1,440 @@
+[
+  {
+    "n": 1,
+    "label": "Avancement des périodes, toutes entités visibles",
+    "route": "periods",
+    "screen": "periods"
+  },
+  {
+    "n": 2,
+    "label": "Détail d'une période : états, transitions, calendrier, lots, reste à traiter",
+    "route": "periods",
+    "screen": "periods"
+  },
+  {
+    "n": 3,
+    "label": "Journal des imports et flux attendus",
+    "route": "imports",
+    "screen": "imports"
+  },
+  {
+    "n": 4,
+    "label": "Détail d'un import : compteurs, rejets, lignes en attente, correction/mise à l'écart",
+    "route": "imports",
+    "screen": "imports"
+  },
+  {
+    "n": 5,
+    "label": "Téléversement d'un fichier, avec choix du flux et du système source",
+    "route": "imports",
+    "screen": "imports"
+  },
+  {
+    "n": 6,
+    "label": "Saisie manuelle d'un événement ou d'une donnée complémentaire",
+    "route": "manualEvent",
+    "screen": "manualEvent"
+  },
+  {
+    "n": 7,
+    "label": "Recherche d'événements et détail d'un événement : statut, motif d'attente, lignes produites",
+    "route": "events",
+    "screen": "events"
+  },
+  {
+    "n": 8,
+    "label": "Événements en attente, par motif",
+    "route": "heldEvents",
+    "screen": "heldEvents"
+  },
+  {
+    "n": 9,
+    "label": "Exécutions de calcul : lancement, suivi, compteurs, unités en échec, recalcul partiel",
+    "route": "calculations",
+    "screen": "calculations"
+  },
+  {
+    "n": 10,
+    "label": "Contrôles et anomalies de la période, décisions, liste de contrôle",
+    "route": "controls",
+    "screen": "controls"
+  },
+  {
+    "n": 11,
+    "label": "Catalogue des contrôles : seuil, gravité, périmètre, activation, versions",
+    "route": "controls",
+    "screen": "controls"
+  },
+  {
+    "n": 12,
+    "label": "Ajustements : liste, saisie, approbation, import en masse",
+    "route": "adjustments",
+    "screen": "adjustments"
+  },
+  {
+    "n": 13,
+    "label": "Réclamations : liste, fiche, lignes contestées, suivi",
+    "route": "claims",
+    "screen": "claims"
+  },
+  {
+    "n": 14,
+    "label": "Validation métier : totaux, comparaison au mois précédent, second niveau",
+    "route": "validation",
+    "screen": "validation"
+  },
+  {
+    "n": 15,
+    "label": "Lots de paiement de la période et détail d'un lot : ordres, exclusions, rapprochement, validation Finance",
+    "route": "payment",
+    "screen": "payment"
+  },
+  {
+    "n": 16,
+    "label": "Création d'un lot hors cycle",
+    "route": "payment",
+    "screen": "payment"
+  },
+  {
+    "n": 17,
+    "label": "Résultat bancaire : ordres réglés, rejets, saisie de l'émission des chèques",
+    "route": "payment",
+    "screen": "payment"
+  },
+  {
+    "n": 18,
+    "label": "Bordereaux de la période : liste, aperçu, publication, rectificatif, relevé informatif",
+    "route": "statements",
+    "screen": "statements"
+  },
+  {
+    "n": 19,
+    "label": "Recherche de distributeurs",
+    "route": "distributorSearch",
+    "screen": "distributor-search"
+  },
+  {
+    "n": 20,
+    "label": "Fiche distributeur : identité, hiérarchie, statut, accords, inscriptions, comptes, indicateurs, historique",
+    "route": "distributorSearch",
+    "screen": "distributor-search"
+  },
+  {
+    "n": 21,
+    "label": "Vue d'un groupement et de ses membres",
+    "route": "groupings",
+    "screen": "groupings"
+  },
+  {
+    "n": 22,
+    "label": "Blocage d'un compte ou d'une ligne, avec motif et date de levée",
+    "route": "distributor",
+    "screen": "distributor"
+  },
+  {
+    "n": 23,
+    "label": "Détail d'une ligne de commission et de son explication",
+    "route": "commissionSearch",
+    "screen": "commissionSearch"
+  },
+  {
+    "n": 24,
+    "label": "Recherche de lignes de commission : payé à qui, quand, pourquoi",
+    "route": "commissionSearch",
+    "screen": "commissionSearch"
+  },
+  {
+    "n": 25,
+    "label": "Hiérarchie et codes de production, avec leur historique",
+    "route": "distributorSearch",
+    "screen": "production-hierarchy"
+  },
+  {
+    "n": 26,
+    "label": "Coordonnées bancaires et changements depuis le dernier paiement",
+    "route": "bankAccounts",
+    "screen": "bank-accounts"
+  },
+  {
+    "n": 27,
+    "label": "Règles de versement : bénéficiaire, parts, périodicité",
+    "route": "payeeRules",
+    "screen": "payee-rules"
+  },
+  {
+    "n": 28,
+    "label": "Indicateurs de qualité par distributeur et par période",
+    "route": "qualityIndicators",
+    "screen": "quality-indicators"
+  },
+  {
+    "n": 29,
+    "label": "Cessions de portefeuille et ordres de remplacement",
+    "route": "transfers",
+    "screen": "transfers"
+  },
+  {
+    "n": 30,
+    "label": "Comptes débiteurs sans portefeuille actif et échéanciers d'apurement",
+    "route": "distributor",
+    "screen": "distributor"
+  },
+  {
+    "n": 31,
+    "label": "Conventions d'escompte : liste",
+    "route": "advance",
+    "screen": "advance"
+  },
+  {
+    "n": 32,
+    "label": "Convention d'escompte : paramètres, compteurs, garanties escomptées, simulation de rupture",
+    "route": "advance",
+    "screen": "advance"
+  },
+  {
+    "n": 33,
+    "label": "Créances d'escompte par convention et par distributeur",
+    "route": "discounts",
+    "screen": "discounts"
+  },
+  {
+    "n": 34,
+    "label": "Recherche de contrats et de garanties",
+    "route": "contractSearch",
+    "screen": "contract-search"
+  },
+  {
+    "n": 35,
+    "label": "Fiche d'une adhésion et de ses garanties : affectations, choix de rémunération, événements, lignes, position d'escompte",
+    "route": "contractSearch",
+    "screen": "contract-search"
+  },
+  {
+    "n": 36,
+    "label": "Plans de rémunération : liste, fiche, duplication annuelle",
+    "route": "rules",
+    "screen": "rules"
+  },
+  {
+    "n": 37,
+    "label": "Règles et versions d'un plan : liste, statuts, conflits détectés",
+    "route": "rules",
+    "screen": "rules"
+  },
+  {
+    "n": 38,
+    "label": "Paramétrage d'une version de règle, approbation par un second administrateur",
+    "route": "rules",
+    "screen": "rules"
+  },
+  {
+    "n": 39,
+    "label": "Familles de calcul : un formulaire par famille",
+    "route": "families",
+    "screen": "families"
+  },
+  {
+    "n": 40,
+    "label": "Accords et inscriptions aux règles réservées, à l'unité et en masse",
+    "route": "enrollments",
+    "screen": "enrollments"
+  },
+  {
+    "n": 41,
+    "label": "Simulation : lancement, table de substitution, résultat, historique",
+    "route": "simulation",
+    "screen": "simulation"
+  },
+  {
+    "n": 42,
+    "label": "Export et import du paramétrage",
+    "route": "paramTransfer",
+    "screen": "paramTransfer"
+  },
+  {
+    "n": 43,
+    "label": "Entités et leurs paramètres : calendrier, seuils, tolérances",
+    "route": "adminEntities",
+    "screen": "entities"
+  },
+  {
+    "n": 44,
+    "label": "Assureurs, gammes, produits et options",
+    "route": "products",
+    "screen": "products"
+  },
+  {
+    "n": 45,
+    "label": "Correspondance des codes externes par système source",
+    "route": "externalCodes",
+    "screen": "external-codes"
+  },
+  {
+    "n": 46,
+    "label": "Mappings de fichier : liste et versions",
+    "route": "mapping",
+    "screen": "mapping"
+  },
+  {
+    "n": 47,
+    "label": "Édition et test d'un mapping",
+    "route": "mapping",
+    "screen": "mapping"
+  },
+  {
+    "n": 48,
+    "label": "Catalogue des flux",
+    "route": "flows",
+    "screen": "flows"
+  },
+  {
+    "n": 49,
+    "label": "Exports et journal des exports",
+    "route": "exports",
+    "screen": "exports"
+  },
+  {
+    "n": 50,
+    "label": "Formats d'échange",
+    "route": "formats",
+    "screen": "formats"
+  },
+  {
+    "n": 51,
+    "label": "Reprise d'historique : dépôt des fichiers d'ouverture et contrôle",
+    "route": "reprise",
+    "screen": "reprise"
+  },
+  {
+    "n": 52,
+    "label": "Schéma comptable et correspondance des comptes par entité",
+    "route": "accounting",
+    "screen": "accounting"
+  },
+  {
+    "n": 53,
+    "label": "Recherche d'écritures",
+    "route": "accounting",
+    "screen": "accounting"
+  },
+  {
+    "n": 54,
+    "label": "Extraction comptable du mois et clôture",
+    "route": "accounting",
+    "screen": "accounting"
+  },
+  {
+    "n": 55,
+    "label": "État de cut-off",
+    "route": "cutoff",
+    "screen": "cutoff"
+  },
+  {
+    "n": 56,
+    "label": "Rapprochement des commissions acquises et payées",
+    "route": "reconciliation",
+    "screen": "reconciliation"
+  },
+  {
+    "n": 57,
+    "label": "Commissions reçues des assureurs, attendu et marge",
+    "route": "margin",
+    "screen": "margin"
+  },
+  {
+    "n": 58,
+    "label": "Modèles de documents",
+    "route": "documentTemplates",
+    "screen": "documentTemplates"
+  },
+  {
+    "n": 59,
+    "label": "Attestations fiscales annuelles",
+    "route": "taxCertificates",
+    "screen": "taxCertificates"
+  },
+  {
+    "n": 60,
+    "label": "Tableaux de bord : commissions, reprises, escomptes, comptes débiteurs, premiers distributeurs, anomalies",
+    "route": "dashboards",
+    "screen": "dashboards"
+  },
+  {
+    "n": 61,
+    "label": "Vision consolidée du groupe",
+    "route": "groupView",
+    "screen": "groupView"
+  },
+  {
+    "n": 62,
+    "label": "Indicateurs de fonctionnement",
+    "route": "indicators",
+    "screen": "indicators"
+  },
+  {
+    "n": 63,
+    "label": "Correspondance entre groupes d'annuaire et rôles",
+    "route": "adminRoleMappings",
+    "screen": "role-mappings"
+  },
+  {
+    "n": 64,
+    "label": "Piste d'audit",
+    "route": "adminAudit",
+    "screen": "audit"
+  },
+  {
+    "n": 65,
+    "label": "Supervision des traitements et des flux",
+    "route": "supervision",
+    "screen": "supervision"
+  },
+  {
+    "n": 66,
+    "label": "Purge et anonymisation des données personnelles",
+    "route": "purge",
+    "screen": "purge"
+  },
+  {
+    "n": 67,
+    "label": "Collaborateurs",
+    "route": "fdvCollaborators",
+    "screen": "fdvCollaborators"
+  },
+  {
+    "n": 68,
+    "label": "Mesures reçues : absences, production, activité, marge",
+    "route": "fdvMeasures",
+    "screen": "fdvMeasures"
+  },
+  {
+    "n": 69,
+    "label": "Objectifs individuels et collectifs, versionnés",
+    "route": "fdvObjectives",
+    "screen": "fdvObjectives"
+  },
+  {
+    "n": 70,
+    "label": "Plan de variable par poste",
+    "route": "fdvPlan",
+    "screen": "fdvPlan"
+  },
+  {
+    "n": 71,
+    "label": "Validation mensuelle par le responsable",
+    "route": "fdvValidation",
+    "screen": "fdvValidation"
+  },
+  {
+    "n": 72,
+    "label": "Mon variable, mes objectifs, mon historique, simulateur",
+    "route": "fdvCommercial",
+    "screen": "fdvCommercial"
+  },
+  {
+    "n": 73,
+    "label": "Synthèse des variables à payer et export paie",
+    "route": "fdvValidation",
+    "screen": "fdvValidation"
+  }
+]

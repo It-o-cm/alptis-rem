@@ -138,7 +138,7 @@ test('l’administrateur accorde une prime malgré un objectif manqué : refus s
 
 // Parcours FDV-05 (section 4.9): the quarterly qualitative variable pays an amount per met criterion;
 // six weeks of absence in the quarter block it to nothing.
-test('le variable trimestriel qualitatif paie par critère atteint, et rien après six semaines d’absence @screen:fdvPlan @screen:fdvValidation @req:FDV-07 @path:FDV-05', async ({
+test('le variable trimestriel qualitatif paie par critère atteint, et rien après six semaines d’absence @screen:fdvPlan @screen:fdvValidation @req:FDV-05 @req:FDV-07 @path:FDV-05', async ({
   browser,
 }) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
@@ -255,7 +255,7 @@ test('l’administrateur applique la réduction sur résiliation @screen:fdvPlan
   await admin.close();
 });
 
-test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-16 @path:FDV-11', async ({
+test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-11 @req:FDV-16 @path:FDV-11', async ({
   browser,
 }) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });

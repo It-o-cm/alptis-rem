@@ -68,7 +68,7 @@ test.describe('Groupes et rôles — accès refusé', () => {
 });
 
 test.describe('Parcours ADM-01', () => {
-  test('un changement de correspondance modifie les droits à la connexion suivante @screen:role-mappings @path:ADM-01', async ({
+  test('un changement de correspondance modifie les droits à la connexion suivante @screen:role-mappings @req:ADM-01 @path:ADM-01', async ({
     browser,
   }) => {
     // Before: the viewer cannot see the entities screen (VIEWER is not allowed).

@@ -7,6 +7,9 @@ import { resetDb, USERS } from '../support/helpers';
 //
 // @screen:calculations @screen:commissionSearch
 
+// Several recette cases are replayed by parametrized loops whose titles carry `@cr:${c.cr}`, so their
+// tags are not statically visible to the traceability guard. They are listed here as literal tags:
+// @cr:CR-04 @cr:CR-05 @cr:CR-06 @cr:CR-07 @cr:CR-08 @cr:CR-25 @cr:CR-27 @cr:CR-30 @cr:CR-31 @cr:CR-33 @cr:CR-34
 test.describe('Rejeu des cas de recette par l’interface', () => {
   // UNEP carries no initial barème (it is seeded for Alptis only), so a case's own rule is the single
   // applicable one — as in the engine unit tests.
@@ -919,7 +922,7 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
   });
 
-  test('CR-66 : une résiliation régularise le prévisionnel de 90,00 € en comptabilité @screen:periods @screen:accounting @cr:CR-66 @path:CAL-13', async ({
+  test('CR-66 : une résiliation régularise le prévisionnel de 90,00 € en comptabilité @screen:periods @screen:accounting @cr:CR-66 @req:CAL-13 @path:CAL-13', async ({
     browser,
     request,
   }) => {
@@ -1625,7 +1628,7 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
 // business-validated is refused. CR-41 seeds two consecutive UNEP periods (January and February),
 // both LOADED; a business administrator who tries to move February to CALCULATED while January is
 // still unvalidated is turned down by the cycle guard, and the refusal is shown on the screen.
-test('un calcul de février est refusé tant que janvier n’est pas validé par le métier @screen:periods @path:CAL-05', async ({
+test('un calcul de février est refusé tant que janvier n’est pas validé par le métier @screen:periods @req:CAL-05 @path:CAL-05', async ({
   browser,
   request,
 }) => {
@@ -1655,7 +1658,7 @@ test('un calcul de février est refusé tant que janvier n’est pas validé par
 });
 
 // Parcours CAL-07 (section 4.3): two concurrent base rules hold the event with its reason, no line.
-test('CAL-07 : deux règles concurrentes mettent l’événement à l’écart avec son motif @screen:calculations @screen:events @path:CAL-07', async ({
+test('CAL-07 : deux règles concurrentes mettent l’événement à l’écart avec son motif @screen:calculations @screen:events @req:CAL-07 @path:CAL-07', async ({
   browser,
   request,
 }) => {

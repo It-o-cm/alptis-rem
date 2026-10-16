@@ -33,7 +33,18 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   événement à l'écart), CAL-12 (annulation après changement de barème → reprise au taux d'origine
   −15,00 €, D12), PAI-03 (épargne retraite → lot distinct, bordereau propre 50,00 €, période Payée après
   le dernier lot, sur le test CR-86), CAL-13 (prévisionnel régularisé à la résiliation, sur CR-66).
-  Couples rôle-action : 342 ; garde-fou étape 3 : non réécrit.
+  Couples rôle-action : 342.
+- **Garde-fou étape 3 réécrit (2026-10-16).** `src/test/e2e/scripts/traceability.mjs` ne lit plus de liste
+  codée en main : il dérive les écrans attendus de `src/test/e2e/screen-routes.json` (73 lignes, tirées du
+  Tableau 1), les routes réelles du routeur Vue, les exigences de la §8, les cas de recette de la §13 et
+  les parcours de la §4 de `TESTS-E2E.md`, et les étiquettes réelles des `*.spec.ts`. Il échoue si une
+  ligne d'inventaire n'a pas de route, si une route n'a pas de test `@screen` qui affirme, si une exigence
+  (hors série serveur déclarée et justifiée), un cas de recette ou un parcours n'a pas de test, ou si
+  `docs/PERIMETRE.md` porte encore `absent`/`partiel`. Plus de dépendance à `PLAN.md`. **État honnête : le
+  garde-fou passe sur écrans (73), exigences (135), cas de recette (70) et statut, et échoue sur les
+  54 parcours `@path` restants** — c'est désormais la liste de travail automatique (il reste rouge sur le
+  but `e2e-traceability` jusqu'à l'achèvement de l'étape 4 ; `mvn verify -DskipE2E=true` reste vert).
+  La fausse ligne de `docs/DECISIONS.md` est rectifiée par une ligne datée (2026-10-16), l'ancienne conservée.
   Conditions d'arrêt 2, 3 et 4 **non atteintes** — le travail continue.
 
 État au 2026-10-12 (étape 2 en cours) :
@@ -1354,12 +1365,17 @@ ligne datée sans effacer l'ancienne) :
 
 ## Garde-fou de traçabilité (état)
 
-`src/test/e2e/scripts/traceability.mjs` construit ses listes attendues à partir d'un
-objet **codé en dur** (`REQUIREMENTS_BY_STEP`) et ne vérifie la présence d'une
-étiquette que **globalement** (trouvée n'importe où, pas rattachée à une route). Il ne
-lit ni l'inventaire de LANCEMENT §4, ni la section 8, ni la section 13, ni le routeur.
-À réécrire (étape 3) pour qu'il tire ses listes des sources et échoue sur toute ligne
-`absent`/`partiel` de ce fichier.
+**RÉÉCRIT le 2026-10-16 (étape 3 faite).** `src/test/e2e/scripts/traceability.mjs` ne porte plus
+d'objet codé en dur ni de dépendance à `PLAN.md`. Il dérive ses listes attendues des sources à
+chaque construction : écrans via `src/test/e2e/screen-routes.json` (73 lignes, fichier versionné
+unique tiré du Tableau 1), routes via le routeur Vue, exigences via la §8 de la spécification, cas de
+recette via la §13, parcours via la §4 de `TESTS-E2E.md` ; les étiquettes réelles sont lues dans les
+`*.spec.ts`. Il échoue si une ligne d'inventaire n'a pas de route, si une route n'a pas de test
+`@screen` qui affirme, si une exigence (hors série serveur `REQ_PROVEN_OFF_SCREEN` déclarée et
+justifiée), un cas de recette ou un parcours n'a pas de test, ou si ce fichier porte encore une ligne
+`absent`/`partiel`. État au 2026-10-16 : passe sur écrans/exigences/cas de recette/statut, échoue sur
+les 54 parcours `@path` restants (la liste de travail). `mvn verify -DskipE2E=true` reste vert (le but
+`e2e-traceability` est dans le profil e2e, sauté par `skipE2E`).
 
 ### Plan d'exécution de l'étape 3 (arrêté le 2026-10-14)
 
