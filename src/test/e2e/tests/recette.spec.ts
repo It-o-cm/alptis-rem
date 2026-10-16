@@ -1442,6 +1442,61 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
     await finCtx.close();
   });
+
+  test('CR-78 : un reliquat de 0,04 € sous la tolérance solde l’escompte sans régularisation, par un abandon @screen:calculations @screen:advance @screen:periods @screen:accounting @cr:CR-78', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-78&entity=UNEP&month=2026-12-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+
+    // The December calculation apures the discount and settles it under the 1 € tolerance.
+    await admin.goto('/calculs');
+    await admin.getByTestId('calc-period').selectOption('UNEP|2026-12-01');
+    await admin.getByTestId('calc-run').click();
+    await expect(admin.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    // The discount position is settled on the convention screen.
+    await admin.goto('/escompte');
+    await admin.getByTestId('advance-row-0').click();
+    await expect(admin.getByTestId('adv-position-row')).toContainText('Apurée');
+
+    // No discount regularisation line was produced (the shortfall was written off, not regularised).
+    await admin.goto('/recherche-commissions');
+    await admin.getByTestId('cs-month').selectOption('2026-12-01');
+    await admin.getByTestId('cs-search').click();
+    await expect(
+      admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Régularisation d’escompte' }),
+    ).toHaveCount(0);
+
+    // Business validation books the ADVANCE_WRITE_OFF entry of 0,04 €, read on the accounting screen.
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-12-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-12-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+
+    await admin.goto('/comptabilite');
+    await admin.getByTestId('acc-month').selectOption('2026-12-01');
+    await admin.getByTestId('acc-refresh').click();
+    const writeOff = admin.locator('[data-testid^="entry-row-"]').filter({ hasText: 'ADVANCE_WRITE_OFF' });
+    await expect(writeOff).toHaveCount(1);
+    await expect(writeOff.first()).toContainText('0,04');
+
+    await adminCtx.close();
+    await valCtx.close();
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet

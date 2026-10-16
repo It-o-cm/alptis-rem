@@ -154,6 +154,7 @@ public class CrScenarioResource {
             case "CR-84" -> seedCr84(entity, periodMonth);
             case "CR-76" -> seedCr76(entity, periodMonth);
             case "CR-85" -> seedCr85(entity, periodMonth);
+            case "CR-78" -> seedCr78(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1529,6 +1530,24 @@ public class CrScenarioResource {
         BusinessEvent reversal = event(entity, coverage, "CR76-E2", EventType.PREMIUM_CANCELLED,
                 periodMonth.plusDays(19), null);
         reversal.reversesEvent = premium;
+    }
+
+    /**
+     * CR-78 (tolérance de solde) : escompte de 400 € sur une prime annualisée de 1 000 €, apuré à 399,96 €
+     * par douze encaissements mensuels de 83,33 € ; au 360e jour, le reliquat de 0,04 € est sous la
+     * tolérance de 1 € de l'entité, donc la position est soldée (`SETTLED`) sans ligne de régularisation,
+     * et une écriture `ADVANCE_WRITE_OFF` de 0,04 € est passée à la validation métier.
+     *
+     * @param entity      the entity
+     * @param periodMonth the settlement month (December, around the 360th day)
+     */
+    private void seedCr78(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = LocalDate.of(periodMonth.getYear(), 1, 1);
+        Coverage coverage = escompteCoverage(entity, effect, "CR78", "P-CR78", "1000");
+        convention(entity, "P-CR78", 100, LocalDate.of(effect.getYear(), 12, 31));
+        for (int i = 0; i < 12; i++) {
+            premium(entity, coverage, "CR78-E" + i, effect.plusMonths(i).plusDays(10), "83.33");
+        }
     }
 
     /**

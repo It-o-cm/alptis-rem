@@ -765,4 +765,15 @@ class CrScenarioResourceTest {
         given().when().post("/api/test/cr-scenario?cr=CR-85&entity=UNEP&month=2026-01-01").then().statusCode(204);
         search().body("findAll { it.nature == 'LINEAR' }.amount", hasItem(110.00f));
     }
+
+    /**
+     * CR-78: a 0,04 € shortfall under the 1 € settlement tolerance settles the discount with no
+     * ADVANCE_ADJUSTMENT line (the write-off itself is pinned by AccountingServiceTest).
+     */
+    @Test
+    void cr78_settlement_tolerance_writes_off_without_adjustment() {
+        plantAndRun("CR-78", "2026-12-01");
+        search("2026-12-01").body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.size()", is(0))
+                .body("nature", hasItem("ADVANCE"));
+    }
 }
