@@ -722,4 +722,26 @@ class CrScenarioResourceTest {
         search().body("findAll { it.nature == 'CLAWBACK' }.size()", is(1))
                 .body("find { it.nature == 'CLAWBACK' }.amount", is(-200.00f));
     }
+
+    /**
+     * CR-79: a 120-day anticipation delay defers the discount to the February 2026 period — two ADVANCE
+     * lines (acquisition 300,00 € and servicing 100,00 €) on a 1 000 € annualised premium.
+     */
+    @Test
+    void cr79_anticipation_delay() {
+        plantAndRun("CR-79", "2026-02-01");
+        search("2026-02-01").body("findAll { it.nature == 'ADVANCE' }.size()", is(2))
+                .body("findAll { it.nature == 'ADVANCE' }.amount", hasItems(300.00f, 100.00f));
+    }
+
+    /**
+     * CR-84: at the first anniversary, 4 200 € collected against a 3 600 € base gives a discount
+     * supplement of 48,00 € as one ADVANCE line.
+     */
+    @Test
+    void cr84_annual_readjustment_supplement() {
+        plantAndRun("CR-84");
+        search().body("findAll { it.nature == 'ADVANCE' }.size()", is(1))
+                .body("find { it.nature == 'ADVANCE' }.amount", is(48.00f));
+    }
 }

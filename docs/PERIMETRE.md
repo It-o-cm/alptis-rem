@@ -21,14 +21,14 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
 État au 2026-10-16 (étape 4 — rejeu des cas de recette, reprise honnête) :
 
 - **Décompte réel mesuré à la source, non déclaré.** Cas de recette rejoués par l'interface (`@cr:`) :
-  **61 sur 70** (CR-72 performance exclu). Les mentions antérieures de « rejeu terminé » / « toute la §13
+  **63 sur 70** (CR-72 performance exclu). Les mentions antérieures de « rejeu terminé » / « toute la §13
   rejouée » étaient fausses (54 cas seulement) et sont rectifiées dans « Cas de recette — état du rejeu »
-  (« CORRECTION HONNÊTE » du 2026-10-16). **10 cas restent à rejouer** : CR-76, CR-78, CR-79, CR-80,
-  CR-84, CR-85, CR-86, CR-87, CR-88.
-- Ajoutés ce jour : CR-73, CR-74, CR-75, CR-77, CR-82, CR-83 (seed `CrScenarioResource`, montants recopiés
-  vérifiés par `CrScenarioResourceTest`, rejeu par l'interface dans `recette.spec` ; +CR-81 le même jour).
-  `mvn verify
-  -DskipE2E=true` vert (807 tests, JaCoCo 100 %) ; les 6 specs e2e vertes (6/6).
+  (« CORRECTION HONNÊTE » du 2026-10-16). **7 cas restent à rejouer** : CR-76, CR-78, CR-80, CR-85,
+  CR-86, CR-87, CR-88.
+- Ajoutés ce jour (9) : CR-73, CR-74, CR-75, CR-77, CR-79, CR-81, CR-82, CR-83, CR-84 (seed
+  `CrScenarioResource`, montants recopiés vérifiés par `CrScenarioResourceTest`, rejeu par l'interface
+  dans `recette.spec`). `mvn verify -DskipE2E=true` vert (810 tests, JaCoCo 100 %) ; les 9 specs e2e
+  `@cr:` vertes.
 - Parcours `@path` : 77 sur 135 ; couples rôle-action : 342 ; garde-fou étape 3 : non réécrit.
   Conditions d'arrêt 2, 3 et 4 **non atteintes** — le travail continue.
 
@@ -561,17 +561,16 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   de **54 cas rejoués sur 70** (`CR-01`→`12`, `CR-20`→`28`, `CR-30`→`38`, `CR-40`→`51`, `CR-60`→`71`). Les
   cas `CR-73` à `CR-88` (hors `CR-72` performance) existaient côté JUnit mais **n'avaient aucun rejeu par
   l'interface**. Ces mentions sont conservées pour mémoire mais ne valent plus ; le décompte qui fait foi
-  est celui-ci. **Rejeu réel au 2026-10-16 : 61 sur 70.** Ajoutés le 2026-10-16 (seed `CrScenarioResource`
+  est celui-ci. **Rejeu réel au 2026-10-16 : 63 sur 70.** Ajoutés le 2026-10-16 (seed `CrScenarioResource`
   + test `CrScenarioResourceTest` au montant recopié + test `recette.spec` par l'interface) : `CR-73`
   (prorata frontière 1re année, apport 28,31 € + suivi 30,00 €), `CR-74` (changement de taux P12,
   7,50 € + 9,00 €), `CR-75` (groupes d'exclusion et opération, 18,00 € + 2,00 €), `CR-77` (frais de
   dossier, 300,00 €), `CR-82` (sur encours, 15,00 €), `CR-83` (arbitrage, 30,00 € sur le second).
-  **Restent à rejouer (9)** : `CR-76` (co-courtage + groupement + reprise), `CR-78` (tolérance de solde
-  + écriture `ADVANCE_WRITE_OFF`), `CR-79` (délai d'anticipation d'escompte), `CR-80` (cession avec
-  escompte), `CR-84` (réajustement annuel), `CR-85` (rejet
-  bancaire), `CR-86` (lot de l'épargne retraite), `CR-87`/`CR-88` (variable FDV pondération / absence).
+  **Restent à rejouer (7)** : `CR-76` (co-courtage + groupement + reprise), `CR-78` (tolérance de solde
+  + écriture `ADVANCE_WRITE_OFF`), `CR-80` (cession avec escompte), `CR-85` (rejet bancaire), `CR-86`
+  (lot de l'épargne retraite), `CR-87`/`CR-88` (variable FDV pondération / absence).
 - **Rejeu par l'interface (`@cr:`) :** 54 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-38`,
-  `CR-40` à `CR-51`, `CR-60` à `CR-71`), **puis +7 le 2026-10-16 (CR-73/74/75/77/81/82/83) → 61 sur 70.**
+  `CR-40` à `CR-51`, `CR-60` à `CR-71`), **puis +9 le 2026-10-16 (CR-73/74/75/77/79/81/82/83/84) → 63 sur 70.**
   ~~**Toutes les sections de la §13 sont rejouées (§13.1 à §13.5).** Les 69 cas de recette hors
   performance (CR-72, volume, exclu) sont rejoués par l'interface. Il ne reste plus de cas à rejouer.~~
   (Mention fausse, rectifiée ci-dessus le 2026-10-16.)
@@ -726,8 +725,8 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
   (CR-01→12, CR-20→28, CR-30→38, CR-40→51, CR-60→71).~~ **(Faux, rectifié le 2026-10-16.)** Le compte
   exact ne comptait que 54 cas (`CR-01`→`12`, `CR-20`→`28`, `CR-30`→`38`, `CR-40`→`51`, `CR-60`→`71`), non
   69 : CR-73 à CR-88 n'avaient pas de rejeu. CR-72 (volume de performance) reste hors périmètre du rejeu
-  fonctionnel. **La deuxième des quatre conditions d'arrêt de l'étape 4 N'EST PAS atteinte** : 61 cas sur
-  70 rejoués au 2026-10-16, 9 restants (voir « CORRECTION HONNÊTE » ci-dessus).
+  fonctionnel. **La deuxième des quatre conditions d'arrêt de l'étape 4 N'EST PAS atteinte** : 63 cas sur
+  70 rejoués au 2026-10-16, 7 restants (voir « CORRECTION HONNÊTE » ci-dessus).
   **Infrastructure de rejeu livrée (2026-10-14)** : le point d'accès dev `/api/test/cr-scenario?cr=CR-xx`
   sème les données d'un cas et `recette.spec.ts` lance le moteur réel depuis l'écran des exécutions puis
   lit la ligne et son explication sur la recherche de commissions. Rejoués sur l'entité UNEP (sans barème
@@ -760,7 +759,7 @@ avec les vérifications de sa colonne. Certains parcours déjà exercés par un 
 étiquetés quand le test fait réellement les vérifications du parcours (jamais d'étiquette seule).
 
 ~~**Rejeu des cas de recette terminé (2026-10-15)** : les 69 cas hors performance sont rejoués~~ **(Faux,
-rectifié le 2026-10-16 : 61 sur 70 rejoués, 9 restants — voir « CORRECTION HONNÊTE ».)** ; place aux
+rectifié le 2026-10-16 : 63 sur 70 rejoués, 7 restants — voir « CORRECTION HONNÊTE ».)** ; place aux
 parcours `@path`.
 
 **Parcours `@path` — avancement (début 2026-10-15).** 13 sur ~135 (`ADM-01`, `BOOT-01`, `CR-70`, `DEM-01`,

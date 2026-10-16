@@ -150,6 +150,8 @@ public class CrScenarioResource {
             case "CR-82" -> seedCr82(entity, periodMonth);
             case "CR-83" -> seedCr83(entity, periodMonth);
             case "CR-81" -> seedCr81(entity, periodMonth);
+            case "CR-79" -> seedCr79(entity, periodMonth);
+            case "CR-84" -> seedCr84(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1462,6 +1464,71 @@ public class CrScenarioResource {
         premium(entity, coverage, "CR81-Y1", LocalDate.of(2026, 3, 1), "1000.00");
         premium(entity, coverage, "CR81-Y2", LocalDate.of(2027, 3, 1), "1000.00");
         event(entity, coverage, "CR81-BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2028, 1, 1), null);
+    }
+
+    /**
+     * CR-79 (délai d'anticipation) : garantie escomptée à effet du 1er juin 2026, inscrite le 15 janvier,
+     * convention à délai d'anticipation de 120 jours ; l'escompte n'est pas dû en janvier mais l'est dans
+     * la période de février 2026 (120 jours avant l'effet) — deux lignes {@code ADVANCE} (apport 300,00 €
+     * et suivi 100,00 €) sur une prime annualisée de 1 000 €. Le calcul tourne sur février 2026.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (February 2026)
+     */
+    private void seedCr79(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = escompteCoverage(entity, LocalDate.of(2026, 6, 1), "CR79", "P-CR79", "1000");
+        coverage.contract.registrationDate = LocalDate.of(2026, 1, 15);
+        AdvanceAgreement agreement = convention(entity, "P-CR79", 100, LocalDate.of(2026, 12, 31));
+        agreement.anticipationDays = 120;
+    }
+
+    /** Parameters of an outbound retirement discount with annual readjustment at 8 %, zero tolerance. */
+    private static final String OUT_READJUST =
+            "{\"settlementRule\":\"FIFTH_ANNIVERSARY\",\"agreementRequired\":false,\"rate\":0.08,"
+            + "\"offsetting\":false,\"annualReadjustment\":true,\"readjustmentTolerance\":0}";
+
+    /**
+     * CR-84 (réajustement annuel) : base annualisée de 3 600 € escomptée à 8 % (position d'escompte de
+     * 288 € posée en entrée), puis 4 200 € réellement encaissés sur douze mois ; au premier anniversaire,
+     * le réajustement verse un supplément d'escompte de 48,00 € (600 × 8 %) en ligne {@code ADVANCE}. La
+     * variante déficitaire (3 000 € encaissés → reprise de −48,00 €) est prouvée au niveau moteur.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (the first anniversary, January 2026)
+     */
+    private void seedCr84(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = LocalDate.of(2025, 1, 15);
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, "CR84", product, effect, "P-CR84", null);
+        linearChoice(coverage, "0.0145", effect, null);
+        RuleVersion rule = version(entity, "PLAN-CR84", "R-CR84", RuleFamily.ADVANCE, LineNature.ADVANCE,
+                savingsScope(entity), OUT_READJUST, effect, null, null);
+        rule.exclusionGroup = "SAVINGS";
+        discountPosition(coverage, "288.00", effect);
+        event(entity, coverage, "CR84-S1", EventType.SCHEDULED_PAYMENT, LocalDate.of(2025, 6, 1), "2100.00");
+        event(entity, coverage, "CR84-S2", EventType.SCHEDULED_PAYMENT, LocalDate.of(2025, 12, 1), "2100.00");
+    }
+
+    /**
+     * Creates an active advance position on a coverage carrying a linear advance, used as the entry state
+     * of an annual-readjustment case (CR-84).
+     *
+     * @param coverage the coverage
+     * @param advanced the linear amount already advanced
+     * @param anchor   the anchor date (the fifth-anniversary settlement is five years later)
+     */
+    private void discountPosition(Coverage coverage, String advanced, LocalDate anchor) {
+        AdvancePosition position = new AdvancePosition();
+        position.coverage = coverage;
+        position.status = AdvanceStatus.ACTIVE;
+        position.settlementDueDate = anchor.plusYears(5);
+        position.advancedAcquisition = BigDecimal.ZERO;
+        position.advancedServicing = BigDecimal.ZERO;
+        position.advancedLinear = new BigDecimal(advanced);
+        position.offsetAcquisition = BigDecimal.ZERO;
+        position.offsetServicing = BigDecimal.ZERO;
+        position.offsetLinear = BigDecimal.ZERO;
+        position.persist();
     }
 
     /**

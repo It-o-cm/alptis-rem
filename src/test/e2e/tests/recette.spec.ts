@@ -1322,6 +1322,47 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(clawback).toHaveCount(1);
     await expect(clawback.first()).toContainText('-200,00');
   });
+
+  test('CR-79 : un délai d’anticipation de 120 jours verse l’escompte en février (300,00 € + 100,00 €) @screen:calculations @screen:commissionSearch @cr:CR-79', async ({
+    page,
+    request,
+  }) => {
+    // The anticipation delay defers the discount to the February period, run here.
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-79&entity=UNEP&month=2026-02-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-02-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-02-01');
+    await page.getByTestId('cs-search').click();
+    const advance = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Escompte' });
+    await expect(advance).toHaveCount(2);
+    await expect(advance.filter({ hasText: '300,00' })).toHaveCount(1);
+    await expect(advance.filter({ hasText: '100,00' })).toHaveCount(1);
+  });
+
+  test('CR-84 : le réajustement annuel verse un supplément d’escompte de 48,00 € @screen:calculations @screen:commissionSearch @cr:CR-84', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-84&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const advance = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Escompte' });
+    await expect(advance).toHaveCount(1);
+    await expect(advance.first()).toContainText('48,00');
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet
