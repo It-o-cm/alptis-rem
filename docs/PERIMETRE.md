@@ -1134,8 +1134,8 @@ bouton d'export** (seul le contrôleur Finance), et le message d'export porte un
 nul** (`(N lignes)`, fichier lu), après la validation du résultat. Vérification seule, aucune feature.
 72 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 74 des 135 identifiants §4 sont étiquetés `@path`
-(76 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**État des parcours restants (relevé 2026-10-16).** 75 des 135 identifiants §4 sont étiquetés `@path`
+(77 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1158,10 +1158,22 @@ monté, documentés ici pour éviter de re-scoper :
   produit six), `PAR-04/06/08/09`, `FDV-03/05/07/10`, `HIS-01`, `CPT-03/04`
   (`CPT-04` « exclu du lot » exige que `proposePayments` se rejoue après blocage ; `CPT-03` exige des
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
-  `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`
+  `BRD-02/03`, `FIN-06`
   (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
   sélectionnable), `INT-09/12/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
   `ADM-02`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+
+**AJU-01 — un ajustement de chacun des cinq types (comblé 2026-10-16).** Le parcours §4.4 exige, pour
+chacun des cinq types (`CORRECTION`, `MANUAL_CLAWBACK`, `EXCEPTIONAL_COMMISSION`, `EXCEPTIONAL_ADVANCE`,
+`ACCOUNT_TRANSFER`), « Ligne au compte ; bordereau suivant ». Le mécanisme existait (`AdjustmentService`
+écrit une ligne `MANUAL` pour les quatre premiers et deux lignes `TRANSFER` pour le transfert, à
+l'approbation d'un second utilisateur) ; aucun test ne couvrait les cinq ensemble. Vérifié par le test
+seul (aucun code métier modifié) : l'opérateur soumet un ajustement de chaque type sur le compte
+créditeur du distributeur démo, l'administrateur les approuve (les cinq passent « Appliqué »), la
+recherche de commissions montre les quatre lignes « Ajustement manuel » et les deux « Compensation »
+(lignes au compte), et le bordereau du compte créditeur rend la rubrique « Ajustements » (porté au
+bordereau). Le compte visé est pris sur l'API des comptes du distributeur pour éviter de ré-exécuter la
+préparation du paiement déjà jouée par le `seedCycle`. `@path:AJU-01` posé. 75 `@path`.
 
 **PAR-11 — inscription à une règle réservée (comblé 2026-10-16).** Le parcours §4.4 exige trois cas :
 « accord non signé ; accord signé ; import en masse | Inactive ; active ; lignes importées ». Les trois

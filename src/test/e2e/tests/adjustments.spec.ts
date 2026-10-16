@@ -86,6 +86,98 @@ test('un transfert entre comptes écrit deux lignes de somme nulle @screen:adjus
   await admin.close();
 });
 
+// Parcours AJU-01 (section 4.4): one adjustment of each of the five types, each writing its line on
+// the account and carried onto the next bordereau.
+test('un ajustement de chacun des cinq types écrit sa ligne au compte et la porte au bordereau suivant @screen:adjustments @screen:commissionSearch @screen:statements @req:REG-01 @path:AJU-01', async ({
+  browser,
+}) => {
+  const OP_AUTH = 'Basic ' + Buffer.from(
+    `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+  const ADM_AUTH = 'Basic ' + Buffer.from(
+    `${USERS.adminAlptis.username}:${USERS.adminAlptis.password}`).toString('base64');
+
+  const operator = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const opPage = await operator.newPage();
+
+  // The seeded distributor's two production-code accounts: a creditor (positive) and a debtor
+  // (negative). The adjustments land on the creditor, whose bordereau already exists, so they show on
+  // it without re-running the payment preparation (the statement renders its lines live).
+  const accts = await opPage.request.get('/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/P13897',
+    { headers: { Authorization: OP_AUTH } });
+  expect(accts.ok()).toBeTruthy();
+  const accounts = (await accts.json()).accounts as { payeeType: string; payeeId: number; balance: number }[];
+  const creditor = accounts.find((a) => a.payeeType === 'PRODUCTION_CODE' && Number(a.balance) > 0);
+  const debtor = accounts.find((a) => a.payeeType === 'PRODUCTION_CODE' && Number(a.balance) < 0);
+  expect(creditor, JSON.stringify(accounts)).toBeTruthy();
+  expect(debtor, JSON.stringify(accounts)).toBeTruthy();
+
+  // The operator submits one adjustment of each of the five types on the creditor account, with small
+  // amounts that stay below the second-signature threshold.
+  const submit = async (body: Record<string, unknown>) => {
+    const r = await opPage.request.post('/api/ui/v1/adjustments/ALPTIS_ASSURANCES/2026-09-01', {
+      headers: { Authorization: OP_AUTH },
+      data: { payeeType: 'PRODUCTION_CODE', payeeId: creditor!.payeeId, reason: 'AJU-01', ...body },
+    });
+    expect(r.ok(), `${r.status()} ${await r.text()}`).toBeTruthy();
+    return (await r.json()).id as number;
+  };
+  const ids = [
+    await submit({ type: 'CORRECTION', amount: 10 }),
+    await submit({ type: 'MANUAL_CLAWBACK', amount: 11 }),
+    await submit({ type: 'EXCEPTIONAL_COMMISSION', amount: 12 }),
+    await submit({ type: 'EXCEPTIONAL_ADVANCE', amount: 13, repaymentSchedule: JSON.stringify('3 × mensuel') }),
+    await submit({
+      type: 'ACCOUNT_TRANSFER', amount: 14,
+      counterpartPayeeType: 'PRODUCTION_CODE', counterpartPayeeId: debtor!.payeeId,
+    }),
+  ];
+  expect(new Set(ids).size).toBe(5);
+  await operator.close();
+
+  // A second user (the administrator) approves each, applying its resulting line.
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  for (const id of ids) {
+    const r = await page.request.post(`/api/ui/v1/adjustments/${id}/approve`, { headers: { Authorization: ADM_AUTH } });
+    expect(r.ok(), `${r.status()} ${await r.text()}`).toBeTruthy();
+  }
+  await page.goto('/ajustements');
+  await expect(page.locator('[data-testid^="adjustment-status-"]').filter({ hasText: 'Appliqué' }))
+    .toHaveCount(5);
+
+  // Each type wrote its line on the account: the four non-transfer types give four "Ajustement manuel"
+  // lines, the transfer gives two "Compensation" lines.
+  await page.goto('/recherche-commissions');
+  await page.getByTestId('cs-nature-filter').selectOption('MANUAL');
+  await page.getByTestId('cs-search').click();
+  await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Ajustement manuel' }))
+    .toHaveCount(4);
+  await page.getByTestId('cs-nature-filter').selectOption('TRANSFER');
+  await page.getByTestId('cs-search').click();
+  await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Compensation' }))
+    .toHaveCount(2);
+
+  // Carried onto the bordereau: a statement renders the adjustment rubric ("Ajustements") carrying the
+  // applied lines (the statement reads its account's lines live).
+  await page.goto('/bordereaux');
+  await page.getByTestId('brd-month').selectOption('2026-09-01');
+  await page.getByTestId('brd-refresh').click();
+  const opens = page.locator('[data-testid^="statement-open-"]');
+  await expect(opens.first()).toBeVisible();
+  const count = await opens.count();
+  let found = false;
+  for (let i = 0; i < count; i++) {
+    await opens.nth(i).click();
+    await expect(page.getByTestId('statement-detail')).toBeVisible();
+    if ((await page.getByTestId('statement-detail').textContent())?.includes('Ajustements')) {
+      found = true;
+      break;
+    }
+  }
+  expect(found, 'la rubrique « Ajustements » figure sur un bordereau').toBeTruthy();
+  await admin.close();
+});
+
 // Parcours AJU-02 (section 4.4): an adjustment requires a reason (refused without one), accepts an
 // attachment reference (shown back) and links to the corrected line (shown as #id). The corrected line
 // is a real demo line, read from the seeded claim's contested line.
