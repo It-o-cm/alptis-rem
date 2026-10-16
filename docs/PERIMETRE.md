@@ -1134,8 +1134,8 @@ bouton d'export** (seul le contrôleur Finance), et le message d'export porte un
 nul** (`(N lignes)`, fichier lu), après la validation du résultat. Vérification seule, aucune feature.
 72 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 73 des 135 identifiants §4 sont étiquetés `@path`
-(75 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**État des parcours restants (relevé 2026-10-16).** 74 des 135 identifiants §4 sont étiquetés `@path`
+(76 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1155,13 +1155,22 @@ monté, documentés ici pour éviter de re-scoper :
   motif `NO_BANK_DETAILS` route vers le chèque, cf. décision), `PAI-03/04/07/08/09/11/12`, `CYC-01..05`
   (machine à états complète par rôle, dont un refus après `FINANCE_VALIDATED` — exige une période
   `FINANCE_VALIDATED` absente de la démo), `CTL-01` (une anomalie par **dix** familles — la démo en
-  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/10`, `HIS-01`, `CPT-03/04`
+  produit six), `PAR-04/06/08/09`, `FDV-03/05/07/10`, `HIS-01`, `CPT-03/04`
   (`CPT-04` « exclu du lot » exige que `proposePayments` se rejoue après blocage ; `CPT-03` exige des
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
   `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`
   (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
   sélectionnable), `INT-09/12/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
   `ADM-02`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+
+**PAR-11 — inscription à une règle réservée (comblé 2026-10-16).** Le parcours §4.4 exige trois cas :
+« accord non signé ; accord signé ; import en masse | Inactive ; active ; lignes importées ». Les trois
+mécanismes existaient déjà (le test par écran ne couvrait que « signé → active ») : la case `ag-signed`
+crée un accord non signé, `enrollOne` fixe le statut `PENDING_SIGNATURE` quand l'accord n'est pas signé
+et `ACTIVE` quand il l'est, et `enrollMass` inscrit plusieurs distributeurs en une action. Vérifié par
+le test seul (aucun code métier modifié) : un accord non signé laisse l'inscription « En attente de
+signature », un accord signé la rend « Active », et un appel d'inscription en masse de deux
+distributeurs renvoie deux lignes. `@path:PAR-11` posé. 74 `@path`.
 
 **FDV-08 — prime accordée malgré un objectif manqué (comblé 2026-10-16).** Le parcours §4.9 exige
 « Prime accordée malgré un objectif manqué : sans motif ; avec motif | **Refus** ; composante

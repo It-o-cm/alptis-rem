@@ -69,6 +69,65 @@ test.describe('Accords et inscriptions', () => {
     await expect(page.getByTestId('enrollment-row-0')).toContainText('Active');
   });
 
+  // Parcours PAR-11 (section 4.4): enrollment to a reserved rule — an unsigned agreement leaves it
+  // pending (inactive), a signed one activates it, and a mass enrollment imports several lines at once.
+  test('inscription à une règle réservée : accord non signé inactif, signé actif, import en masse @screen:enrollments @req:PAR-10 @path:PAR-11',
+    async ({ page }) => {
+    await setup(page);
+    // A second distributor, so the mass enrollment has more than one line to import.
+    const second = await page.request.post('/api/ui/v1/imports', {
+      headers: { Authorization: OPERATOR_AUTH },
+      data: {
+        entityCode: 'ALPTIS_ASSURANCES', flowCode: 'distributors', sourceSystem: 'SESAME', fileName: 'd2.csv',
+        content: 'entity_code;source_system;partner_code;legal_name;distributor_type;status;valid_from\n'
+          + 'ALPTIS_ASSURANCES;SESAME;P20010;Cabinet Durand;INDEPENDENT;ACTIVE;2026-01-01\n',
+      },
+    });
+    expect(second.ok()).toBeTruthy();
+
+    await page.goto('/inscriptions');
+
+    // An unsigned agreement leaves the enrollment pending signature (inactive).
+    await page.getByTestId('ag-ref').fill('AGR-U');
+    await page.getByTestId('ag-partner').selectOption('P13897');
+    await page.getByTestId('ag-from').fill('2026-01-01');
+    await page.getByTestId('ag-signed').uncheck();
+    await page.getByTestId('ag-create').click();
+    await expect(page.getByTestId('agreement-row-AGR-U')).toContainText('Non signé');
+
+    await page.getByTestId('en-plan').selectOption('RESP');
+    await page.getByTestId('en-rule').selectOption('RCD');
+    await page.getByTestId('en-partner').selectOption('P13897');
+    await page.getByTestId('en-ref').selectOption('AGR-U');
+    await page.getByTestId('en-from').fill('2026-01-01');
+    await page.getByTestId('en-enroll').click();
+    await expect(page.getByTestId('enrollment-row-0')).toContainText('En attente de signature');
+
+    // A signed agreement activates the enrollment.
+    await page.getByTestId('ag-ref').fill('AGR-S');
+    await page.getByTestId('ag-partner').selectOption('P20010');
+    await page.getByTestId('ag-from').fill('2026-01-01');
+    await page.getByTestId('ag-signed').check();
+    await page.getByTestId('ag-create').click();
+    await expect(page.getByTestId('agreement-row-AGR-S')).toContainText('Signé');
+    await page.getByTestId('en-partner').selectOption('P20010');
+    await page.getByTestId('en-ref').selectOption('AGR-S');
+    await page.getByTestId('en-enroll').click();
+    await expect(page.locator('[data-testid^="enrollment-row-"]').filter({ hasText: 'Active' }).first())
+      .toBeVisible();
+
+    // A mass enrollment imports several lines in one action (lignes importées).
+    const mass = await page.request.post('/api/ui/v1/plans/RESP/rules/RCD/enrollments', {
+      headers: { Authorization: ADMIN_AUTH },
+      data: {
+        entityCode: 'ALPTIS_ASSURANCES', partnerCodes: ['P13897', 'P20010'],
+        agreementRef: 'AGR-S', validFrom: '2026-01-01',
+      },
+    });
+    expect(mass.ok()).toBeTruthy();
+    expect((await mass.json()).length).toBe(2);
+  });
+
   test('aucune violation d’accessibilité grave ou critique @screen:enrollments', async ({ page }) => {
     await page.goto('/inscriptions');
     const results = await new AxeBuilder({ page }).analyze();
