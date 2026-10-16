@@ -4,6 +4,7 @@ import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.Period;
+import fr.alptis.remuneration.domain.Policyholder;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -28,8 +29,9 @@ class CycleDemoSeederTest {
     private static final LocalDate MONTH = LocalDate.of(2026, 9, 1);
 
     /**
-     * Seeding a known entity plants the period, the distributor with its two accounts and lines, and a
-     * terminated distributor with one account and line (the inactive payee of REF-08).
+     * Seeding a known entity plants the period, the distributor with its two accounts and lines, a
+     * terminated distributor with one account and line (the inactive payee of REF-08) and a long-ended
+     * policyholder eligible for the retention purge, which adds no account or line.
      */
     @Test
     @TestTransaction
@@ -44,6 +46,11 @@ class CycleDemoSeederTest {
         assertNotNull(Distributor.find("partnerCode", "P-INACT").firstResult());
         assertEquals(accounts + 3, DistributorAccount.count("entity.code = ?1", "UNEP"));
         assertEquals(lines + 3, CommissionLine.count("entity.code = ?1", "UNEP"));
+
+        Policyholder retired = Policyholder.find("entity.code = ?1 and externalId = ?2",
+                "UNEP", "UNEP-RETIRED").firstResult();
+        assertNotNull(retired);
+        assertEquals(LocalDate.of(1940, 3, 12), retired.birthDate);
     }
 
     /**

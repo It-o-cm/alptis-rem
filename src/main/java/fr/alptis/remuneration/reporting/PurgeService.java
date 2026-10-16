@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.reporting;
 
+import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Policyholder;
@@ -7,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -67,6 +69,24 @@ public class PurgeService {
             }
         }
         return count;
+    }
+
+    /**
+     * The total of every real commission amount retained in the ledger. The purge clears personal
+     * data but never a commission line, so this total is unchanged by an anonymisation: it lets the
+     * screen show that the amounts are preserved (ADM-06, NFR-13). Simulated lines are already hidden
+     * by the entity-level restriction. A line with no amount is skipped.
+     *
+     * @return the sum of the preserved commission amounts, zero when there is none
+     */
+    public BigDecimal preservedAmount() {
+        BigDecimal total = BigDecimal.ZERO;
+        for (CommissionLine line : CommissionLine.<CommissionLine>listAll()) {
+            if (line.amount != null) {
+                total = total.add(line.amount);
+            }
+        }
+        return total;
     }
 
     /**

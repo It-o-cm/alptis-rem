@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.reporting;
 
+import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.PersonType;
@@ -9,6 +10,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,5 +74,28 @@ class PurgeServiceTest {
         assertEquals(null, reloaded.birthDate);
         // Idempotent: the anonymised one is no longer eligible.
         assertEquals(0, service.eligibleCount());
+    }
+
+    /**
+     * The preserved amount is the sum of every real commission amount; a line without an amount is
+     * skipped. Measured as a delta so pre-existing data does not matter.
+     */
+    @Test
+    @TestTransaction
+    void sums_the_preserved_commission_amounts() {
+        BigDecimal before = service.preservedAmount();
+        line(new BigDecimal("120.00"));
+        line(new BigDecimal("-30.00"));
+        line(null);
+
+        BigDecimal delta = service.preservedAmount().subtract(before);
+        assertEquals(0, delta.compareTo(new BigDecimal("90.00")));
+    }
+
+    /** Persists a commission line carrying the given amount (null for an amount-less line). */
+    private static void line(BigDecimal amount) {
+        CommissionLine line = new CommissionLine();
+        line.amount = amount;
+        line.persist();
     }
 }

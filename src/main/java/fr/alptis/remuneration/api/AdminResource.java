@@ -11,6 +11,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import java.math.BigDecimal;
+
 /**
  * Interface endpoints for the technical administration screens (section 3, 8.13): the supervision of
  * treatments and flows (OUT-07, NFR-16) and the purge/anonymisation of personal data (ADM-06). Both
@@ -48,7 +50,8 @@ public class AdminResource {
     }
 
     /**
-     * Returns the count of personal records eligible for anonymisation (ADM-06).
+     * Returns the count of personal records eligible for anonymisation (ADM-06). No amount is
+     * reported for a preview.
      *
      * @return the eligible count
      */
@@ -56,26 +59,28 @@ public class AdminResource {
     @Path("/purge/eligible")
     @RolesAllowed({"IT_ADMIN"})
     public PurgeResult eligible() {
-        return new PurgeResult(purge.eligibleCount());
+        return new PurgeResult(purge.eligibleCount(), null);
     }
 
     /**
-     * Anonymises the personal data past its retention period (ADM-06).
+     * Anonymises the personal data past its retention period (ADM-06). The result also carries the
+     * total commission amount preserved, so the screen shows that the amounts stay untouched.
      *
-     * @return the number of anonymised records
+     * @return the number of anonymised records and the preserved amount
      */
     @POST
     @Path("/purge")
     @RolesAllowed({"IT_ADMIN"})
     public PurgeResult purge() {
-        return new PurgeResult(purge.purge());
+        return new PurgeResult(purge.purge(), purge.preservedAmount());
     }
 
     /**
-     * The count of a purge preview or action.
+     * The count of a purge preview or action, with the commission amount preserved by the action.
      *
-     * @param count the number of records
+     * @param count           the number of records
+     * @param preservedAmount the total commission amount retained, null for a preview
      */
-    public record PurgeResult(long count) {
+    public record PurgeResult(long count, BigDecimal preservedAmount) {
     }
 }

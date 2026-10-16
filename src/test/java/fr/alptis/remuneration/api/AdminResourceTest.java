@@ -14,6 +14,7 @@ import java.time.LocalDate;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 
 /**
  * HTTP tests of the technical administration endpoints (section 3, 8.13): the supervision of
@@ -83,13 +84,16 @@ class AdminResourceTest {
                 .when().get("/api/ui/v1/admin/purge/eligible")
                 .then().statusCode(403);
 
+        // A preview reports no preserved amount.
         given().auth().preemptive().basic("it-admin", "it-admin")
                 .when().get("/api/ui/v1/admin/purge/eligible")
-                .then().statusCode(200).body("count", is(1));
+                .then().statusCode(200).body("count", is(1)).body("preservedAmount", nullValue());
 
+        // The purge anonymises the one eligible record and reports the preserved amount (no commission
+        // line was seeded, so it is zero).
         given().auth().preemptive().basic("it-admin", "it-admin")
                 .when().post("/api/ui/v1/admin/purge")
-                .then().statusCode(200).body("count", is(1));
+                .then().statusCode(200).body("count", is(1)).body("preservedAmount", is(0));
 
         // Idempotent: nothing left to anonymise.
         given().auth().preemptive().basic("it-admin", "it-admin")

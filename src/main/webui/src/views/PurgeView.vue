@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { AppButton, AppCard, AppMessage, PageHeading } from '../components/ui';
+import { formatAmount } from '../presentation/format';
 
 const eligible = ref<number | null>(null);
 const message = ref('');
@@ -23,8 +24,13 @@ async function purge() {
   message.value = '';
   error.value = '';
   try {
-    const result = await apiPost<{ count: number }>('/api/ui/v1/admin/purge', {});
-    message.value = `${result.count} enregistrement(s) anonymisé(s).`;
+    const result = await apiPost<{ count: number; preservedAmount: number | null }>(
+      '/api/ui/v1/admin/purge',
+      {},
+    );
+    message.value =
+      `${result.count} enregistrement(s) anonymisé(s). ` +
+      `Montants conservés : ${formatAmount(result.preservedAmount)}.`;
     await load();
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Purge impossible';

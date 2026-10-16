@@ -24,15 +24,35 @@ test('l’administrateur technique lit la supervision @screen:supervision @req:A
   await itAdmin.close();
 });
 
-test('l’administrateur technique lance la purge des données personnelles @screen:purge @req:ADM-06 @role-action:IT_ADMIN-purge', async ({
+// Parcours ADM-03 (section 4.8): at the retention deadline the personal data is anonymised while the
+// amounts are conserved. The cycle seed plants a long-ended policyholder, so the purge has someone to
+// anonymise; the commission amounts stay the same across the anonymisation.
+test('l’administrateur technique lance la purge des données personnelles @screen:purge @req:ADM-06 @role-action:IT_ADMIN-purge @path:ADM-03', async ({
   browser,
 }) => {
   const itAdmin = await browser.newContext({ httpCredentials: USERS.itAdmin });
   const page = await itAdmin.newPage();
   await page.goto('/purge');
-  await expect(page.getByTestId('purge-eligible')).toBeVisible();
+  // At least one record is eligible for anonymisation (the long-ended policyholder).
+  await expect(page.getByTestId('purge-eligible')).not.toHaveText('—');
+  await expect(page.getByTestId('purge-eligible')).not.toHaveText('0');
+
+  // Personal data anonymised: the purge anonymises at least one record and reports the preserved
+  // commission total.
   await page.getByTestId('purge-run').click();
-  await expect(page.getByTestId('purge-message')).toContainText('anonymisé');
+  await expect(page.getByTestId('purge-message')).toContainText(/[1-9]\d* enregistrement\(s\) anonymisé/);
+  await expect(page.getByTestId('purge-message')).toContainText('Montants conservés :');
+  const firstMessage = await page.getByTestId('purge-message').textContent();
+  const preserved = firstMessage?.match(/Montants conservés : (.+)\./)?.[1];
+  expect(preserved, firstMessage ?? '').toBeTruthy();
+  expect(preserved).not.toEqual('—');
+
+  // Idempotent: nothing is left to anonymise, and the preserved amount is unchanged — the amounts
+  // were conserved through the anonymisation.
+  await expect(page.getByTestId('purge-eligible')).toHaveText('0');
+  await page.getByTestId('purge-run').click();
+  await expect(page.getByTestId('purge-message')).toContainText('0 enregistrement(s) anonymisé(s)');
+  await expect(page.getByTestId('purge-message')).toContainText(`Montants conservés : ${preserved}.`);
   await itAdmin.close();
 });
 

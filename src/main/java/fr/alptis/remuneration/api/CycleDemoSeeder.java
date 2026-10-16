@@ -2,6 +2,7 @@ package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.domain.BankAccount;
 import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
@@ -13,6 +14,8 @@ import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
+import fr.alptis.remuneration.domain.PersonType;
+import fr.alptis.remuneration.domain.Policyholder;
 import fr.alptis.remuneration.domain.ProductionCode;
 import io.quarkus.arc.profile.UnlessBuildProfile;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -131,6 +134,38 @@ public class CycleDemoSeeder {
         // A cheque lot with one issued cheque (reusing the creditor account) so the cheque-emission
         // action (PAY-04) has data without inflating the account/line counts.
         chequeLot(entity, period, creditor);
+        // A long-ended policyholder eligible for the retention purge (ADM-06), so the anonymisation
+        // screen has someone to anonymise while every commission amount is preserved.
+        retiredPolicyholder(entity);
+    }
+
+    /**
+     * Creates a policyholder eligible for the retention purge (ADM-06): a natural person carrying a
+     * name and a birth date, whose single contract ended more than ten years before the application
+     * date. It has no coverage, so it never produces a commission line; the purge anonymises its
+     * personal data while the commission amounts stay untouched.
+     *
+     * @param entity the entity
+     */
+    private void retiredPolicyholder(LegalEntity entity) {
+        Policyholder holder = new Policyholder();
+        holder.entity = entity;
+        holder.sourceSystem = "DEMO";
+        holder.externalId = entity.code + "-RETIRED";
+        holder.lastName = "Vasseur";
+        holder.firstName = "Henriette";
+        holder.personType = PersonType.NATURAL;
+        holder.birthDate = LocalDate.of(1940, 3, 12);
+        holder.setCreatedAt(clock.now());
+        holder.persist();
+        Contract contract = new Contract();
+        contract.entity = entity;
+        contract.sourceSystem = "DEMO";
+        contract.contractNumber = "RET-2009";
+        contract.policyholder = holder;
+        contract.endDate = LocalDate.of(2009, 12, 31);
+        contract.setCreatedAt(clock.now());
+        contract.persist();
     }
 
     /**

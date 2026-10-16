@@ -1134,8 +1134,8 @@ bouton d'export** (seul le contrôleur Finance), et le message d'export porte un
 nul** (`(N lignes)`, fichier lu), après la validation du résultat. Vérification seule, aucune feature.
 72 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 70 des 135 identifiants §4 sont étiquetés `@path`
-(72 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**État des parcours restants (relevé 2026-10-16).** 71 des 135 identifiants §4 sont étiquetés `@path`
+(73 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1161,7 +1161,19 @@ monté, documentés ici pour éviter de re-scoper :
   `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`
   (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
   sélectionnable), `INT-09/12/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
-  `ADM-02/03`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+  `ADM-02`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+
+**ADM-03 — purge à l'échéance de conservation (comblé 2026-10-16).** Le parcours §4.8 exige « Données
+personnelles anonymisées ; **montants conservés** ». Deux manques : (1) la démo ne contenait aucun
+assuré éligible (tous les contrats prennent effet en 2026), si bien que la purge tournait à vide ; (2)
+l'écran n'exposait rien sur les montants préservés, donc la seconde moitié de la colonne n'était pas
+vérifiable. Comblé : `CycleDemoSeeder` plante désormais un assuré au contrat clos depuis 2009 (éligible
+à la purge des dix ans), et `PurgeService.preservedAmount()` somme les montants de commission réels
+(lignes jamais supprimées par la purge). L'écran de purge affiche « N enregistrement(s) anonymisé(s).
+Montants conservés : X,XX €. ». Le test e2e vérifie les deux moitiés : au moins un éligible → purge
+anonymise ≥ 1 (éligibles retombe à 0, idempotent), et le total conservé est **identique** avant/après
+l'anonymisation. `PurgeServiceTest` couvre la somme (dont la branche « ligne sans montant ») ;
+`AdminResourceTest` couvre l'aperçu sans montant et l'action avec montant. 71 `@path`.
 
 **INT-01 — auteur réel du lot d'import (comblé 2026-10-16).** Le parcours exige « empreinte **et auteur** »,
 mais tous les imports écrivaient `importedBy = "import"` (libellé générique codé en dur dans
