@@ -1765,3 +1765,42 @@ test('INT-17 : un distributeur radié puis réinscrit est bloqué puis payé aux
   await adminCtx.close();
   await valCtx.close();
 });
+
+test('INT-20 : un ordre de remplacement réaffecte la garantie à sa date d’effet @screen:transfers @screen:contract-search @path:INT-20', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=INT-20&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  // The replacement order is applied when the period's calculation runs (REF-09).
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // The transfers screen lists the replacement order received from the CRM.
+  await admin.goto('/cessions');
+  const order = admin.getByTestId('order-row').first();
+  await expect(order).toContainText('PC-INT20');
+  await expect(order).toContainText('PC-INT20-B');
+
+  // The guarantee fiche carries both affectations: the origin code closed the day before the effect
+  // date, the new code from the effect date.
+  await admin.goto('/contrats');
+  await admin.getByTestId('search-term').fill('INT20');
+  await admin.getByTestId('search-button').click();
+  await admin.getByTestId('coverage-INT20-INT20-C1').click();
+  const fiche = admin.getByTestId('coverage-detail');
+  await expect(fiche).toBeVisible();
+  const rows = fiche.getByTestId('assignment-row');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.filter({ hasText: 'PC-INT20-B' })).toContainText('2026-01-01');
+  await expect(rows.filter({ hasText: 'PC-INT20-B' })).toContainText('REPLACEMENT_ORDER');
+  await expect(rows.filter({ hasText: 'PC-INT20', hasNotText: 'PC-INT20-B' }).first()).toContainText('2025-12-31');
+
+  await adminCtx.close();
+});

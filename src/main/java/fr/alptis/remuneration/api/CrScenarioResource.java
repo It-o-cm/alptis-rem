@@ -43,6 +43,7 @@ import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.ProductRange;
 import fr.alptis.remuneration.domain.ProductTarget;
 import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.domain.ReplacementOrder;
 import fr.alptis.remuneration.domain.QualityIndicator;
 import fr.alptis.remuneration.domain.QualityIndicatorType;
 import fr.alptis.remuneration.domain.RemunerationChoice;
@@ -165,6 +166,7 @@ public class CrScenarioResource {
             case "CAL-07" -> seedCal07(entity, periodMonth);
             case "CAL-12" -> seedCal12(entity, periodMonth);
             case "INT-17" -> seedInt17(entity, periodMonth);
+            case "INT-20" -> seedInt20(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1586,6 +1588,43 @@ public class CrScenarioResource {
         bank.persist();
         earnedOnCode(entity, first, coverage, "100.00");
         earnedOnCode(entity, later, coverage, "100.00");
+    }
+
+    /**
+     * INT-20 (parcours §4.1) : réaffectation d'une garantie par un ordre de remplacement reçu du CRM
+     * (REF-09). Une garantie dont le code de production principal est {@code PC-INT20} ; un ordre de
+     * remplacement effectif au premier jour de la période la réaffecte à {@code PC-INT20-B}. Le calcul
+     * applique l'ordre : l'affectation d'origine est clôturée la veille de l'effet, une nouvelle
+     * affectation prend effet ce jour-là. La fiche de garantie montre alors l'historique des deux
+     * affectations, l'écran des cessions l'ordre lui-même.
+     *
+     * @param entity      the legal entity the replacement order is received for
+     * @param periodMonth the first day of the calculation period, also the order's effect date
+     */
+    private void seedInt20(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "INT20", product, periodMonth, "P-INT20-A", null);
+        ProductionCode from = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        // The transferee's production code, carried by a second distributor.
+        Distributor transferee = new Distributor();
+        transferee.partnerCode = "P-INT20-B";
+        transferee.legalName = "P-INT20-B";
+        transferee.persist();
+        ProductionCode to = new ProductionCode();
+        to.entity = entity;
+        to.code = "PC-INT20-B";
+        to.distributor = transferee;
+        to.persist();
+        // The replacement order reassigns the contract's main coverage at the period's first day.
+        ReplacementOrder order = new ReplacementOrder();
+        order.contract = coverage.contract;
+        order.fromProductionCode = from;
+        order.toProductionCode = to;
+        order.receivedDate = periodMonth.minusDays(1);
+        order.effectDate = periodMonth;
+        order.persist();
     }
 
     /**

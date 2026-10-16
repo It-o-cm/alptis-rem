@@ -830,4 +830,22 @@ class CrScenarioResourceTest {
         given().when().post("/api/test/cr-scenario?cr=INT-17&entity=UNEP&month=2026-01-01").then().statusCode(204);
         search().body("findAll { it.nature == 'LINEAR' }.amount", hasItem(100.00f));
     }
+
+    /**
+     * INT-20 (parcours): a replacement order effective on the period's first day reassigns the contract's
+     * main coverage from {@code PC-INT20} to {@code PC-INT20-B} when the calculation runs (REF-09). The
+     * guarantee fiche then carries both affectations — the origin one closed on 2025-12-31, the new one
+     * from 2026-01-01 with origin {@code REPLACEMENT_ORDER}.
+     */
+    @Test
+    void int20_replacement_order_reassigns_the_coverage() {
+        plantAndRun("INT-20");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/contracts/UNEP/INT20/coverages/INT20-C1")
+                .then().statusCode(200)
+                .body("assignments.productionCode", hasItems("PC-INT20", "PC-INT20-B"))
+                .body("assignments.find { it.productionCode == 'PC-INT20' }.validTo", is("2025-12-31"))
+                .body("assignments.find { it.productionCode == 'PC-INT20-B' }.validFrom", is("2026-01-01"))
+                .body("assignments.find { it.productionCode == 'PC-INT20-B' }.origin", is("REPLACEMENT_ORDER"));
+    }
 }
