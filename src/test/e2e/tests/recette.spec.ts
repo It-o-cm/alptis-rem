@@ -1303,6 +1303,25 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(arbitrage).toHaveCount(1);
     await expect(arbitrage.first()).toContainText('30,00');
   });
+
+  test('CR-81 : un rachat anticipé de prêt dans la fenêtre donne une ligne Reprise de -200,00 € @screen:calculations @screen:commissionSearch @cr:CR-81', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-81&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const clawback = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Reprise' });
+    await expect(clawback).toHaveCount(1);
+    await expect(clawback.first()).toContainText('-200,00');
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet

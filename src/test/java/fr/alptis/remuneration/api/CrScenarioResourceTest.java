@@ -711,4 +711,15 @@ class CrScenarioResourceTest {
         search().body("findAll { it.nature == 'ARBITRAGE' }.size()", is(1))
                 .body("find { it.nature == 'ARBITRAGE' }.amount", is(30.00f));
     }
+
+    /**
+     * CR-81: a borrower early repayment within the 36-month window recalculates linearly and claws back
+     * one CLAWBACK line of −200,00 €.
+     */
+    @Test
+    void cr81_early_repayment_clawback() {
+        plantAndRun("CR-81");
+        search().body("findAll { it.nature == 'CLAWBACK' }.size()", is(1))
+                .body("find { it.nature == 'CLAWBACK' }.amount", is(-200.00f));
+    }
 }

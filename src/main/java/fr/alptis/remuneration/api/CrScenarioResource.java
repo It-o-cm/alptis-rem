@@ -149,6 +149,7 @@ public class CrScenarioResource {
             case "CR-77" -> seedCr77(entity, periodMonth);
             case "CR-82" -> seedCr82(entity, periodMonth);
             case "CR-83" -> seedCr83(entity, periodMonth);
+            case "CR-81" -> seedCr81(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1436,6 +1437,31 @@ public class CrScenarioResource {
                 "10000.00");
         event(entity, coverage, "CR83-A2", EventType.ARBITRAGE, LocalDate.of(periodMonth.getYear(), 6, 1),
                 "10000.00");
+    }
+
+    /** Parameters of a borrower upfront rule: 30/10, 36-month early-repayment window, 15 % recalc rate. */
+    private static final String EMPRUNTEUR_PARAMS =
+            "{\"allowedRates\":[{\"acquisition\":0.3,\"servicing\":0.1}],\"firstYearDays\":365,"
+            + "\"earlyRepaymentMonths\":36,\"recalculationRate\":0.15}";
+
+    /**
+     * CR-81 (rachat anticipé d'un prêt, §6.5) : garantie emprunteur précomptée 30/10, deux primes
+     * annuelles de 1 000 € (mars 2026 et mars 2027), rachat anticipé au 1er janvier 2028 dans la fenêtre
+     * de 36 mois ; le recalcul linéaire produit une ligne {@code CLAWBACK} de −200,00 €. Au-delà de la
+     * fenêtre, aucune ligne (variante prouvée au niveau moteur).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr81(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR81", product, periodMonth, "P-CR81", null);
+        upfrontChoice(coverage, "0.30", "0.10", periodMonth);
+        version(entity, "PLAN-CR81", "R-CR81", RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
+                EMPRUNTEUR_PARAMS, periodMonth, null, null);
+        premium(entity, coverage, "CR81-Y1", LocalDate.of(2026, 3, 1), "1000.00");
+        premium(entity, coverage, "CR81-Y2", LocalDate.of(2027, 3, 1), "1000.00");
+        event(entity, coverage, "CR81-BUYBACK", EventType.EARLY_REPAYMENT, LocalDate.of(2028, 1, 1), null);
     }
 
     /**
