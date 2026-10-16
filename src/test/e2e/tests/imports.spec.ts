@@ -160,6 +160,47 @@ test.describe('Imports — opérateur', () => {
     }
   });
 
+  test('lignes négatives : annulation liée, rapprochée, et mise en attente sans correspondance (INT-09) @screen:imports @screen:events @path:INT-09', async ({ page, request }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=ALPTIS_ASSURANCES&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    const header =
+      'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount\n';
+    // Two originals: one to cancel by key, one to reconcile by opposite amount.
+    const originals = header
+      + 'ALPTIS_ASSURANCES;CLEVA;ENC-1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00\n'
+      + 'ALPTIS_ASSURANCES;CLEVA;ENC-2;PREMIUM_COLLECTED;AD-1;C1;2020-01-06;50.00\n';
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('CLEVA');
+    await page.getByTestId('upload-file').setInputFiles({ name: 'orig.csv', mimeType: 'text/csv', buffer: Buffer.from(originals, 'utf-8') });
+    await page.getByTestId('upload-submit').click();
+    await expect(page.getByTestId('upload-message')).toContainText('2 intégrée(s)');
+
+    // Negatives: ANN-1 cancels ENC-1 by key; NEG-1 reconciles ENC-2 by opposite amount; NEG-X matches
+    // nothing and is held.
+    const negatives =
+      'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount;reverses_source_key\n'
+      + 'ALPTIS_ASSURANCES;CLEVA;ANN-1;PREMIUM_CANCELLED;AD-1;C1;2020-02-05;-100.00;ENC-1\n'
+      + 'ALPTIS_ASSURANCES;CLEVA;NEG-1;PREMIUM_COLLECTED;AD-1;C1;2020-02-06;-50.00;\n'
+      + 'ALPTIS_ASSURANCES;CLEVA;NEG-X;PREMIUM_COLLECTED;AD-1;C1;2020-02-07;-999.00;\n';
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('CLEVA');
+    await page.getByTestId('upload-file').setInputFiles({ name: 'neg.csv', mimeType: 'text/csv', buffer: Buffer.from(negatives, 'utf-8') });
+    await page.getByTestId('upload-submit').click();
+    // Two integrated (the linked and the reconciled), one held (the unmatched).
+    await expect(page.getByTestId('upload-message')).toContainText('2 intégrée(s), 0 rejetée(s), 1 en attente');
+
+    // On the events screen: the unmatched negative is set aside with its reason; the linked and the
+    // reconciled cancellations are pending (accepted).
+    await page.goto('/evenements');
+    await page.getByTestId('events-search').click();
+    const held = page.locator('[data-testid^="event-row-"]').filter({ hasText: 'NEG-X' });
+    await expect(held).toContainText('Mis à l’écart');
+    await expect(held).toContainText('Négatif non rapproché');
+    await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'ANN-1' })).toContainText('En attente de calcul');
+    await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'NEG-1' })).toContainText('En attente de calcul');
+  });
+
   test('mise à l’écart d’un doublon : statut du rejet, aucun événement créé (INT-04) @screen:imports @path:INT-04', async ({ page, request }) => {
     const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=ALPTIS_ASSURANCES&month=2026-01-01');
     expect(seeded.ok()).toBeTruthy();

@@ -218,7 +218,31 @@ public class EventImportService {
         if (coverage == null && !value(row, "coverage_code").isEmpty()) {
             return Outcome.onHold(HoldReason.UNKNOWN_REFERENCE, eventType, eventDate, gross, contract);
         }
-        return Outcome.loaded(eventType, eventDate, gross, contract, coverage);
+        // Negative-line reconciliation (section 9.3, INT-09): an explicit cancel key links the reversed
+        // event; a bare negative line is matched by contract, type and opposite amount, else held; an
+        // external/insurer negative (a third-party reprise) is integrated as received, without matching.
+        String reversesKey = value(row, "reverses_source_key");
+        BusinessEvent reversed = null;
+        if (!reversesKey.isEmpty()) {
+            reversed = BusinessEvent.find("entity = ?1 and sourceSystem = ?2 and sourceKey = ?3",
+                    entity, sourceSystem, reversesKey).firstResult();
+            if (reversed == null) {
+                return Outcome.onHold(HoldReason.UNMATCHED_NEGATIVE, eventType, eventDate, gross, contract);
+            }
+        } else if (gross != null && gross.signum() < 0 && !isThirdParty(eventType)) {
+            reversed = BusinessEvent.find(
+                    "entity = ?1 and contract = ?2 and eventType = ?3 and grossAmount = ?4",
+                    entity, contract, eventType, gross.negate()).firstResult();
+            if (reversed == null) {
+                return Outcome.onHold(HoldReason.UNMATCHED_NEGATIVE, eventType, eventDate, gross, contract);
+            }
+        }
+        return Outcome.loaded(eventType, eventDate, gross, contract, coverage, reversed);
+    }
+
+    /** Whether a third party (not the application) decided this commission, so a negative is kept as-is. */
+    private static boolean isThirdParty(EventType type) {
+        return type == EventType.EXTERNAL_COMMISSION || type == EventType.INSURER_COMMISSION;
     }
 
     /**
@@ -270,6 +294,7 @@ public class EventImportService {
         event.label = emptyToNull(value(row, "label"));
         event.processingStatus = outcome.holdReason == null ? ProcessingStatus.PENDING : ProcessingStatus.ON_HOLD;
         event.holdReason = outcome.holdReason;
+        event.reversesEvent = outcome.reversed;
         event.importBatch = batch;
         event.persist();
     }
@@ -456,6 +481,7 @@ public class EventImportService {
         private final BigDecimal gross;
         private final Contract contract;
         private final Coverage coverage;
+        private final BusinessEvent reversed;
 
         /**
          * Creates an outcome.
@@ -467,9 +493,11 @@ public class EventImportService {
          * @param gross      the gross amount, or {@code null}
          * @param contract   the resolved contract, or {@code null}
          * @param coverage   the resolved coverage, or {@code null}
+         * @param reversed   the event this one reverses (section 9.3), or {@code null}
          */
         private Outcome(RejectionReasonCode rejection, HoldReason holdReason, EventType eventType,
-                        LocalDate eventDate, BigDecimal gross, Contract contract, Coverage coverage) {
+                        LocalDate eventDate, BigDecimal gross, Contract contract, Coverage coverage,
+                        BusinessEvent reversed) {
             this.rejection = rejection;
             this.holdReason = holdReason;
             this.eventType = eventType;
@@ -477,6 +505,7 @@ public class EventImportService {
             this.gross = gross;
             this.contract = contract;
             this.coverage = coverage;
+            this.reversed = reversed;
         }
 
         /**
@@ -486,7 +515,7 @@ public class EventImportService {
          * @return the outcome
          */
         private static Outcome rejected(RejectionReasonCode reason) {
-            return new Outcome(reason, null, null, null, null, null, null);
+            return new Outcome(reason, null, null, null, null, null, null, null);
         }
 
         /**
@@ -501,22 +530,23 @@ public class EventImportService {
          */
         private static Outcome onHold(HoldReason reason, EventType type, LocalDate date, BigDecimal gross,
                                       Contract contract) {
-            return new Outcome(null, reason, type, date, gross, contract, null);
+            return new Outcome(null, reason, type, date, gross, contract, null, null);
         }
 
         /**
-         * Builds a loaded outcome (event ready to persist).
+         * Builds a loaded outcome (event ready to persist), optionally reversing another event (§9.3).
          *
          * @param type     the event type
          * @param date     the event date
          * @param gross    the gross amount
          * @param contract the resolved contract
          * @param coverage the resolved coverage, or {@code null}
+         * @param reversed the event this one reverses, or {@code null}
          * @return the outcome
          */
         private static Outcome loaded(EventType type, LocalDate date, BigDecimal gross, Contract contract,
-                                      Coverage coverage) {
-            return new Outcome(null, null, type, date, gross, contract, coverage);
+                                      Coverage coverage, BusinessEvent reversed) {
+            return new Outcome(null, null, type, date, gross, contract, coverage, reversed);
         }
     }
 }

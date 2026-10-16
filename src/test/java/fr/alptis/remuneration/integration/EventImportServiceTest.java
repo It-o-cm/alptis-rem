@@ -22,6 +22,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -349,6 +350,85 @@ class EventImportServiceTest {
         assertTrue(out.loaded());
         assertTrue(out.onHold());
         assertEquals(1, batch.linesOnHold);
+    }
+
+    /** INT-09: a negative line with a cancel key links the reversed event by its source key. */
+    @Test
+    @TestTransaction
+    void a_negative_line_with_a_cancel_key_links_the_reversed_event() {
+        seedContract();
+        service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "o1.csv",
+                HEADER + "\n" + row("ENC-1", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100"));
+        String content = HEADER + ";reverses_source_key\n"
+                + row("ANN-1", "PREMIUM_CANCELLED", "AD-1", "C1", "2020-02-05", "-100") + ";ENC-1";
+
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "a1.csv", content);
+
+        assertEquals(1, batch.linesLoaded);
+        BusinessEvent ann = BusinessEvent.<BusinessEvent>find("sourceKey", "ANN-1").firstResult();
+        assertNotNull(ann.reversesEvent);
+        assertEquals("ENC-1", ann.reversesEvent.sourceKey);
+    }
+
+    /** INT-09: a cancel key pointing at an unknown event puts the line on hold (UNMATCHED_NEGATIVE). */
+    @Test
+    @TestTransaction
+    void a_cancel_key_without_a_matching_event_is_held() {
+        seedContract();
+        String content = HEADER + ";reverses_source_key\n"
+                + row("ANN-X", "PREMIUM_CANCELLED", "AD-1", "C1", "2020-02-05", "-100") + ";MISSING";
+
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "ax.csv", content);
+
+        assertEquals(1, batch.linesOnHold);
+        assertEquals(HoldReason.UNMATCHED_NEGATIVE,
+                BusinessEvent.<BusinessEvent>find("sourceKey", "ANN-X").firstResult().holdReason);
+    }
+
+    /** INT-09: a bare negative line is reconciled with the opposite event of same contract and type. */
+    @Test
+    @TestTransaction
+    void a_bare_negative_line_is_reconciled_by_opposite_amount() {
+        seedContract();
+        service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "o2.csv",
+                HEADER + "\n" + row("ENC-2", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100"));
+
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "n1.csv",
+                HEADER + "\n" + row("NEG-1", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-02-05", "-100"));
+
+        assertEquals(1, batch.linesLoaded);
+        BusinessEvent neg = BusinessEvent.<BusinessEvent>find("sourceKey", "NEG-1").firstResult();
+        assertNotNull(neg.reversesEvent);
+        assertEquals("ENC-2", neg.reversesEvent.sourceKey);
+    }
+
+    /** INT-09: a bare negative line with no matching event is held (UNMATCHED_NEGATIVE). */
+    @Test
+    @TestTransaction
+    void a_bare_negative_line_without_a_match_is_held() {
+        seedContract();
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "n2.csv",
+                HEADER + "\n" + row("NEG-2", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-02-05", "-50"));
+
+        assertEquals(1, batch.linesOnHold);
+        assertEquals(HoldReason.UNMATCHED_NEGATIVE,
+                BusinessEvent.<BusinessEvent>find("sourceKey", "NEG-2").firstResult().holdReason);
+    }
+
+    /** INT-09: a third-party (external/insurer) negative is integrated as received, without matching. */
+    @Test
+    @TestTransaction
+    void a_third_party_negative_is_integrated_as_received() {
+        seedContract();
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "tp.csv",
+                HEADER + "\n" + row("INS-NEG", "INSURER_COMMISSION", "AD-1", "C1", "2020-02-05", "-30")
+                        + "\n" + row("EXT-NEG", "EXTERNAL_COMMISSION", "AD-1", "C1", "2020-02-05", "-20"));
+
+        assertEquals(2, batch.linesLoaded);
+        BusinessEvent ins = BusinessEvent.<BusinessEvent>find("sourceKey", "INS-NEG").firstResult();
+        assertNull(ins.reversesEvent);
+        assertEquals(ProcessingStatus.PENDING, ins.processingStatus);
+        assertNull(BusinessEvent.<BusinessEvent>find("sourceKey", "EXT-NEG").firstResult().reversesEvent);
     }
 
     /** A header-only events file loads nothing and stores no header to reprocess against. */
