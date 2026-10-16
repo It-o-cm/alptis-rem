@@ -776,4 +776,17 @@ class CrScenarioResourceTest {
         search("2026-12-01").body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.size()", is(0))
                 .body("nature", hasItem("ADVANCE"));
     }
+
+    /**
+     * CR-80 (variant repaid by the transferor): the February cession of a discounted garantie cancels the
+     * position and regularises the un-offset part by a −280,00 € ADVANCE_ADJUSTMENT line on the
+     * transferor's account. January opens the discount, February applies the cession.
+     */
+    @Test
+    void cr80_cession_repaid_by_transferor() {
+        plantAndRun("CR-80", "2026-01-01");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-02-01/run").then().statusCode(200);
+        search("2026-02-01").body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount", hasItem(-280.00f));
+    }
 }

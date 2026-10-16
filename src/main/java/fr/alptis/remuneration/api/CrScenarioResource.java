@@ -5,8 +5,11 @@ import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.AccountEntry;
 import fr.alptis.remuneration.domain.AccountEntryType;
+import fr.alptis.remuneration.domain.AdvanceDebtHandling;
 import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.Agreement;
+import fr.alptis.remuneration.domain.PortfolioTransfer;
+import fr.alptis.remuneration.domain.TransferStatus;
 import fr.alptis.remuneration.domain.BankAccount;
 import fr.alptis.remuneration.domain.AgreementType;
 import fr.alptis.remuneration.domain.AssignmentRole;
@@ -155,6 +158,7 @@ public class CrScenarioResource {
             case "CR-76" -> seedCr76(entity, periodMonth);
             case "CR-85" -> seedCr85(entity, periodMonth);
             case "CR-78" -> seedCr78(entity, periodMonth);
+            case "CR-80" -> seedCr80(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1530,6 +1534,43 @@ public class CrScenarioResource {
         BusinessEvent reversal = event(entity, coverage, "CR76-E2", EventType.PREMIUM_CANCELLED,
                 periodMonth.plusDays(19), null);
         reversal.reversesEvent = premium;
+    }
+
+    /**
+     * CR-80 (cession avec escompte en cours, variante « créance remboursée par le cédant ») : une garantie
+     * escomptée (480 € avancés, 200 € apurés après un encaissement de 500 € en janvier) est cédée au
+     * 1er février ; le cédant rembourse la créance, de sorte que la position d'escompte passe `CANCELLED`
+     * et que la part non apurée est régularisée sur le compte du cédant par une ligne de −280,00 €. La
+     * garantie passe au code de production du repreneur. Deux périodes sont semées (janvier ouvre
+     * l'escompte, février applique la cession). La variante « créance transférée » est prouvée au moteur.
+     *
+     * @param entity      the entity
+     * @param periodMonth the January month that opens the discount (February applies the cession)
+     */
+    private void seedCr80(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = LocalDate.of(2026, 1, 1);
+        period(entity, effect);
+        period(entity, LocalDate.of(2026, 2, 1));
+        Coverage coverage = escompteCoverage(entity, effect, "CR80", "P-CR80", "1200");
+        convention(entity, "P-CR80", 100, LocalDate.of(2026, 12, 31));
+        premium(entity, coverage, "CR80-E1", LocalDate.of(2026, 1, 15), "500.00");
+        Distributor repreneur = new Distributor();
+        repreneur.partnerCode = "P-CR80-B";
+        repreneur.legalName = "Repreneur";
+        repreneur.persist();
+        ProductionCode pc2 = new ProductionCode();
+        pc2.entity = entity;
+        pc2.code = "PC-CR80-B";
+        pc2.distributor = repreneur;
+        pc2.persist();
+        PortfolioTransfer transfer = new PortfolioTransfer();
+        transfer.entity = entity;
+        transfer.fromDistributor = Distributor.<Distributor>find("partnerCode", "P-CR80").firstResult();
+        transfer.toDistributor = repreneur;
+        transfer.effectDate = LocalDate.of(2026, 2, 1);
+        transfer.advanceDebtHandling = AdvanceDebtHandling.REPAID_BY_TRANSFEROR;
+        transfer.status = TransferStatus.PENDING;
+        transfer.persist();
     }
 
     /**

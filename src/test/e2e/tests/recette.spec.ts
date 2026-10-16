@@ -1497,6 +1497,42 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-80 : une cession remboursée par le cédant annule l’escompte et régularise -280,00 € @screen:calculations @screen:advance @screen:transfers @screen:commissionSearch @cr:CR-80', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-80&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    // January opens the discount (480 € advanced, 200 € offset by the 500 € premium).
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    // February applies the cession: the transferor repays, so the position is cancelled.
+    await page.getByTestId('calc-period').selectOption('UNEP|2026-02-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    // The discount position is cancelled on the convention screen.
+    await page.goto('/escompte');
+    await page.getByTestId('advance-row-0').click();
+    await expect(page.getByTestId('adv-position-row')).toContainText('Annulée');
+
+    // The cession is listed as processed on the transfers screen.
+    await page.goto('/cessions');
+    await expect(page.getByTestId('transfer-row').first()).toContainText('Traité');
+
+    // The un-offset part is regularised by a −280,00 € discount regularisation on the commission search.
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-02-01');
+    await page.getByTestId('cs-search').click();
+    const regul = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Régularisation d’escompte' });
+    await expect(regul).toHaveCount(1);
+    await expect(regul.first()).toContainText('-280,00');
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet
