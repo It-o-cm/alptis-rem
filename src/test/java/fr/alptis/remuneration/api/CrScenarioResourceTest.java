@@ -848,4 +848,76 @@ class CrScenarioResourceTest {
                 .body("assignments.find { it.productionCode == 'PC-INT20-B' }.validFrom", is("2026-01-01"))
                 .body("assignments.find { it.productionCode == 'PC-INT20-B' }.origin", is("REPLACEMENT_ORDER"));
     }
+
+    /**
+     * INT-22 (parcours): an event referencing the contract by an unknown source-system code is held, not
+     * rejected (REF-04). A calculation run before the code is mapped leaves it held (no line); once the
+     * correspondence to the internal contract is added, the next run releases it and produces its line.
+     */
+    @Test
+    void int22_mapping_an_external_code_releases_the_held_event() {
+        given().when().post("/api/test/cr-scenario?cr=INT-22&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        // Before the mapping, the calculation cannot resolve the reference: the event stays held, no line.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/run").then().statusCode(200);
+        search().body("size()", is(0));
+        // Map the source system's contract code to the internal contract (REF-04).
+        given().auth().preemptive().basic("admin-unep", "admin-unep").contentType("application/json")
+                .body("{\"entityCode\":\"UNEP\",\"sourceSystem\":\"SYS\",\"externalCode\":\"EXT-INT22\","
+                        + "\"internalContractNumber\":\"INT22\"}")
+                .when().post("/api/ui/v1/external-codes")
+                .then().statusCode(200).body("objectType", is("CONTRACT")).body("internalCode", is("INT22"));
+        // The next run releases the event and produces its 15,00 € line (100,00 € × 0,15).
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/run").then().statusCode(200);
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItem(15.00f));
+    }
+
+    /**
+     * INT-22 (access and validation): mapping an external contract code refuses a blank field, an unknown
+     * internal contract, a duplicate correspondence and an entity out of the user's scope.
+     */
+    @Test
+    void int22_mapping_an_external_code_validates_its_input() {
+        given().when().post("/api/test/cr-scenario?cr=INT-22&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        // A missing (null) field and a blank field are both refused (400), covering each guard leg.
+        mapBody("{\"entityCode\":\"UNEP\",\"externalCode\":\"EXT-INT22\",\"internalContractNumber\":\"INT22\"}")
+                .statusCode(400);
+        mapContract("UNEP", "SYS", "", "INT22").statusCode(400);
+        mapContract("UNEP", "SYS", "EXT-INT22", "").statusCode(400);
+        // An unknown internal contract is refused (400).
+        mapContract("UNEP", "SYS", "EXT-INT22", "NOPE").statusCode(400);
+        // An unknown entity and an entity out of scope are refused (404).
+        mapContract("NOPE", "SYS", "EXT-INT22", "INT22").statusCode(404);
+        mapContract("ALPTIS_ASSURANCES", "SYS", "EXT-INT22", "INT22").statusCode(404);
+        // The first valid mapping succeeds; a duplicate on the same source and code is refused (400).
+        mapContract("UNEP", "SYS", "EXT-INT22", "INT22").statusCode(200);
+        mapContract("UNEP", "SYS", "EXT-INT22", "INT22").statusCode(400);
+    }
+
+    /**
+     * Posts an external-code mapping as the UNEP business administrator.
+     *
+     * @param entityCode     the entity code
+     * @param sourceSystem   the source system
+     * @param externalCode   the external code
+     * @param internalNumber the internal contract number
+     * @return the validatable response
+     */
+    private static io.restassured.response.ValidatableResponse mapContract(String entityCode, String sourceSystem,
+            String externalCode, String internalNumber) {
+        return mapBody("{\"entityCode\":\"" + entityCode + "\",\"sourceSystem\":\"" + sourceSystem + "\","
+                + "\"externalCode\":\"" + externalCode + "\",\"internalContractNumber\":\"" + internalNumber + "\"}");
+    }
+
+    /**
+     * Posts a raw external-code mapping body as the UNEP business administrator.
+     *
+     * @param body the JSON request body
+     * @return the validatable response
+     */
+    private static io.restassured.response.ValidatableResponse mapBody(String body) {
+        return given().auth().preemptive().basic("admin-unep", "admin-unep").contentType("application/json")
+                .body(body).when().post("/api/ui/v1/external-codes").then();
+    }
 }

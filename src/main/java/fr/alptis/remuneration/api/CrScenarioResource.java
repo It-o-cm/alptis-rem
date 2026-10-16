@@ -28,6 +28,7 @@ import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.EventType;
+import fr.alptis.remuneration.domain.HoldReason;
 import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.ImportMapping;
 import fr.alptis.remuneration.domain.LineNature;
@@ -167,6 +168,7 @@ public class CrScenarioResource {
             case "CAL-12" -> seedCal12(entity, periodMonth);
             case "INT-17" -> seedInt17(entity, periodMonth);
             case "INT-20" -> seedInt20(entity, periodMonth);
+            case "INT-22" -> seedInt22(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1625,6 +1627,41 @@ public class CrScenarioResource {
         order.receivedDate = periodMonth.minusDays(1);
         order.effectDate = periodMonth;
         order.persist();
+    }
+
+    /**
+     * INT-22 (parcours §4.1) : un code externe inconnu met l'événement en attente, et une correspondance
+     * ajoutée le débloque (REF-04). Une adhésion interne {@code INT22} avec sa garantie, son choix de
+     * rémunération et une règle linéaire ; un événement qui la désigne par le code {@code EXT-INT22} d'un
+     * système source, inconnu tant que la correspondance n'est pas saisie, est mis en attente sur une
+     * référence inconnue — jamais rejeté. Une fois le code rattaché à {@code INT22}, le calcul suivant
+     * re-résout l'événement et produit sa ligne (100,00 € × 0,15 = 15,00 €).
+     *
+     * @param entity      the entity the event and contract belong to
+     * @param periodMonth the first day of the calculation period
+     */
+    private void seedInt22(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "INT22", product, periodMonth, "P-INT22", null);
+        linearChoice(coverage, "0.15", periodMonth, null);
+        version(entity, "PLAN-INT22", "R-INT22-LIN", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        // The event references the contract by the source system's own identifier, unknown until mapped:
+        // held on an unknown reference, keeping the identifiers to re-resolve against once the code arrives.
+        BusinessEvent held = new BusinessEvent();
+        held.entity = entity;
+        held.sourceSystem = "SYS";
+        held.sourceKey = "INT22-E1";
+        held.eventType = EventType.PREMIUM_COLLECTED;
+        held.eventDate = periodMonth.plusDays(4);
+        held.receivedDate = periodMonth.plusDays(4);
+        held.basisAmount = new BigDecimal("100.00");
+        held.processingStatus = ProcessingStatus.ON_HOLD;
+        held.holdReason = HoldReason.UNKNOWN_REFERENCE;
+        held.pendingContractNumber = "EXT-INT22";
+        held.pendingCoverageCode = "INT22-C1";
+        held.persist();
     }
 
     /**

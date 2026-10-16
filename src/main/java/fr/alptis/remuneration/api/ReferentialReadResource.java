@@ -1,5 +1,6 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.integration.ExternalCodeAdminService;
 import fr.alptis.remuneration.integration.ReferentialQueryService;
 import fr.alptis.remuneration.integration.ReferentialQueryService.BankAccountView;
 import fr.alptis.remuneration.integration.ReferentialQueryService.ExternalCodeView;
@@ -10,7 +11,9 @@ import fr.alptis.remuneration.integration.ReferentialQueryService.ReplacementOrd
 import fr.alptis.remuneration.integration.ReferentialQueryService.TransferView;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -26,15 +29,18 @@ import java.util.List;
 public class ReferentialReadResource {
 
     private final ReferentialQueryService query;
+    private final ExternalCodeAdminService externalCodes;
 
     /**
      * Creates the resource.
      *
-     * @param query the referential query service
+     * @param query         the referential query service
+     * @param externalCodes the external-code correspondence writer
      */
     @Inject
-    public ReferentialReadResource(ReferentialQueryService query) {
+    public ReferentialReadResource(ReferentialQueryService query, ExternalCodeAdminService externalCodes) {
         this.query = query;
+        this.externalCodes = externalCodes;
     }
 
     /**
@@ -220,5 +226,34 @@ public class ReferentialReadResource {
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "AUDITOR", "IT_ADMIN"})
     public List<ExternalCodeView> externalCodes() {
         return query.externalCodes();
+    }
+
+    /**
+     * Maps a source system's contract identifier to an internal contract (REF-04, INT-22). The next
+     * calculation releases the events held on that unknown reference.
+     *
+     * @param request the correspondence to add
+     * @return the created correspondence view
+     */
+    @POST
+    @Path("/external-codes")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "IT_ADMIN"})
+    public ExternalCodeView mapContract(MapContractRequest request) {
+        return externalCodes.mapContract(request.entityCode(), request.sourceSystem(), request.externalCode(),
+                request.internalContractNumber());
+    }
+
+    /**
+     * Request to map a source system's contract identifier to an internal contract (REF-04).
+     *
+     * @param entityCode             the entity the contract belongs to
+     * @param sourceSystem           the source system the external code is expressed in
+     * @param externalCode           the contract identifier in that source system
+     * @param internalContractNumber the internal contract number the code maps to
+     */
+    public record MapContractRequest(String entityCode, String sourceSystem, String externalCode,
+                                     String internalContractNumber) {
     }
 }

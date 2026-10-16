@@ -523,7 +523,7 @@ public class ReferentialQueryService {
         return codes.stream()
                 .filter(c -> scope.unrestricted() || internalEntityCode(c) == null
                         || scope.visibleCodes().contains(internalEntityCode(c)))
-                .map(c -> new ExternalCodeView(c.objectType, payeeCode(parseType(c.objectType), c.objectId),
+                .map(c -> new ExternalCodeView(c.objectType, internalCodeOf(c),
                         c.sourceSystem, c.externalCode))
                 .toList();
     }
@@ -650,11 +650,30 @@ public class ReferentialQueryService {
      * @return the owning entity code, or null when the object is shared
      */
     private static String internalEntityCode(ExternalCode code) {
+        if ("CONTRACT".equals(code.objectType)) {
+            Contract contract = Contract.findById(code.objectId);
+            return contract == null || contract.entity == null ? null : contract.entity.code;
+        }
         if (!PayeeType.PRODUCTION_CODE.name().equals(code.objectType)) {
             return null;
         }
         ProductionCode pc = ProductionCode.findById(code.objectId);
         return pc == null || pc.entity == null ? null : pc.entity.code;
+    }
+
+    /**
+     * Resolves the internal business code an external correspondence points at: the contract number for
+     * a {@code CONTRACT} correspondence, otherwise the payee's business code (REF-04).
+     *
+     * @param code the external-code correspondence
+     * @return the internal business code, or {@code null} if the pointed object is gone
+     */
+    private static String internalCodeOf(ExternalCode code) {
+        if ("CONTRACT".equals(code.objectType)) {
+            Contract contract = Contract.findById(code.objectId);
+            return contract == null ? null : contract.contractNumber;
+        }
+        return payeeCode(parseType(code.objectType), code.objectId);
     }
 
     /**

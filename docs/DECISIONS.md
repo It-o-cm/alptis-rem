@@ -378,3 +378,10 @@ pas le jour d'échéance de chaque flux. Choix par défaut (le plus simple, cons
 distributeurs le 25. Un flux non reçu dans le mois est « en retard » passé son jour d'échéance,
 « manquant » (attendu) avant. Calcul côté serveur par `ImportQueryService.expectedFlows` à partir du
 `DateTimeProvider`, prouvé horloge figée (`EventImportServiceTest`/`ImportQueryServiceTest`, `@path:INT-08`).
+
+## 2026-10-16 — INT-22 : correspondance de code externe et déblocage (REF-04)
+
+- **Section** : REF-04 (section 8), INT-22 (TESTS-E2E §4.1), 5.7 (`external_code`).
+- **Question** : comment un « code inconnu » met l'événement en attente puis le débloque une fois mis en correspondance, alors que l'événement se rattache par `contract_number` et que la table `external_code` ne portait que des bénéficiaires (`PRODUCTION_CODE`, `DISTRIBUTOR`, `GROUP`) ?
+- **Choix** : l'identifiant externe porté par l'événement est son `contract_number` dans le système source. Un événement dont le `contract_number` ne correspond à aucune adhésion interne est déjà mis en attente sur une « référence inconnue » (jamais rejeté), en conservant `pendingContractNumber`/`pendingCoverageCode`. La table `external_code` accepte désormais le type d'objet `CONTRACT` (objet générique en base) : une correspondance `(CONTRACT, système source, code externe) → adhésion interne` est saisie à l'écran « Codes externes » (POST `/api/ui/v1/external-codes`, administrateur métier, opérateur ou DSSI). Le calcul réel, qui re-résout déjà les événements en attente (INT-10), tente en second la résolution par correspondance : l'adhésion retrouvée, l'événement passe en attente de traitement et produit sa ligne au même calcul. Le déblocage suit donc le calcul, comme pour INT-10.
+- **Raison** : seul `contract_number` est un identifiant de système source présent sur l'événement ; réutiliser la mise en attente et la re-résolution existantes évite de toucher le chemin critique de classification des imports ; le type `CONTRACT` se loge dans la colonne générique `object_type` sans migration.

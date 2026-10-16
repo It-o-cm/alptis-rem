@@ -1804,3 +1804,40 @@ test('INT-20 : un ordre de remplacement réaffecte la garantie à sa date d’ef
 
   await adminCtx.close();
 });
+
+test('INT-22 : une correspondance de code externe débloque l’événement en attente @screen:heldEvents @screen:external-codes @path:INT-22', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=INT-22&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  // The event referencing the contract by an unmapped source-system code waits, on an unknown reference.
+  await admin.goto('/evenements-en-attente');
+  await expect(admin.getByTestId('reason-row-UNKNOWN_REFERENCE')).toContainText('Référence inconnue');
+  await expect(admin.locator('[data-testid^="held-row-"]')).toHaveCount(1);
+
+  // Map the source system's contract code to the internal contract (REF-04).
+  await admin.goto('/codes-externes');
+  await admin.getByTestId('map-source-system').fill('SYS');
+  await admin.getByTestId('map-external-code').fill('EXT-INT22');
+  await admin.getByTestId('map-internal-contract').fill('INT22');
+  await admin.getByTestId('map-submit').click();
+  await expect(admin.getByTestId('map-message')).toContainText('EXT-INT22');
+  await expect(admin.locator('[data-testid^="code-row-"]').filter({ hasText: 'EXT-INT22' })).toContainText('INT22');
+
+  // The next calculation releases the held event: it leaves the waiting list.
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  await admin.goto('/evenements-en-attente');
+  await expect(admin.getByTestId('no-held-event')).toBeVisible();
+
+  await adminCtx.close();
+});

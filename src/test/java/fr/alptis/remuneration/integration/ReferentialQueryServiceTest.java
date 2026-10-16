@@ -935,10 +935,22 @@ class ReferentialQueryServiceTest {
         orphan.persist();
         externalCode(PayeeType.PRODUCTION_CODE.name(), orphan.getId(), "C-NOENT");
 
+        // CONTRACT correspondences: one on a real contract (number and entity resolved), one dangling and
+        // one on an entity-less contract, covering the CONTRACT legs of internalCodeOf and internalEntityCode.
+        externalCode("CONTRACT", contract.getId(), "C-CTR");
+        externalCode("CONTRACT", 999_999L, "C-BADCTR");
+        Contract noEntity = new Contract();
+        noEntity.sourceSystem = "CLEVA";
+        noEntity.contractNumber = "NE-1";
+        noEntity.persist();
+        externalCode("CONTRACT", noEntity.getId(), "C-NOENTCTR");
+
         assertNull(restricted().searchContracts("ns", 0, 20).items().get(0).status());
         assertEquals(1, restricted().payeeRules().size());
         assertEquals(2, restricted().payeeRules().get(0).shares().size());
-        assertEquals(4, restricted().externalCodes().size());
+        assertEquals(7, restricted().externalCodes().size());
+        assertTrue(restricted().externalCodes().stream()
+                .anyMatch(c -> "NS-1".equals(c.internalCode()) && "CONTRACT".equals(c.objectType())));
     }
 
     /** Persists a payment-rule share. */

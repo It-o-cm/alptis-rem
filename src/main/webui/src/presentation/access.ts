@@ -101,3 +101,10 @@ export function canOperateImports(roles: readonly string[]): boolean {
 export function canEditMapping(roles: readonly string[]): boolean {
   return roles.includes('BUSINESS_ADMIN');
 }
+
+/**
+ * Tells whether a user holding the given roles may add an external-code correspondence (REF-04).
+ */
+export function canMapExternalCode(roles: readonly string[]): boolean {
+  return roles.includes('OPERATOR') || roles.includes('BUSINESS_ADMIN') || roles.includes('IT_ADMIN');
+}

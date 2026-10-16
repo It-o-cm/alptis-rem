@@ -5,6 +5,7 @@ import {
   canManageRoleMappings,
   canOperateImports,
   canEditMapping,
+  canMapExternalCode,
 } from './access';
 
 describe('access', () => {
@@ -42,5 +43,12 @@ describe('access', () => {
     expect(canEditMapping(['OPERATOR'])).toBe(false);
     expect(canAccess('mapping', ['OPERATOR'])).toBe(true);
     expect(canAccess('mapping', ['SALES_REP'])).toBe(false);
+  });
+
+  it('lets operators, business and technical admins map an external code', () => {
+    expect(canMapExternalCode(['OPERATOR'])).toBe(true);
+    expect(canMapExternalCode(['BUSINESS_ADMIN'])).toBe(true);
+    expect(canMapExternalCode(['IT_ADMIN'])).toBe(true);
+    expect(canMapExternalCode(['AUDITOR'])).toBe(false);
   });
 });

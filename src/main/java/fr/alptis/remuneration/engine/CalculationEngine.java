@@ -23,6 +23,7 @@ import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
+import fr.alptis.remuneration.domain.ExternalCode;
 import fr.alptis.remuneration.domain.DateTimeProvider;
 import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.EnrollmentStatus;
@@ -3053,6 +3054,11 @@ public class CalculationEngine {
             Contract contract = Contract.find("entity = ?1 and sourceSystem = ?2 and contractNumber = ?3",
                     entity, event.sourceSystem, event.pendingContractNumber).firstResult();
             if (contract == null) {
+                // The pending number may be the source system's own identifier, mapped to the internal
+                // contract by an external-code correspondence added since the hold (REF-04, INT-22).
+                contract = resolveContractByExternalCode(entity, event.sourceSystem, event.pendingContractNumber);
+            }
+            if (contract == null) {
                 continue;
             }
             Coverage coverage = null;
@@ -3070,6 +3076,27 @@ public class CalculationEngine {
             event.holdReason = null;
             event.processingStatus = ProcessingStatus.PENDING;
         }
+    }
+
+    /**
+     * Resolves a contract from a source-system identifier through the external-code correspondence table
+     * (REF-04): a {@code CONTRACT} correspondence for the given source system and external code points at
+     * the internal contract. Used to release events held on an unknown reference once the code is mapped.
+     *
+     * @param entity       the entity the contract belongs to
+     * @param sourceSystem the source system the external code is expressed in
+     * @param externalCode the contract identifier in that source system
+     * @return the internal contract, or {@code null} if no correspondence resolves it within the entity
+     */
+    private Contract resolveContractByExternalCode(LegalEntity entity, String sourceSystem, String externalCode) {
+        ExternalCode code = ExternalCode.find("objectType = ?1 and sourceSystem = ?2 and externalCode = ?3",
+                "CONTRACT", sourceSystem, externalCode).firstResult();
+        if (code == null) {
+            return null;
+        }
+        // Resolve within the entity: an external code is unique per source system, so a correspondence of
+        // another entity on the same source must not release this entity's events.
+        return Contract.find("id = ?1 and entity = ?2", code.objectId, entity).firstResult();
     }
 
     /**
