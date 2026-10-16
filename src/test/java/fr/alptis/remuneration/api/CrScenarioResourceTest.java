@@ -744,4 +744,14 @@ class CrScenarioResourceTest {
         search().body("findAll { it.nature == 'ADVANCE' }.size()", is(1))
                 .body("find { it.nature == 'ADVANCE' }.amount", is(48.00f));
     }
+
+    /**
+     * CR-76: a 100 € commission co-broked 60/40, the main broker's share split 90/10 with its group, then
+     * cancelled, yields six lines — 54,00 €, 6,00 €, 40,00 € and their reversals −54,00 €, −6,00 €, −40,00 €.
+     */
+    @Test
+    void cr76_co_broking_and_group() {
+        plantAndRun("CR-76");
+        search().body("amount", hasItems(54.00f, 6.00f, 40.00f, -54.00f, -6.00f, -40.00f));
+    }
 }

@@ -1363,6 +1363,32 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(advance).toHaveCount(1);
     await expect(advance.first()).toContainText('48,00');
   });
+
+  test('CR-76 : co-courtage 60/40 reversé 90/10 paie 54,00 € / 6,00 € / 40,00 €, l’annulation les reprend @screen:calculations @screen:commissionSearch @cr:CR-76', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-76&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    // Six lines: broker A 54,00 €, its group 6,00 €, co-broker B 40,00 €, each reversed by the cancellation.
+    await expect(page.locator('[data-testid^="cs-row-"]')).toHaveCount(6);
+    const amounts = page.locator('[data-testid^="cs-amount-"]');
+    await expect(amounts.filter({ hasText: '-54,00' })).toHaveCount(1);
+    await expect(amounts.filter({ hasText: '-6,00' })).toHaveCount(1);
+    await expect(amounts.filter({ hasText: '-40,00' })).toHaveCount(1);
+    // Each positive split and its reversal — two cells carry each magnitude.
+    await expect(amounts.filter({ hasText: '54,00' })).toHaveCount(2);
+    await expect(amounts.filter({ hasText: '6,00' })).toHaveCount(2);
+    await expect(amounts.filter({ hasText: '40,00' })).toHaveCount(2);
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet

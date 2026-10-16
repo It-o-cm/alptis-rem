@@ -152,6 +152,7 @@ public class CrScenarioResource {
             case "CR-81" -> seedCr81(entity, periodMonth);
             case "CR-79" -> seedCr79(entity, periodMonth);
             case "CR-84" -> seedCr84(entity, periodMonth);
+            case "CR-76" -> seedCr76(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1480,6 +1481,53 @@ public class CrScenarioResource {
         coverage.contract.registrationDate = LocalDate.of(2026, 1, 15);
         AdvanceAgreement agreement = convention(entity, "P-CR79", 100, LocalDate.of(2026, 12, 31));
         agreement.anticipationDays = 120;
+    }
+
+    /**
+     * CR-76 (co-courtage et groupement) : commission de 100 € (taux 100 %) ; courtier A à 60 %, courtier B
+     * co-courtier à 40 % ; A reversé à 90 % et 10 % à son groupement. Donne 54,00 € (A), 6,00 € (groupement)
+     * et 40,00 € (B). Une annulation ultérieure de l'encaissement reprend les trois lignes : −54,00 €,
+     * −6,00 € et −40,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr76(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "CR76", product, periodMonth, "P-CR76-A", null);
+        CoverageAssignment mainA = CoverageAssignment.<CoverageAssignment>find("coverage", coverage).firstResult();
+        mainA.share = new BigDecimal("0.6");
+        Distributor a = mainA.productionCode.distributor;
+        DistributorGroup ga = new DistributorGroup();
+        ga.code = "G-CR76";
+        ga.label = "G-CR76";
+        ga.persist();
+        payeeRule(entity, mainA.productionCode, a, "0.9", ga, "0.1");
+        Distributor b = new Distributor();
+        b.partnerCode = "P-CR76-B";
+        b.legalName = "P-CR76-B";
+        b.persist();
+        ProductionCode pcB = new ProductionCode();
+        pcB.entity = entity;
+        pcB.code = "PC-CR76-B";
+        pcB.distributor = b;
+        pcB.persist();
+        CoverageAssignment coBroker = new CoverageAssignment();
+        coBroker.coverage = coverage;
+        coBroker.productionCode = pcB;
+        coBroker.role = AssignmentRole.CO_BROKER;
+        coBroker.share = new BigDecimal("0.4");
+        coBroker.validFrom = periodMonth;
+        coBroker.persist();
+        linearChoice(coverage, "1", periodMonth, null);
+        version(entity, "PLAN-CR76", "R-CR76", RuleFamily.LINEAR, LineNature.LINEAR,
+                "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE\"],\"eventType\":[\"PREMIUM_COLLECTED\"]}",
+                "{\"allowedRates\":[1]}", periodMonth, null, null);
+        BusinessEvent premium = event(entity, coverage, "CR76-E1", EventType.PREMIUM_COLLECTED,
+                periodMonth.plusDays(14), "100");
+        BusinessEvent reversal = event(entity, coverage, "CR76-E2", EventType.PREMIUM_CANCELLED,
+                periodMonth.plusDays(19), null);
+        reversal.reversesEvent = premium;
     }
 
     /** Parameters of an outbound retirement discount with annual readjustment at 8 %, zero tolerance. */
