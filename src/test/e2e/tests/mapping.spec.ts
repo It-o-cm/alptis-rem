@@ -29,10 +29,18 @@ test.describe('Mapping — administrateur métier', () => {
     await expect(page.getByTestId('mapping-result')).toContainText('30.00');
   });
 
-  test('enregistre une version du mapping @screen:mapping @req:ING-02', async ({ page }) => {
+  test('enregistre une version du mapping, une modification en crée une nouvelle, l’ancienne restant (INT-15) @screen:mapping @req:ING-02 @path:INT-15', async ({ page }) => {
     await page.goto('/mapping');
     await page.getByTestId('mapping-save').click();
     await expect(page.getByTestId('mapping-message')).toContainText('Version 1 enregistrée');
+
+    // INT-15: saving the mapping again creates version 2; version 1 is kept, not overwritten (a past
+    // import keeps the version it used — the versions list offers both).
+    await page.getByTestId('mapping-save').click();
+    await expect(page.getByTestId('mapping-message')).toContainText('Version 2 enregistrée');
+    const versions = page.getByTestId('mapping-versions');
+    await expect(versions.locator('option', { hasText: 'v1' })).toHaveCount(1);
+    await expect(versions.locator('option', { hasText: 'v2' })).toHaveCount(1);
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:mapping', async ({ page }) => {
