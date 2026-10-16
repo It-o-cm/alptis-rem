@@ -163,6 +163,7 @@ public class CrScenarioResource {
             case "CR-80" -> seedCr80(entity, periodMonth);
             case "CR-86" -> seedCr86(entity, periodMonth);
             case "CAL-07" -> seedCal07(entity, periodMonth);
+            case "CAL-12" -> seedCal12(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1558,6 +1559,31 @@ public class CrScenarioResource {
         version(entity, "PLAN-CAL07-B", "R-CAL07-B", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
         premium(entity, coverage, "CAL07-E1", periodMonth.plusDays(4), "100.00");
+    }
+
+    /**
+     * CAL-12 (parcours §4.3) : annulation après changement de barème. Un encaissement de janvier est
+     * commissionné à 15 % (version d'origine), puis le barème passe à 12 % (nouvelle version) ; quand
+     * l'encaissement de janvier est annulé après ce changement, la ligne inverse est calculée avec la
+     * version d'origine (15 %, D12) — une ligne de 15,00 € et sa ligne inverse de −15,00 €, non −12,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (January)
+     */
+    private void seedCal12(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate boundary = periodMonth.plusMonths(2);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CAL12", product, periodMonth, "P-CAL12", null);
+        linearChoice(coverage, "0.15", periodMonth, boundary.minusDays(1));
+        linearChoice(coverage, "0.12", boundary, null);
+        version(entity, "PLAN-CAL12-V1", "R-CAL12-V1", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, boundary.minusDays(1), null);
+        version(entity, "PLAN-CAL12-V2", "R-CAL12-V2", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.12]}", boundary, null, null);
+        BusinessEvent origin = premium(entity, coverage, "CAL12-JAN", periodMonth.plusDays(14), "100.00");
+        BusinessEvent cancellation = event(entity, coverage, "CAL12-CANCEL", EventType.PREMIUM_CANCELLED,
+                boundary.plusDays(14), null);
+        cancellation.reversesEvent = origin;
     }
 
     /**

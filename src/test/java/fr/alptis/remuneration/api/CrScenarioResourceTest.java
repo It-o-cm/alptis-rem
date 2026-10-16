@@ -810,4 +810,14 @@ class CrScenarioResourceTest {
         plantAndRun("CAL-07");
         search().body("size()", is(0));
     }
+
+    /**
+     * CAL-12 (parcours): a cancellation after a rate change computes the inverse line with the original
+     * version — a 15,00 € line and a −15,00 € inverse, not −12,00 € (D12).
+     */
+    @Test
+    void cal12_cancellation_uses_the_origin_version() {
+        plantAndRun("CAL-12");
+        search().body("amount", hasItems(15.00f, -15.00f));
+    }
 }

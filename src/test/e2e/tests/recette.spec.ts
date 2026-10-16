@@ -1672,3 +1672,32 @@ test('CAL-07 : deux règles concurrentes mettent l’événement à l’écart a
 
   await ctx.close();
 });
+
+// Parcours CAL-12 (section 4.3): a cancellation after a rate change inverses with the origin version.
+test('CAL-12 : une annulation après changement de barème reprend au taux d’origine (-15,00 €) @screen:calculations @screen:commissionSearch @path:CAL-12', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=CAL-12&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const ctx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await ctx.newPage();
+
+  await page.goto('/calculs');
+  await page.getByTestId('calc-run').click();
+  await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+  await page.goto('/recherche-commissions');
+  await page.getByTestId('cs-month').selectOption('2026-01-01');
+  await page.getByTestId('cs-search').click();
+  const amounts = page.locator('[data-testid^="cs-amount-"]');
+  // The inverse is computed at the origin 15 % rate, not the new 12 % rate: one −15,00 € cell, and the
+  // magnitude 15,00 appears twice (the original line and its inverse). No −12,00 € cell.
+  await expect(amounts.filter({ hasText: '-15,00' })).toHaveCount(1);
+  await expect(amounts.filter({ hasText: '15,00' })).toHaveCount(2);
+  await expect(amounts.filter({ hasText: '12,00' })).toHaveCount(0);
+
+  await ctx.close();
+});
