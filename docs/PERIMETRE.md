@@ -29,7 +29,7 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   fonctionnalité comblé : lot `SAVINGS_CYCLE` distinct) via `CrScenarioResource` + `CrScenarioResourceTest`
   + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify -DskipE2E=true` vert (819 tests,
   JaCoCo 100 %) ; les 16 specs e2e `@cr:` vertes.
-- Parcours `@path` : 84 sur 135 du catalogue §4 (le 2026-10-16 : +INT-03 correction reprocessée, +INT-08 flux reçu/en retard/manquant selon l'horloge, +INT-09 lignes négatives liées/rapprochées/mises en attente). Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
+- Parcours `@path` : 85 sur 135 du catalogue §4 (le 2026-10-16 : +INT-03 correction reprocessée, +INT-08 flux selon l'horloge, +INT-09 lignes négatives, +INT-10 événement à référence inconnue libéré à l'arrivée du référentiel). Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
   événement à l'écart), CAL-12 (annulation après changement de barème → reprise au taux d'origine
   −15,00 €, D12), PAI-03 (épargne retraite → lot distinct, bordereau propre 50,00 €, période Payée après
   le dernier lot, sur le test CR-86), CAL-13 (prévisionnel régularisé à la résiliation, sur CR-66).
@@ -1313,8 +1313,11 @@ comme attendu, des mécanismes déclarés complets mais partiels :
 - ~~INT-08 : pas d'état « en retard » selon l'horloge.~~ **Comblé le 2026-10-16** : `expectedFlows`
   calcule reçu/en retard/manquant par jour d'échéance (garanties 5, événements 10, distributeurs 25,
   DECISIONS) à partir du `DateTimeProvider` ; l'écran rend les trois états. `@path:INT-08` (horloge figée).
-- INT-10 / INT-22 : un événement en attente (référence/code externe inconnu) **n'est pas débloqué** à
-  l'arrivée du référentiel ou de la correspondance (pas de release/reprocess des `ON_HOLD`).
+- ~~INT-10 / INT-22 : un événement en attente n'est pas débloqué à l'arrivée du référentiel.~~
+  **INT-10 comblé le 2026-10-16** : l'import conserve la référence brute (`BusinessEvent.pendingContractNumber`
+  /`pendingCoverageCode`) d'une ligne mise en attente « référence inconnue », et `CalculationEngine`
+  `.releaseResolvableHolds` la ré-résout et la libère au calcul suivant une fois le référentiel arrivé
+  (prouvé `CalculationEngineTest` toutes branches + `@path:INT-10`). INT-22 (code externe) reste à faire.
 Ces manques seront comblés avec leur parcours (fonction d'abord, puis étiquette), pas contournés.
 
 ## Simplifications à reprendre (relevé de docs/DECISIONS.md)

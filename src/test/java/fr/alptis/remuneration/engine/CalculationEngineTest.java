@@ -37,6 +37,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -1385,5 +1386,84 @@ class CalculationEngineTest {
 
         engine.runReal("UNEP", MONTH);
         assertEquals(0, totalOf(LineNature.CLAWBACK).compareTo(BigDecimal.ZERO));
+    }
+
+    /** Creates an event held for a missing reference, keeping the raw contract/coverage for re-resolution. */
+    private BusinessEvent heldEvent(String pendingContract, String pendingCoverage, String basis) {
+        BusinessEvent e = new BusinessEvent();
+        e.entity = unep();
+        e.sourceSystem = "SYS";
+        e.sourceKey = "H-" + pendingContract;
+        e.eventType = EventType.PREMIUM_COLLECTED;
+        e.eventDate = LocalDate.of(2026, 1, 5);
+        e.receivedDate = e.eventDate;
+        e.basisAmount = new BigDecimal(basis);
+        e.processingStatus = ProcessingStatus.ON_HOLD;
+        e.holdReason = HoldReason.UNKNOWN_REFERENCE;
+        e.pendingContractNumber = pendingContract;
+        e.pendingCoverageCode = pendingCoverage;
+        e.persist();
+        return e;
+    }
+
+    /** INT-10: an event held for a missing reference calculates on its own once the garantie arrives. */
+    @Test
+    @TestTransaction
+    void a_held_event_is_released_when_its_reference_arrives() {
+        Product p = product("SANTE_SELECT");
+        Coverage c = coverage("AD-X", p, null, "P1");
+        linearChoice(c, "0.15", MONTH, null);
+        version("PLAN", "R_LIN", RuleFamily.LINEAR, LineNature.LINEAR, BASE_LINEAR_SCOPE,
+                "{\"allowedRates\":[0.15]}", "BASE", 10, MONTH, null);
+        BusinessEvent held = heldEvent("AD-X", c.coverageCode, "100.00");
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(1, lines().size());
+        assertEquals(0, lines().get(0).amount.compareTo(new BigDecimal("15.00")));
+        assertNull(BusinessEvent.<BusinessEvent>findById(held.getId()).pendingContractNumber);
+    }
+
+    /** INT-10: a held event whose contract is still unknown keeps its hold. */
+    @Test
+    @TestTransaction
+    void a_held_event_whose_reference_is_still_missing_stays_held() {
+        BusinessEvent held = heldEvent("AD-NONE", "AD-NONE-C1", "100.00");
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, lines().size());
+        BusinessEvent after = BusinessEvent.findById(held.getId());
+        assertEquals(ProcessingStatus.ON_HOLD, after.processingStatus);
+        assertEquals(HoldReason.UNKNOWN_REFERENCE, after.holdReason);
+        assertNotNull(after.pendingContractNumber);
+    }
+
+    /** INT-10: the contract arrived but the named garantie has not, so the event stays held. */
+    @Test
+    @TestTransaction
+    void a_held_event_whose_coverage_is_still_missing_stays_held() {
+        Product p = product("SANTE_SELECT");
+        coverage("AD-Y", p, null, "P1");
+        BusinessEvent held = heldEvent("AD-Y", "WRONG-CODE", "100.00");
+
+        engine.runReal("UNEP", MONTH);
+
+        BusinessEvent after = BusinessEvent.findById(held.getId());
+        assertEquals(ProcessingStatus.ON_HOLD, after.processingStatus);
+        assertNotNull(after.pendingContractNumber);
+    }
+
+    /** INT-10: a contract-level held event (no coverage code) is released once its contract arrives. */
+    @Test
+    @TestTransaction
+    void a_contract_level_held_event_is_released() {
+        Product p = product("SANTE_SELECT");
+        coverage("AD-Z", p, null, "P1");
+        BusinessEvent held = heldEvent("AD-Z", null, "100.00");
+
+        engine.runReal("UNEP", MONTH);
+
+        assertNull(BusinessEvent.<BusinessEvent>findById(held.getId()).pendingContractNumber);
     }
 }

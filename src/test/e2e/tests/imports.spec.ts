@@ -336,3 +336,57 @@ test.describe('Imports — lecture seule et accès', () => {
     await context.close();
   });
 });
+
+// Parcours INT-10 (section 4.1): an event whose reference is unknown is held, then calculates on its
+// own once the referential (the garantie) arrives.
+test('INT-10 : un événement à référence inconnue est mis en attente puis calculé à l’arrivée du référentiel @screen:imports @screen:events @screen:calculations @path:INT-10', async ({ browser, request }) => {
+  await resetDb(request);
+  // CR-01 seeds the UNEP product, linear 15 % rule and the PC-CR01 production code.
+  const seeded = await request.post('/api/test/cr-scenario?cr=CR-01&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const ctx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await ctx.newPage();
+
+  // An encaissement on a contract that is not yet in the referential is held "Référence inconnue".
+  const events =
+    'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount\n' +
+    'UNEP;CLEVA;INT10-E;PREMIUM_COLLECTED;AD-NEW;C-NEW;2026-01-05;100.00\n';
+  await page.goto('/imports');
+  await page.getByTestId('upload-flow').selectOption('events');
+  await page.getByTestId('upload-source').selectOption('CLEVA');
+  await page.getByTestId('upload-file').setInputFiles({ name: 'ev.csv', mimeType: 'text/csv', buffer: Buffer.from(events, 'utf-8') });
+  await page.getByTestId('upload-submit').click();
+  await expect(page.getByTestId('upload-message')).toContainText('1 en attente');
+  await page.goto('/evenements');
+  await page.getByTestId('events-search').click();
+  await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'INT10-E' })).toContainText('Référence inconnue');
+
+  // The referential arrives: a coverages file creates AD-NEW / C-NEW (same product, linear 15 %).
+  const coverages =
+    'contract_number;coverage_code;product_code;policyholder_id;registration_date;effect_date;status;remuneration_mode;production_code;linear_rate\n' +
+    'AD-NEW;C-NEW;SANTE_SELECT;PH-1;2026-01-01;2026-01-01;IN_FORCE;LINEAR;PC-CR01;0.15\n';
+  await page.goto('/imports');
+  await page.getByTestId('upload-flow').selectOption('coverages');
+  await page.getByTestId('upload-source').selectOption('CLEVA');
+  await page.getByTestId('upload-file').setInputFiles({ name: 'cov.csv', mimeType: 'text/csv', buffer: Buffer.from(coverages, 'utf-8') });
+  await page.getByTestId('upload-submit').click();
+  await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s)');
+
+  // Running the calculation releases and calculates the held event on its own.
+  await page.goto('/calculs');
+  await page.getByTestId('calc-run').click();
+  await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+  // The event is no longer held, and its 15,00 € line is visible on the commission search.
+  await page.goto('/evenements');
+  await page.getByTestId('events-search').click();
+  const row = page.locator('[data-testid^="event-row-"]').filter({ hasText: 'INT10-E' });
+  await expect(row).not.toContainText('Référence inconnue');
+  await page.goto('/recherche-commissions');
+  await page.getByTestId('cs-month').selectOption('2026-01-01');
+  await page.getByTestId('cs-search').click();
+  await expect(page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' }).first()).toContainText('15,00');
+
+  await ctx.close();
+});

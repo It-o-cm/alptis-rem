@@ -149,6 +149,10 @@ public class CalculationEngine {
                 ProcessingStatus.PENDING, period,
                 List.of(ProcessingStatus.PROCESSED, ProcessingStatus.NOT_COMMISSIONABLE));
 
+        // INT-10: release an event held for a missing reference once its contract (and garantie) has
+        // arrived in the referential, so it is calculated on its own; one still unresolved stays held.
+        releaseResolvableHolds(entity);
+
         // Apply the portfolio transfers that take effect by this period (REF-09, CR-80): reassign the
         // ceded garanties to the transferee, so their later premiums go to it, and settle the discount
         // receivable on the transferor when it repays it.
@@ -3032,6 +3036,40 @@ public class CalculationEngine {
         line.attachmentMonth = period.periodMonth;
         line.setCreatedAt(clock.now());
         return line;
+    }
+
+    /**
+     * Releases the entity's events held for a missing reference whose contract (and garantie, when the
+     * line carried one) has since arrived in the referential: they are re-linked and returned to
+     * {@code PENDING} so this run calculates them. Events still unresolved keep their hold (INT-10).
+     *
+     * @param entity the entity
+     */
+    private void releaseResolvableHolds(LegalEntity entity) {
+        List<BusinessEvent> held = BusinessEvent.list(
+                "entity = ?1 and processingStatus = ?2 and holdReason = ?3 and pendingContractNumber is not null",
+                entity, ProcessingStatus.ON_HOLD, HoldReason.UNKNOWN_REFERENCE);
+        for (BusinessEvent event : held) {
+            Contract contract = Contract.find("entity = ?1 and sourceSystem = ?2 and contractNumber = ?3",
+                    entity, event.sourceSystem, event.pendingContractNumber).firstResult();
+            if (contract == null) {
+                continue;
+            }
+            Coverage coverage = null;
+            if (event.pendingCoverageCode != null) {
+                coverage = Coverage.find("contract = ?1 and coverageCode = ?2",
+                        contract, event.pendingCoverageCode).firstResult();
+                if (coverage == null) {
+                    continue;
+                }
+            }
+            event.contract = contract;
+            event.coverage = coverage;
+            event.pendingContractNumber = null;
+            event.pendingCoverageCode = null;
+            event.holdReason = null;
+            event.processingStatus = ProcessingStatus.PENDING;
+        }
     }
 
     /**

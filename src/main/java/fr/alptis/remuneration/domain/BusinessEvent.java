@@ -56,6 +56,14 @@ public class BusinessEvent extends BaseEntity {
     @JoinColumn(name = "coverage_id")
     public Coverage coverage;
 
+    /** The raw contract number kept when the contract is not yet known, to re-resolve it later (INT-10). */
+    @Column(name = "pending_contract_number")
+    public String pendingContractNumber;
+
+    /** The raw coverage code kept when the coverage is not yet known, to re-resolve it later (INT-10). */
+    @Column(name = "pending_coverage_code")
+    public String pendingCoverageCode;
+
     /** The business effect date (drives rule selection and seniority). */
     @Column(name = "event_date")
     public LocalDate eventDate;

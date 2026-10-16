@@ -295,6 +295,12 @@ public class EventImportService {
         event.processingStatus = outcome.holdReason == null ? ProcessingStatus.PENDING : ProcessingStatus.ON_HOLD;
         event.holdReason = outcome.holdReason;
         event.reversesEvent = outcome.reversed;
+        // Keep the raw reference of a line held for a missing contract/garantie, so a later run can
+        // re-resolve and release it once the referential arrives (INT-10).
+        if (outcome.holdReason == HoldReason.UNKNOWN_REFERENCE) {
+            event.pendingContractNumber = value(row, "contract_number");
+            event.pendingCoverageCode = emptyToNull(value(row, "coverage_code"));
+        }
         event.importBatch = batch;
         event.persist();
     }
