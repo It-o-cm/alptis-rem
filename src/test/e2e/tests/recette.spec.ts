@@ -1050,7 +1050,9 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
   });
 
-  test('CR-60 : un solde débiteur reporté bloque février puis paie 300,00 € en mars @screen:periods @screen:payment @cr:CR-60', async ({
+  // Parcours CPT-01 (section 4.6): a debtor balance carried over three periods — no payment while the
+  // balance stays negative, and the carried balance shown as a single "Report" line on each bordereau.
+  test('CR-60 : un solde débiteur reporté bloque février puis paie 300,00 € en mars @screen:periods @screen:payment @screen:statements @cr:CR-60 @path:CPT-01', async ({
     browser,
     request,
   }) => {
@@ -1061,6 +1063,18 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     const admin = await adminCtx.newPage();
     const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
     const val = await valCtx.newPage();
+
+    // Opens the sole bordereau of a period and asserts its single carried-balance ("Report") line and
+    // its net — proving the debtor balance is reported in one line (CPT-01).
+    const checkBordereau = async (month: string, carried: RegExp, net: RegExp) => {
+      await admin.goto('/bordereaux');
+      await admin.getByTestId('brd-month').selectOption(month);
+      await admin.getByTestId('brd-refresh').click();
+      await admin.locator('[data-testid^="statement-open-"]').first().click();
+      await expect(admin.getByTestId('statement-detail')).toBeVisible();
+      await expect(admin.getByTestId('statement-carried')).toHaveText(carried);
+      await expect(admin.getByTestId('statement-net')).toHaveText(net);
+    };
 
     // Drives one period from loaded to payment-prepared across the admin and validator.
     const prepare = async (month: string) => {
@@ -1086,16 +1100,20 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
       await expect(admin.getByTestId('lot-detail')).toBeVisible();
     };
 
-    // February: the −1 000 € opening balance leaves the account debtor, so no order is issued.
+    // February: the −1 000 € opening balance leaves the account debtor, so no order is issued; the
+    // bordereau carries that balance over on a single "Report" line and its net stays negative.
     await prepare('2026-02-01');
     await openLot('2026-02-01');
     await expect(admin.getByTestId('no-order')).toBeVisible();
+    await checkBordereau('2026-02-01', /-1\s*000,00/, /-400,00/);
 
-    // March: a further 700 € brings the account to +300 €, which is ordered.
+    // March: a further 700 € brings the account to +300 €, which is ordered. The debtor balance of the
+    // previous period is reported on March's bordereau as a single −400,00 € "Report" line.
     await prepare('2026-03-01');
     await openLot('2026-03-01');
     await expect(admin.locator('[data-testid^="order-row-"]')).toHaveCount(1);
     await expect(admin.locator('[data-testid^="order-row-"]').first()).toContainText('300,00');
+    await checkBordereau('2026-03-01', /-400,00/, /300,00/);
 
     await adminCtx.close();
     await valCtx.close();

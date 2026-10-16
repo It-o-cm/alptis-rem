@@ -1134,8 +1134,8 @@ bouton d'export** (seul le contrôleur Finance), et le message d'export porte un
 nul** (`(N lignes)`, fichier lu), après la validation du résultat. Vérification seule, aucune feature.
 72 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 71 des 135 identifiants §4 sont étiquetés `@path`
-(73 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**État des parcours restants (relevé 2026-10-16).** 72 des 135 identifiants §4 sont étiquetés `@path`
+(74 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1155,13 +1155,24 @@ monté, documentés ici pour éviter de re-scoper :
   motif `NO_BANK_DETAILS` route vers le chèque, cf. décision), `PAI-03/04/07/08/09/11/12`, `CYC-01..05`
   (machine à états complète par rôle, dont un refus après `FINANCE_VALIDATED` — exige une période
   `FINANCE_VALIDATED` absente de la démo), `CTL-01` (une anomalie par **dix** familles — la démo en
-  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/08/10`, `HIS-01`, `CPT-01/03/04`
+  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/08/10`, `HIS-01`, `CPT-03/04`
   (`CPT-04` « exclu du lot » exige que `proposePayments` se rejoue après blocage ; `CPT-03` exige des
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
   `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`
   (clôture : toute action refusée), `FIN-09` (anomalie `EXT-INSURER-MISMATCH` sur période close non
   sélectionnable), `INT-09/12/15/17/19/20/23` (mapping, parts, co-assurance 0,24/0,43…),
   `ADM-02`. Les prochains tours prendront ces lots **un par un**, fonction d'abord puis étiquette.
+
+**CPT-01 — solde débiteur reporté sur trois périodes (comblé 2026-10-16).** Le parcours §4.6 exige
+« Solde débiteur reporté sur trois périodes | Aucun paiement tant que le solde n'est pas positif ;
+**report en une ligne** ». Le cas CR-60 montait déjà la chaîne (ouverture −1 000 € en janvier, +600 €
+en février, +700 € en mars) mais son test ne vérifiait que « pas d'ordre en février, 300,00 € en mars »
+— la moitié « report en une ligne » manquait. Comblé par le test seul (aucun code métier modifié) : on
+ajoute un `data-testid="statement-carried"` sur l'unique ligne « Report » du bordereau (symétrique de
+`statement-net`), puis le test CR-60 ouvre le bordereau de chaque mois et vérifie que le solde débiteur
+est reporté sur **une seule** ligne — février −1 000,00 € (net −400,00 €), mars −400,00 € (net
+300,00 €) —, prouvant le report sur les trois périodes sans paiement tant que le solde reste négatif.
+`@path:CPT-01` posé. 72 `@path`.
 
 **ADM-03 — purge à l'échéance de conservation (comblé 2026-10-16).** Le parcours §4.8 exige « Données
 personnelles anonymisées ; **montants conservés** ». Deux manques : (1) la démo ne contenait aucun

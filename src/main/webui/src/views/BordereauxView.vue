@@ -300,7 +300,9 @@ onMounted(loadStatements);
         <DetailRow label="Total période">
           <span data-testid="statement-period-total">{{ amount(content.periodTotal) }}</span>
         </DetailRow>
-        <DetailRow label="Report">{{ amount(content.carried) }}</DetailRow>
+        <DetailRow label="Report">
+          <span data-testid="statement-carried">{{ amount(content.carried) }}</span>
+        </DetailRow>
         <DetailRow label="Net payé">
           <strong data-testid="statement-net">{{ amount(content.net) }}</strong>
         </DetailRow>
