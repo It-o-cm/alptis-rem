@@ -29,7 +29,7 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   fonctionnalité comblé : lot `SAVINGS_CYCLE` distinct) via `CrScenarioResource` + `CrScenarioResourceTest`
   + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify -DskipE2E=true` vert (819 tests,
   JaCoCo 100 %) ; les 16 specs e2e `@cr:` vertes.
-- Parcours `@path` : 80 sur 135 du catalogue §4 (le 2026-10-16 : +CAL-07 règles concurrentes → événement
+- Parcours `@path` : 81 sur 135 du catalogue §4 (+CAL-13 le 2026-10-16 : prévisionnel régularisé à la résiliation, sur le test CR-66) (le 2026-10-16 : +CAL-07 règles concurrentes → événement
   à l'écart ; +CAL-12 annulation après changement de barème → reprise au taux d'origine −15,00 € (D12) ;
   +PAI-03 épargne retraite → lot distinct, bordereau propre (net 50,00 €), période Payée après le dernier
   lot, sur le test CR-86 ; seeds `CrScenarioResource` + `recette.spec`) ; couples rôle-action : 342 ;

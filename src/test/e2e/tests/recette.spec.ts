@@ -919,7 +919,7 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await valCtx.close();
   });
 
-  test('CR-66 : une résiliation régularise le prévisionnel de 90,00 € en comptabilité @screen:periods @screen:accounting @cr:CR-66', async ({
+  test('CR-66 : une résiliation régularise le prévisionnel de 90,00 € en comptabilité @screen:periods @screen:accounting @cr:CR-66 @path:CAL-13', async ({
     browser,
     request,
   }) => {
