@@ -11,6 +11,7 @@ export const USERS = {
   operatorUnep: { username: 'operator-unep', password: 'operator-unep' },
   adminUnep: { username: 'admin-unep', password: 'admin-unep' },
   validatorUnep: { username: 'validator-unep', password: 'validator-unep' },
+  financeUnep: { username: 'finance-unep', password: 'finance-unep' },
   itAdmin: { username: 'it-admin', password: 'it-admin' },
   auditor: { username: 'auditor', password: 'auditor' },
   managerAlptis: { username: 'manager-alptis', password: 'manager-alptis' },

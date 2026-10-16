@@ -754,4 +754,15 @@ class CrScenarioResourceTest {
         plantAndRun("CR-76");
         search().body("amount", hasItems(54.00f, 6.00f, 40.00f, -54.00f, -6.00f, -40.00f));
     }
+
+    /**
+     * CR-85: the bank-rejection scenario plants a payable 110 € earned line with bank details; the
+     * pipeline and the rejection itself are pinned by PaymentServiceTest. Here the seed is exercised and
+     * the 110 € line read on the reporting search.
+     */
+    @Test
+    void cr85_bank_rejection_scenario_is_seeded() {
+        given().when().post("/api/test/cr-scenario?cr=CR-85&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItem(110.00f));
+    }
 }

@@ -1389,6 +1389,59 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(amounts.filter({ hasText: '6,00' })).toHaveCount(2);
     await expect(amounts.filter({ hasText: '40,00' })).toHaveCount(2);
   });
+
+  test('CR-85 : un ordre de 110,00 € rejeté par la banque repasse la ligne à payer @screen:periods @screen:payment @screen:commissionSearch @cr:CR-85', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-85&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    // The operator takes the period through its states up to a prepared payment lot.
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+    // The Finance controller validates the lot, then records the bank's rejection of the 110,00 € order.
+    const finCtx = await browser.newContext({ httpCredentials: USERS.financeUnep });
+    const fin = await finCtx.newPage();
+    await fin.goto('/paiement');
+    await fin.getByTestId('pay-month').selectOption('2026-01-01');
+    await fin.getByTestId('pay-refresh').click();
+    await fin.locator('[data-testid^="lot-open-"]').first().click();
+    await expect(fin.locator('[data-testid^="order-row-"]').first()).toContainText('110,00');
+    await fin.getByTestId('lot-validate').click();
+    await expect(fin.locator('[data-testid^="order-status-"]').first()).toContainText('Émis');
+    await fin.locator('[data-testid^="order-reject-"]').first().click();
+    await expect(fin.locator('[data-testid^="order-status-"]').first()).toContainText('Rejeté');
+
+    // Effect seen from the commission search: the rejected line is back to payable (represented next lot).
+    await admin.goto('/recherche-commissions');
+    await admin.getByTestId('cs-month').selectOption('2026-01-01');
+    await admin.getByTestId('cs-search').click();
+    const row = admin.locator('[data-testid^="cs-row-"]').filter({ hasText: '110,00' }).first();
+    await expect(row).toBeVisible();
+    await row.click();
+    await expect(admin.getByTestId('line-detail')).toContainText('À payer');
+
+    await adminCtx.close();
+    await valCtx.close();
+    await finCtx.close();
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet

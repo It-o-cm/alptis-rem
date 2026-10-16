@@ -153,6 +153,7 @@ public class CrScenarioResource {
             case "CR-79" -> seedCr79(entity, periodMonth);
             case "CR-84" -> seedCr84(entity, periodMonth);
             case "CR-76" -> seedCr76(entity, periodMonth);
+            case "CR-85" -> seedCr85(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1528,6 +1529,38 @@ public class CrScenarioResource {
         BusinessEvent reversal = event(entity, coverage, "CR76-E2", EventType.PREMIUM_CANCELLED,
                 periodMonth.plusDays(19), null);
         reversal.reversesEvent = premium;
+    }
+
+    /**
+     * CR-85 (rejet bancaire) : un distributeur payable (coordonnées bancaires, inscrit à l'entité) porte
+     * une commission acquise de 110 € ; le cycle la mène jusqu'à un ordre de virement de 110,00 €. Le rejet
+     * bancaire de l'ordre (écriture `PAYMENT_REJECTION`, anomalie de contrôle) ramène la ligne à payable,
+     * représentée au lot suivant. La ligne acquise et les coordonnées sont posées comme état d'entrée.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr85(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR85", product, periodMonth, "P-CR85", null);
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        DistributorEntity link = new DistributorEntity();
+        link.distributor = Distributor.<Distributor>find("partnerCode", "P-CR85").firstResult();
+        link.entity = entity;
+        link.status = PartnerStatus.ACTIVE;
+        link.validFrom = periodMonth;
+        link.persist();
+        earnedOnCode(entity, period(entity, periodMonth), coverage, "110.00");
+        BankAccount bank = new BankAccount();
+        bank.entity = entity;
+        bank.holderType = PayeeType.PRODUCTION_CODE;
+        bank.holderId = pc.getId();
+        bank.iban = "FR7630001007941234567890185";
+        bank.bic = "AGRIFRPP";
+        bank.holderName = "P-CR85";
+        bank.validFrom = periodMonth;
+        bank.persist();
     }
 
     /** Parameters of an outbound retirement discount with annual readjustment at 8 %, zero tolerance. */
