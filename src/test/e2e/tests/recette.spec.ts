@@ -1534,7 +1534,7 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(regul.first()).toContainText('-280,00');
   });
 
-  test('CR-86 : l’épargne retraite part dans un lot distinct, la période n’est Payée qu’une fois les deux lots réglés @screen:periods @screen:payment @cr:CR-86', async ({
+  test('CR-86 : l’épargne retraite part dans un lot distinct, la période n’est Payée qu’une fois les deux lots réglés @screen:periods @screen:payment @screen:bordereaux @cr:CR-86 @path:PAI-03', async ({
     browser,
     request,
   }) => {
@@ -1605,6 +1605,15 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await fin.goto('/');
     await fin.getByTestId('open-UNEP-2026-01-01').click();
     await expect(fin.getByTestId('detail-state')).toContainText('Payée');
+
+    // PAI-03: the retirement-savings lot carries its own bordereau (net 50,00 €), distinct from the
+    // cycle bordereau (net 110,00 €).
+    await fin.goto('/bordereaux');
+    await fin.getByTestId('brd-month').selectOption('2026-01-01');
+    await fin.getByTestId('brd-refresh').click();
+    await expect(fin.locator('[data-testid^="statement-row-"]')).toHaveCount(2);
+    await expect(fin.locator('[data-testid^="statement-row-"]').filter({ hasText: '50,00' })).toHaveCount(1);
+    await expect(fin.locator('[data-testid^="statement-row-"]').filter({ hasText: '110,00' })).toHaveCount(1);
 
     await adminCtx.close();
     await valCtx.close();
