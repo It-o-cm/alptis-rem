@@ -19,7 +19,8 @@ const FILES: Array<[string, string]> = [
     + 'ALPTIS_ASSURANCES;61723;P13897;Agence;ACTIVE\n'],
   ['coverages', 'entity_code;source_system;contract_number;coverage_code;product_code;policyholder_id;'
     + 'registration_date;effect_date;status;remuneration_mode;linear_rate;production_code;annual_premium\n'
-    + 'ALPTIS_ASSURANCES;CLEVA;AD-1;C1;SANTE_SELECT;SUB-1;2026-01-01;2026-01-01;IN_FORCE;LINEAR;0.15;61723;1000.00\n'],
+    + 'ALPTIS_ASSURANCES;CLEVA;AD-1;C1;SANTE_SELECT;SUB-1;2026-01-01;2026-01-01;IN_FORCE;LINEAR;0.15;61723;1000.00\n'
+    + 'ALPTIS_ASSURANCES;CLEVA;AD-1;C2;SANTE_SELECT;SUB-1;2026-01-01;2026-01-01;IN_FORCE;LINEAR;0.12;61723;500.00\n'],
 ];
 
 async function seed(page: Page) {
@@ -39,23 +40,27 @@ test.beforeEach(async ({ request }) => {
 test.describe('Contrats — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
-  test('recherche une adhésion, montre ses garanties et ouvre la fiche @screen:contract-search @req:5.2 @req:5.5', async ({ page }) => {
+  test('recherche une adhésion, montre ses garanties importées en masse et ouvre la fiche @screen:contract-search @req:5.2 @req:5.5 @path:INT-12', async ({ page }) => {
     await seed(page);
     await page.goto('/contrats');
     await page.getByTestId('search-term').fill('AD-1');
     await page.getByTestId('search-button').click();
 
+    // INT-12: both garanties loaded by the bulk coverages import are visible on their contract.
     const row = page.getByTestId('contract-row-AD-1');
     await expect(row).toContainText('En vigueur');
     await expect(row).toContainText('C1');
+    await expect(row).toContainText('C2');
     await expect(row).toContainText('1000.00');
 
-    // Open the adhésion/guarantee fiche (sections 5.2, 5.5).
+    // Open each garantie fiche (sections 5.2, 5.5); the second carries its own imported data.
     await page.getByTestId('coverage-AD-1-C1').click();
     const fiche = page.getByTestId('coverage-detail');
     await expect(fiche).toBeVisible();
     await expect(fiche).toContainText('AD-1');
     await expect(fiche).toContainText('C1');
+    await page.getByTestId('coverage-AD-1-C2').click();
+    await expect(page.getByTestId('coverage-detail')).toContainText('C2');
   });
 
   test('aucune violation d’accessibilité grave ou critique @screen:contract-search', async ({ page }) => {
