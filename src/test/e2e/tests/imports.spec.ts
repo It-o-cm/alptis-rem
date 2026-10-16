@@ -107,6 +107,36 @@ test.describe('Imports — opérateur', () => {
     await expect(eventRow).toHaveCount(1);
   });
 
+  test('correction d’un rejet à l’écran : la ligne repart seule, le rejet est corrigé (INT-03) @screen:imports @screen:events @path:INT-03', async ({ page, request }) => {
+    // CR-67 seeds the AD-1 / C1 contract so a corrected premium loads rather than being held.
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=ALPTIS_ASSURANCES&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+    const header =
+      'entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount\n';
+    // A line missing its source key is rejected (MISSING_FIELD).
+    const bad = 'ALPTIS_ASSURANCES;CLEVA;;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00\n';
+    await page.goto('/imports');
+    await page.getByTestId('upload-flow').selectOption('events');
+    await page.getByTestId('upload-source').selectOption('CLEVA');
+    await page.getByTestId('upload-file').setInputFiles({ name: 'int03.csv', mimeType: 'text/csv', buffer: Buffer.from(header + bad, 'utf-8') });
+    await page.getByTestId('upload-submit').click();
+    await expect(page.getByTestId('upload-message')).toContainText('0 intégrée(s), 1 rejetée(s)');
+
+    // Open the batch and correct the rejected line with a valid one.
+    await page.locator('[data-testid^="batch-row-"]').first().click();
+    const rejection = page.locator('[data-testid^="rejection-row-"]').first();
+    await expect(rejection).toContainText('MISSING_FIELD');
+    await page.locator('[data-testid^="correct-line-"]').first()
+      .fill('ALPTIS_ASSURANCES;CLEVA;ENC-FIX;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100.00');
+    await rejection.getByRole('button', { name: 'Corriger et relancer' }).click();
+
+    // The rejection is corrected and the corrected line reprocessed into a visible event (it reparts alone).
+    await expect(page.locator('[data-testid^="rejection-row-"]').first()).toContainText('CORRECTED');
+    await page.goto('/evenements');
+    await page.getByTestId('events-search').click();
+    await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'ENC-FIX' })).toHaveCount(1);
+  });
+
   test('mise à l’écart d’un doublon : statut du rejet, aucun événement créé (INT-04) @screen:imports @path:INT-04', async ({ page, request }) => {
     const seeded = await request.post('/api/test/cr-scenario?cr=CR-67&entity=ALPTIS_ASSURANCES&month=2026-01-01');
     expect(seeded.ok()).toBeTruthy();

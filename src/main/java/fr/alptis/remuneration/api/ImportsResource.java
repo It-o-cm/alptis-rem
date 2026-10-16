@@ -128,16 +128,17 @@ public class ImportsResource {
     }
 
     /**
-     * Marks a rejected line as corrected.
+     * Corrects a rejected line: an optional corrected line is reprocessed against its batch (INT-03).
      *
-     * @param id the rejection id
+     * @param id            the rejection id
+     * @param correctedLine the corrected data line in the batch's column order, or null to only resolve
      * @return a 204 response
      */
     @POST
     @Path("/rejections/{id}/correct")
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN"})
-    public Response correct(@PathParam("id") long id) {
-        query.correct(id);
+    public Response correct(@PathParam("id") long id, @QueryParam("correctedLine") String correctedLine) {
+        query.correct(id, correctedLine);
         return Response.noContent().build();
     }
 

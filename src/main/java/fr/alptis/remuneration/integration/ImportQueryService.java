@@ -9,6 +9,7 @@ import fr.alptis.remuneration.domain.ImportRejectionStatus;
 import fr.alptis.remuneration.domain.PageResult;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
+import fr.alptis.remuneration.domain.ValidationException;
 import fr.alptis.remuneration.security.AuditService;
 import fr.alptis.remuneration.security.CurrentUser;
 import fr.alptis.remuneration.security.EntityScope;
@@ -32,6 +33,7 @@ public class ImportQueryService {
     private final CurrentUser currentUser;
     private final AuditService audit;
     private final DateTimeProvider clock;
+    private final EventImportService events;
 
     /**
      * Creates the service.
@@ -40,13 +42,16 @@ public class ImportQueryService {
      * @param currentUser the current user, audit author
      * @param audit       the audit trail
      * @param clock       the application date/time provider
+     * @param events      the event-import service used to reprocess a corrected line
      */
     @Inject
-    public ImportQueryService(EntityScope scope, CurrentUser currentUser, AuditService audit, DateTimeProvider clock) {
+    public ImportQueryService(EntityScope scope, CurrentUser currentUser, AuditService audit, DateTimeProvider clock,
+                              EventImportService events) {
         this.scope = scope;
         this.currentUser = currentUser;
         this.audit = audit;
         this.clock = clock;
+        this.events = events;
     }
 
     /**
@@ -125,13 +130,34 @@ public class ImportQueryService {
     }
 
     /**
-     * Marks a rejected line as corrected (it is re-submitted by a later re-import).
+     * Corrects a rejected line (INT-03): the corrected line is reprocessed alone against its batch; if
+     * it now passes, the event is created, the batch counters are updated (one more loaded, one fewer
+     * rejected) and the rejection is marked corrected with an audit trace. A corrected line that is
+     * still invalid is refused with its new reason, leaving the rejection open. With no corrected line
+     * the rejection is simply marked corrected (resolved by a later re-import), the prior behaviour.
      *
-     * @param rejectionId the rejection id
+     * @param rejectionId   the rejection id
+     * @param correctedLine the corrected data line in the batch's column order, or null/blank to only resolve
      */
     @Transactional
-    public void correct(long rejectionId) {
-        resolve(rejectionId, ImportRejectionStatus.CORRECTED, "CORRECT_REJECTION");
+    public void correct(long rejectionId, String correctedLine) {
+        ImportRejection rejection = ImportRejection.findById(rejectionId);
+        if (rejection == null || !scope.canSee(rejection.importBatch.entity.code)) {
+            throw new ResourceNotFoundException("Rejet introuvable.");
+        }
+        if (rejection.status != ImportRejectionStatus.OPEN) {
+            throw new ValidationException("Ce rejet est déjà résolu.");
+        }
+        ImportBatch batch = rejection.importBatch;
+        if (correctedLine != null && !correctedLine.isBlank() && batch.header != null) {
+            EventImportService.ReprocessOutcome outcome = events.reprocess(batch, correctedLine.strip());
+            if (!outcome.loaded()) {
+                throw new ValidationException("La ligne corrigée est encore rejetée : " + outcome.reason().name());
+            }
+            audit.record(currentUser.username(), batch.entity, "REPROCESS_REJECTION", "ImportRejection",
+                    rejection.getId(), "\"" + rejection.reasonCode.name() + "\"", "\"" + outcome.sourceKey() + "\"");
+        }
+        resolve(rejection, ImportRejectionStatus.CORRECTED, "CORRECT_REJECTION");
     }
 
     /**
@@ -141,21 +167,21 @@ public class ImportQueryService {
      */
     @Transactional
     public void discard(long rejectionId) {
-        resolve(rejectionId, ImportRejectionStatus.DISCARDED, "DISCARD_REJECTION");
+        ImportRejection rejection = ImportRejection.findById(rejectionId);
+        if (rejection == null || !scope.canSee(rejection.importBatch.entity.code)) {
+            throw new ResourceNotFoundException("Rejet introuvable.");
+        }
+        resolve(rejection, ImportRejectionStatus.DISCARDED, "DISCARD_REJECTION");
     }
 
     /**
      * Resolves a rejection to the given status and records the decision.
      *
-     * @param rejectionId the rejection id
-     * @param status      the new status
-     * @param action      the audit action code
+     * @param rejection the rejection
+     * @param status    the new status
+     * @param action    the audit action code
      */
-    private void resolve(long rejectionId, ImportRejectionStatus status, String action) {
-        ImportRejection rejection = ImportRejection.findById(rejectionId);
-        if (rejection == null || !scope.canSee(rejection.importBatch.entity.code)) {
-            throw new ResourceNotFoundException("Rejet introuvable.");
-        }
+    private void resolve(ImportRejection rejection, ImportRejectionStatus status, String action) {
         String before = "\"" + rejection.status.name() + "\"";
         rejection.status = status;
         rejection.resolvedAt = clock.now();

@@ -29,7 +29,7 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   fonctionnalité comblé : lot `SAVINGS_CYCLE` distinct) via `CrScenarioResource` + `CrScenarioResourceTest`
   + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify -DskipE2E=true` vert (819 tests,
   JaCoCo 100 %) ; les 16 specs e2e `@cr:` vertes.
-- Parcours `@path` : 81 sur 135 du catalogue §4. Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
+- Parcours `@path` : 82 sur 135 du catalogue §4 (+INT-03 le 2026-10-16 : correction d'un rejet reprocessée). Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
   événement à l'écart), CAL-12 (annulation après changement de barème → reprise au taux d'origine
   −15,00 €, D12), PAI-03 (épargne retraite → lot distinct, bordereau propre 50,00 €, période Payée après
   le dernier lot, sur le test CR-86), CAL-13 (prévisionnel régularisé à la résiliation, sur CR-66).
@@ -1305,8 +1305,11 @@ cohérent.)
 
 **Manques relevés par le rejeu des parcours (à combler, datés 2026-10-15)** — le rejeu niveau 3 révèle,
 comme attendu, des mécanismes déclarés complets mais partiels :
-- INT-03 : « Corriger et relancer » marque le rejet `CORRECTED` et trace l'audit, mais **ne relance pas
-  la ligne** ni ne met à jour les compteurs du lot (pas de reprocessing).
+- ~~INT-03 : « Corriger et relancer » ne relançait pas la ligne.~~ **Comblé le 2026-10-16** : le lot
+  garde son en-tête CSV (`ImportBatch.header`), `EventImportService.reprocess` rejoue une ligne corrigée
+  (re-contrôle, crée l'événement, met à jour les compteurs : +1 intégrée, −1 rejetée) et `correct` trace
+  l'audit ; l'écran des imports porte un champ éditable par rejet et un bouton « Corriger et relancer ».
+  Prouvé par `EventImportServiceTest`/`ImportQueryServiceTest` (toutes branches) et `@path:INT-03` (e2e).
 - INT-08 : les flux attendus n'ont que « Reçu »/« Manquant » ; **pas d'état « en retard » selon
   l'horloge**.
 - INT-10 / INT-22 : un événement en attente (référence/code externe inconnu) **n'est pas débloqué** à

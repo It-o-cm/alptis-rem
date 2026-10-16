@@ -62,6 +62,10 @@ public class ImportBatch extends BaseEntity {
     @Column(name = "imported_by")
     public String importedBy;
 
+    /** The CSV header line (column names, in file order), kept to reprocess a corrected line (INT-03). */
+    @Column(name = "header", length = 4000)
+    public String header;
+
     /** Lines read (= filtered + loaded + rejected + on hold). */
     @Column(name = "lines_read")
     public Integer linesRead;

@@ -13,6 +13,7 @@ import fr.alptis.remuneration.domain.LegalEntity;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.RejectionReasonCode;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
+import fr.alptis.remuneration.domain.ValidationException;
 import fr.alptis.remuneration.security.AuditService;
 import fr.alptis.remuneration.security.CurrentUser;
 import fr.alptis.remuneration.security.DevIdentityProvider;
@@ -51,7 +52,7 @@ class ImportQueryServiceTest {
                 .addAttribute(DevIdentityProvider.ENTITIES_ATTRIBUTE, entities)
                 .build();
         CurrentUser user = new CurrentUser(identity);
-        return new ImportQueryService(new EntityScope(user), user, audit, clock);
+        return new ImportQueryService(new EntityScope(user), user, audit, clock, new EventImportService(clock));
     }
 
     /** Returns an entity by code. */
@@ -136,7 +137,7 @@ class ImportQueryServiceTest {
         ImportRejection r2 = rejection(b);
 
         ImportQueryService service = service(List.of("ALPTIS_ASSURANCES"));
-        service.correct(r1.getId());
+        service.correct(r1.getId(), null);
         service.discard(r2.getId());
 
         assertEquals(ImportRejectionStatus.CORRECTED, ImportRejection.<ImportRejection>findById(r1.getId()).status);
@@ -155,8 +156,84 @@ class ImportQueryServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> alptis.rejections(999_999L));
         assertThrows(ResourceNotFoundException.class, () -> alptis.rejections(unep.getId()));
-        assertThrows(ResourceNotFoundException.class, () -> alptis.correct(999_999L));
-        assertThrows(ResourceNotFoundException.class, () -> alptis.correct(unepRejection.getId()));
+        assertThrows(ResourceNotFoundException.class, () -> alptis.correct(999_999L, null));
+        assertThrows(ResourceNotFoundException.class, () -> alptis.correct(unepRejection.getId(), null));
+        assertThrows(ResourceNotFoundException.class, () -> alptis.discard(999_999L));
+        assertThrows(ResourceNotFoundException.class, () -> alptis.discard(unepRejection.getId()));
+    }
+
+    /** The events pivot header used to build reprocessable batches. */
+    private static final String EVENTS_HEADER =
+            "entity_code;source_system;source_key;event_type;contract_number;coverage_code;event_date;gross_amount";
+
+    /** An Alptis events batch carrying one rejected line (missing source key); returns the rejection. */
+    private ImportRejection eventsBatchWithOneRejection() {
+        String line = "ALPTIS_ASSURANCES;CLEVA;;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100";
+        ImportBatch batch = new EventImportService(clock)
+                .importEvents("ALPTIS_ASSURANCES", "CLEVA", "q.csv", EVENTS_HEADER + "\n" + line);
+        return ImportRejection.<ImportRejection>find("importBatch", batch).firstResult();
+    }
+
+    /**
+     * INT-03: a corrected line submitted on a rejection is reprocessed — it loads the event and marks
+     * the rejection corrected.
+     */
+    @Test
+    @TestTransaction
+    void correct_reprocesses_a_corrected_line() {
+        Contract contract = new Contract();
+        contract.entity = entity("ALPTIS_ASSURANCES");
+        contract.sourceSystem = "CLEVA";
+        contract.contractNumber = "AD-1";
+        contract.persist();
+        ImportRejection r = eventsBatchWithOneRejection();
+
+        service(List.of("ALPTIS_ASSURANCES")).correct(r.getId(),
+                "ALPTIS_ASSURANCES;CLEVA;E1;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100");
+
+        assertEquals(ImportRejectionStatus.CORRECTED, ImportRejection.<ImportRejection>findById(r.getId()).status);
+        assertEquals(1, BusinessEvent.count("sourceKey", "E1"));
+    }
+
+    /** INT-03: a corrected line still invalid is refused with its new reason; the rejection stays open. */
+    @Test
+    @TestTransaction
+    void correct_refuses_a_still_invalid_corrected_line() {
+        ImportRejection r = eventsBatchWithOneRejection();
+        ImportQueryService service = service(List.of("ALPTIS_ASSURANCES"));
+
+        assertThrows(ValidationException.class, () -> service.correct(r.getId(),
+                "ALPTIS_ASSURANCES;CLEVA;;PREMIUM_COLLECTED;AD-1;C1;2020-01-05;100"));
+    }
+
+    /** INT-03: a blank corrected line only resolves the rejection (no reprocessing). */
+    @Test
+    @TestTransaction
+    void correct_with_a_blank_line_only_resolves() {
+        ImportRejection r = eventsBatchWithOneRejection();
+        service(List.of("ALPTIS_ASSURANCES")).correct(r.getId(), "   ");
+        assertEquals(ImportRejectionStatus.CORRECTED, ImportRejection.<ImportRejection>findById(r.getId()).status);
+    }
+
+    /** A corrected line on a batch without a stored header only resolves the rejection. */
+    @Test
+    @TestTransaction
+    void correct_with_a_line_but_no_header_only_resolves() {
+        ImportBatch b = batch("ALPTIS_ASSURANCES", "nohdr.csv");
+        ImportRejection r = rejection(b);
+        service(List.of("ALPTIS_ASSURANCES")).correct(r.getId(), "some;corrected;values");
+        assertEquals(ImportRejectionStatus.CORRECTED, ImportRejection.<ImportRejection>findById(r.getId()).status);
+    }
+
+    /** An already-resolved rejection cannot be corrected again. */
+    @Test
+    @TestTransaction
+    void correct_refuses_an_already_resolved_rejection() {
+        ImportBatch b = batch("ALPTIS_ASSURANCES", "once.csv");
+        ImportRejection r = rejection(b);
+        ImportQueryService service = service(List.of("ALPTIS_ASSURANCES"));
+        service.correct(r.getId(), null);
+        assertThrows(ValidationException.class, () -> service.correct(r.getId(), null));
     }
 
     /** Creates an on-hold event on a batch. */

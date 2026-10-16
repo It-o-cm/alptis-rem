@@ -75,6 +75,10 @@ const rejections = ref<RejectionView[]>([]);
 const held = ref<HeldView[]>([]);
 const message = ref('');
 const uploadError = ref('');
+/** The corrected line being edited per rejection (INT-03), prefilled with its raw line. */
+const correctedLines = ref<Record<number, string>>({});
+/** The error shown when a corrected line is still rejected. */
+const correctionError = ref('');
 
 const form = ref({ flowCode: 'distributors', sourceSystem: '', fileName: '', content: '' });
 const sourceSystems = ref<string[]>([]);
@@ -163,6 +167,11 @@ async function loadJournal(): Promise<void> {
 async function selectBatch(batch: BatchView): Promise<void> {
   selected.value = batch;
   rejections.value = await apiGet<RejectionView[]>(`/api/ui/v1/imports/${batch.id}/rejections`);
+  for (const r of rejections.value) {
+    if (correctedLines.value[r.id] === undefined) {
+      correctedLines.value[r.id] = r.rawLine;
+    }
+  }
   held.value = await apiGet<HeldView[]>(`/api/ui/v1/imports/${batch.id}/held`);
 }
 
@@ -207,8 +216,15 @@ async function submitUpload(): Promise<void> {
  * @param rejection the rejected line
  */
 async function correct(rejection: RejectionView): Promise<void> {
-  await apiPost(`/api/ui/v1/imports/rejections/${rejection.id}/correct`, {});
-  await refreshSelected();
+  const line = correctedLines.value[rejection.id] ?? '';
+  try {
+    await apiPost(
+      `/api/ui/v1/imports/rejections/${rejection.id}/correct?correctedLine=${encodeURIComponent(line)}`, {});
+    correctionError.value = '';
+    await refreshSelected();
+  } catch (e) {
+    correctionError.value = e instanceof ApiError ? e.message : 'Correction impossible';
+  }
 }
 
 /**
@@ -309,6 +325,7 @@ onMounted(async () => {
         Empreinte <span class="mono" data-testid="batch-fingerprint">{{ selected.fileHash }}</span> ·
         déposé par <span data-testid="batch-author">{{ selected.importedBy }}</span>
       </p>
+      <AppMessage v-if="correctionError" variant="error" data-testid="correction-error">{{ correctionError }}</AppMessage>
       <DataTable
         :columns="detailColumns"
         :rows="detailRows"
@@ -321,6 +338,12 @@ onMounted(async () => {
         <template #cell-code="{ row }"><span :class="row.codeClass" :data-testid="`detail-code-${row.key}`">{{ row.code }}</span></template>
         <template #cell-action="{ row }">
           <template v-if="row.kind === 'rejection' && canOperate() && row.status === 'OPEN' && row.rejection">
+            <input
+              class="ui-correct-line mono"
+              :data-testid="`correct-line-${row.rejection.id}`"
+              v-model="correctedLines[row.rejection.id]"
+              aria-label="Ligne corrigée"
+            />
             <AppButton variant="secondary" :data-testid="`correct-${row.rejection.id}`" @click="correct(row.rejection)">
               Corriger et relancer
             </AppButton>
@@ -353,5 +376,9 @@ onMounted(async () => {
 .ui-hint {
   font-size: var(--fs-small);
   color: var(--muted);
+}
+.ui-correct-line {
+  width: 100%;
+  margin-bottom: var(--sp-1);
 }
 </style>

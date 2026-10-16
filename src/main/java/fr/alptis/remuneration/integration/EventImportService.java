@@ -125,6 +125,9 @@ public class EventImportService {
         batch.receivedAt = clock.now();
         batch.importedBy = "import";
         batch.linesFiltered = filtered;
+        // Keep the header (column names in order) so a corrected rejected line can be reprocessed (INT-03).
+        // Each group carries at least its primary row (see the loop below), so get(0).get(0) is safe.
+        batch.header = groups.isEmpty() ? null : String.join(";", groups.get(0).get(0).keySet());
         batch.persist();
 
         LocalDate today = clock.today();
@@ -137,13 +140,13 @@ public class EventImportService {
             lineNumber++;
             Map<String, String> primary = group.get(0);
             if (Boolean.TRUE.equals(malformed.get(g))) {
-                reject(batch, lineNumber, primary.toString(), RejectionReasonCode.STRUCTURE);
+                reject(batch, lineNumber, cleanLine(primary), RejectionReasonCode.STRUCTURE);
                 rejected++;
                 continue;
             }
             Outcome outcome = classify(entity, sourceSystem, primary, today);
             if (outcome.rejection != null) {
-                reject(batch, lineNumber, primary.toString(), outcome.rejection);
+                reject(batch, lineNumber, cleanLine(primary), outcome.rejection);
                 rejected++;
                 continue;
             }
@@ -307,6 +310,51 @@ public class EventImportService {
         rejection.reasonCode = reason;
         rejection.status = ImportRejectionStatus.OPEN;
         rejection.persist();
+    }
+
+    /** Joins a parsed row's values in header order into a clean CSV line (section 9.9 separator). */
+    private static String cleanLine(Map<String, String> row) {
+        return String.join(";", row.values());
+    }
+
+    /** The outcome of reprocessing a corrected rejected line (INT-03). */
+    public record ReprocessOutcome(boolean loaded, boolean onHold, RejectionReasonCode reason, String sourceKey) {
+    }
+
+    /**
+     * Reprocesses a single corrected line against its original batch (INT-03): the line is re-parsed
+     * with the batch header, re-controlled and, if it now passes, persisted as an event and counted in
+     * the batch (loaded or on hold); otherwise its new rejection reason is returned. The caller resolves
+     * the rejection and records the audit trace.
+     *
+     * @param batch         the batch the rejected line belongs to
+     * @param correctedLine the corrected data line, in the batch's header column order
+     * @return the reprocessing outcome
+     */
+    @Transactional
+    public ReprocessOutcome reprocess(ImportBatch batch, String correctedLine) {
+        if (batch.header == null) {
+            return new ReprocessOutcome(false, false, RejectionReasonCode.STRUCTURE, null);
+        }
+        CsvFile csv = CsvFile.parse(batch.header + "\n" + correctedLine);
+        if (csv.rows().isEmpty() || csv.malformed(0)) {
+            return new ReprocessOutcome(false, false, RejectionReasonCode.STRUCTURE, null);
+        }
+        Map<String, String> row = csv.rows().get(0);
+        Outcome outcome = classify(batch.entity, batch.sourceSystem, row, clock.today());
+        if (outcome.rejection != null) {
+            return new ReprocessOutcome(false, false, outcome.rejection, null);
+        }
+        // A reprocessable batch was created by importGroups, so its counters are set (header != null).
+        persistEvent(batch, batch.entity, batch.sourceSystem, row, outcome);
+        boolean onHold = outcome.holdReason != null;
+        if (onHold) {
+            batch.linesOnHold += 1;
+        } else {
+            batch.linesLoaded += 1;
+        }
+        batch.linesRejected = Math.max(0, batch.linesRejected - 1);
+        return new ReprocessOutcome(true, onHold, null, value(row, "source_key"));
     }
 
     /**

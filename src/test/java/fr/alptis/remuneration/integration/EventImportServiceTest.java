@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -294,5 +295,84 @@ class EventImportServiceTest {
         row.put("event_date", "2020-01-05");
         row.put("gross_amount", gross);
         return row;
+    }
+
+    /**
+     * INT-03: reprocessing a corrected line loads it as an event and updates the batch counters (one
+     * more loaded, one fewer rejected).
+     */
+    @Test
+    @TestTransaction
+    void reprocess_loads_a_corrected_line_and_updates_counters() {
+        seedContract();
+        String content = HEADER + "\n" + row("", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100");
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "r1.csv", content);
+        assertEquals(1, batch.linesRejected);
+
+        EventImportService.ReprocessOutcome out = service.reprocess(batch,
+                row("E1", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100"));
+
+        assertTrue(out.loaded());
+        assertFalse(out.onHold());
+        assertEquals("E1", out.sourceKey());
+        assertEquals(0, batch.linesRejected);
+        assertEquals(1, batch.linesLoaded);
+        assertEquals(1, BusinessEvent.count("sourceKey", "E1"));
+    }
+
+    /** INT-03: a corrected line that is still invalid is not loaded; its new reason is returned. */
+    @Test
+    @TestTransaction
+    void reprocess_refuses_a_still_invalid_line() {
+        seedContract();
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "r2.csv",
+                HEADER + "\n" + row("", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100"));
+
+        EventImportService.ReprocessOutcome out = service.reprocess(batch,
+                row("", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100"));
+
+        assertFalse(out.loaded());
+        assertEquals(RejectionReasonCode.MISSING_FIELD, out.reason());
+        assertEquals(1, batch.linesRejected);
+    }
+
+    /** INT-03: a corrected line referencing an unknown object is loaded but put on hold. */
+    @Test
+    @TestTransaction
+    void reprocess_holds_a_line_with_an_unknown_reference() {
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "r3.csv",
+                HEADER + "\n" + row("", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100"));
+
+        EventImportService.ReprocessOutcome out = service.reprocess(batch,
+                row("E9", "PREMIUM_COLLECTED", "UNKNOWN", "", "2020-01-05", "100"));
+
+        assertTrue(out.loaded());
+        assertTrue(out.onHold());
+        assertEquals(1, batch.linesOnHold);
+    }
+
+    /** A header-only events file loads nothing and stores no header to reprocess against. */
+    @Test
+    @TestTransaction
+    void a_header_only_file_loads_nothing() {
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "empty.csv", HEADER + "\n");
+        assertEquals(0, batch.linesLoaded);
+        assertNull(batch.header);
+    }
+
+    /** INT-03: a batch without a header, an empty line and a too-long line are structurally rejected. */
+    @Test
+    @TestTransaction
+    void reprocess_rejects_structurally_broken_input() {
+        ImportBatch noHeader = new ImportBatch();
+        EventImportService.ReprocessOutcome headerless = service.reprocess(noHeader, "x");
+        assertFalse(headerless.loaded());
+        assertEquals(RejectionReasonCode.STRUCTURE, headerless.reason());
+
+        ImportBatch batch = service.importEvents("ALPTIS_ASSURANCES", "CLEVA", "r4.csv",
+                HEADER + "\n" + row("", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100"));
+        assertEquals(RejectionReasonCode.STRUCTURE, service.reprocess(batch, "").reason());
+        assertEquals(RejectionReasonCode.STRUCTURE, service.reprocess(batch,
+                row("E1", "PREMIUM_COLLECTED", "AD-1", "C1", "2020-01-05", "100") + ";extra").reason());
     }
 }
