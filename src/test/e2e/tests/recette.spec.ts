@@ -1713,3 +1713,55 @@ test('CAL-12 : une annulation après changement de barème reprend au taux d’o
 
   await ctx.close();
 });
+
+// Parcours INT-17 (section 4.1): a distributor terminated then reinstated at their effect dates — the
+// payment is blocked in the first month and released in the second.
+test('INT-17 : un distributeur radié puis réinscrit est bloqué puis payé aux bonnes dates @screen:periods @screen:payment @path:INT-17', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=INT-17&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+  const val = await valCtx.newPage();
+
+  const prepare = async (month: string) => {
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-' + month).click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-' + month).click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+    await admin.goto('/paiement');
+    await admin.getByTestId('pay-month').selectOption(month);
+    await admin.getByTestId('pay-refresh').click();
+    await admin.locator('[data-testid^="lot-open-"]').first().click();
+    await admin.getByTestId('lot-prepare').click();
+  };
+
+  // January: the distributor is terminated, so its order is cancelled and listed inactive.
+  await prepare('2026-01-01');
+  await expect(
+    admin.locator('[data-testid^="exclusion-reason-"]').filter({ hasText: 'Bénéficiaire inactif' }),
+  ).toHaveCount(1);
+
+  // February: the reinstatement has taken effect, so the order is paid — and it carries the 100,00 €
+  // held in January (kept at the account) plus February's 100,00 €, i.e. 200,00 € released at once.
+  await prepare('2026-02-01');
+  const order = admin.locator('[data-testid^="order-row-"]');
+  await expect(order).toHaveCount(1);
+  await expect(order.first()).toContainText('200,00');
+
+  await adminCtx.close();
+  await valCtx.close();
+});

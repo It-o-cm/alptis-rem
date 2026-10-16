@@ -164,6 +164,7 @@ public class CrScenarioResource {
             case "CR-86" -> seedCr86(entity, periodMonth);
             case "CAL-07" -> seedCal07(entity, periodMonth);
             case "CAL-12" -> seedCal12(entity, periodMonth);
+            case "INT-17" -> seedInt17(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1540,6 +1541,51 @@ public class CrScenarioResource {
         BusinessEvent reversal = event(entity, coverage, "CR76-E2", EventType.PREMIUM_CANCELLED,
                 periodMonth.plusDays(19), null);
         reversal.reversesEvent = premium;
+    }
+
+    /**
+     * INT-17 (parcours §4.1) : radiation puis réinscription d'un distributeur à leur date d'effet. Le
+     * distributeur porte une commission payable dans deux périodes consécutives ; un lien `TERMINATED`
+     * couvre la première (paiement bloqué, « bénéficiaire inactif ») et un lien `ACTIVE` prend effet à
+     * la seconde (paiement débloqué). Les coordonnées bancaires et la ligne acquise sont posées en entrée.
+     *
+     * @param entity      the entity
+     * @param periodMonth the first (blocked) month; the second month reinstates the distributor
+     */
+    private void seedInt17(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate second = periodMonth.plusMonths(1);
+        Period first = period(entity, periodMonth);
+        Period later = period(entity, second);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "INT17", product, periodMonth, "P-INT17", null);
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        Distributor distributor = pc.distributor;
+        // Terminated over the first month, reinstated (active) from the second — date-effective (REF-08).
+        DistributorEntity terminated = new DistributorEntity();
+        terminated.distributor = distributor;
+        terminated.entity = entity;
+        terminated.status = PartnerStatus.TERMINATED;
+        terminated.validFrom = periodMonth.minusMonths(1);
+        terminated.validTo = second.minusDays(1);
+        terminated.persist();
+        DistributorEntity active = new DistributorEntity();
+        active.distributor = distributor;
+        active.entity = entity;
+        active.status = PartnerStatus.ACTIVE;
+        active.validFrom = second;
+        active.persist();
+        BankAccount bank = new BankAccount();
+        bank.entity = entity;
+        bank.holderType = PayeeType.PRODUCTION_CODE;
+        bank.holderId = pc.getId();
+        bank.iban = "FR7630001007941234567890185";
+        bank.bic = "AGRIFRPP";
+        bank.holderName = pc.code;
+        bank.validFrom = periodMonth.minusMonths(1);
+        bank.persist();
+        earnedOnCode(entity, first, coverage, "100.00");
+        earnedOnCode(entity, later, coverage, "100.00");
     }
 
     /**

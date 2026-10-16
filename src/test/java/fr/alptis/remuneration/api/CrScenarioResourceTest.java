@@ -820,4 +820,14 @@ class CrScenarioResourceTest {
         plantAndRun("CAL-12");
         search().body("amount", hasItems(15.00f, -15.00f));
     }
+
+    /**
+     * INT-17 (parcours): the radiation/reinstatement scenario plants a payable 100 € line in each of two
+     * months; the date-effective exclusion and payment are pinned by PaymentServiceTest (REF-08).
+     */
+    @Test
+    void int17_radiation_then_reinstatement_scenario_is_seeded() {
+        given().when().post("/api/test/cr-scenario?cr=INT-17&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItem(100.00f));
+    }
 }
