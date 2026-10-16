@@ -5,7 +5,7 @@ import { resetDb, seedFdv, USERS } from '../support/helpers';
 // Per-screen tests for the sales-force module (section 8.14): the variable plan with collaborators
 // and objectives (FDV-01/03/04), the monthly calculation, validation, adjustment and pay export
 // (FDV-05/13/14) and a commercial's own variable (FDV-15). The weighting (CR-87) and absence (CR-88)
-// arithmetic is verified by SalesForceServiceTest on the server.
+// cases are replayed by the interface below and their arithmetic is also pinned by SalesForceServiceTest.
 //
 // @screen:fdvPlan @screen:fdvValidation @screen:fdvCommercial @screen:fdvCollaborators @screen:fdvMeasures
 // @screen:fdvObjectives
@@ -289,10 +289,10 @@ test('le commercial consulte son variable et le simule @screen:fdvCommercial @re
   await rep.close();
 });
 
-// Parcours FDV-04 (section 4.7): market weighting. A collaborator with 10 000 € on the particulier
-// market and 5 000 € on the professionnel market weighs 10 000 × 0,7 + 5 000 × 1,3 = 13 500 € against
-// the objective (CR-87). The simulator shows that weighted production.
-test('la pondération par marché porte 10 000 € et 5 000 € à 13 500 € @screen:fdvCommercial @req:FDV-16 @path:FDV-04', async ({
+// Parcours FDV-04 (section 4.7) and recette case CR-87: market weighting. A collaborator with 10 000 €
+// on the particulier market and 5 000 € on the professionnel market weighs 10 000 × 0,7 + 5 000 × 1,3 =
+// 13 500 € against the objective. The simulator reads that weighted production through the interface.
+test('la pondération par marché porte 10 000 € et 5 000 € à 13 500 € @screen:fdvCommercial @req:FDV-16 @path:FDV-04 @cr:CR-87', async ({
   browser,
 }) => {
   const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
@@ -329,6 +329,54 @@ test('la pondération par marché porte 10 000 € et 5 000 € à 13 500 € @s
   await page.getByTestId('sim-month').selectOption('2026-09-01');
   await page.getByTestId('sim-run').click();
   await expect(page.getByTestId('sim-weighted')).toContainText(/13.?500,00/);
+  await admin.close();
+});
+
+// Recette case CR-88 (section 13): the monthly instalment is paid when the objective is met, but ten
+// working days of absence in the month block it. The seeded C-DEMO collaborator (CAC plan 2450/146,
+// objective 1000, production 2000) is run monthly — 146,00 € — then, after importing 10 absence days,
+// re-run to nothing. Replayed through the plan and validation screens.
+test('CR-88 : la mensualité de 146,00 € est versée objectif atteint, mais bloquée par dix jours d’absence @screen:fdvPlan @screen:fdvValidation @cr:CR-88', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+
+  // Objective met (production 2000 > 1000), no absence: the monthly run pays the 146,00 € instalment.
+  await page.goto('/fdv/plan');
+  await expect(page.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
+  await page.getByTestId('fdvp-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvp-run').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('lancé');
+
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvv-refresh').click();
+  await expect(page.getByTestId('result-amount-MONTHLY_INDIVIDUAL')).toContainText('146,00');
+
+  // Ten working days of absence in September (the monthly block threshold): re-running pays nothing.
+  const OP_AUTH = 'Basic ' + Buffer.from(
+    `${USERS.operatorAlptis.username}:${USERS.operatorAlptis.password}`).toString('base64');
+  const imp = await page.request.post('/api/ui/v1/imports', {
+    headers: { Authorization: OP_AUTH },
+    data: {
+      entityCode: 'ALPTIS_ASSURANCES', flowCode: 'employee_measures', sourceSystem: 'SIRH', fileName: 'm.csv',
+      content: 'external_id;measure_type;period_from;period_to;value;dimension\n'
+        + 'C-DEMO;ABSENCE;2026-09-01;2026-09-30;10;absence\n',
+    },
+  });
+  expect(imp.ok(), `${imp.status()} ${await imp.text()}`).toBeTruthy();
+
+  await page.goto('/fdv/plan');
+  await page.getByTestId('fdvp-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvp-run').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('lancé');
+
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvv-refresh').click();
+  await expect(page.getByTestId('result-amount-MONTHLY_INDIVIDUAL')).toContainText('0,00');
+  await expect(page.getByTestId('result-amount-MONTHLY_INDIVIDUAL')).not.toHaveText(/[1-9]/);
   await admin.close();
 });
 
