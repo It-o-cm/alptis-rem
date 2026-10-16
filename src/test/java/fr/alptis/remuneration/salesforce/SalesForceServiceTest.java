@@ -229,6 +229,11 @@ class SalesForceServiceTest {
         service.adjust("UNEP", M, "E1", new BigDecimal("50.00"), "Prime exceptionnelle", "manager");
         assertThrows(ResourceNotFoundException.class,
                 () -> service.adjust("UNEP", M, "GHOST", BigDecimal.TEN, "x", "manager"));
+        // A manual adjustment without a justification is refused (FDV-08): blank and missing reason.
+        assertThrows(ValidationException.class,
+                () -> service.adjust("UNEP", M, "E1", BigDecimal.TEN, "  ", "manager"));
+        assertThrows(ValidationException.class,
+                () -> service.adjust("UNEP", M, "E1", BigDecimal.TEN, null, "manager"));
 
         PayExport export = service.payExport("UNEP", M, "finance");
         assertEquals("UNEP_VAR_202609.csv", export.fileName());

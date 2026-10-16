@@ -873,6 +873,11 @@ public class SalesForceService {
         if (employee == null) {
             throw new ResourceNotFoundException("Collaborateur inconnu : " + employeeExternalId);
         }
+        // A bonus granted despite a missed objective must carry its justification (FDV-08): a blank
+        // reason is refused, so every manual adjustment stays traceable.
+        if (reason == null || reason.isBlank()) {
+            throw new ValidationException("Motif obligatoire pour un ajustement");
+        }
         VariableResult result = new VariableResult();
         result.period = period;
         result.employee = employee;

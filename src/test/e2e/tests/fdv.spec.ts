@@ -107,6 +107,35 @@ test('l’administrateur règle le variable collectif annuel en janvier N+1 @scr
   await admin.close();
 });
 
+// Parcours FDV-08 (section 4.9): a bonus granted despite a missed objective is refused without a
+// justification, and recorded as a traced manual-adjustment component when a reason is given.
+test('l’administrateur accorde une prime malgré un objectif manqué : refus sans motif, composante tracée avec motif @screen:fdvValidation @req:FDV-13 @path:FDV-08', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2026-09-01');
+  await page.getByTestId('fdvv-refresh').click();
+
+  // Without a reason the grant is refused (FDV-08): the server rejects the blank justification.
+  await page.getByTestId('fdvv-adj-id').fill('C-DEMO');
+  await page.getByTestId('fdvv-adj-amount').fill('100');
+  await page.getByTestId('fdvv-adj-submit').click();
+  await expect(page.getByTestId('fdvv-error')).toContainText('Motif');
+
+  // With a reason the grant is recorded as a traced manual-adjustment component carrying its motive.
+  await page.getByTestId('fdvv-adj-reason').fill('Effort commercial malgré objectif manqué');
+  await page.getByTestId('fdvv-adj-submit').click();
+  await expect(page.getByTestId('fdvv-message')).toContainText('Ajustement enregistré');
+  const row = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Ajustement' }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('100,00');
+  await expect(row).toContainText('Effort commercial malgré objectif manqué');
+  await admin.close();
+});
+
 test('l’administrateur règle le variable des animateurs et responsables @screen:fdvPlan @screen:fdvValidation @req:FDV-09', async ({
   browser,
 }) => {
