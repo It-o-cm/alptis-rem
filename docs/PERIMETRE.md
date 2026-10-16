@@ -21,14 +21,14 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
 État au 2026-10-16 (étape 4 — rejeu des cas de recette, reprise honnête) :
 
 - **Décompte réel mesuré à la source, non déclaré.** Cas de recette rejoués par l'interface (`@cr:`) :
-  **69 sur 70** (CR-72 performance exclu). Les mentions antérieures de « rejeu terminé » / « toute la §13
+  **70 sur 70** (CR-72 performance exclu — complet). Les mentions antérieures de « rejeu terminé » / « toute la §13
   rejouée » étaient fausses (54 cas seulement) et sont rectifiées dans « Cas de recette — état du rejeu »
-  (« CORRECTION HONNÊTE » du 2026-10-16). **7 cas restent à rejouer** : CR-76, CR-78, CR-80, CR-85,
-  CR-86, CR-87, CR-88.
-- Ajoutés ce jour (15) : CR-73/74/75/76/77/79/81/82/83/84 (calcul), CR-85 (rejet bancaire), CR-78
-  (tolérance de solde) et CR-80 (cession avec escompte, variante remboursée) via `CrScenarioResource` +
-  `CrScenarioResourceTest` + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify
-  -DskipE2E=true` vert (814 tests, JaCoCo 100 %) ; les 15 specs e2e `@cr:` vertes.
+  (« CORRECTION HONNÊTE » du 2026-10-16). **Aucun cas restant** : les 70 cas hors performance sont rejoués.
+- Ajoutés ce jour (16) : CR-73/74/75/76/77/79/81/82/83/84 (calcul), CR-85 (rejet bancaire), CR-78
+  (tolérance de solde), CR-80 (cession avec escompte) et CR-86 (lot épargne retraite — manque de
+  fonctionnalité comblé : lot `SAVINGS_CYCLE` distinct) via `CrScenarioResource` + `CrScenarioResourceTest`
+  + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify -DskipE2E=true` vert (819 tests,
+  JaCoCo 100 %) ; les 16 specs e2e `@cr:` vertes.
 - Parcours `@path` : 77 sur 135 ; couples rôle-action : 342 ; garde-fou étape 3 : non réécrit.
   Conditions d'arrêt 2, 3 et 4 **non atteintes** — le travail continue.
 
@@ -554,25 +554,29 @@ depuis la recherche de distributeurs qui alimente le sélecteur.
 
 - **Existence (JUnit) :** **les 71 cas existent** (CR-74 P12, CR-80 cession avec escompte et
   CR-81 rachat anticipé emprunteur réalisés le 2026-10-11, avec tests). Rejeu par l'interface :
-  **69 sur 70** au 2026-10-16 ; reste **CR-86** (manque de fonctionnalité, voir ci-dessous).
+  **70 sur 70** au 2026-10-16 (CR-86 comblé en fonction puis rejoué). Rejeu par l'interface **complet**.
 - **CORRECTION HONNÊTE (2026-10-16).** Les mentions ci-dessous et plus bas (« Toutes les sections de la
   §13 sont rejouées », « Rejeu des cas de recette : terminé », « Toute la §13 est rejouée par l'interface »)
   étaient **fausses** : le décompte réel, mesuré à la source (`grep @cr: src/test/e2e/tests`), n'était que
   de **54 cas rejoués sur 70** (`CR-01`→`12`, `CR-20`→`28`, `CR-30`→`38`, `CR-40`→`51`, `CR-60`→`71`). Les
   cas `CR-73` à `CR-88` (hors `CR-72` performance) existaient côté JUnit mais **n'avaient aucun rejeu par
   l'interface**. Ces mentions sont conservées pour mémoire mais ne valent plus ; le décompte qui fait foi
-  est celui-ci. **Rejeu réel au 2026-10-16 : 69 sur 70.** Ajoutés le 2026-10-16 (seed `CrScenarioResource`
+  est celui-ci. **Rejeu réel au 2026-10-16 : 70 sur 70 — TOUS les cas hors performance sont rejoués.** Ajoutés le 2026-10-16 (seed `CrScenarioResource`
   + test `CrScenarioResourceTest` au montant recopié + test `recette.spec` par l'interface) : `CR-73`
   (prorata frontière 1re année, apport 28,31 € + suivi 30,00 €), `CR-74` (changement de taux P12,
   7,50 € + 9,00 €), `CR-75` (groupes d'exclusion et opération, 18,00 € + 2,00 €), `CR-77` (frais de
   dossier, 300,00 €), `CR-82` (sur encours, 15,00 €), `CR-83` (arbitrage, 30,00 € sur le second).
-  **Reste à rejouer (1)** : `CR-86` (lot de l'épargne retraite). **CR-86 n'est pas un simple rejeu** :
-  aucun flux de production ne crée le lot `SAVINGS_CYCLE` distinct (daté du 20 au 25, bordereau propre) —
-  `AccountService.proposePayments` ne fait qu'un lot `CYCLE` ; seul le test `PaymentServiceTest.cr86`
-  construit le lot épargne à la main. C'est un **manque de fonctionnalité** (§7.3/§10.5) à combler
-  (fonction d'abord) avant de pouvoir le rejouer par l'interface, pas une étiquette à poser.
+  **Aucun cas restant.** `CR-86` (lot de l'épargne retraite) était un **manque de fonctionnalité**, désormais
+  **comblé** (2026-10-16, fonction d'abord) : `AccountService.proposePayments` aiguille les lignes d'une
+  gamme d'épargne retraite (nouveau drapeau `ProductRange.retirementSavings`) vers un lot `SAVINGS_CYCLE`
+  distinct, daté du 20, avec son propre bordereau ; le reliquat (solde reporté, compensation, seuil) reste
+  au lot de cycle, et un net négatif d'un lot est imputé sur l'autre (§10.5, modèle d'allocation : la part
+  positive de l'épargne d'abord, le cycle le reste ; les lignes imputées suivent le bordereau du lot qui
+  paie). La période ne passe `PAID` qu'au règlement de tous ses lots (déjà en place). Prouvé par
+  `AccountServiceTest` (split, imputations, légs nuls), `CrScenarioResourceTest`/`PaymentServiceTest.cr86`
+  et le rejeu `recette.spec` (deux lots, la période n'est « Payée » qu'après le règlement du second).
 - **Rejeu par l'interface (`@cr:`) :** 54 sur 70 (`CR-01` à `CR-12`, `CR-20` à `CR-28`, `CR-30` à `CR-38`,
-  `CR-40` à `CR-51`, `CR-60` à `CR-71`), **puis +15 le 2026-10-16 (CR-73/74/75/76/77/78/79/80/81/82/83/84/85/87/88) → 69 sur 70.**
+  `CR-40` à `CR-51`, `CR-60` à `CR-71`), **puis +16 le 2026-10-16 (CR-73→88 hors 72) → 70 sur 70 (complet).**
   ~~**Toutes les sections de la §13 sont rejouées (§13.1 à §13.5).** Les 69 cas de recette hors
   performance (CR-72, volume, exclu) sont rejoués par l'interface. Il ne reste plus de cas à rejouer.~~
   (Mention fausse, rectifiée ci-dessus le 2026-10-16.)
@@ -761,7 +765,7 @@ avec les vérifications de sa colonne. Certains parcours déjà exercés par un 
 étiquetés quand le test fait réellement les vérifications du parcours (jamais d'étiquette seule).
 
 ~~**Rejeu des cas de recette terminé (2026-10-15)** : les 69 cas hors performance sont rejoués~~ **(Faux,
-rectifié le 2026-10-16 : 69 sur 70 rejoués, 1 restant — voir « CORRECTION HONNÊTE ».)** ; place aux
+rectifié le 2026-10-16 : 70 sur 70 rejoués (complet) — voir « CORRECTION HONNÊTE ».)** ; place aux
 parcours `@path`.
 
 **Parcours `@path` — avancement (début 2026-10-15).** 13 sur ~135 (`ADM-01`, `BOOT-01`, `CR-70`, `DEM-01`,

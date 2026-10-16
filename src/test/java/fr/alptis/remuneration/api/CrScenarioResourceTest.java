@@ -789,4 +789,15 @@ class CrScenarioResourceTest {
                 .when().post("/api/ui/v1/calculations/UNEP/2026-02-01/run").then().statusCode(200);
         search("2026-02-01").body("findAll { it.nature == 'ADVANCE_ADJUSTMENT' }.amount", hasItem(-280.00f));
     }
+
+    /**
+     * CR-86: the retirement-savings scenario plants a 110 € cycle line and a 50 € savings line; the
+     * two-lot split and the period's PAID gating are pinned by AccountServiceTest and PaymentServiceTest.
+     * Here the seed is exercised and both lines read on the reporting search.
+     */
+    @Test
+    void cr86_savings_lot_scenario_is_seeded() {
+        given().when().post("/api/test/cr-scenario?cr=CR-86&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItems(110.00f, 50.00f));
+    }
 }

@@ -1533,6 +1533,83 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await expect(regul).toHaveCount(1);
     await expect(regul.first()).toContainText('-280,00');
   });
+
+  test('CR-86 : l’épargne retraite part dans un lot distinct, la période n’est Payée qu’une fois les deux lots réglés @screen:periods @screen:payment @cr:CR-86', async ({
+    browser,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-86&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    // The operator drives the period to a prepared payment, which splits the lines into two lots.
+    const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+    const admin = await adminCtx.newPage();
+    await admin.goto('/');
+    await admin.getByTestId('open-UNEP-2026-01-01').click();
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+    await admin.getByTestId('advance-button').click();
+    await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+
+    const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+    const val = await valCtx.newPage();
+    await val.goto('/');
+    await val.getByTestId('open-UNEP-2026-01-01').click();
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+    await val.getByTestId('advance-button').click();
+    await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+    const finCtx = await browser.newContext({ httpCredentials: USERS.financeUnep });
+    const fin = await finCtx.newPage();
+    await fin.goto('/paiement');
+    await fin.getByTestId('pay-month').selectOption('2026-01-01');
+    await fin.getByTestId('pay-refresh').click();
+    // Two distinct lots: a cycle lot (110,00 €) and a retirement-savings lot (50,00 €).
+    await expect(fin.locator('[data-testid^="lot-row-"]')).toHaveCount(2);
+    await expect(fin.locator('[data-testid^="lot-type-"]').filter({ hasText: 'SAVINGS_CYCLE' })).toHaveCount(1);
+
+    // Validate both lots (their orders become issued).
+    for (let i = 0; i < 2; i += 1) {
+      await fin.locator('[data-testid^="lot-open-"]').nth(i).click();
+      await fin.getByTestId('lot-validate').click();
+      await expect(fin.locator('[data-testid^="order-status-"]').first()).toContainText('Émis');
+    }
+
+    // The Finance controller validates the period, then settles the lots one at a time.
+    await fin.goto('/');
+    await fin.getByTestId('open-UNEP-2026-01-01').click();
+    await fin.getByTestId('advance-button').click();
+    await expect(fin.getByTestId('detail-state')).toContainText('Validée Finance');
+
+    await fin.goto('/paiement');
+    await fin.getByTestId('pay-month').selectOption('2026-01-01');
+    await fin.getByTestId('pay-refresh').click();
+    await fin.locator('[data-testid^="lot-open-"]').nth(0).click();
+    await fin.locator('[data-testid^="order-settle-"]').first().click();
+    await expect(fin.locator('[data-testid^="order-status-"]').first()).toContainText('Réglé');
+
+    // Only one lot settled: the period is still Validée Finance, not yet Payée.
+    await fin.goto('/');
+    await fin.getByTestId('open-UNEP-2026-01-01').click();
+    await expect(fin.getByTestId('detail-state')).toContainText('Validée Finance');
+
+    // Settle the second lot: now every order of every lot is settled, so the period is Payée.
+    await fin.goto('/paiement');
+    await fin.getByTestId('pay-month').selectOption('2026-01-01');
+    await fin.getByTestId('pay-refresh').click();
+    await fin.locator('[data-testid^="lot-open-"]').nth(1).click();
+    await fin.locator('[data-testid^="order-settle-"]').first().click();
+    await expect(fin.locator('[data-testid^="order-status-"]').first()).toContainText('Réglé');
+
+    await fin.goto('/');
+    await fin.getByTestId('open-UNEP-2026-01-01').click();
+    await expect(fin.getByTestId('detail-state')).toContainText('Payée');
+
+    await adminCtx.close();
+    await valCtx.close();
+    await finCtx.close();
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet

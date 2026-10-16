@@ -40,6 +40,8 @@ import fr.alptis.remuneration.domain.PayeeRule;
 import fr.alptis.remuneration.domain.PayeeRuleShare;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.Product;
+import fr.alptis.remuneration.domain.ProductRange;
+import fr.alptis.remuneration.domain.ProductTarget;
 import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.domain.QualityIndicator;
 import fr.alptis.remuneration.domain.QualityIndicatorType;
@@ -159,6 +161,7 @@ public class CrScenarioResource {
             case "CR-85" -> seedCr85(entity, periodMonth);
             case "CR-78" -> seedCr78(entity, periodMonth);
             case "CR-80" -> seedCr80(entity, periodMonth);
+            case "CR-86" -> seedCr86(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1150,6 +1153,7 @@ public class CrScenarioResource {
         line.nature = LineNature.LINEAR;
         line.status = LineStatus.EARNED;
         line.amount = new BigDecimal(amount);
+        line.contract = coverage.contract;
         line.coverage = coverage;
         line.originProductionCode = pc;
         line.attachmentMonth = period.periodMonth;
@@ -1534,6 +1538,68 @@ public class CrScenarioResource {
         BusinessEvent reversal = event(entity, coverage, "CR76-E2", EventType.PREMIUM_CANCELLED,
                 periodMonth.plusDays(19), null);
         reversal.reversesEvent = premium;
+    }
+
+    /**
+     * CR-86 (lot de l'épargne retraite) : une période portant une commission de cycle (110 €) et une
+     * commission d'épargne retraite (50 €, gamme `EPARGNE`), chacune sur un bénéficiaire payable
+     * (coordonnées bancaires, inscrit à l'entité). La préparation du paiement crée deux lots distincts —
+     * un lot de cycle de 110,00 € et un lot d'épargne retraite de 50,00 € daté du 20 — et la période ne
+     * passe `PAID` qu'une fois les ordres des deux lots réglés (§10.5/§10.6). Les lignes acquises sont
+     * posées comme état d'entrée, le code de production les aiguille vers leur compte à la préparation.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr86(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        Product sante = product(entity, "SANTE_SELECT");
+        Coverage cycleCoverage = coverage(entity, "CR86C", sante, periodMonth, "P-CR86C", null);
+        payable(entity, cycleCoverage, periodMonth);
+        earnedOnCode(entity, period, cycleCoverage, "110.00");
+        ProductRange savingsRange = new ProductRange();
+        savingsRange.code = "EPARGNE-CR86";
+        savingsRange.label = "Épargne retraite";
+        savingsRange.target = ProductTarget.INDIVIDUAL;
+        savingsRange.retirementSavings = Boolean.TRUE;
+        savingsRange.persist();
+        Product per = new Product();
+        per.entity = entity;
+        per.code = "PER-CR86";
+        per.label = "Plan Épargne Retraite";
+        per.range = savingsRange;
+        per.persist();
+        Coverage savingsCoverage = coverage(entity, "CR86S", per, periodMonth, "P-CR86S", null);
+        payable(entity, savingsCoverage, periodMonth);
+        earnedOnCode(entity, period, savingsCoverage, "50.00");
+    }
+
+    /**
+     * Makes a coverage's production code payable: registers its distributor in the entity (active) and
+     * gives the code bank details, so a payment order can be issued and settled.
+     *
+     * @param entity      the entity
+     * @param coverage    the coverage carrying the production code
+     * @param periodMonth the period month (validity start)
+     */
+    private void payable(LegalEntity entity, Coverage coverage, LocalDate periodMonth) {
+        ProductionCode pc = CoverageAssignment.<CoverageAssignment>find("coverage", coverage)
+                .firstResult().productionCode;
+        DistributorEntity link = new DistributorEntity();
+        link.distributor = pc.distributor;
+        link.entity = entity;
+        link.status = PartnerStatus.ACTIVE;
+        link.validFrom = periodMonth;
+        link.persist();
+        BankAccount bank = new BankAccount();
+        bank.entity = entity;
+        bank.holderType = PayeeType.PRODUCTION_CODE;
+        bank.holderId = pc.getId();
+        bank.iban = "FR7630001007941234567890185";
+        bank.bic = "AGRIFRPP";
+        bank.holderName = pc.code;
+        bank.validFrom = periodMonth;
+        bank.persist();
     }
 
     /**

@@ -183,6 +183,7 @@ public class DemoReferentialBuilder {
             range.code = row[0];
             range.label = row[1];
             range.target = ProductTarget.valueOf(row[2]);
+            range.retirementSavings = "EPARGNE".equals(row[0]);
             stamp(range);
             range.persist();
             ranges.put(range.code, range);

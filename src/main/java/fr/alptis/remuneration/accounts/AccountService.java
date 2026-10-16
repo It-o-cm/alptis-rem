@@ -244,17 +244,21 @@ public class AccountService {
      */
     @Transactional
     public PaymentBatch proposePayments(LegalEntity entity, Period period) {
-        PaymentBatch batch = new PaymentBatch();
-        batch.entity = entity;
-        batch.period = period;
-        batch.batchType = BatchType.CYCLE;
-        batch.batchReference = "CYCLE-" + entity.code + "-" + period.periodMonth;
-        batch.status = BatchStatus.DRAFT;
-        batch.totalAmount = BigDecimal.ZERO;
-        batch.setCreatedAt(clock.now());
-        batch.persist();
+        PaymentBatch cycle = new PaymentBatch();
+        cycle.entity = entity;
+        cycle.period = period;
+        cycle.batchType = BatchType.CYCLE;
+        cycle.batchReference = "CYCLE-" + entity.code + "-" + period.periodMonth;
+        cycle.status = BatchStatus.DRAFT;
+        cycle.totalAmount = BigDecimal.ZERO;
+        cycle.setCreatedAt(clock.now());
+        cycle.persist();
+        // The retirement-savings lot is created only when a savings line is actually payable, so a
+        // period with no savings range behaves exactly as before (one cycle lot).
+        PaymentBatch[] savingsHolder = {null};
         BigDecimal threshold = entity.minPaymentAmount == null ? BigDecimal.ZERO : entity.minPaymentAmount;
-        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal cycleTotal = BigDecimal.ZERO;
+        BigDecimal savingsTotal = BigDecimal.ZERO;
         for (DistributorAccount account : DistributorAccount.<DistributorAccount>list("entity = ?1", entity)) {
             List<CommissionLine> earned = CommissionLine.<CommissionLine>list(
                     "account = ?1 and status = ?2", account, LineStatus.EARNED);
@@ -264,59 +268,160 @@ public class AccountService {
                     .filter(line -> Boolean.TRUE.equals(line.blocked))
                     .map(line -> line.amount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal net = balance(account).subtract(held);
-            Statement statement = statement(entity, period, account, net);
-            PaymentExclusionReason reason = exclusionReason(account, net, threshold, clock.today());
-            if (reason == null) {
-                PaymentOrder order = new PaymentOrder();
-                order.batch = batch;
-                order.account = account;
-                order.statement = statement;
-                order.amount = net;
-                order.status = PaymentOrderStatus.TO_VALIDATE;
-                order.setCreatedAt(clock.now());
-                order.persist();
-                for (CommissionLine line : earned) {
-                    if (!Boolean.TRUE.equals(line.blocked)) {
-                        line.status = LineStatus.PAYABLE;
-                        // Link the line to the bordereau carrying it, so the audit chain traces a paid
-                        // line back to its statement (REP-02).
-                        line.statement = statement;
-                    }
-                }
-                total = total.add(net);
-            } else {
+            BigDecimal payable = balance(account).subtract(held);
+            PaymentExclusionReason reason = exclusionReason(account, payable, threshold, clock.today());
+            if (reason != null) {
                 PaymentExclusion exclusion = new PaymentExclusion();
-                exclusion.batch = batch;
+                exclusion.batch = cycle;
                 exclusion.account = account;
                 exclusion.reason = reason;
-                exclusion.amount = net;
+                exclusion.amount = payable;
                 exclusion.setCreatedAt(clock.now());
                 exclusion.persist();
+                continue;
+            }
+            // Split the payable between the retirement-savings lot and the cycle lot (section 10.5): the
+            // savings range takes its own positive net, the cycle lot carries the rest (prior balance,
+            // compensation, threshold). A negative net of either lot is imputed on the other, so the two
+            // orders still sum to the account's payable and no payment exceeds a positive balance (CPT-03).
+            List<CommissionLine> nonBlocked = earned.stream()
+                    .filter(line -> !Boolean.TRUE.equals(line.blocked)).toList();
+            List<CommissionLine> savingsLines = nonBlocked.stream().filter(this::savingsLine).toList();
+            List<CommissionLine> cycleLines = nonBlocked.stream().filter(line -> !savingsLine(line)).toList();
+            BigDecimal savingsNet = savingsLines.stream()
+                    .map(line -> line.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal savingsPay = savingsNet.signum() > 0 ? savingsNet.min(payable) : BigDecimal.ZERO;
+            BigDecimal cyclePay = payable.subtract(savingsPay);
+            BigDecimal savingsPeriodTotal = savingsPeriodTotal(account, period);
+            BigDecimal cyclePeriodTotal = periodTotal(account, period).subtract(savingsPeriodTotal);
+            Statement cycleStmt = cyclePay.signum() > 0
+                    ? statement(entity, period, account, BatchType.CYCLE, cyclePay, cyclePeriodTotal) : null;
+            Statement savingsStmt = savingsPay.signum() > 0
+                    ? statement(entity, period, account, BatchType.SAVINGS_CYCLE, savingsPay, savingsPeriodTotal)
+                    : null;
+            if (cycleStmt != null) {
+                order(cycle, account, cycleStmt, cyclePay);
+                cycleTotal = cycleTotal.add(cyclePay);
+            }
+            if (savingsStmt != null) {
+                if (savingsHolder[0] == null) {
+                    savingsHolder[0] = savingsBatch(entity, period);
+                }
+                order(savingsHolder[0], account, savingsStmt, savingsPay);
+                savingsTotal = savingsTotal.add(savingsPay);
+            }
+            // Attach each line to the bordereau of the lot that pays it; an imputed lot (net <= 0) has no
+            // statement, so its lines follow the paying lot (REP-02 audit chain).
+            Statement savingsHome = savingsStmt != null ? savingsStmt : cycleStmt;
+            Statement cycleHome = cycleStmt != null ? cycleStmt : savingsStmt;
+            for (CommissionLine line : savingsLines) {
+                line.status = LineStatus.PAYABLE;
+                line.statement = savingsHome;
+            }
+            for (CommissionLine line : cycleLines) {
+                line.status = LineStatus.PAYABLE;
+                line.statement = cycleHome;
             }
         }
-        batch.totalAmount = total;
-        return batch;
+        cycle.totalAmount = cycleTotal;
+        if (savingsHolder[0] != null) {
+            savingsHolder[0].totalAmount = savingsTotal;
+        }
+        return cycle;
     }
 
     /**
-     * Creates the account's statement for the period, carrying the balance before the period and its
-     * period total.
+     * Creates the draft retirement-savings lot of a period, dated the 20th of the period month (section
+     * 10.6: the savings transfers go out between the 20th and the 25th).
      *
-     * @param entity  the entity
-     * @param period  the period
+     * @param entity the entity
+     * @param period the period
+     * @return the created savings batch
+     */
+    private PaymentBatch savingsBatch(LegalEntity entity, Period period) {
+        PaymentBatch savings = new PaymentBatch();
+        savings.entity = entity;
+        savings.period = period;
+        savings.batchType = BatchType.SAVINGS_CYCLE;
+        savings.batchReference = "SAVINGS-" + entity.code + "-" + period.periodMonth;
+        savings.status = BatchStatus.DRAFT;
+        savings.executionDate = period.periodMonth.withDayOfMonth(20);
+        savings.totalAmount = BigDecimal.ZERO;
+        savings.setCreatedAt(clock.now());
+        savings.persist();
+        return savings;
+    }
+
+    /**
+     * Creates a to-validate payment order on a lot for an account.
+     *
+     * @param batch     the lot
+     * @param account   the account
+     * @param statement the statement carrying the order
+     * @param amount    the order amount
+     */
+    private void order(PaymentBatch batch, DistributorAccount account, Statement statement, BigDecimal amount) {
+        PaymentOrder order = new PaymentOrder();
+        order.batch = batch;
+        order.account = account;
+        order.statement = statement;
+        order.amount = amount;
+        order.status = PaymentOrderStatus.TO_VALIDATE;
+        order.setCreatedAt(clock.now());
+        order.persist();
+    }
+
+    /**
+     * Whether a commission line belongs to a retirement-savings range (section 10.5).
+     *
+     * @param line the commission line
+     * @return true when its product's range is a retirement-savings range
+     */
+    private boolean savingsLine(CommissionLine line) {
+        return line.contract != null && line.contract.product != null
+                && line.contract.product.range != null
+                && Boolean.TRUE.equals(line.contract.product.range.retirementSavings);
+    }
+
+    /**
+     * Returns the part of an account's period total carried by retirement-savings lines.
+     *
      * @param account the account
-     * @param net     the net balance
+     * @param period  the period
+     * @return the savings period total
+     */
+    private BigDecimal savingsPeriodTotal(DistributorAccount account, Period period) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (CommissionLine line : CommissionLine.<CommissionLine>list(
+                "account = ?1 and period = ?2 and status in ?3", account, period, COUNTED)) {
+            if (savingsLine(line)) {
+                sum = sum.add(line.amount);
+            }
+        }
+        return sum;
+    }
+
+    /**
+     * Creates the account's statement for the period and lot, carrying the balance before the period and
+     * its period total.
+     *
+     * @param entity      the entity
+     * @param period      the period
+     * @param account     the account
+     * @param batchType   the lot type the statement belongs to
+     * @param net         the net balance of the lot
+     * @param periodTotal the lot's part of the period total
      * @return the statement
      */
-    private Statement statement(LegalEntity entity, Period period, DistributorAccount account, BigDecimal net) {
-        BigDecimal periodTotal = periodTotal(account, period);
+    private Statement statement(LegalEntity entity, Period period, DistributorAccount account, BatchType batchType,
+                                BigDecimal net, BigDecimal periodTotal) {
         Statement statement = new Statement();
         statement.entity = entity;
         statement.period = period;
         statement.account = account;
-        statement.batchType = BatchType.CYCLE;
-        statement.statementNumber = "ST-" + entity.code + "-" + period.periodMonth + "-" + account.getId();
+        statement.batchType = batchType;
+        statement.statementNumber = "ST-" + entity.code + "-" + period.periodMonth + "-" + account.getId()
+                + (batchType == BatchType.SAVINGS_CYCLE ? "-S" : "");
         statement.versionNo = 1;
         statement.level = StatementLevel.PRODUCTION_CODE;
         statement.carriedBalance = net.subtract(periodTotal);

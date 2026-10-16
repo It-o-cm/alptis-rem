@@ -40,4 +40,11 @@ public class ProductRange extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "target", length = 30)
     public ProductTarget target;
+
+    /**
+     * Whether this is a retirement-savings range: its commission lines are paid in a distinct
+     * {@code SAVINGS_CYCLE} lot dated the 20th to the 25th, with its own statement (section 10.5/10.6).
+     */
+    @Column(name = "retirement_savings")
+    public Boolean retirementSavings;
 }

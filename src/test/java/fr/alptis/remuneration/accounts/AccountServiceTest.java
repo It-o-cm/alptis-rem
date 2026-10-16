@@ -2,7 +2,9 @@ package fr.alptis.remuneration.accounts;
 
 import fr.alptis.remuneration.domain.AccountEntry;
 import fr.alptis.remuneration.domain.AccountEntryType;
+import fr.alptis.remuneration.domain.BatchType;
 import fr.alptis.remuneration.domain.CommissionLine;
+import fr.alptis.remuneration.domain.Contract;
 import fr.alptis.remuneration.domain.Direction;
 import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
@@ -16,6 +18,8 @@ import fr.alptis.remuneration.domain.PaymentExclusion;
 import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
+import fr.alptis.remuneration.domain.Product;
+import fr.alptis.remuneration.domain.ProductRange;
 import fr.alptis.remuneration.domain.ProductionCode;
 import fr.alptis.remuneration.accounts.AccountService.MonthBalance;
 import io.quarkus.test.TestTransaction;
@@ -94,6 +98,21 @@ class AccountServiceTest {
         line.persist();
     }
 
+    /** Posts an earned cycle line carrying a given contract (for the savings-classification null legs). */
+    private static void contractLine(DistributorAccount account, Period period, String amount, Contract contract) {
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.account = account;
+        line.contract = contract;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = period.periodMonth;
+        line.persist();
+    }
+
     /** Posts an opening-balance entry on an account. */
     private static void opening(DistributorAccount account, String amount) {
         AccountEntry entry = new AccountEntry();
@@ -101,6 +120,154 @@ class AccountServiceTest {
         entry.entryType = AccountEntryType.OPENING_BALANCE;
         entry.amount = new BigDecimal(amount);
         entry.persist();
+    }
+
+    /**
+     * Posts an earned commission line on a retirement-savings-range contract, so it is swept into the
+     * distinct savings lot (section 10.5). The suffix keys the unique range/product/contract.
+     */
+    private static void savingsLine(DistributorAccount account, Period period, String amount, String suffix) {
+        ProductRange range = new ProductRange();
+        range.code = "EPARGNE-" + suffix;
+        range.label = "Épargne retraite";
+        range.retirementSavings = Boolean.TRUE;
+        range.persist();
+        Product product = new Product();
+        product.entity = unep();
+        product.code = "PER-" + suffix;
+        product.label = "PER";
+        product.range = range;
+        product.persist();
+        Contract contract = new Contract();
+        contract.entity = unep();
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = "C-" + suffix;
+        contract.product = product;
+        contract.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.account = account;
+        line.contract = contract;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.ADVANCE;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = period.periodMonth;
+        line.persist();
+    }
+
+    /** Returns the sole order of a period's lot of the given type, or null when the lot has none. */
+    private static PaymentOrder orderOf(Period period, BatchType type) {
+        PaymentBatch batch = PaymentBatch.find("period = ?1 and batchType = ?2", period, type).firstResult();
+        return batch == null ? null : PaymentOrder.<PaymentOrder>find("batch = ?1", batch).firstResult();
+    }
+
+    /**
+     * CR-86: retirement-savings lines are paid in a distinct SAVINGS_CYCLE lot. Two accounts, one with a
+     * savings line only, one with both a savings and a cycle line, produce a savings lot (dated the
+     * 20th) carrying each account's savings net and a cycle lot carrying the rest.
+     */
+    @Test
+    @TestTransaction
+    void cr86_savings_lines_go_to_a_distinct_savings_lot() {
+        Period p = period(LocalDate.of(2026, 1, 1));
+        DistributorAccount savingsOnly = accountOf(distributor("DS"), "PC-S");
+        savingsLine(savingsOnly, p, "50.00", "A");
+        DistributorAccount mixed = accountOf(distributor("DM"), "PC-M");
+        savingsLine(mixed, p, "30.00", "B");
+        line(mixed, p, "100.00");
+
+        service.proposePayments(unep(), p);
+
+        // The savings lot (dated the 20th) pays each account's savings net.
+        PaymentBatch savings = PaymentBatch.find("period = ?1 and batchType = ?2", p,
+                BatchType.SAVINGS_CYCLE).firstResult();
+        assertNotNull(savings);
+        assertEquals(LocalDate.of(2026, 1, 20), savings.executionDate);
+        assertEquals(0, savings.totalAmount.compareTo(new BigDecimal("80.00")));
+        assertNotNull(orderOf(p, BatchType.SAVINGS_CYCLE));
+        // The savings-only account has no cycle order; the mixed account's cycle order is its 100 €.
+        PaymentBatch cycle = PaymentBatch.find("period = ?1 and batchType = ?2", p, BatchType.CYCLE).firstResult();
+        assertEquals(0, cycle.totalAmount.compareTo(new BigDecimal("100.00")));
+    }
+
+    /**
+     * A negative savings net is imputed on the cycle lot (section 10.5): a −30 € savings line and a
+     * +100 € cycle line pay 70,00 € in the cycle lot and create no savings lot.
+     */
+    @Test
+    @TestTransaction
+    void a_negative_savings_net_is_imputed_on_the_cycle_lot() {
+        Period p = period(LocalDate.of(2026, 1, 1));
+        DistributorAccount a = accountOf(distributor("DN"), "PC-N");
+        savingsLine(a, p, "-30.00", "C");
+        line(a, p, "100.00");
+
+        service.proposePayments(unep(), p);
+
+        assertNull(PaymentBatch.find("period = ?1 and batchType = ?2", p, BatchType.SAVINGS_CYCLE).firstResult());
+        PaymentOrder cycle = orderOf(p, BatchType.CYCLE);
+        assertNotNull(cycle);
+        assertEquals(0, cycle.amount.compareTo(new BigDecimal("70.00")));
+    }
+
+    /**
+     * A line whose contract has no product, or whose product has no range, is not a savings line: it
+     * stays on the cycle lot (covers the null short-circuits of the savings classification).
+     */
+    @Test
+    @TestTransaction
+    void a_line_without_product_or_range_is_not_savings() {
+        Period p = period(LocalDate.of(2026, 1, 1));
+        DistributorAccount a = accountOf(distributor("DX"), "PC-X");
+        Contract noProduct = new Contract();
+        noProduct.entity = unep();
+        noProduct.sourceSystem = "SYS";
+        noProduct.contractNumber = "C-NOPROD";
+        noProduct.persist();
+        Product noRange = new Product();
+        noRange.entity = unep();
+        noRange.code = "P-NORANGE";
+        noRange.label = "No range";
+        noRange.persist();
+        Contract withProduct = new Contract();
+        withProduct.entity = unep();
+        withProduct.sourceSystem = "SYS";
+        withProduct.contractNumber = "C-NORANGE";
+        withProduct.product = noRange;
+        withProduct.persist();
+        contractLine(a, p, "40.00", noProduct);
+        contractLine(a, p, "60.00", withProduct);
+
+        service.proposePayments(unep(), p);
+
+        // Both lines are cycle lines (no savings range), so there is no savings lot and the cycle pays 100 €.
+        assertNull(PaymentBatch.find("period = ?1 and batchType = ?2", p, BatchType.SAVINGS_CYCLE).firstResult());
+        PaymentOrder cycle = orderOf(p, BatchType.CYCLE);
+        assertNotNull(cycle);
+        assertEquals(0, cycle.amount.compareTo(new BigDecimal("100.00")));
+    }
+
+    /**
+     * A negative cycle net is imputed on the savings lot: a +100 € savings line and a −30 € cycle line
+     * pay 70,00 € in the savings lot and create no cycle order.
+     */
+    @Test
+    @TestTransaction
+    void a_negative_cycle_net_is_imputed_on_the_savings_lot() {
+        Period p = period(LocalDate.of(2026, 1, 1));
+        DistributorAccount a = accountOf(distributor("DC"), "PC-C");
+        savingsLine(a, p, "100.00", "D");
+        line(a, p, "-30.00");
+
+        service.proposePayments(unep(), p);
+
+        PaymentOrder savings = orderOf(p, BatchType.SAVINGS_CYCLE);
+        assertNotNull(savings);
+        assertEquals(0, savings.amount.compareTo(new BigDecimal("70.00")));
+        PaymentBatch cycle = PaymentBatch.find("period = ?1 and batchType = ?2", p, BatchType.CYCLE).firstResult();
+        assertEquals(0, cycle.totalAmount.compareTo(BigDecimal.ZERO));
     }
 
     /**
