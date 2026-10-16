@@ -1841,3 +1841,32 @@ test('INT-22 : une correspondance de code externe débloque l’événement en a
 
   await adminCtx.close();
 });
+
+test('INT-23 : l’écran montre un indicateur reçu et un indicateur calculé en interne @screen:quality-indicators @path:INT-23', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=INT-23&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  // The internally computed unpaid rate is produced by the calculation (REF-07).
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // The indicators screen lists both origins for the distributor P-INT23, by period.
+  await admin.goto('/indicateurs');
+  const rows = admin.getByTestId('indicator-row').filter({ hasText: 'P-INT23' });
+  const computed = rows.filter({ hasText: 'Calculé en interne' });
+  await expect(computed).toHaveCount(1);
+  await expect(computed).toContainText('UNPAID_RATE');
+  await expect(computed).toContainText('50');
+  await expect(rows.filter({ hasText: 'Reçu' })).toContainText('COMPLAINT_RATE');
+
+  await adminCtx.close();
+});

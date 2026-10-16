@@ -6,6 +6,7 @@ import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.CommissionPlan;
 import fr.alptis.remuneration.domain.Contract;
+import fr.alptis.remuneration.domain.ContractStatus;
 import fr.alptis.remuneration.domain.Coverage;
 import fr.alptis.remuneration.domain.CoverageAssignment;
 import fr.alptis.remuneration.domain.Direction;
@@ -18,6 +19,8 @@ import fr.alptis.remuneration.domain.LineStatus;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.Product;
 import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.domain.QualityIndicator;
+import fr.alptis.remuneration.domain.QualityIndicatorType;
 import fr.alptis.remuneration.domain.RemunerationChoice;
 import fr.alptis.remuneration.domain.RemunerationMode;
 import fr.alptis.remuneration.domain.ReplacementOrder;
@@ -1465,5 +1468,72 @@ class CalculationEngineTest {
         engine.runReal("UNEP", MONTH);
 
         assertNull(BusinessEvent.<BusinessEvent>findById(held.getId()).pendingContractNumber);
+    }
+
+    /**
+     * REF-07 / INT-23: the unpaid rate is computed per distributor at the calculation date — unpaid
+     * in-force garanties over in-force garanties. A garantie with no current main production code is
+     * skipped, a terminated one is out of portfolio, an unpaid notice undone by a later reinstatement no
+     * longer counts.
+     */
+    @Test
+    @TestTransaction
+    void int23_computes_the_unpaid_rate_per_distributor() {
+        Product product = product("SANTE_SELECT");
+        // In force, not unpaid: 0 %.
+        inForce("INT23A", product, "QA");
+        // In force, unpaid: 100 %.
+        Coverage b = inForce("INT23B", product, "QB");
+        processed(b, "B-UNPAID", EventType.UNPAID_NOTICE, MONTH.plusDays(3));
+        // In force, unpaid then reinstated: not unpaid, 0 %.
+        Coverage c = inForce("INT23C", product, "QC");
+        processed(c, "C-UNPAID", EventType.UNPAID_NOTICE, MONTH.plusDays(3));
+        processed(c, "C-REINST", EventType.REINSTATEMENT, MONTH.plusDays(10));
+        // In force but its main assignment is gone: no distributor, skipped.
+        Coverage d = inForce("INT23D", product, "QD");
+        CoverageAssignment.delete("coverage = ?1", d);
+        // In force but its main assignment carries no production code: skipped.
+        Coverage e = inForce("INT23E", product, "QE");
+        CoverageAssignment.<CoverageAssignment>find("coverage = ?1", e).firstResult().productionCode = null;
+        // Terminated: out of portfolio, no indicator.
+        Coverage f = coverage("INT23F", product, null, "QF");
+        f.status = ContractStatus.TERMINATED;
+
+        engine.runReal("UNEP", MONTH);
+
+        assertEquals(0, unpaidRate("QA").compareTo(BigDecimal.ZERO));
+        assertEquals(0, unpaidRate("QB").compareTo(BigDecimal.ONE));
+        assertEquals(0, unpaidRate("QC").compareTo(BigDecimal.ZERO));
+        assertNull(unpaidRate("QD"));
+        assertNull(unpaidRate("QE"));
+        assertNull(unpaidRate("QF"));
+
+        // A rerun drops and rewrites this period's computed indicators, keeping a single value (D8).
+        engine.runReal("UNEP", MONTH);
+        assertEquals(1, QualityIndicator.count("distributor = ?1 and indicatorType = ?2 and source = ?3",
+                Distributor.find("partnerCode", "QB").firstResult(), QualityIndicatorType.UNPAID_RATE, "COMPUTED"));
+    }
+
+    /** Creates an in-force coverage with a main production code and returns it. */
+    private Coverage inForce(String contractNumber, Product product, String partnerCode) {
+        Coverage coverage = coverage(contractNumber, product, null, partnerCode);
+        coverage.status = ContractStatus.IN_FORCE;
+        return coverage;
+    }
+
+    /** Injects an already-processed lifecycle event, read only for the unpaid-state computation. */
+    private BusinessEvent processed(Coverage coverage, String key, EventType type, LocalDate date) {
+        BusinessEvent e = event(coverage, key, type, date, null);
+        e.processingStatus = ProcessingStatus.PROCESSED;
+        return e;
+    }
+
+    /** The computed unpaid rate of the distributor with the given partner code, or null if none. */
+    private static BigDecimal unpaidRate(String partnerCode) {
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", partnerCode).firstResult();
+        QualityIndicator indicator = QualityIndicator.find(
+                "distributor = ?1 and indicatorType = ?2 and source = ?3",
+                distributor, QualityIndicatorType.UNPAID_RATE, "COMPUTED").firstResult();
+        return indicator == null ? null : indicator.value;
     }
 }

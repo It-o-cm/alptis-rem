@@ -126,7 +126,7 @@ public class ReferentialQueryService {
                 .map(q -> new QualityIndicatorView(q.entity.code, distributor.partnerCode,
                         q.indicatorType == null ? null : q.indicatorType.name(),
                         q.range == null ? null : q.range.code, string(q.periodTo),
-                        q.value == null ? null : q.value.toPlainString()))
+                        q.value == null ? null : q.value.toPlainString(), q.source))
                 .toList();
         List<AccountSummaryView> accountSummaries = DistributorEntity.<DistributorEntity>list("distributor", distributor)
                 .stream()
@@ -397,7 +397,7 @@ public class ReferentialQueryService {
                         q.indicatorType == null ? null : q.indicatorType.name(),
                         q.range == null ? null : q.range.code,
                         string(q.periodTo),
-                        q.value == null ? null : q.value.toPlainString()))
+                        q.value == null ? null : q.value.toPlainString(), q.source))
                 .toList();
     }
 
@@ -810,7 +810,7 @@ public class ReferentialQueryService {
      * @param value         the value, as a decimal fraction
      */
     public record QualityIndicatorView(String entityCode, String partnerCode, String indicatorType, String rangeCode,
-                                       String periodTo, String value) {
+                                       String periodTo, String value, String source) {
     }
 
     /**

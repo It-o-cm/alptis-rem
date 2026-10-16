@@ -11,6 +11,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 /**
  * Verifies the dev-only recette-case loader plants each case's data and that the real engine, run from
@@ -893,6 +894,28 @@ class CrScenarioResourceTest {
         // The first valid mapping succeeds; a duplicate on the same source and code is refused (400).
         mapContract("UNEP", "SYS", "EXT-INT22", "INT22").statusCode(200);
         mapContract("UNEP", "SYS", "EXT-INT22", "INT22").statusCode(400);
+    }
+
+    /**
+     * INT-23 (parcours): the calculation computes the unpaid rate of a distributor at the calculation
+     * date — one of two in-force garanties is unpaid, so 50 % with source COMPUTED — and it is listed next
+     * to the complaint rate received from the CRM (source absent).
+     */
+    @Test
+    void int23_computes_the_unpaid_rate_next_to_the_received_indicator() {
+        plantAndRun("INT-23");
+        var indicators = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/quality-indicators").then().statusCode(200);
+        // The internally computed unpaid rate of P-INT23 is 50 %, with source COMPUTED.
+        indicators.body("find { it.partnerCode == 'P-INT23' && it.indicatorType == 'UNPAID_RATE' }.source",
+                        is("COMPUTED"))
+                .body("find { it.partnerCode == 'P-INT23' && it.indicatorType == 'UNPAID_RATE' }.value",
+                        is("0.500000"));
+        // The complaint rate received from the CRM is shown too, with no computed source.
+        indicators.body("find { it.partnerCode == 'P-INT23' && it.indicatorType == 'COMPLAINT_RATE' }.source",
+                        nullValue())
+                .body("find { it.partnerCode == 'P-INT23' && it.indicatorType == 'COMPLAINT_RATE' }.value",
+                        is("0.030000"));
     }
 
     /**

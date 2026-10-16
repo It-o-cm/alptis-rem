@@ -164,6 +164,10 @@ public class CalculationEngine {
         // are commissioned to the new broker.
         applyReplacementOrders(entity, period);
 
+        // Compute the unpaid rate of each distributor at the calculation date (REF-07, INT-23): unpaid
+        // members over members in portfolio, stored next to the indicators received from the CRM.
+        computeInternalIndicators(entity, period);
+
         List<BusinessEvent> events = BusinessEvent.list(
                 "entity = ?1 and processingStatus = ?2 order by coverage.id, eventDate, receivedDate, sourceKey",
                 entity, ProcessingStatus.PENDING);
@@ -2454,7 +2458,8 @@ public class CalculationEngine {
         LocalDate monthStart = LocalDate.of(year, month, 1);
         LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
         QualityIndicator indicator = QualityIndicator.find(
-                "distributor = ?1 and indicatorType = ?2 and periodFrom <= ?3 and periodTo >= ?4",
+                "distributor = ?1 and indicatorType = ?2 and periodFrom <= ?3 and periodTo >= ?4"
+                        + " order by case when source = 'COMPUTED' then 1 else 0 end",
                 distributor, condition.indicatorType, monthEnd, monthStart).firstResult();
         return indicator == null ? null : indicator.value;
     }
@@ -2470,7 +2475,8 @@ public class CalculationEngine {
      */
     private static BigDecimal indicatorValue(RuleCondition condition, Distributor distributor, int year) {
         QualityIndicator indicator = QualityIndicator.find(
-                "distributor = ?1 and indicatorType = ?2 and periodFrom >= ?3 and periodFrom <= ?4",
+                "distributor = ?1 and indicatorType = ?2 and periodFrom >= ?3 and periodFrom <= ?4"
+                        + " order by case when source = 'COMPUTED' then 1 else 0 end",
                 distributor, condition.indicatorType, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31))
                 .firstResult();
         return indicator == null ? null : indicator.value;
@@ -3097,6 +3103,85 @@ public class CalculationEngine {
         // Resolve within the entity: an external code is unique per source system, so a correspondence of
         // another entity on the same source must not release this entity's events.
         return Contract.find("id = ?1 and entity = ?2", code.objectId, entity).firstResult();
+    }
+
+    /**
+     * Computes the quality indicators the application derives internally — the unpaid rate at the
+     * calculation date (REF-07, INT-23): for each distributor, the share of its in-force garanties in an
+     * unpaid state over its in-force garanties. The result is stored per distributor for the period, with
+     * source {@code COMPUTED}, alongside the indicators received from the CRM. Idempotent: a rerun first
+     * drops this period's computed indicators (D8).
+     *
+     * @param entity the entity the indicators are computed for
+     * @param period the period the computed value is dated to
+     */
+    private void computeInternalIndicators(LegalEntity entity, Period period) {
+        LocalDate periodEnd = period.periodMonth.plusMonths(1).minusDays(1);
+        LocalDate today = clock.today();
+        QualityIndicator.delete("entity = ?1 and indicatorType = ?2 and source = ?3 and periodFrom = ?4",
+                entity, QualityIndicatorType.UNPAID_RATE, "COMPUTED", period.periodMonth);
+        // Group the entity's in-force garanties by the distributor of their current main production code.
+        java.util.Map<Distributor, int[]> byDistributor = new java.util.LinkedHashMap<>();
+        List<Coverage> inForce = Coverage.list(
+                "contract.entity = ?1 and status = ?2", entity, fr.alptis.remuneration.domain.ContractStatus.IN_FORCE);
+        for (Coverage coverage : inForce) {
+            Distributor distributor = mainDistributor(coverage);
+            if (distributor == null) {
+                continue;
+            }
+            int[] counts = byDistributor.computeIfAbsent(distributor, d -> new int[2]);
+            counts[0]++;
+            if (isUnpaid(coverage, today)) {
+                counts[1]++;
+            }
+        }
+        for (java.util.Map.Entry<Distributor, int[]> entry : byDistributor.entrySet()) {
+            QualityIndicator indicator = new QualityIndicator();
+            indicator.entity = entity;
+            indicator.distributor = entry.getKey();
+            indicator.indicatorType = QualityIndicatorType.UNPAID_RATE;
+            indicator.periodFrom = period.periodMonth;
+            indicator.periodTo = periodEnd;
+            indicator.value = new BigDecimal(entry.getValue()[1]).divide(new BigDecimal(entry.getValue()[0]), 6,
+                    RoundingMode.HALF_UP);
+            indicator.source = "COMPUTED";
+            indicator.setCreatedAt(clock.now());
+            indicator.persist();
+        }
+    }
+
+    /**
+     * Resolves the distributor of a garantie's current main production code.
+     *
+     * @param coverage the garantie
+     * @return the distributor, or {@code null} if no current main assignment carries one
+     */
+    private static Distributor mainDistributor(Coverage coverage) {
+        CoverageAssignment main = CoverageAssignment.find(
+                "coverage = ?1 and role = ?2 and validTo is null",
+                coverage, fr.alptis.remuneration.domain.AssignmentRole.MAIN).firstResult();
+        return main == null || main.productionCode == null ? null : main.productionCode.distributor;
+    }
+
+    /**
+     * Tells whether a garantie is in an unpaid state at a date: its latest unpaid notice up to that date
+     * is not undone by a later reinstatement (section 5.5, REF-07).
+     *
+     * @param coverage the garantie
+     * @param today    the calculation date
+     * @return {@code true} when the garantie is unpaid at that date
+     */
+    private static boolean isUnpaid(Coverage coverage, LocalDate today) {
+        BusinessEvent lastUnpaid = BusinessEvent.find(
+                "coverage = ?1 and eventType = ?2 and eventDate <= ?3 order by eventDate desc",
+                coverage, EventType.UNPAID_NOTICE, today).firstResult();
+        if (lastUnpaid == null) {
+            return false;
+        }
+        BusinessEvent laterReinstatement = BusinessEvent.find(
+                "coverage = ?1 and eventType = ?2 and eventDate >= ?3 and eventDate <= ?4",
+                coverage, EventType.REINSTATEMENT, lastUnpaid.eventDate, today).firstResult();
+        return laterReinstatement == null;
     }
 
     /**

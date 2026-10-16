@@ -27,6 +27,7 @@ import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
 import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.EnrollmentStatus;
+import fr.alptis.remuneration.domain.ContractStatus;
 import fr.alptis.remuneration.domain.EventType;
 import fr.alptis.remuneration.domain.HoldReason;
 import fr.alptis.remuneration.domain.LegalEntity;
@@ -169,6 +170,7 @@ public class CrScenarioResource {
             case "INT-17" -> seedInt17(entity, periodMonth);
             case "INT-20" -> seedInt20(entity, periodMonth);
             case "INT-22" -> seedInt22(entity, periodMonth);
+            case "INT-23" -> seedInt23(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1662,6 +1664,29 @@ public class CrScenarioResource {
         held.pendingContractNumber = "EXT-INT22";
         held.pendingCoverageCode = "INT22-C1";
         held.persist();
+    }
+
+    /**
+     * INT-23 (parcours §4.1) : indicateurs de qualité reçus et calculés en interne, par distributeur et
+     * par période (REF-07). Un distributeur porte deux garanties en vigueur dont l'une est en état
+     * d'impayé : le calcul en déduit un taux d'impayés de 50 % (source « calculé »). À côté, un taux de
+     * réclamations reçu du CRM (source « reçu ») illustre la coexistence des deux origines sur l'écran.
+     *
+     * @param entity      the entity the indicators are computed for
+     * @param periodMonth the first day of the calculation period
+     */
+    private void seedInt23(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage inForce = coverage(entity, "INT23A", product, periodMonth, "P-INT23", null);
+        inForce.status = ContractStatus.IN_FORCE;
+        Coverage unpaid = coverage(entity, "INT23B", product, periodMonth, "P-INT23", null);
+        unpaid.status = ContractStatus.IN_FORCE;
+        // One of the two in-force garanties carries an unpaid notice, so its distributor's unpaid rate is 50 %.
+        event(entity, unpaid, "INT23-UNPAID", EventType.UNPAID_NOTICE, periodMonth.plusDays(3), null);
+        // A complaint rate received from the CRM, shown next to the internally computed unpaid rate.
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-INT23").firstResult();
+        indicator(entity, distributor, QualityIndicatorType.COMPLAINT_RATE, "0.03", periodMonth.getYear());
     }
 
     /**

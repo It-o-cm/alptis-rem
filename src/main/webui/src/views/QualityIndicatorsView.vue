@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { apiGet, ApiError } from '../api/client';
 import { formatPercent } from '../presentation/format';
+import { indicatorSourceLabel } from '../presentation/referentials';
 import { AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
 import type { Column } from '../components/ui';
 
@@ -12,6 +13,7 @@ interface QualityIndicatorView {
   rangeCode: string | null;
   periodTo: string | null;
   value: string | null;
+  source: string | null;
 }
 
 const rows = ref<QualityIndicatorView[]>([]);
@@ -26,6 +28,7 @@ const columns: Column<QualityIndicatorView>[] = [
   { key: 'rangeCode', label: 'Gamme', value: (q) => q.rangeCode ?? 'Global' },
   { key: 'periodTo', label: 'Période (fin)', value: (q) => q.periodTo ?? '—' },
   { key: 'value', label: 'Valeur', align: 'num', value: (q) => (q.value ? formatPercent(Number(q.value)) : '—') },
+  { key: 'source', label: 'Origine', value: (q) => indicatorSourceLabel(q.source) },
 ];
 
 /** Loads the quality indicators of the user's entities. */
