@@ -1184,6 +1184,125 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     await adminCtx.close();
     await valCtx.close();
   });
+
+  test('CR-73 : le prorata à la frontière de la 1re année donne un apport de 28,31 € et un suivi de 30,00 € @screen:calculations @screen:commissionSearch @cr:CR-73', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-73&entity=UNEP&month=2027-02-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await expect(page.getByTestId('calc-period')).toContainText('2027-02-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2027-02-01');
+    await page.getByTestId('cs-search').click();
+    const acquisition = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Acquisition' }).first();
+    await expect(acquisition).toContainText('28,31');
+    const servicing = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Gestion' }).first();
+    await expect(servicing).toContainText('30,00');
+  });
+
+  test('CR-74 : un taux changé le 16 juin partage la prime en 7,50 € et 9,00 € (P12) @screen:calculations @screen:commissionSearch @cr:CR-74', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-74&entity=UNEP&month=2026-06-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await expect(page.getByTestId('calc-period')).toContainText('2026-06-01');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-06-01');
+    await page.getByTestId('cs-search').click();
+    const linear = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' });
+    await expect(linear).toHaveCount(2);
+    await expect(linear.filter({ hasText: '7,50' })).toHaveCount(1);
+    await expect(linear.filter({ hasText: '9,00' })).toHaveCount(1);
+  });
+
+  test('CR-75 : une règle dérogatoire et une opération de rentrée paient 18,00 € et 2,00 € @screen:calculations @screen:commissionSearch @cr:CR-75', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-75&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const linear = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Linéaire' });
+    await expect(linear).toHaveCount(2);
+    await expect(linear.filter({ hasText: '18,00' })).toHaveCount(1);
+    await expect(linear.filter({ hasText: '2,00' })).toHaveCount(1);
+  });
+
+  test('CR-77 : des frais de dossier de 300 € donnent une ligne Frais de dossier de 300,00 € @screen:calculations @screen:commissionSearch @cr:CR-77', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-77&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const fee = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Frais de dossier' });
+    await expect(fee).toHaveCount(1);
+    await expect(fee.first()).toContainText('300,00');
+  });
+
+  test('CR-82 : un encours moyen de 20 000 € à 0,30 % donne une ligne Sur encours de 15,00 € @screen:calculations @screen:commissionSearch @cr:CR-82', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-82&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const outstanding = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Sur encours' });
+    await expect(outstanding).toHaveCount(1);
+    await expect(outstanding.first()).toContainText('15,00');
+  });
+
+  test('CR-83 : le second arbitrage de l’année donne une ligne Arbitrage de 30,00 €, rien sur le premier @screen:calculations @screen:commissionSearch @cr:CR-83', async ({
+    page,
+    request,
+  }) => {
+    const seeded = await request.post('/api/test/cr-scenario?cr=CR-83&entity=UNEP&month=2026-01-01');
+    expect(seeded.ok()).toBeTruthy();
+
+    await page.goto('/calculs');
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption('2026-01-01');
+    await page.getByTestId('cs-search').click();
+    const arbitrage = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Arbitrage' });
+    await expect(arbitrage).toHaveCount(1);
+    await expect(arbitrage.first()).toContainText('30,00');
+  });
 });
 
 // Parcours CAL-05 (section 4.3): calculating a period whose previous period is not yet

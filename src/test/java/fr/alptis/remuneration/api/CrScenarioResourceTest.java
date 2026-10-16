@@ -650,4 +650,65 @@ class CrScenarioResourceTest {
         search().body("findAll { it.nature == 'EXTERNAL' }.size()", is(1))
                 .body("find { it.nature == 'EXTERNAL' }.amount", is(17.50f));
     }
+
+    /**
+     * CR-73: a quarterly premium straddling the first-year boundary prorates the acquisition by day —
+     * ACQUISITION 28,31 € and SERVICING 30,00 €, in the February 2027 period.
+     */
+    @Test
+    void cr73_prorata_at_the_boundary() {
+        plantAndRun("CR-73", "2027-02-01");
+        search("2027-02-01").body("nature", hasItems("ACQUISITION", "SERVICING"))
+                .body("find { it.nature == 'ACQUISITION' }.amount", is(28.31f))
+                .body("find { it.nature == 'SERVICING' }.amount", is(30.00f));
+    }
+
+    /**
+     * CR-74: a rate change from 15% to 18% on 16 June splits June's 100 € premium pro rata of the days
+     * (P12) — two LINEAR lines of 7,50 € and 9,00 €.
+     */
+    @Test
+    void cr74_rate_change_within_covered_period() {
+        plantAndRun("CR-74", "2026-06-01");
+        search("2026-06-01").body("findAll { it.nature == 'LINEAR' }.size()", is(2))
+                .body("findAll { it.nature == 'LINEAR' }.amount", hasItems(7.50f, 9.00f));
+    }
+
+    /**
+     * CR-75: a dérogatoire rule of higher priority replaces the base rule (18% not 15%) and a back-to-
+     * school operation in another group adds 2% — two LINEAR lines of 18,00 € and 2,00 €.
+     */
+    @Test
+    void cr75_exclusion_groups_and_operation() {
+        plantAndRun("CR-75");
+        search().body("findAll { it.nature == 'LINEAR' }.size()", is(2))
+                .body("findAll { it.nature == 'LINEAR' }.amount", hasItems(18.00f, 2.00f));
+    }
+
+    /** CR-77: a fixed fee of 300 € yields a FEE line of 300,00 €, with neither rate nor basis. */
+    @Test
+    void cr77_fixed_fee() {
+        plantAndRun("CR-77");
+        search().body("findAll { it.nature == 'FEE' }.size()", is(1))
+                .body("find { it.nature == 'FEE' }.amount", is(300.00f));
+    }
+
+    /** CR-82: a 0,30% annual rate on a 20 000 € average balance over a quarter yields OUTSTANDING 15,00 €. */
+    @Test
+    void cr82_outstanding() {
+        plantAndRun("CR-82");
+        search().body("findAll { it.nature == 'OUTSTANDING' }.size()", is(1))
+                .body("find { it.nature == 'OUTSTANDING' }.amount", is(15.00f));
+    }
+
+    /**
+     * CR-83: nothing on the first arbitrage of the calendar year, an ARBITRAGE line of 30,00 € on the
+     * second (0,30% of 10 000 €).
+     */
+    @Test
+    void cr83_arbitrage_second_of_year() {
+        plantAndRun("CR-83");
+        search().body("findAll { it.nature == 'ARBITRAGE' }.size()", is(1))
+                .body("find { it.nature == 'ARBITRAGE' }.amount", is(30.00f));
+    }
 }

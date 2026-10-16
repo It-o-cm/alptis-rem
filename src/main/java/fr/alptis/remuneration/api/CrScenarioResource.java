@@ -143,6 +143,12 @@ public class CrScenarioResource {
             case "CR-65" -> seedCr65(entity, periodMonth);
             case "CR-66" -> seedCr66(entity, periodMonth);
             case "CR-67" -> seedCr67(entity, periodMonth);
+            case "CR-73" -> seedCr73(entity, periodMonth);
+            case "CR-74" -> seedCr74(entity, periodMonth);
+            case "CR-75" -> seedCr75(entity, periodMonth);
+            case "CR-77" -> seedCr77(entity, periodMonth);
+            case "CR-82" -> seedCr82(entity, periodMonth);
+            case "CR-83" -> seedCr83(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1308,6 +1314,128 @@ public class CrScenarioResource {
         coverage.coverageCode = "C1";
         coverage.effectDate = LocalDate.of(periodMonth.getYear(), 1, 1);
         coverage.persist();
+    }
+
+    /**
+     * CR-73 (prorata à la frontière de la première année, §6.2) : garantie à effet du 1er mars 2026,
+     * précompté 30/10, prime trimestrielle de 300 € couvrant du 1er février au 30 avril 2027 ; la part
+     * d'apport est proratisée au nombre de jours dans la première année (28 jours de février sur 89) —
+     * une ligne {@code ACQUISITION} de 28,31 € et une ligne {@code SERVICING} de 30,00 €. Le calcul tourne
+     * dans la période de février 2027 (le mois de l'événement).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (February 2027)
+     */
+    private void seedCr73(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate effect = LocalDate.of(2026, 3, 1);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR73", product, effect, "P-CR73", null);
+        upfrontChoice(coverage, "0.30", "0.10", effect);
+        version(entity, "PLAN-CR73", "R-CR73", RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
+                UPFRONT_PARAMS, effect, null, null);
+        BusinessEvent e = premium(entity, coverage, "CR73-E1", periodMonth, "300.00");
+        e.periodFrom = LocalDate.of(2027, 2, 1);
+        e.periodTo = LocalDate.of(2027, 4, 30);
+    }
+
+    /**
+     * CR-74 (changement de taux en cours de période couverte, P12) : garantie passée de 15 % à 18 % le
+     * 16 juin ; la prime de juin de 100 € (couvrant le mois entier) est partagée au prorata des jours —
+     * 15 jours à 15 % (7,50 €) et 15 jours à 18 % (9,00 €) — en deux lignes {@code LINEAR}.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (June 2026)
+     */
+    private void seedCr74(LegalEntity entity, LocalDate periodMonth) {
+        LocalDate boundary = LocalDate.of(2026, 6, 16);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR74", product, periodMonth, "P-CR74", null);
+        linearChoice(coverage, "0.15", periodMonth, boundary.minusDays(1));
+        linearChoice(coverage, "0.18", boundary, null);
+        version(entity, "PLAN-CR74", "R-CR74", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15,0.18]}", periodMonth, null, null);
+        BusinessEvent e = premium(entity, coverage, "CR74-E1", LocalDate.of(2026, 6, 1), "100.00");
+        e.periodFrom = LocalDate.of(2026, 6, 1);
+        e.periodTo = LocalDate.of(2026, 6, 30);
+    }
+
+    /**
+     * CR-75 (groupes d'exclusion et priorités, §6.11) : une règle dérogatoire de priorité supérieure
+     * remplace la règle de base dans le groupe {@code BASE} (18 % au lieu de 15 %), et une opération de
+     * rentrée d'un autre groupe ajoute 2 % ; le courtier reçoit 18,00 € et 2,00 € en deux lignes.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr75(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR75", product, periodMonth, "PX-CR75", null);
+        linearChoice(coverage, "0.18", periodMonth, null);
+        version(entity, "PLAN-CR75-BASE", "R-CR75-BASE", RuleFamily.LINEAR, LineNature.LINEAR,
+                premiumScope(entity), "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        RuleVersion derog = version(entity, "PLAN-CR75-DEROG", "R-CR75-DEROG", RuleFamily.LINEAR,
+                LineNature.LINEAR,
+                "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE_SELECT\"],"
+                        + "\"distributor\":[\"PX-CR75\"]}",
+                "{\"allowedRates\":[0.18]}", periodMonth, null, null);
+        derog.priority = 30;
+        RuleVersion bonus = version(entity, "PLAN-CR75-BONUS", "R-CR75-BONUS", RuleFamily.LINEAR,
+                LineNature.LINEAR, "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE_SELECT\"]}",
+                "{\"rateSource\":\"RULE\",\"rate\":0.02}", periodMonth, null, null);
+        bonus.exclusionGroup = "BONUS_RENTREE";
+        premium(entity, coverage, "CR75-E1", periodMonth.plusDays(4), "100.00");
+    }
+
+    /**
+     * CR-77 (frais de dossier, §6.5) : 300 € de frais saisis à la souscription et encaissés ; une ligne
+     * {@code FEE} de 300,00 €, sans taux ni politique de reprise.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr77(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CR77", product, periodMonth, "P-CR77", null);
+        version(entity, "PLAN-CR77", "R-CR77", RuleFamily.FIXED, LineNature.FEE, premiumScope(entity),
+                "{\"amount\":300}", periodMonth, null, null);
+        premium(entity, coverage, "CR77-E1", periodMonth.plusDays(4), "0.00");
+    }
+
+    /**
+     * CR-82 (commission sur encours) : encours moyen de 20 000 € en mode linéaire sur un fichier
+     * trimestriel à 0,30 % annuel ; une ligne {@code OUTSTANDING} de 15,00 €.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr82(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, "CR82", product, periodMonth, "P-CR82", null);
+        version(entity, "PLAN-CR82", "R-CR82", RuleFamily.OUTSTANDING, LineNature.OUTSTANDING,
+                perScope(entity, "OUTSTANDING_BALANCE"), "{\"annualRate\":0.003}", periodMonth, null, null);
+        BusinessEvent e = event(entity, coverage, "CR82-E1", EventType.OUTSTANDING_BALANCE,
+                LocalDate.of(periodMonth.getYear(), 1, 31), "20000.00");
+        e.periodFrom = LocalDate.of(periodMonth.getYear(), 1, 1);
+        e.periodTo = LocalDate.of(periodMonth.getYear(), 3, 31);
+    }
+
+    /**
+     * CR-83 (arbitrage) : deux arbitrages de 10 000 € dans la même année civile ; rien sur le premier,
+     * une ligne {@code ARBITRAGE} de 30,00 € sur le second (0,30 % de 10 000 €, rang minimal 2).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCr83(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "PER");
+        Coverage coverage = coverage(entity, "CR83", product, periodMonth, "P-CR83", null);
+        version(entity, "PLAN-CR83", "R-CR83", RuleFamily.LINEAR, LineNature.ARBITRAGE,
+                perScope(entity, "ARBITRAGE"),
+                "{\"rateSource\":\"RULE\",\"rate\":0.003,\"minRankInCalendarYear\":2}", periodMonth, null, null);
+        event(entity, coverage, "CR83-A1", EventType.ARBITRAGE, LocalDate.of(periodMonth.getYear(), 3, 1),
+                "10000.00");
+        event(entity, coverage, "CR83-A2", EventType.ARBITRAGE, LocalDate.of(periodMonth.getYear(), 6, 1),
+                "10000.00");
     }
 
     /**
