@@ -16,7 +16,7 @@ test.beforeEach(async ({ request }) => {
   await seedFdv(request);
 });
 
-test('l’administrateur lit le plan, lance le calcul et valide, la Finance exporte @screen:fdvPlan @screen:fdvValidation @req:FDV-01 @req:FDV-04 @req:FDV-06 @req:FDV-07 @req:FDV-13 @req:FDV-14 @role-action:SALES_MANAGER-validate-variable @role-action:FINANCE_CONTROLLER-export-pay', async ({
+test('l’administrateur lit le plan, lance le calcul et valide, la Finance exporte @screen:fdvPlan @screen:fdvValidation @req:FDV-01 @req:FDV-04 @req:FDV-06 @req:FDV-07 @req:FDV-13 @req:FDV-14 @path:FDV-09 @role-action:SALES_MANAGER-validate-variable @role-action:FINANCE_CONTROLLER-export-pay', async ({
   browser,
 }) => {
   // The admin reads the plan and the collaborators and launches the monthly calculation.
@@ -54,14 +54,18 @@ test('l’administrateur lit le plan, lance le calcul et valide, la Finance expo
   // The per-person pay synthesis (FDV-14) now shows the validated collaborator.
   await expect(managerPage.getByTestId('fdvv-summary')).toBeVisible();
   await expect(managerPage.locator('[data-testid^="pay-summary-"]').first()).toBeVisible();
+  // FDV-09: the pay export is reserved to the Finance controller — the manager has no export button.
+  await expect(managerPage.getByTestId('fdvv-export')).toHaveCount(0);
   await manager.close();
 
-  // Finance exports the validated variables to pay.
+  // FDV-09: only the Finance controller exports the validated variables to pay, and the produced file
+  // carries its lines (fichier lu).
   const finance = await browser.newContext({ httpCredentials: USERS.financeAlptis });
   const financePage = await finance.newPage();
   await financePage.goto('/fdv/validation');
   await financePage.getByTestId('fdvv-export').click();
   await expect(financePage.getByTestId('fdvv-message')).toContainText('ALPTIS_ASSURANCES_VAR_202609.csv');
+  await expect(financePage.getByTestId('fdvv-message')).toContainText(/\([1-9]\d* lignes\)/);
   await finance.close();
 });
 

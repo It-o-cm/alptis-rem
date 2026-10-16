@@ -1126,8 +1126,16 @@ que le débiteur (code de production non actif dans le jeu `seedCycle`) est **si
 **échéancier d'apurement** (3 × 100 €). Couverture unitaire : `AccountServiceTest` (les quatre jambes —
 code non actif, code actif, code inconnu, compte distributeur). 71 `@path`.
 
-**État des parcours restants (relevé 2026-10-16).** 69 des 135 identifiants §4 sont étiquetés `@path`
-(71 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
+**FDV-09 étiqueté (2026-10-16).** Parcours « export paie : fichier lu ; lancé par le seul contrôleur
+Finance, après validation de tous les résultats ». Le point d'accès `pay-export` est déjà
+`@RolesAllowed(FINANCE_CONTROLLER)` et le bouton d'export n'est visible qu'à ce rôle. Le test d'écran
+existant (admin calcule, responsable valide, Finance exporte) est renforcé : le **responsable n'a pas de
+bouton d'export** (seul le contrôleur Finance), et le message d'export porte un **nombre de lignes non
+nul** (`(N lignes)`, fichier lu), après la validation du résultat. Vérification seule, aucune feature.
+72 `@path`.
+
+**État des parcours restants (relevé 2026-10-16).** 70 des 135 identifiants §4 sont étiquetés `@path`
+(72 `@path` au total avec les parcours hors tableau §4 : `BOOT-01`, `CR-70`, `DEM-01/02`). Les
 « vérifier-puis-étiqueter » propres (fonction déjà présente, test à renforcer) sont **épuisés** : un
 audit de ce tour a écarté une douzaine de candidats, chacun exigeant un vrai développement ou un scénario
 monté, documentés ici pour éviter de re-scoper :
@@ -1147,7 +1155,7 @@ monté, documentés ici pour éviter de re-scoper :
   motif `NO_BANK_DETAILS` route vers le chèque, cf. décision), `PAI-03/04/07/08/09/11/12`, `CYC-01..05`
   (machine à états complète par rôle, dont un refus après `FINANCE_VALIDATED` — exige une période
   `FINANCE_VALIDATED` absente de la démo), `CTL-01` (une anomalie par **dix** familles — la démo en
-  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/08/09/10`, `HIS-01`, `CPT-01/03/04`
+  produit six), `PAR-04/06/08/09/11`, `FDV-03/05/07/08/10`, `HIS-01`, `CPT-01/03/04`
   (`CPT-04` « exclu du lot » exige que `proposePayments` se rejoue après blocage ; `CPT-03` exige des
   soldes opposés montés dans deux entités pour un distributeur présent dans les deux — `P20001`),
   `AJU-01` (le volet « bordereau suivant » dépend du flux de paiement), `BRD-02/03`, `FIN-06`
