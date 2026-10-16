@@ -162,6 +162,7 @@ public class CrScenarioResource {
             case "CR-78" -> seedCr78(entity, periodMonth);
             case "CR-80" -> seedCr80(entity, periodMonth);
             case "CR-86" -> seedCr86(entity, periodMonth);
+            case "CAL-07" -> seedCal07(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1538,6 +1539,25 @@ public class CrScenarioResource {
         BusinessEvent reversal = event(entity, coverage, "CR76-E2", EventType.PREMIUM_CANCELLED,
                 periodMonth.plusDays(19), null);
         reversal.reversesEvent = premium;
+    }
+
+    /**
+     * CAL-07 (parcours §4.3) : deux règles de base concurrentes (même groupe, même priorité, mêmes
+     * périmètres) s'appliquent au même encaissement ; le moteur ne tranche pas et met l'événement à
+     * l'écart avec le motif « règles concurrentes » (P8/H-41), sans produire de ligne.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedCal07(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CAL07", product, periodMonth, "P-CAL07", null);
+        linearChoice(coverage, "0.15", periodMonth, null);
+        version(entity, "PLAN-CAL07-A", "R-CAL07-A", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        version(entity, "PLAN-CAL07-B", "R-CAL07-B", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        premium(entity, coverage, "CAL07-E1", periodMonth.plusDays(4), "100.00");
     }
 
     /**

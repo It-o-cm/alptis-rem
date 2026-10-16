@@ -1644,3 +1644,31 @@ test('un calcul de février est refusé tant que janvier n’est pas validé par
 
   await adminCtx.close();
 });
+
+// Parcours CAL-07 (section 4.3): two concurrent base rules hold the event with its reason, no line.
+test('CAL-07 : deux règles concurrentes mettent l’événement à l’écart avec son motif @screen:calculations @screen:events @path:CAL-07', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=CAL-07&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const ctx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await ctx.newPage();
+
+  // The real calculation produces no line (the engine does not arbitrate two concurrent rules).
+  await page.goto('/calculs');
+  await page.getByTestId('calc-run').click();
+  await expect(page.getByTestId('calc-message')).toContainText('Calcul lancé');
+
+  // The event is set aside with the reason "Règles concurrentes", read on the events screen.
+  await page.goto('/evenements');
+  await page.getByTestId('events-status').selectOption('ON_HOLD');
+  await page.getByTestId('events-search').click();
+  const row = page.locator('[data-testid^="event-row-"]').filter({ hasText: 'Règles concurrentes' });
+  await expect(row).toHaveCount(1);
+  await expect(row.first()).toContainText('Mis à l’écart');
+
+  await ctx.close();
+});

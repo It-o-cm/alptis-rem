@@ -29,7 +29,9 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   fonctionnalité comblé : lot `SAVINGS_CYCLE` distinct) via `CrScenarioResource` + `CrScenarioResourceTest`
   + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify -DskipE2E=true` vert (819 tests,
   JaCoCo 100 %) ; les 16 specs e2e `@cr:` vertes.
-- Parcours `@path` : 77 sur 135 ; couples rôle-action : 342 ; garde-fou étape 3 : non réécrit.
+- Parcours `@path` : 78 sur 135 du catalogue §4 (+CAL-07 le 2026-10-16 : deux règles concurrentes mettent
+  l'événement à l'écart, lu sur l'écran des événements ; seed `CrScenarioResource` + `recette.spec`) ;
+  couples rôle-action : 342 ; garde-fou étape 3 : non réécrit.
   Conditions d'arrêt 2, 3 et 4 **non atteintes** — le travail continue.
 
 État au 2026-10-12 (étape 2 en cours) :

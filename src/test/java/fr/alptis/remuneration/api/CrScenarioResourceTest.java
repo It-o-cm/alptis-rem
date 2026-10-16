@@ -800,4 +800,14 @@ class CrScenarioResourceTest {
         given().when().post("/api/test/cr-scenario?cr=CR-86&entity=UNEP&month=2026-01-01").then().statusCode(204);
         search().body("findAll { it.nature == 'LINEAR' }.amount", hasItems(110.00f, 50.00f));
     }
+
+    /**
+     * CAL-07 (parcours): two concurrent base rules hold the event with no line produced (the hold reason
+     * itself is pinned by CalculationEngineTest).
+     */
+    @Test
+    void cal07_concurrent_rules_produce_no_line() {
+        plantAndRun("CAL-07");
+        search().body("size()", is(0));
+    }
 }
