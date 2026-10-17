@@ -919,6 +919,18 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * PAR-04 (parcours): the scenario plants an approved rule version whose validity window is the first
+     * half of 2026; its displayed status then follows the clock (pinned by RuleConfigServiceTest).
+     */
+    @Test
+    void par04_plants_a_dated_rule_version() {
+        given().when().post("/api/test/cr-scenario?cr=PAR-04&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().get("/api/ui/v1/plans/PAR04-PLAN/rules/PAR04-R/versions?entityCode=UNEP")
+                .then().statusCode(200).body("versionNo", hasItem(1)).body("[0].validTo", is("2026-06-30"));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

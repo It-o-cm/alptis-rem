@@ -27,6 +27,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -223,7 +224,8 @@ class RuleConfigServiceTest {
 
         RuleConfigService approver = service(List.of("UNEP"), "admin2-unep");
         VersionView approved = approver.approveVersion("UNEP", "PLAN_A", "R1", 1);
-        assertEquals("APPROVED", approved.status());
+        // Approved and within its 2026 validity window at the current date: effectively ACTIVE (PAR-04).
+        assertEquals("ACTIVE", approved.status());
         assertEquals("admin2-unep", approved.approvedBy());
 
         assertThrows(ConflictException.class, () -> approver.approveVersion("UNEP", "PLAN_A", "R2", 1));
@@ -247,7 +249,54 @@ class RuleConfigServiceTest {
         creator.addVersion("UNEP", "PLAN_A", "R2", linearInput("{\"product\":[\"Y\"]}", from, to, "BASE", 10));
         RuleConfigService approver = service(List.of("UNEP"), "admin2-unep");
         approver.approveVersion("UNEP", "PLAN_A", "R1", 1);
-        assertEquals("APPROVED", approver.approveVersion("UNEP", "PLAN_A", "R2", 1).status());
+        // Within its 2026 validity window at the current date: effectively ACTIVE (PAR-04).
+        assertEquals("ACTIVE", approver.approveVersion("UNEP", "PLAN_A", "R2", 1).status());
+    }
+
+    /**
+     * PAR-04: a version's status follows the clock without intervention — a draft stays a draft; once
+     * approved it reads APPROVED before its start, ACTIVE within its window (or open-ended), and RETIRED
+     * past its end.
+     */
+    @Test
+    @TestTransaction
+    void effective_status_tracks_the_clock() {
+        clock.fixAt(OffsetDateTime.parse("2026-06-15T00:00:00Z"));
+        try {
+            RuleConfigService creator = unep();
+            creator.createPlan("UNEP", "PT", "P", Direction.INBOUND, (short) 2026);
+            for (String r : List.of("RACT", "RFUT", "RRET", "ROPEN", "RDRAFT")) {
+                creator.createRule("UNEP", "PT", r, r, RuleFamily.LINEAR);
+            }
+            creator.addVersion("UNEP", "PT", "RACT",
+                    linearInput("{\"product\":[\"A\"]}", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "G1", 10));
+            creator.addVersion("UNEP", "PT", "RFUT",
+                    linearInput("{\"product\":[\"B\"]}", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 12, 31), "G2", 10));
+            creator.addVersion("UNEP", "PT", "RRET",
+                    linearInput("{\"product\":[\"C\"]}", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 3, 31), "G3", 10));
+            creator.addVersion("UNEP", "PT", "ROPEN", linearInput("{\"product\":[\"D\"]}", null, null, "G4", 10));
+            creator.addVersion("UNEP", "PT", "RDRAFT",
+                    linearInput("{\"product\":[\"E\"]}", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "G5", 10));
+
+            RuleConfigService approver = service(List.of("UNEP"), "admin2-unep");
+            approver.approveVersion("UNEP", "PT", "RACT", 1);
+            approver.approveVersion("UNEP", "PT", "RFUT", 1);
+            approver.approveVersion("UNEP", "PT", "RRET", 1);
+            approver.approveVersion("UNEP", "PT", "ROPEN", 1);
+
+            assertEquals("ACTIVE", status(creator, "RACT"));
+            assertEquals("APPROVED", status(creator, "RFUT"));
+            assertEquals("RETIRED", status(creator, "RRET"));
+            assertEquals("ACTIVE", status(creator, "ROPEN"));
+            assertEquals("DRAFT", status(creator, "RDRAFT"));
+        } finally {
+            clock.reset();
+        }
+    }
+
+    /** The effective status of a rule's first (latest) version. */
+    private static String status(RuleConfigService service, String rule) {
+        return service.listVersions("UNEP", "PT", rule).get(0).status();
     }
 
     /**

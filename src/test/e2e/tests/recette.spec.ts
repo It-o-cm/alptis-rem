@@ -1909,3 +1909,35 @@ test('INT-24 : créer un assureur daté, en terminer la validité, refuser un ch
 
   await adminCtx.close();
 });
+
+test('PAR-04 : une version passe de « En vigueur » à « Retirée » au fil du temps @screen:rules @path:PAR-04', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=PAR-04&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  const openVersion = async () => {
+    await admin.goto('/regles');
+    await admin.getByTestId('plan-open-PAR04-PLAN').click();
+    await admin.getByTestId('rule-open-PAR04-R').click();
+    await expect(admin.getByTestId('version-row-1')).toBeVisible();
+  };
+
+  // Within its validity window (2026-01-01 → 2026-06-30), the version reads "En vigueur".
+  await request.put('/api/test/clock', { data: { instant: '2026-03-01T12:00:00Z' } });
+  await openVersion();
+  await expect(admin.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('En vigueur');
+
+  // Past its end date, with no intervention, the same version reads "Retirée".
+  await request.put('/api/test/clock', { data: { instant: '2026-09-01T12:00:00Z' } });
+  await openVersion();
+  await expect(admin.getByTestId('version-row-1').getByTestId('version-status')).toHaveText('Retirée');
+
+  await request.delete('/api/test/clock');
+  await adminCtx.close();
+});

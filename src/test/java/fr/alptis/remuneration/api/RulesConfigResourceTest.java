@@ -88,8 +88,9 @@ class RulesConfigResourceTest {
                 .then().statusCode(200).body("versionNo", hasItem(1))
                 .body("[0].conditions[0].indicatorType", is("UNPAID_RATE"));
 
+        // Approved and within its 2026 validity window at the current date: effectively ACTIVE (PAR-04).
         admin2().when().post("/api/ui/v1/plans/P1/rules/R1/versions/1/approve?entityCode=ALPTIS_ASSURANCES")
-                .then().statusCode(200).body("status", is("APPROVED"));
+                .then().statusCode(200).body("status", is("ACTIVE"));
 
         // PAR-11: the amendment is generated from the version and sent for signature (unsigned).
         admin().when().post("/api/ui/v1/plans/P1/rules/R1/versions/1/amendment?entityCode=ALPTIS_ASSURANCES")

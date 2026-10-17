@@ -171,6 +171,7 @@ public class CrScenarioResource {
             case "INT-20" -> seedInt20(entity, periodMonth);
             case "INT-22" -> seedInt22(entity, periodMonth);
             case "INT-23" -> seedInt23(entity, periodMonth);
+            case "PAR-04" -> seedPar04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1687,6 +1688,20 @@ public class CrScenarioResource {
         // A complaint rate received from the CRM, shown next to the internally computed unpaid rate.
         Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-INT23").firstResult();
         indicator(entity, distributor, QualityIndicatorType.COMPLAINT_RATE, "0.03", periodMonth.getYear());
+    }
+
+    /**
+     * PAR-04 (parcours §4.2) : passage du temps d'une version de règle. Une version approuvée dont la
+     * fenêtre de validité court du 1er janvier au 30 juin 2026 : son statut affiché suit l'horloge, sans
+     * intervention — « En vigueur » tant que la date du jour est dans la fenêtre, « Retirée » une fois le
+     * 30 juin passé. Le parcours gèle l'horloge avant puis après la fin pour l'observer.
+     *
+     * @param entity      the entity the rule belongs to
+     * @param periodMonth unused; the validity window is fixed to the first half of 2026
+     */
+    private void seedPar04(LegalEntity entity, LocalDate periodMonth) {
+        version(entity, "PAR04-PLAN", "PAR04-R", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30), null);
     }
 
     /**

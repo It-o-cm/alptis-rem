@@ -202,8 +202,9 @@ public class RuleConfigService {
     @Transactional
     public List<VersionView> listVersions(String entityCode, String planCode, String ruleCode) {
         Rule rule = requireRule(entityCode, planCode, ruleCode);
+        LocalDate today = clock.today();
         return RuleVersion.<RuleVersion>list("rule = ?1 order by versionNo desc", rule).stream()
-                .map(v -> toVersionView(v, conflictDetector.conflicts(v)))
+                .map(v -> toVersionView(v, conflictDetector.conflicts(v), today))
                 .toList();
     }
 
@@ -247,7 +248,7 @@ public class RuleConfigService {
         }
         audit.record(currentUser.username(), rule.plan.entity, "CREATE_RULE_VERSION", "RuleVersion",
                 version.getId(), null, "{\"rule\":\"" + ruleCode + "\",\"versionNo\":" + nextVersion + "}");
-        return toVersionView(version, List.of());
+        return toVersionView(version, List.of(), clock.today());
     }
 
     /**
@@ -282,7 +283,7 @@ public class RuleConfigService {
         version.setUpdatedAt(clock.now());
         audit.record(currentUser.username(), version.rule.plan.entity, "APPROVE_RULE_VERSION", "RuleVersion",
                 version.getId(), "\"DRAFT\"", "\"APPROVED\"");
-        return toVersionView(version, List.of());
+        return toVersionView(version, List.of(), clock.today());
     }
 
     /**
@@ -600,7 +601,33 @@ public class RuleConfigService {
      * @param conflicts the conflicting versions
      * @return its view
      */
-    private static VersionView toVersionView(RuleVersion version, List<RuleVersion> conflicts) {
+    /**
+     * The status of a version as time passes, without manual intervention (PAR-04): a draft stays a
+     * draft; once approved, it is {@code APPROVED} while its start is still ahead, {@code ACTIVE} within
+     * its validity window, and {@code RETIRED} once its end has passed. This mirrors the date arbitration
+     * the engine already applies, so the displayed status matches what actually computes.
+     *
+     * @param version the version
+     * @param today   the current date
+     * @return the effective status name
+     */
+    private static String effectiveStatus(RuleVersion version, LocalDate today) {
+        if (version.status == null) {
+            return null;
+        }
+        if (version.status == VersionStatus.DRAFT) {
+            return VersionStatus.DRAFT.name();
+        }
+        if (version.validFrom != null && today.isBefore(version.validFrom)) {
+            return VersionStatus.APPROVED.name();
+        }
+        if (version.validTo != null && today.isAfter(version.validTo)) {
+            return VersionStatus.RETIRED.name();
+        }
+        return VersionStatus.ACTIVE.name();
+    }
+
+    private static VersionView toVersionView(RuleVersion version, List<RuleVersion> conflicts, LocalDate today) {
         List<String> conflictCodes = conflicts.stream()
                 .map(c -> c.rule.code + " v" + c.versionNo).toList();
         List<ConditionView> conditions = RuleCondition.<RuleCondition>list("ruleVersion", version).stream()
@@ -614,7 +641,7 @@ public class RuleConfigService {
         return new VersionView(version.versionNo,
                 version.validFrom == null ? null : version.validFrom.toString(),
                 version.validTo == null ? null : version.validTo.toString(),
-                version.status == null ? null : version.status.name(),
+                effectiveStatus(version, today),
                 version.priority, version.exclusionGroup, version.parameters,
                 version.clawbackPolicy, version.paymentSchedule, conditions,
                 version.approvedBy, conflictCodes);
