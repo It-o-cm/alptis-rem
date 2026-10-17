@@ -160,6 +160,20 @@ async function validate(): Promise<void> {
   }
 }
 
+/** Refuses the open secondary lot for Finance (PAI-09): it returns to draft, its orders are cancelled. */
+async function refuse(): Promise<void> {
+  if (!detail.value) return;
+  message.value = '';
+  error.value = '';
+  try {
+    detail.value = await apiPost<LotDetail>(`/api/ui/v1/payment/lots/${detail.value.id}/refuse`, {});
+    message.value = 'Lot refusé et renvoyé en préparation.';
+    await loadLotsKeepingDetail();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Refus impossible';
+  }
+}
+
 /** Records the emission of the open cheque lot's cheques (PAY-04), then reloads it. */
 async function chequeEmission(): Promise<void> {
   if (!detail.value) return;
@@ -311,6 +325,14 @@ onMounted(loadLots);
         </AppButton>
         <AppButton v-if="canFinance() && detail.status === 'DRAFT'" variant="secondary" data-testid="lot-validate" @click="validate">
           Valider (Finance)
+        </AppButton>
+        <AppButton
+          v-if="canFinance() && detail.status === 'DRAFT' && detail.batchType !== 'CYCLE'"
+          variant="danger"
+          data-testid="lot-refuse"
+          @click="refuse"
+        >
+          Refuser (Finance)
         </AppButton>
         <AppButton v-if="canFinance() && detail.status === 'ISSUED' && detail.batchType !== 'CHEQUE'" variant="secondary" data-testid="lot-sepa" @click="showSepa">
           Fichier SEPA

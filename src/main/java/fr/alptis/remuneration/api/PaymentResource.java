@@ -117,6 +117,23 @@ public class PaymentResource {
     }
 
     /**
+     * Refuses a secondary lot for Finance (PAI-09): the lot returns to draft, its orders are cancelled
+     * and the period keeps its state.
+     *
+     * @param batchId the secondary lot id
+     * @return the lot detail after refusal
+     */
+    @POST
+    @Path("/lots/{batchId}/refuse")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed("FINANCE_CONTROLLER")
+    public LotDetail refuse(@PathParam("batchId") Long batchId) {
+        requireBatchScope(batchId);
+        payment.refuseLot(batchId);
+        return query.lot(batchId);
+    }
+
+    /**
      * Returns the SEPA file of a lot.
      *
      * @param batchId the batch id

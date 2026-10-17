@@ -400,6 +400,39 @@ public class PaymentService {
     }
 
     /**
+     * Refuses a secondary (non-cycle) lot for Finance (section 10.5, PAI-09): the lot stays {@code DRAFT},
+     * its orders are cancelled and its lines stay {@code PAYABLE} — the correction goes through
+     * adjustments — and the period keeps its state. The cycle lot is not refused this way: its refusal is
+     * the period rollback (PAYMENT_PREPARED back to CONTROLLED, PAI-08).
+     *
+     * @param batchId the secondary lot id
+     * @return the refused lot
+     * @throws ResourceNotFoundException when the lot is unknown
+     * @throws ValidationException       when the lot is the cycle lot or is not a draft
+     */
+    @Transactional
+    public PaymentBatch refuseLot(Long batchId) {
+        PaymentBatch batch = PaymentBatch.findById(batchId);
+        if (batch == null) {
+            throw new ResourceNotFoundException("Lot inconnu : " + batchId);
+        }
+        if (batch.batchType == BatchType.CYCLE) {
+            throw new ValidationException(
+                    "Le lot de cycle ne se refuse pas ainsi : ramener la période à « Contrôlée ».");
+        }
+        if (batch.status != BatchStatus.DRAFT) {
+            throw new ValidationException("Seul un lot en préparation peut être refusé.");
+        }
+        for (PaymentOrder order : PaymentOrder.<PaymentOrder>list("batch = ?1 and status = ?2", batch,
+                PaymentOrderStatus.TO_VALIDATE)) {
+            order.status = PaymentOrderStatus.CANCELLED;
+        }
+        // The lot stays DRAFT and its lines stay PAYABLE (corrected through adjustments); the period keeps
+        // its state.
+        return batch;
+    }
+
+    /**
      * Debits an order's account and passes its payable lines to paid (payment committed on emission).
      *
      * @param order the issued order

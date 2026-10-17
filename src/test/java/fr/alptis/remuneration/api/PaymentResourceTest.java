@@ -93,6 +93,19 @@ class PaymentResourceTest {
     }
 
     /**
+     * PAI-09: Finance refuses a secondary (non-cycle) lot, which stays in draft.
+     */
+    @Test
+    void refuses_a_secondary_lot() {
+        int off = given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().post("/api/ui/v1/payment/ALPTIS_ASSURANCES/" + MONTH + "/off-cycle/P13897")
+                .then().statusCode(200).extract().path("id");
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().post("/api/ui/v1/payment/lots/" + off + "/refuse")
+                .then().statusCode(200).body("status", is("DRAFT"));
+    }
+
+    /**
      * Unknown lots, orders, entities and empty periods are all reported as not found.
      */
     @Test

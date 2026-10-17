@@ -2138,6 +2138,56 @@ test('PAI-08 : le refus du lot de cycle par la Finance ramène la période, réa
   await finCtx.close();
 });
 
+test('PAI-09 : le refus d’un lot secondaire le renvoie en préparation sans changer l’état de la période @screen:payment @screen:periods @path:PAI-09 @role-action:FINANCE_CONTROLLER-refuse-lot', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CR-86&entity=UNEP&month=2026-01-01')).ok()).toBeTruthy();
+
+  // Drive the period to payment-prepared, which splits the lines into a cycle lot and a savings lot.
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/');
+  await admin.getByTestId('open-UNEP-2026-01-01').click();
+  await admin.getByTestId('advance-button').click();
+  await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+  await admin.getByTestId('advance-button').click();
+  await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+  const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+  const val = await valCtx.newPage();
+  await val.goto('/');
+  await val.getByTestId('open-UNEP-2026-01-01').click();
+  await val.getByTestId('advance-button').click();
+  await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+  await val.getByTestId('advance-button').click();
+  await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  // Finance refuses the secondary (retirement-savings) lot.
+  const finCtx = await browser.newContext({ httpCredentials: USERS.financeUnep });
+  const fin = await finCtx.newPage();
+  await fin.goto('/paiement');
+  await fin.getByTestId('pay-entity').selectOption('UNEP');
+  await fin.getByTestId('pay-month').selectOption('2026-01-01');
+  await fin.getByTestId('pay-refresh').click();
+  await fin.locator('[data-testid^="lot-row-"]', { hasText: 'SAVINGS_CYCLE' })
+    .getByRole('button', { name: 'Détail' }).click();
+  await fin.getByTestId('lot-refuse').click();
+
+  // The lot returns to draft (Brouillon) and its order is cancelled (Annulé).
+  await expect(fin.getByTestId('lot-detail')).toContainText('Brouillon');
+  await expect(fin.locator('[data-testid^="order-status-"]').first()).toContainText('Annulé');
+
+  // The period is unchanged: still payment-prepared.
+  await fin.goto('/');
+  await fin.getByTestId('open-UNEP-2026-01-01').click();
+  await expect(fin.getByTestId('detail-state')).toHaveText('Paiement préparé');
+
+  await adminCtx.close();
+  await valCtx.close();
+  await finCtx.close();
+});
+
 test('CYC-02 : une transition par un rôle non habilité est refusée @screen:periods @path:CYC-02', async ({
   browser,
   request,

@@ -166,6 +166,57 @@ class PaymentServiceTest {
     }
 
     /**
+     * PAI-09: refusing a secondary (non-cycle) lot keeps it in draft, cancels its orders and leaves its
+     * lines payable, and the period keeps its state.
+     */
+    @Test
+    @TestTransaction
+    void pai09_refusing_a_secondary_lot_returns_it_to_draft_and_cancels_its_orders() {
+        Period p = period(PeriodState.PAYMENT_PREPARED);
+        PaymentBatch savings = new PaymentBatch();
+        savings.entity = unep();
+        savings.period = p;
+        savings.batchType = BatchType.SAVINGS_CYCLE;
+        savings.batchReference = "SAVINGS-UNEP-" + M;
+        savings.status = BatchStatus.DRAFT;
+        savings.totalAmount = new BigDecimal("50.00");
+        savings.persist();
+        PaymentOrder order = order(savings, "50.00");
+
+        PaymentBatch refused = service.refuseLot(savings.getId());
+
+        assertEquals(BatchStatus.DRAFT, refused.status);
+        assertEquals(PaymentOrderStatus.CANCELLED, PaymentOrder.<PaymentOrder>findById(order.getId()).status);
+        assertEquals(LineStatus.PAYABLE,
+                CommissionLine.<CommissionLine>find("account = ?1", order.account).firstResult().status);
+        assertEquals(PeriodState.PAYMENT_PREPARED, Period.<Period>findById(p.getId()).state);
+    }
+
+    /**
+     * PAI-09: the cycle lot is not refused this way (its refusal is the period rollback), and a lot that
+     * is not a draft cannot be refused.
+     */
+    @Test
+    @TestTransaction
+    void pai09_the_cycle_lot_and_a_non_draft_lot_cannot_be_refused() {
+        Period p = period(PeriodState.PAYMENT_PREPARED);
+        PaymentBatch cycle = batch(p, "110.00");
+        order(cycle, "110.00");
+        assertThrows(ValidationException.class, () -> service.refuseLot(cycle.getId()));
+
+        Period q = period(LocalDate.of(2026, 12, 1), PeriodState.FINANCE_VALIDATED);
+        PaymentBatch issued = new PaymentBatch();
+        issued.entity = unep();
+        issued.period = q;
+        issued.batchType = BatchType.SAVINGS_CYCLE;
+        issued.batchReference = "SAV2";
+        issued.status = BatchStatus.ISSUED;
+        issued.totalAmount = BigDecimal.ZERO;
+        issued.persist();
+        assertThrows(ValidationException.class, () -> service.refuseLot(issued.getId()));
+    }
+
+    /**
      * CR-85: a rejected order recredits its account (PAYMENT_REJECTION), returns its lines to PAYABLE
      * and raises an anomaly; a settled one is confirmed.
      */
@@ -661,6 +712,7 @@ class PaymentServiceTest {
     @TestTransaction
     void unknown_batch_or_order() {
         assertThrows(ResourceNotFoundException.class, () -> service.validateFinance(-1L, "fin"));
+        assertThrows(ResourceNotFoundException.class, () -> service.refuseLot(-1L));
         assertThrows(ResourceNotFoundException.class, () -> service.sepaXml(-1L));
         assertThrows(ResourceNotFoundException.class, () -> service.recordBankResult(-1L, true, null));
         assertThrows(ResourceNotFoundException.class, () -> service.prepareOrderDetails(-1L));
