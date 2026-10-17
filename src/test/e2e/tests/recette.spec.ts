@@ -2026,6 +2026,40 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CYC-01 : chaque transition d’état est faite par le rôle habilité et tracée @screen:periods @path:CYC-01', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CYC-01&entity=UNEP&month=2027-06-01')).ok()).toBeTruthy();
+
+  // Each forward transition of section 7.1 is driven by its authorised role; the state advances and the
+  // transition history keeps the trace.
+  const steps: Array<[{ username: string; password: string }, string]> = [
+    [USERS.operatorUnep, 'Données gelées'],   // OPEN -> LOADED (operator)
+    [USERS.adminUnep, 'Calculée'],            // LOADED -> CALCULATED (business admin)
+    [USERS.operatorUnep, 'Contrôlée'],        // CALCULATED -> CONTROLLED (operator)
+    [USERS.validatorUnep, 'Validée métier'],  // CONTROLLED -> BUSINESS_VALIDATED (validator)
+    [USERS.financeUnep, 'Paiement préparé'],  // BUSINESS_VALIDATED -> PAYMENT_PREPARED (no role required)
+    [USERS.financeUnep, 'Validée Finance'],   // PAYMENT_PREPARED -> FINANCE_VALIDATED (finance)
+    [USERS.financeUnep, 'Payée'],             // FINANCE_VALIDATED -> PAID (finance)
+    [USERS.financeUnep, 'Clôturée'],          // PAID -> CLOSED (finance)
+  ];
+  for (let i = 0; i < steps.length; i++) {
+    const [user, nextLabel] = steps[i];
+    const ctx = await browser.newContext({ httpCredentials: user });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.getByTestId('open-UNEP-2027-06-01').click();
+    await expect(page.getByTestId('period-detail')).toBeVisible();
+    await page.getByTestId('advance-button').click();
+    await expect(page.getByTestId('detail-state')).toHaveText(nextLabel);
+    // The transition history keeps the trace of every step so far.
+    await expect(page.getByTestId('transition-row')).toHaveCount(i + 1);
+    await ctx.close();
+  }
+});
+
 test('CAL-11 : l’annulation d’un encaissement apuré diminue le cumul apuré @screen:advance @path:CAL-11', async ({
   browser,
   request,

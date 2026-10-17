@@ -191,6 +191,7 @@ public class CrScenarioResource {
             case "CAL-10" -> seedCal10(entity, periodMonth);
             case "CAL-10-END" -> seedCal10End(entity, periodMonth);
             case "CAL-11" -> seedCal11(entity, periodMonth);
+            case "CYC-01" -> seedCyc01(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2118,6 +2119,19 @@ public class CrScenarioResource {
         BusinessEvent cancellation = event(entity, coverage, "CAL11-CANCEL", EventType.PREMIUM_CANCELLED,
                 periodMonth.plusDays(10), null);
         cancellation.reversesEvent = origin;
+    }
+
+    /**
+     * CYC-01 (parcours §4.4) : chacune des transitions d'état du cycle (section 7.1). Une période ouverte
+     * (sans mois précédent, pour franchir la garde du calcul) que le parcours fait avancer état par état,
+     * chaque transition par le rôle habilité, l'historique des transitions gardant la trace.
+     *
+     * @param entity      the entity the period belongs to
+     * @param periodMonth the period month (chosen with no prior period)
+     */
+    private void seedCyc01(LegalEntity entity, LocalDate periodMonth) {
+        Period p = period(entity, periodMonth);
+        p.state = PeriodState.OPEN;
     }
 
     /**

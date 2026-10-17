@@ -1014,6 +1014,18 @@ class CrScenarioResourceTest {
                 .when().get("/api/ui/v1/advance-agreements/UNEP/P-CAL11").then().statusCode(200);
     }
 
+    /**
+     * CYC-01 (parcours): the scenario plants an open period with no prior month, ready to be advanced
+     * through each state transition (the transitions themselves are pinned by CycleResourceTest).
+     */
+    @Test
+    void cyc01_plants_an_open_period() {
+        given().when().post("/api/test/cr-scenario?cr=CYC-01&entity=UNEP&month=2027-06-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/periods/UNEP/2027-06-01")
+                .then().statusCode(200).body("period.state", is("OPEN"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

@@ -490,3 +490,9 @@ distributeurs le 25. Un flux non reçu dans le mois est « en retard » passé s
 - **Choix** : quand la ligne d'origine est apurée (`OFFSET`), l'inverse reste hors solde — statut `OFFSET`, rattaché à la même position d'escompte — et le cumul apuré matérialisé est diminué d'autant (`addOffsetByNature` avec le montant négatif). L'annulation d'un encaissement non apuré (CR-09) est inchangée (inverse `EARNED`, payable). Une ligne apurée portant toujours sa position, aucune garde de nullité n'est nécessaire.
 - **Preuve** : `seedCal11` (garantie escomptée, un encaissement de 100 € apuré pour 40 €, puis annulé) ; `CrScenarioResourceTest` vérifie que le cumul apuré revient à 0,00 € ; `@path:CAL-11` le montre sur l'écran Escompte (« Total apuré » à 0,00 €).
 - **Note** : l'idempotence au recalcul d'un apurement (lignes `OFFSET` non supprimées par D13 et donc susceptibles de doublon à la ré-exécution) est une limite préexistante, hors périmètre de CAL-11 ; le parcours est démontré sur un calcul unique.
+
+## 2026-10-17 — CYC-01 : chaque transition d'état du cycle par son rôle (section 7.1)
+
+- **Section** : CYC-01 (TESTS-E2E §4.4), machine à états de la période (section 7.1), rôles habilités, trace.
+- **Constat** : déjà en place — `PeriodService.TRANSITIONS` porte chaque transition avant/arrière avec son rôle ; `transition()` vérifie le rôle, applique les effets et enregistre la transition (trace lue par le détail de période). Couvert unitairement par `PeriodServiceTest`/`CycleResourceTest`.
+- **Choix** : aucune modification ; `seedCyc01` ouvre une période sans mois précédent (pour franchir la garde du calcul) ; `@path:CYC-01` la fait avancer OPEN → LOADED → CALCULATED → CONTROLLED → BUSINESS_VALIDATED → PAYMENT_PREPARED → FINANCE_VALIDATED → PAID → CLOSED, chaque transition par le rôle habilité (opérateur, administrateur métier, validateur, finance), et vérifie que l'historique des transitions compte une ligne de plus à chaque étape (la trace).
