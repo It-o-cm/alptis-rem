@@ -13,6 +13,36 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
+test('CPT-04 : un compte bloqué est exclu du lot jusqu’à sa date de levée @screen:payment @path:CPT-04', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=CPT-04&entity=UNEP&month=2027-05-01')).ok()).toBeTruthy();
+
+  const context = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await context.newPage();
+
+  // Advance the business-validated period to payment-prepared, which proposes the lot.
+  await page.goto('/');
+  await page.getByTestId('open-UNEP-2027-05-01').click();
+  await expect(page.getByTestId('detail-state')).toContainText('Validée métier');
+  await page.getByTestId('advance-button').click();
+  await expect(page.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  // On the payment screen, open the cycle lot.
+  await page.goto('/paiement');
+  await page.getByTestId('pay-entity').selectOption('UNEP');
+  await page.getByTestId('pay-month').selectOption('2027-05-01');
+  await page.getByTestId('pay-refresh').click();
+  await page.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+
+  // The still-blocked account is excluded from the lot; the account whose block has lapsed is paid.
+  await expect(page.locator('[data-testid^="exclusion-reason-"]', { hasText: 'Compte bloqué' })).toHaveCount(1);
+  await expect(page.locator('[data-testid^="order-amount-"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid^="order-amount-"]').first()).toContainText('150,00');
+  await context.close();
+});
+
 test('l’opérateur prépare le lot, la Finance valide, produit le SEPA et règle l’ordre @screen:payment @req:PAY-01 @req:PAY-02 @req:PAY-03 @req:PAY-06 @req:REF-08 @role-action:OPERATOR-prepare-lot @role-action:FINANCE_CONTROLLER-validate-lot @role-action:FINANCE_CONTROLLER-record-bank-result @path:PAI-10', async ({
   browser,
 }) => {

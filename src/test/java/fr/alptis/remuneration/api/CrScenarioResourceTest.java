@@ -1197,6 +1197,27 @@ class CrScenarioResourceTest {
                 .then().statusCode(200).body("total", is(100.0f));
     }
 
+    /**
+     * CPT-04 (parcours): a blocked account is excluded from the payment lot until its lifting date; once
+     * the date has passed the block no longer excludes. Two 150 € balances, one blocked far ahead
+     * (excluded, ACCOUNT_BLOCKED) and one blocked in the past (lifted, a 150 € order).
+     */
+    @Test
+    void cpt04_blocked_account_excluded_until_its_lifting_date() {
+        given().when().post("/api/test/cr-scenario?cr=CPT-04&entity=UNEP&month=2027-05-01").then().statusCode(204);
+        transition("operator-unep", "2027-05-01", "PAYMENT_PREPARED");
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2027-05-01/lots").then().statusCode(200)
+                .body("size()", is(1)).extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/lots/" + lotId).then().statusCode(200)
+                // The still-blocked account is excluded from the lot.
+                .body("exclusions.find { it.reason == 'ACCOUNT_BLOCKED' }.amount", is(150.00f))
+                // The account whose block has lapsed is paid: a single 150 € order.
+                .body("orders.amount", hasItem(150.00f))
+                .body("orders.size()", is(1));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

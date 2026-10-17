@@ -208,6 +208,7 @@ public class CrScenarioResource {
             case "CTL-04" -> seedCtl04(entity, periodMonth);
             case "AJU-05" -> seedAju05(entity, periodMonth);
             case "CPT-03" -> seedCpt03(entity, periodMonth);
+            case "CPT-04" -> seedCpt04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2352,6 +2353,63 @@ public class CrScenarioResource {
             repayment.amount = new BigDecimal("100.00");
             repayment.persist();
         }
+    }
+
+    /**
+     * CPT-04 (parcours §4.4) : blocage d'un compte avec date de levée, exclu du lot puis levé à la date
+     * (CPT-05). Deux distributeurs ont chacun un solde payable de 150 € et un compte bloqué : l'un avec
+     * une date de levée lointaine (le blocage tient, le compte est exclu du lot de paiement avec le motif
+     * « compte bloqué »), l'autre avec une date de levée déjà passée (le blocage est levé, un ordre de
+     * 150 € est émis). La période est validée métier, prête à être préparée au paiement.
+     *
+     * @param entity      the entity the accounts belong to
+     * @param periodMonth the period month
+     */
+    private void seedCpt04(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        blockedPayable(entity, period, "P-CPT04A", periodMonth.plusYears(50));
+        blockedPayable(entity, period, "P-CPT04B", periodMonth.minusYears(5));
+    }
+
+    /**
+     * Gives a distributor a 150 € payable balance on a blocked account, for the block-and-lift scenario
+     * (CPT-04): the block's lifting date drives whether the lot excludes it.
+     *
+     * @param entity       the entity
+     * @param period       the period
+     * @param partnerCode  the distributor code
+     * @param blockedUntil the block's lifting date
+     */
+    private void blockedPayable(LegalEntity entity, Period period, String partnerCode, LocalDate blockedUntil) {
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = partnerCode;
+        distributor.legalName = partnerCode;
+        distributor.persist();
+        DistributorEntity membership = new DistributorEntity();
+        membership.distributor = distributor;
+        membership.entity = entity;
+        membership.status = PartnerStatus.ACTIVE;
+        membership.validFrom = period.periodMonth;
+        membership.persist();
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = distributor.getId();
+        account.blocked = Boolean.TRUE;
+        account.blockReason = "Blocage manuel";
+        account.blockedUntil = blockedUntil;
+        account.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.account = account;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal("150.00");
+        line.attachmentMonth = period.periodMonth;
+        line.persist();
     }
 
     /**
