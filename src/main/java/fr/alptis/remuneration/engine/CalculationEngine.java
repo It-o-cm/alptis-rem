@@ -213,6 +213,12 @@ public class CalculationEngine {
         for (Coverage coverage : advanceCandidates(entity, byCoverage.keySet())) {
             lineCount += processUnit(period, run, coverage, List.of(), versions);
         }
+        // A fractioned discount's balance versement falls due in a later period (CAL-10); its garantie
+        // already carries a position, so it is processed here even without an event this period. A
+        // garantie already processed through an event is reconstructed again here, a no-op for the balance.
+        for (Coverage coverage : balanceDueCoverages(entity, period)) {
+            lineCount += processUnit(period, run, coverage, List.of(), versions);
+        }
         // Likewise the retirement discount is due in the period following the first scheduled payment
         // (section 6.6), so a savings garantie whose payment was encashed earlier is processed even
         // without an event this period.
@@ -315,6 +321,26 @@ public class CalculationEngine {
      * @param withEvents the ids of coverages already processed from their events
      * @return the candidate coverages for a versement
      */
+    /**
+     * The garanties whose fractioned discount balance versement falls due by this period (CAL-10): active
+     * positions past their balance date, excluding those already processed through an event this period.
+     * The versement itself is written (or skipped if already paid) when the garantie is processed.
+     *
+     * @param entity the entity
+     * @param period the period
+     * @return the garanties to process for a balance versement
+     */
+    private List<Coverage> balanceDueCoverages(LegalEntity entity, Period period) {
+        LocalDate periodEnd = period.periodMonth.plusMonths(1).minusDays(1);
+        List<Coverage> out = new ArrayList<>();
+        for (AdvancePosition pos : AdvancePosition.<AdvancePosition>list(
+                "status = ?1 and balanceDueDate is not null and balanceDueDate <= ?2 and advanceAgreement.entity = ?3",
+                AdvanceStatus.ACTIVE, periodEnd, entity)) {
+            out.add(pos.coverage);
+        }
+        return out;
+    }
+
     private List<Coverage> advanceCandidates(LegalEntity entity, java.util.Set<Long> withEvents) {
         List<Coverage> candidates = new ArrayList<>();
         java.util.Set<Long> seen = new java.util.HashSet<>();
@@ -1018,14 +1044,23 @@ public class CalculationEngine {
                     existing, LineNature.ADVANCE).stream().map(l -> l.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
             if (advanced.signum() != 0) {
                 // Versement written in an earlier period: reconstruct the running state and reuse the
-                // position without writing the versement again.
+                // position without writing the first versement again.
                 AdvanceState carried = new AdvanceState();
                 carried.position = existing;
                 carried.advanced = advanced;
+                carried.totalDue = existing.totalAdvanceDue;
                 carried.offset = CommissionLine.<CommissionLine>list("advancePosition = ?1 and status = ?2",
                         existing, LineStatus.OFFSET).stream().map(l -> l.amount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 carried.versementLines = 0;
+                // The balance versement of a fractioned discount is written once its date is reached and
+                // the part is still unpaid (CAL-10); the versed amount is reconstructed each run (D8).
+                if (existing.balanceDueDate != null
+                        && !period.periodMonth.isBefore(firstOfMonth(existing.balanceDueDate))
+                        && carried.advanced.compareTo(carried.totalDue) < 0) {
+                    carried.versementLines += grantBalance(period, run, coverage,
+                            choiceAt(coverage, coverage.effectDate), carried);
+                }
                 return carried;
             }
             // The position was opened in this same not-yet-validated period, whose versement lines a
@@ -1104,14 +1139,80 @@ public class CalculationEngine {
         state.position = position;
         state.advanced = BigDecimal.ZERO;
         state.offset = BigDecimal.ZERO;
+        // A fractioned convention versers only the first part now; the balance follows at its date (CAL-10).
+        BigDecimal share = firstVersementShare(position.advanceAgreement);
+        BigDecimal totalDue = BigDecimal.ZERO;
         for (ProposedLine proposed : advanceLines) {
+            BigDecimal full = proposed.amount();
+            BigDecimal firstPart = full.multiply(share).setScale(2, RoundingMode.HALF_UP);
+            totalDue = totalDue.add(full);
             List<CommissionLine> lines = writeShared(period, run, null, coverage, null, position, Direction.OUTBOUND,
-                    LineNature.ADVANCE, null, null, proposed.amount(), proposed.explanation());
-            state.advanced = state.advanced.add(proposed.amount());
+                    LineNature.ADVANCE, null, null, firstPart, proposed.explanation());
+            state.advanced = state.advanced.add(firstPart);
             state.versementLines += lines.size();
         }
         position.advancedAcquisition = state.advanced;
+        position.totalAdvanceDue = totalDue;
+        position.balanceDueDate = balanceVersementDate(position.advanceAgreement, coverage.effectDate);
+        state.totalDue = totalDue;
         return state;
+    }
+
+    /**
+     * Grants the balance versement of a fractioned discount when its date is reached (CAL-10): the part
+     * not yet versed (total due minus what is already versed) is written as {@code ADVANCE} lines into the
+     * open position. Idempotent — the versed amount is reconstructed from the validated lines each run.
+     *
+     * @param period   the period
+     * @param run      the run
+     * @param coverage the coverage
+     * @param choice   the remuneration choice at the effect date
+     * @param carried  the reconstructed advance state, versed so far
+     * @return the number of balance lines written
+     */
+    private int grantBalance(Period period, CalculationRun run, Coverage coverage, RemunerationChoice choice,
+                             AdvanceState carried) {
+        CalculationInput input = new CalculationInput(EventType.PREMIUM_COLLECTED, null, choice.linearRate,
+                choice.acquisitionRate, choice.servicingRate, coverage.effectDate, coverage.effectDate, null, null,
+                null, null, null, coverage.annualPremium, LineNature.ADVANCE, null, null);
+        BigDecimal share = firstVersementShare(carried.position.advanceAgreement);
+        int count = 0;
+        for (ProposedLine proposed : families.get(RuleFamily.ADVANCE).propose(input)) {
+            BigDecimal full = proposed.amount();
+            BigDecimal balance = full.subtract(full.multiply(share).setScale(2, RoundingMode.HALF_UP));
+            List<CommissionLine> lines = writeShared(period, run, null, coverage, null, carried.position,
+                    Direction.OUTBOUND, LineNature.ADVANCE, null, null, balance, proposed.explanation());
+            carried.advanced = carried.advanced.add(balance);
+            count += lines.size();
+        }
+        carried.position.advancedAcquisition = carried.advanced;
+        return count;
+    }
+
+    /**
+     * The first-versement share of a convention: the fraction paid at the versement date, 1 when the
+     * convention does not fraction the discount (section 6.4).
+     *
+     * @param agreement the discount agreement
+     * @return the first-versement share, defaulting to one
+     */
+    private BigDecimal firstVersementShare(fr.alptis.remuneration.domain.AdvanceAgreement agreement) {
+        JsonNode split = readObject(mapper, agreement.split);
+        return split == null ? BigDecimal.ONE : split.get("firstShare").decimalValue();
+    }
+
+    /**
+     * The due date of the balance versement of a fractioned convention (the {@code split}'s
+     * {@code balanceMonths} after the effect date, section 6.4), or null when the discount is not
+     * fractioned. A split must declare both {@code firstShare} and {@code balanceMonths}.
+     *
+     * @param agreement the discount agreement
+     * @param effect    the garantie's effect date
+     * @return the balance versement date, or null
+     */
+    private LocalDate balanceVersementDate(fr.alptis.remuneration.domain.AdvanceAgreement agreement, LocalDate effect) {
+        JsonNode split = readObject(mapper, agreement.split);
+        return split == null ? null : effect.plusMonths(split.get("balanceMonths").asInt());
     }
 
     /**
@@ -1167,7 +1268,9 @@ public class CalculationEngine {
                 addOffsetByNature(advance.position, line.nature, line.amount);
             }
         }
-        BigDecimal delta = advance.offset.subtract(advance.advanced);
+        // The gap is measured against the total discount due — versed or not — so a fractioned position
+        // stays open until the whole advance is apured, not just the first part (CAL-10, section 6.4).
+        BigDecimal delta = advance.offset.subtract(advance.totalDue);
         if (delta.signum() >= 0) {
             return settle(period, run, coverage, advance, delta, "SETTLED_BY_OFFSET");
         }
@@ -1230,6 +1333,8 @@ public class CalculationEngine {
         if (advance == null || !advance.active() || event.eventType == EventType.DEATH) {
             return 0;
         }
+        // At a rupture the not-yet-versed balance of a fractioned discount is annulled (never written), so
+        // the gap is measured on the versed amount only (CAL-10, section 6.4).
         BigDecimal delta = advance.offset.subtract(advance.advanced);
         advance.position.status = AdvanceStatus.CANCELLED;
         advance.position.closedAt = clock.now();
@@ -1252,9 +1357,10 @@ public class CalculationEngine {
                 || period.periodMonth.isBefore(firstOfMonth(advance.position.settlementDueDate))) {
             return 0;
         }
-        // While active at the due date, the offset cumul is always short of the advanced amount, so
-        // the gap is negative; a gap under the tolerance is written off (section 6.4).
-        BigDecimal delta = advance.offset.subtract(advance.advanced);
+        // While active at the due date, the offset cumul is always short of the total due, so the gap is
+        // negative; a gap under the tolerance is written off (section 6.4). The total due equals the
+        // versed amount once a fractioned balance has been paid (CAL-10).
+        BigDecimal delta = advance.offset.subtract(advance.totalDue);
         BigDecimal tolerance = period.entity.advanceSettlementTolerance;
         if (delta.abs().compareTo(tolerance) < 0) {
             advance.position.status = AdvanceStatus.SETTLED;
@@ -2809,8 +2915,10 @@ public class CalculationEngine {
     private static final class AdvanceState {
         /** The persistent position. */
         private AdvancePosition position;
-        /** The total amount advanced. */
+        /** The amount actually versed so far (the first part until the balance is paid). */
         private BigDecimal advanced = BigDecimal.ZERO;
+        /** The total discount due (versed or not); the apurement gap is measured against it (CAL-10). */
+        private BigDecimal totalDue = BigDecimal.ZERO;
         /** The running offset cumul. */
         private BigDecimal offset = BigDecimal.ZERO;
         /** The number of ADVANCE lines written at versement. */

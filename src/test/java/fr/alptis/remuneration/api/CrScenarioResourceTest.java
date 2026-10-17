@@ -997,6 +997,12 @@ class CrScenarioResourceTest {
                 .when().post("/api/ui/v1/advance-agreements/ALPTIS_ASSURANCES/P-PAR12/close").then().statusCode(404);
     }
 
+    /** Runs the real calculation of a UNEP month as the operator. */
+    private static void runUnep(String month) {
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/" + month + "/run").then().statusCode(200);
+    }
+
     /** The UNEP P-PAR12 discount-agreement detail, ready for body assertions. */
     private static io.restassured.response.ValidatableResponse advanceDetail() {
         return given().auth().preemptive().basic("admin-unep", "admin-unep")
@@ -1066,6 +1072,29 @@ class CrScenarioResourceTest {
                 .then().statusCode(200)
                 .body("positions.size()", is(1))
                 .body("positions[0].coverageCode", is("CAL09A-C1"));
+    }
+
+    /**
+     * CAL-10 (parcours): a fractioned discount verses half at the effect date and the balance two months
+     * later. A garantie going to term receives both versements (400,00 € advanced); one terminated before
+     * the balance keeps only the first part (200,00 €), the unversed balance annulled.
+     */
+    @Test
+    void cal10_fractioned_discount_balance_and_rupture_before_it() {
+        given().when().post("/api/test/cr-scenario?cr=CAL-10&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        runUnep("2026-01-01");
+        // B is terminated after the first versement, before its balance falls due: it is reconstructed
+        // then ruptured in February, the unversed balance annulled.
+        given().when().post("/api/test/cr-scenario?cr=CAL-10-END&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        runUnep("2026-02-01");
+        runUnep("2026-03-01");
+        runUnep("2026-04-01");
+        var detail = given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().get("/api/ui/v1/advance-agreements/UNEP/P-CAL10").then().statusCode(200);
+        // The surviving garantie received both versements; the terminated one only the first part.
+        detail.body("positions.find { it.coverageCode == 'CAL10A-C1' }.advanced", is(400.00f))
+                .body("positions.find { it.coverageCode == 'CAL10B-C1' }.advanced", is(200.00f))
+                .body("positions.find { it.coverageCode == 'CAL10B-C1' }.status", is("CANCELLED"));
     }
 
     /**

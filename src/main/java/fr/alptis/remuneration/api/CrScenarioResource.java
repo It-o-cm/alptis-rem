@@ -188,6 +188,8 @@ public class CrScenarioResource {
             case "CAL-06-RULE" -> seedCal06Rule(entity, periodMonth);
             case "CAL-08" -> seedCal08(entity, periodMonth);
             case "CAL-09" -> seedCal09(entity, periodMonth);
+            case "CAL-10" -> seedCal10(entity, periodMonth);
+            case "CAL-10-END" -> seedCal10End(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2055,6 +2057,47 @@ public class CrScenarioResource {
         choice.validFrom = effect;
         choice.persist();
         return coverage;
+    }
+
+    /**
+     * CAL-10 (parcours §4.3) : escompte fractionné. Une convention qui verse la moitié de l'escompte à la
+     * date d'effet et le solde deux mois après ; deux garanties escomptées (apport total 400,00 € chacune,
+     * soit 200,00 € par versement). La première (CAL10A) va au terme : le second versement est écrit à sa
+     * date (total escompté 400,00 €). La seconde (CAL10B) est résiliée en février, avant le second
+     * versement : la part non versée est annulée, l'escompte reste à 200,00 €, et Δ se calcule sur ce seul
+     * montant versé.
+     *
+     * @param entity      the entity the convention belongs to
+     * @param periodMonth the effect date and first period
+     */
+    private void seedCal10(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        period(entity, periodMonth.plusMonths(1));
+        period(entity, periodMonth.plusMonths(2));
+        period(entity, periodMonth.plusMonths(3));
+        Product product = product(entity, "SANTE_SELECT");
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = "P-CAL10";
+        distributor.legalName = "P-CAL10";
+        distributor.persist();
+        escompteShared(entity, product, distributor, "CAL10A", periodMonth, periodMonth);
+        escompteShared(entity, product, distributor, "CAL10B", periodMonth, periodMonth);
+        AdvanceAgreement convention = convention(entity, "P-CAL10", 100,
+                LocalDate.of(periodMonth.getYear(), 12, 31));
+        convention.split = "{\"firstShare\":0.5,\"balanceMonths\":2}";
+    }
+
+    /**
+     * CAL-10 complement: terminates the {@link #seedCal10} garantie B, so the next calculation ruptures it
+     * before its balance versement falls due — the unversed part is annulled.
+     *
+     * @param entity      the entity
+     * @param periodMonth the effect date and first period
+     */
+    private void seedCal10End(LegalEntity entity, LocalDate periodMonth) {
+        Coverage b = Coverage.<Coverage>find("coverageCode = ?1 and contract.entity = ?2", "CAL10B-C1", entity)
+                .firstResult();
+        event(entity, b, "CAL10B-END", EventType.TERMINATION, periodMonth.plusMonths(1).plusDays(14), null);
     }
 
     /**

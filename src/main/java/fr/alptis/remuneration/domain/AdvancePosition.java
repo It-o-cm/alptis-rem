@@ -86,4 +86,16 @@ public class AdvancePosition extends BaseEntity {
     /** Why the position was closed (a fixed code or the breaking event's code). */
     @Column(name = "close_reason")
     public String closeReason;
+
+    /**
+     * The total discount due over the position, versed or not (section 6.4). It equals the versed amount
+     * for a single versement; for a fractioned convention it is the whole advance, so the apurement gap
+     * is measured against the total while only the first part is paid (CAL-10).
+     */
+    @Column(name = "total_advance_due", precision = 14, scale = 2)
+    public BigDecimal totalAdvanceDue;
+
+    /** The due date of the balance versement of a fractioned discount, or null when not fractioned. */
+    @Column(name = "balance_due_date")
+    public LocalDate balanceDueDate;
 }

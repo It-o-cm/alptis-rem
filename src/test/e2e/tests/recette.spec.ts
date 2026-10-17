@@ -2026,6 +2026,38 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CAL-10 : escompte fractionné, second versement à sa date et rupture avant le second @screen:advance @path:CAL-10', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const auth = 'Basic ' + Buffer.from('operator-unep:operator-unep').toString('base64');
+  const run = async (month: string) => {
+    const r = await request.post(`/api/ui/v1/calculations/UNEP/${month}/run`, { headers: { Authorization: auth } });
+    expect(r.ok()).toBeTruthy();
+  };
+
+  expect((await request.post('/api/test/cr-scenario?cr=CAL-10&entity=UNEP&month=2026-01-01')).ok()).toBeTruthy();
+  await run('2026-01-01');
+  // Terminate B after the first versement, then run the following months: B ruptures before its balance,
+  // A receives its second versement at its date (two months after effect).
+  expect((await request.post('/api/test/cr-scenario?cr=CAL-10-END&entity=UNEP&month=2026-01-01')).ok()).toBeTruthy();
+  await run('2026-02-01');
+  await run('2026-03-01');
+  await run('2026-04-01');
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/escompte');
+  await admin.locator('[data-testid^="advance-row-"]').filter({ hasText: 'P-CAL10' }).first().click();
+  await expect(admin.getByTestId('advance-detail')).toBeVisible();
+  // A received both versements (400,00 €); B, ruptured before its balance, only the first part (200,00 €).
+  await expect(admin.getByTestId('adv-position-row').filter({ hasText: 'CAL10A-C1' })).toContainText('400,00');
+  await expect(admin.getByTestId('adv-position-row').filter({ hasText: 'CAL10B-C1' })).toContainText('200,00');
+
+  await adminCtx.close();
+});
+
 test('CAL-09 : le plafond d’adhésions admet par date d’enregistrement @screen:advance @path:CAL-09', async ({
   browser,
   request,
