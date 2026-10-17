@@ -1126,6 +1126,33 @@ class CrScenarioResourceTest {
                         "CLAWBACK", "SUPPLEMENT", "ACCOUNT", "PAYMENT", "ACCOUNTING", "EXTERNAL_FLOW"));
     }
 
+    /**
+     * CTL-04 (parcours): a missing quality indicator for an RCP raises the blocking
+     * missing-indicator anomaly, which by exception cannot be accepted with a justification; another
+     * decision (fix) is accepted.
+     */
+    @Test
+    void ctl04_missing_indicator_anomaly_cannot_be_accepted() {
+        given().when().post("/api/test/cr-scenario?cr=CTL-04&entity=UNEP&month=2027-05-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/controls/UNEP/2027-05-01/run").then().statusCode(200);
+        Integer id = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/controls/UNEP/2027-05-01/anomalies")
+                .then().statusCode(200)
+                .extract().path("find { it.controlCode == 'SUPP-MISSING-INDICATOR' }.id");
+        // Accepting it is refused.
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body("{\"decision\":\"ACCEPTED\",\"justification\":\"vu\"}")
+                .when().post("/api/ui/v1/controls/anomalies/" + id + "/decision")
+                .then().statusCode(400)
+                .body("detail", org.hamcrest.Matchers.containsString("ne peut pas être accepté"));
+        // Marking it fixed is allowed.
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body("{\"decision\":\"FIXED\",\"justification\":\"indicateur reçu\"}")
+                .when().post("/api/ui/v1/controls/anomalies/" + id + "/decision")
+                .then().statusCode(200).body("decision", is("FIXED"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

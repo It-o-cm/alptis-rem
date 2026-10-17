@@ -215,9 +215,15 @@ async function run(): Promise<void> {
  * @param decision the decision code
  */
 async function decide(a: AnomalyView, decision: string): Promise<void> {
-  await apiPost(`/api/ui/v1/controls/anomalies/${a.id}/decision`,
-    { decision, justification: justification.value[a.id] ?? '' });
-  await loadAnomalies();
+  message.value = '';
+  error.value = '';
+  try {
+    await apiPost(`/api/ui/v1/controls/anomalies/${a.id}/decision`,
+      { decision, justification: justification.value[a.id] ?? '' });
+    await loadAnomalies();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Décision refusée';
+  }
 }
 
 /**

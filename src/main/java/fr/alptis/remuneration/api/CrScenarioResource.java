@@ -202,6 +202,7 @@ public class CrScenarioResource {
             case "CYC-04" -> seedCyc04(entity, periodMonth);
             case "CYC-05" -> seedCyc05(entity, periodMonth);
             case "CTL-01" -> seedCtl01(entity, periodMonth);
+            case "CTL-04" -> seedCtl04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2293,6 +2294,34 @@ public class CrScenarioResource {
 
         // COMPLETENESS needs no setup: no inbound flow was imported, so an expected flow is missing
         // (COMP-FLOWS).
+    }
+
+    /**
+     * CTL-04 (parcours §4.4) : indicateur de qualité manquant pour la RCP. Une ligne de RCP rattachée à
+     * un distributeur sans indicateur de condition pour le mois déclenche le contrôle bloquant
+     * « indicateur de condition manquant » ; par exception (section 7.3, H-48), cette anomalie ne peut
+     * pas être acceptée avec justification — elle n'est levée qu'à la réception de l'indicateur.
+     *
+     * @param entity      the entity the line belongs to
+     * @param periodMonth the controlled period's month
+     */
+    private void seedCtl04(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.CALCULATED;
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = "P-CTL04";
+        distributor.legalName = "P-CTL04";
+        distributor.persist();
+        CommissionLine rcp = new CommissionLine();
+        rcp.entity = entity;
+        rcp.period = period;
+        rcp.direction = Direction.OUTBOUND;
+        rcp.nature = LineNature.RCP;
+        rcp.status = LineStatus.EARNED;
+        rcp.amount = new BigDecimal("80.00");
+        rcp.originDistributor = distributor;
+        rcp.attachmentMonth = periodMonth;
+        rcp.persist();
     }
 
     /**

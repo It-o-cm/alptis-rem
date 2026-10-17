@@ -14,6 +14,7 @@ import fr.alptis.remuneration.domain.BusinessEvent;
 import fr.alptis.remuneration.domain.CommissionLine;
 import fr.alptis.remuneration.domain.ControlChecklistItem;
 import fr.alptis.remuneration.domain.ControlDecision;
+import fr.alptis.remuneration.domain.ValidationException;
 import fr.alptis.remuneration.domain.ControlDefinition;
 import fr.alptis.remuneration.domain.ControlResult;
 import fr.alptis.remuneration.domain.ControlSeverity;
@@ -311,8 +312,13 @@ public class ControlService {
     public record ChecklistItemView(String code, String label, boolean checked, String checkedBy) {
     }
 
+    /** Control whose anomaly cannot be accepted with a justification (CTL-04, H-48). */
+    static final String MISSING_INDICATOR = "SUPP-MISSING-INDICATOR";
+
     /**
-     * Records a decision on an anomaly (CTL-05): its author, date and justification.
+     * Records a decision on an anomaly (CTL-05): its author, date and justification. By exception to the
+     * general rule, a missing condition indicator cannot be accepted with a justification: it blocks the
+     * period's validation until the indicator is received (CTL-04, H-48).
      *
      * @param resultId      the anomaly id
      * @param decision      the decision taken
@@ -325,6 +331,10 @@ public class ControlService {
         ControlResult result = ControlResult.findById(resultId);
         if (result == null) {
             throw new ResourceNotFoundException("Anomalie inconnue : " + resultId);
+        }
+        if (decision == ControlDecision.ACCEPTED && MISSING_INDICATOR.equals(result.control.code)) {
+            throw new ValidationException("Un indicateur de condition manquant ne peut pas être accepté ; "
+                    + "l'indicateur doit être reçu.");
         }
         result.decision = decision;
         result.decidedBy = userId;

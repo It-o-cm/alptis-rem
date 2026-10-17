@@ -53,6 +53,33 @@ test('CTL-01 : une anomalie pour chacune des dix familles de contrôle, avec gra
   await context.close();
 });
 
+test('CTL-04 : l’anomalie d’indicateur de qualité manquant ne peut pas être acceptée @screen:controls @path:CTL-04', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=CTL-04&entity=UNEP&month=2027-05-01')).ok()).toBeTruthy();
+
+  const context = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await context.newPage();
+  await page.goto('/controles');
+  await page.getByTestId('ctl-entity').selectOption('UNEP');
+  await page.getByTestId('ctl-month').selectOption('2027-05-01');
+  await page.getByTestId('ctl-run').click();
+  await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
+
+  // The blocking missing-indicator anomaly is raised.
+  const row = page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'SUPP-MISSING-INDICATOR' }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('Bloquant');
+
+  // Accepting it is refused — the anomaly cannot be waived with a justification.
+  await row.locator('[data-testid^="anomaly-accept-"]').click();
+  await expect(page.getByTestId('ctl-error')).toContainText('ne peut pas être accepté');
+  // It stays open, undecided.
+  await expect(row.locator('[data-testid^="anomaly-decision-"]')).toContainText('Ouverte');
+  await context.close();
+});
+
 test.describe('Contrôles — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
