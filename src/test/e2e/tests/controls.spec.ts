@@ -11,6 +11,48 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
+test('CTL-01 : une anomalie pour chacune des dix familles de contrôle, avec gravité et constat @screen:controls @path:CTL-01', async ({
+  browser,
+  request,
+}) => {
+  // The ten-family dataset is planted for UNEP on a dedicated month.
+  expect((await request.post('/api/test/cr-scenario?cr=CTL-01&entity=UNEP&month=2027-05-01')).ok()).toBeTruthy();
+
+  const context = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await context.newPage();
+  await page.goto('/controles');
+  await page.getByTestId('ctl-entity').selectOption('UNEP');
+  await page.getByTestId('ctl-month').selectOption('2027-05-01');
+  await page.getByTestId('ctl-run').click();
+  await expect(page.getByTestId('ctl-message')).toContainText('anomalie');
+  await expect(page.getByTestId('chart-ctl-family')).toBeVisible();
+
+  // Each of the ten families of section 8.6 raised its anomaly, shown by its control code.
+  const codes = [
+    'COMP-FLOWS',       // COMPLETENESS
+    'DATA-PREMIUM',     // DATA_QUALITY
+    'CALC-NO-RULE',     // CALCULATION
+    'ADV-NO-MEMBER',    // ADVANCE
+    'CLAWBACK-EXCESS',  // CLAWBACK
+    'SUPP-NO-AGREEMENT',// SUPPLEMENT
+    'ACCOUNT-DEBTOR',   // ACCOUNT
+    'PAY-LOT-BALANCE',  // PAYMENT
+    'ACC-BALANCED',     // ACCOUNTING
+    'EXT-EXTERNAL-MISMATCH', // EXTERNAL_FLOW
+  ];
+  for (const code of codes) {
+    await expect(
+      page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: code }).first(),
+    ).toBeVisible();
+  }
+
+  // An anomaly carries its severity and its finding (observed value against the expected one).
+  const debtor = page.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'ACCOUNT-DEBTOR' }).first();
+  await expect(debtor).toContainText(/Bloquant|Avertissement|Information/);
+  await expect(debtor).toContainText('-100.00');
+  await context.close();
+});
+
 test.describe('Contrôles — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 

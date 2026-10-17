@@ -5,6 +5,11 @@ import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.AccountEntry;
 import fr.alptis.remuneration.domain.AccountEntryType;
+import fr.alptis.remuneration.domain.AccountingEntry;
+import fr.alptis.remuneration.domain.AccountingEvent;
+import fr.alptis.remuneration.domain.BatchStatus;
+import fr.alptis.remuneration.domain.BatchType;
+import fr.alptis.remuneration.domain.PaymentBatch;
 import fr.alptis.remuneration.domain.AdvanceDebtHandling;
 import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.Agreement;
@@ -196,6 +201,7 @@ public class CrScenarioResource {
             case "CYC-03" -> seedCyc03(entity, periodMonth);
             case "CYC-04" -> seedCyc04(entity, periodMonth);
             case "CYC-05" -> seedCyc05(entity, periodMonth);
+            case "CTL-01" -> seedCtl01(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2211,6 +2217,134 @@ public class CrScenarioResource {
         Period required = period(entity, periodMonth.plusMonths(1));
         required.state = PeriodState.CONTROLLED;
         forecastLine(entity, required, "150000.00", null);
+    }
+
+    /**
+     * CTL-01 (parcours §4.4) : une anomalie pour chacune des dix familles de contrôle de la section 8.6.
+     * La période reçoit un jeu de données minimal déclenchant un contrôle par famille :
+     * {@code COMPLETENESS} (aucun flux importé → flux attendu manquant), {@code DATA_QUALITY} (prime
+     * nulle), {@code CALCULATION} (événement en attente « aucune règle »), {@code ADVANCE} (convention
+     * d'escompte valide sans distributeur), {@code CLAWBACK} (reprise supérieure à l'acquis d'une
+     * garantie), {@code SUPPLEMENT} (surcommission sans accord signé), {@code ACCOUNT} (compte débiteur),
+     * {@code PAYMENT} (lot dont le total ne correspond pas à ses ordres), {@code ACCOUNTING} (écriture
+     * déséquilibrée) et {@code EXTERNAL_FLOW} (ligne externe dont le montant rompt avec base × taux).
+     * Chaque anomalie est affichée avec sa gravité et son constat (valeur observée / attendue).
+     *
+     * @param entity      the entity the period belongs to
+     * @param periodMonth the controlled period's month
+     */
+    private void seedCtl01(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.CALCULATED;
+
+        // DATA_QUALITY: an event whose premium is non-positive (DATA-PREMIUM).
+        controlEvent(entity, period, "CTL01-PREMIUM", BigDecimal.ZERO, ProcessingStatus.PENDING, null, periodMonth);
+        // CALCULATION: an event held for lack of a base rule (CALC-NO-RULE).
+        controlEvent(entity, period, "CTL01-NORULE", new BigDecimal("100.00"), ProcessingStatus.ON_HOLD,
+                HoldReason.NO_RULE, periodMonth);
+
+        // ADVANCE: a valid advance agreement with no member distributor (ADV-NO-MEMBER).
+        AdvanceAgreement agreement = new AdvanceAgreement();
+        agreement.entity = entity;
+        agreement.status = AdvanceAgreementStatus.VALID;
+        agreement.persist();
+
+        // CLAWBACK: a coverage whose clawbacks exceed its acquired commissions (CLAWBACK-EXCESS).
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage clawed = coverage(entity, "CTL01-CB", product, periodMonth, "P-CTL01-CB", null);
+        controlLine(entity, period, clawed, LineNature.CLAWBACK, "-100.00", null, null);
+        // SUPPLEMENT: a supplement line carrying no signed agreement (SUPP-NO-AGREEMENT).
+        controlLine(entity, period, null, LineNature.COMPLEMENT, "50.00", null, null);
+        // EXTERNAL_FLOW: an external line whose amount breaks with basis × rate (EXT-EXTERNAL-MISMATCH).
+        controlLine(entity, period, null, LineNature.EXTERNAL, "999.00", "100.00", "0.10");
+
+        // ACCOUNT: a distributor account left in debit (ACCOUNT-DEBTOR).
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-CTL01-CB").firstResult();
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = distributor.getId();
+        account.persist();
+        AccountEntry entry = new AccountEntry();
+        entry.account = account;
+        entry.period = period;
+        entry.entryType = AccountEntryType.OPENING_BALANCE;
+        entry.entryDate = periodMonth;
+        entry.amount = new BigDecimal("-100.00");
+        entry.persist();
+
+        // PAYMENT: a payment batch whose total does not match its (absent) orders (PAY-LOT-BALANCE).
+        PaymentBatch batch = new PaymentBatch();
+        batch.entity = entity;
+        batch.period = period;
+        batch.batchType = BatchType.CYCLE;
+        batch.status = BatchStatus.DRAFT;
+        batch.totalAmount = new BigDecimal("100.00");
+        batch.persist();
+
+        // ACCOUNTING: an unbalanced accounting entry — no debit side (ACC-BALANCED).
+        AccountingEntry accounting = new AccountingEntry();
+        accounting.entity = entity;
+        accounting.period = period;
+        accounting.accountingEvent = AccountingEvent.EARNING;
+        accounting.creditAccount = "706";
+        accounting.amount = new BigDecimal("100.00");
+        accounting.persist();
+
+        // COMPLETENESS needs no setup: no inbound flow was imported, so an expected flow is missing
+        // (COMP-FLOWS).
+    }
+
+    /**
+     * Poses an eligible business event on a period for a control scenario.
+     *
+     * @param entity      the entity
+     * @param period      the eligible period
+     * @param sourceKey   the source key
+     * @param basisAmount the premium basis
+     * @param status      the processing status
+     * @param holdReason  the hold reason, or null
+     * @param date        the event and received date
+     */
+    private void controlEvent(LegalEntity entity, Period period, String sourceKey, BigDecimal basisAmount,
+                              ProcessingStatus status, HoldReason holdReason, LocalDate date) {
+        BusinessEvent event = new BusinessEvent();
+        event.entity = entity;
+        event.eligiblePeriod = period;
+        event.sourceKey = sourceKey;
+        event.eventDate = date;
+        event.receivedDate = date;
+        event.basisAmount = basisAmount;
+        event.processingStatus = status;
+        event.holdReason = holdReason;
+        event.persist();
+    }
+
+    /**
+     * Poses a commission line on a period for a control scenario.
+     *
+     * @param entity   the entity
+     * @param period   the period
+     * @param coverage the coverage, or null
+     * @param nature   the line nature
+     * @param amount   the signed amount
+     * @param basis    the basis amount (external line), or null
+     * @param rate     the rate (external line), or null
+     */
+    private void controlLine(LegalEntity entity, Period period, Coverage coverage, LineNature nature, String amount,
+                             String basis, String rate) {
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.coverage = coverage;
+        line.direction = Direction.OUTBOUND;
+        line.nature = nature;
+        line.status = LineStatus.EARNED;
+        line.amount = new BigDecimal(amount);
+        line.basisAmount = basis == null ? null : new BigDecimal(basis);
+        line.rate = rate == null ? null : new BigDecimal(rate);
+        line.attachmentMonth = period.periodMonth;
+        line.persist();
     }
 
     /**

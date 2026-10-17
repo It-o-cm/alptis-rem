@@ -1110,6 +1110,22 @@ class CrScenarioResourceTest {
                 .then().statusCode(200).body("state", is("BUSINESS_VALIDATED"));
     }
 
+    /**
+     * CTL-01 (parcours): a minimal dataset raises at least one anomaly in each of the ten control
+     * families of section 8.6; the per-family breakdown of the run lists all ten.
+     */
+    @Test
+    void ctl01_one_anomaly_per_control_family() {
+        given().when().post("/api/test/cr-scenario?cr=CTL-01&entity=UNEP&month=2027-05-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/controls/UNEP/2027-05-01/run").then().statusCode(200);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/controls/UNEP/2027-05-01/anomaly-breakdown")
+                .then().statusCode(200)
+                .body("byFamily.label", hasItems("COMPLETENESS", "DATA_QUALITY", "CALCULATION", "ADVANCE",
+                        "CLAWBACK", "SUPPLEMENT", "ACCOUNT", "PAYMENT", "ACCOUNTING", "EXTERNAL_FLOW"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")
