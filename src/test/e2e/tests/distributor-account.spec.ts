@@ -12,6 +12,39 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
+test('CPT-03 : la compensation ne se fait jamais entre deux sociétés distinctes @screen:distributor-account @path:CPT-03', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=CPT-03&entity=UNEP&month=2027-05-01')).ok()).toBeTruthy();
+
+  // In UNEP, the distributor is a debtor of 100 €; compensating moves nothing (its credit is elsewhere).
+  const unepCtx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const unep = await unepCtx.newPage();
+  await unep.goto('/distributeur');
+  await unep.getByTestId('acc-entity').selectOption('UNEP');
+  await unep.getByTestId('acc-month').selectOption('2027-05-01');
+  await unep.getByTestId('acc-partner').selectOption('P-CPT03');
+  await unep.getByTestId('acc-search').click();
+  await expect(unep.getByTestId('account-total')).toContainText('100,00');
+  await unep.getByTestId('acc-compensate').click();
+  await expect(unep.getByTestId('acc-message')).toContainText('compensation');
+  // Still a debtor of 100 € — the Alptis credit was never pulled across.
+  await expect(unep.getByTestId('account-total')).toContainText('100,00');
+  await expect(unep.locator('[data-testid^="line-row-"]').filter({ hasText: 'Compensation' })).toHaveCount(0);
+  await unepCtx.close();
+
+  // In Alptis, the same distributor is still a creditor of 100 € — untouched.
+  const alptisCtx = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const alptis = await alptisCtx.newPage();
+  await alptis.goto('/distributeur');
+  await alptis.getByTestId('acc-entity').selectOption('ALPTIS_ASSURANCES');
+  await alptis.getByTestId('acc-partner').selectOption('P-CPT03');
+  await alptis.getByTestId('acc-search').click();
+  await expect(alptis.getByTestId('account-total')).toContainText('100,00');
+  await alptisCtx.close();
+});
+
 test('AJU-05 : une avance exceptionnelle est remboursée à ses échéances @screen:distributor-account @path:AJU-05', async ({
   browser,
   request,

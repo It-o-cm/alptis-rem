@@ -1176,6 +1176,27 @@ class CrScenarioResourceTest {
                 .body("find { it.holder == 'P-AJU05' }.schedule", org.hamcrest.Matchers.containsString("3 échéances"));
     }
 
+    /**
+     * CPT-03 (parcours): compensation is never performed between two distinct companies. A distributor
+     * debtor of 100 € in UNEP and creditor of 100 € in Alptis keeps both balances after compensating in
+     * UNEP, which moves nothing — only same-entity accounts compensate (CPT-04).
+     */
+    @Test
+    void cpt03_no_compensation_between_distinct_companies() {
+        given().when().post("/api/test/cr-scenario?cr=CPT-03&entity=UNEP&month=2027-05-01").then().statusCode(204);
+        // Compensating in UNEP moves nothing: the creditor account lives in another company.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/accounts/UNEP/2027-05-01/distributor/P-CPT03/compensate")
+                .then().statusCode(200).body("transfers", is(0));
+        // Both balances are untouched: the UNEP debit and the Alptis credit never net.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounts/UNEP/distributor/P-CPT03")
+                .then().statusCode(200).body("total", is(-100.0f));
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/P-CPT03")
+                .then().statusCode(200).body("total", is(100.0f));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

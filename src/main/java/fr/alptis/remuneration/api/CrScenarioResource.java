@@ -207,6 +207,7 @@ public class CrScenarioResource {
             case "CTL-01" -> seedCtl01(entity, periodMonth);
             case "CTL-04" -> seedCtl04(entity, periodMonth);
             case "AJU-05" -> seedAju05(entity, periodMonth);
+            case "CPT-03" -> seedCpt03(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2351,6 +2352,58 @@ public class CrScenarioResource {
             repayment.amount = new BigDecimal("100.00");
             repayment.persist();
         }
+    }
+
+    /**
+     * CPT-03 (parcours §4.4) : compensation entre deux sociétés distinctes, jamais faite (CPT-04). Un
+     * même distributeur est débiteur de 100 € dans une entité (UNEP) et créditeur de 100 € dans une
+     * autre (Alptis Assurances) ; la compensation d'une entité ne porte que sur ses propres comptes et ne
+     * touche jamais ceux de l'autre société : les deux soldes restent inchangés.
+     *
+     * @param entity      the first entity (debtor side)
+     * @param periodMonth the period month
+     */
+    private void seedCpt03(LegalEntity entity, LocalDate periodMonth) {
+        LegalEntity other = LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult();
+        Period here = period(entity, periodMonth);
+        here.state = PeriodState.CALCULATED;
+        Period there = period(other, periodMonth);
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = "P-CPT03";
+        distributor.legalName = "P-CPT03";
+        distributor.persist();
+        crossEntityBalance(entity, here, distributor, "-100.00");
+        crossEntityBalance(other, there, distributor, "100.00");
+    }
+
+    /**
+     * Makes a distributor an active member of an entity with an account carrying an opening balance, for
+     * the cross-entity compensation scenario (CPT-03).
+     *
+     * @param entity      the entity
+     * @param period      the period the opening balance is dated in
+     * @param distributor the distributor
+     * @param amount      the signed opening balance
+     */
+    private void crossEntityBalance(LegalEntity entity, Period period, Distributor distributor, String amount) {
+        DistributorEntity membership = new DistributorEntity();
+        membership.distributor = distributor;
+        membership.entity = entity;
+        membership.status = PartnerStatus.ACTIVE;
+        membership.validFrom = period.periodMonth;
+        membership.persist();
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = distributor.getId();
+        account.persist();
+        AccountEntry entry = new AccountEntry();
+        entry.account = account;
+        entry.period = period;
+        entry.entryType = AccountEntryType.OPENING_BALANCE;
+        entry.entryDate = period.periodMonth;
+        entry.amount = new BigDecimal(amount);
+        entry.persist();
     }
 
     /**
