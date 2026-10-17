@@ -56,6 +56,7 @@ public class PaymentService {
     private final DateTimeProvider clock;
     private final fr.alptis.remuneration.accounts.AccountService accounts;
     private final fr.alptis.remuneration.accounting.AccountingService accounting;
+    private final fr.alptis.remuneration.security.SeparationOfDuties separation;
 
     /**
      * Creates the service.
@@ -63,13 +64,16 @@ public class PaymentService {
      * @param clock      the application date/time provider
      * @param accounts   the distributor-account service
      * @param accounting the accounting-entry service
+     * @param separation the separation-of-duties guard
      */
     @Inject
     public PaymentService(DateTimeProvider clock, fr.alptis.remuneration.accounts.AccountService accounts,
-                          fr.alptis.remuneration.accounting.AccountingService accounting) {
+                          fr.alptis.remuneration.accounting.AccountingService accounting,
+                          fr.alptis.remuneration.security.SeparationOfDuties separation) {
         this.clock = clock;
         this.accounts = accounts;
         this.accounting = accounting;
+        this.separation = separation;
     }
 
     /**
@@ -360,6 +364,16 @@ public class PaymentService {
         PaymentBatch batch = PaymentBatch.findById(batchId);
         if (batch == null) {
             throw new ResourceNotFoundException("Lot inconnu : " + batchId);
+        }
+        // Separation of duties (section 3): whoever validated the amounts of the period does not validate
+        // its payment (PAI-07). An off-cycle lot attaches to a period never business-validated, so there is
+        // no such transition and the check is a no-op.
+        fr.alptis.remuneration.domain.PeriodTransition amountsValidation =
+                fr.alptis.remuneration.domain.PeriodTransition.find(
+                        "period = ?1 and toState = ?2 order by occurredAt desc", batch.period,
+                        PeriodState.BUSINESS_VALIDATED).firstResult();
+        if (amountsValidation != null) {
+            separation.ensureDifferentApprover(amountsValidation.userId, userId);
         }
         // Only the orders still to pay count: an order cancelled at preparation (e.g. an inactive payee,
         // REF-08) is neither summed into the total nor issued.

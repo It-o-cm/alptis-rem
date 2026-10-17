@@ -1271,6 +1271,22 @@ class CrScenarioResourceTest {
                 .body("find { it.batchType == 'SAVINGS_CYCLE' }", nullValue());
     }
 
+    /**
+     * PAI-07 (parcours): the payment validation by the user who validated the amounts is refused. The
+     * amounts validation is seeded under the Finance controller's identity; its attempt to validate the
+     * lot is a 403 separation-of-duties refusal.
+     */
+    @Test
+    void pai07_payment_validation_by_the_amounts_validator_is_refused() {
+        given().when().post("/api/test/cr-scenario?cr=PAI-07&entity=UNEP&month=2028-04-01").then().statusCode(204);
+        transition("operator-unep", "2028-04-01", "PAYMENT_PREPARED");
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2028-04-01/lots").then().statusCode(200)
+                .extract().path("find { it.batchType == 'CYCLE' }.id");
+        given().auth().preemptive().basic("finance-unep", "finance-unep")
+                .when().post("/api/ui/v1/payment/lots/" + lotId + "/validate").then().statusCode(403);
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

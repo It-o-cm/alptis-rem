@@ -52,6 +52,7 @@ import fr.alptis.remuneration.domain.OriasStatus;
 import fr.alptis.remuneration.domain.PartnerStatus;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
+import fr.alptis.remuneration.domain.PeriodTransition;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.PayeeRule;
 import fr.alptis.remuneration.domain.PaymentFrequency;
@@ -213,6 +214,7 @@ public class CrScenarioResource {
             case "CPT-07" -> seedCpt07(entity, periodMonth);
             case "PAI-02" -> seedPai02(entity, periodMonth);
             case "PAI-04" -> seedPai04(entity, periodMonth);
+            case "PAI-07" -> seedPai07(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2822,6 +2824,29 @@ public class CrScenarioResource {
         savings.amount = new BigDecimal("-50.00");
         savings.attachmentMonth = period.periodMonth;
         savings.persist();
+    }
+
+    /**
+     * PAI-07 (validation du paiement par celui qui a validé les montants → refus) : une période prête à
+     * payer (un bénéficiaire payable de 120 €), dont la validation métier a été enregistrée au nom du
+     * contrôleur Finance de l'entité (`finance-unep`). Quand ce même utilisateur tente de valider le
+     * paiement du lot, la séparation des tâches (section 3) le refuse.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedPai07(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        payee(entity, period, "P-PAI07", "120.00", PartnerStatus.ACTIVE, true);
+        // Record the amounts validation under the Finance controller's identity, as input state, so that
+        // the same person validating the payment breaches the separation of duties (PAI-07).
+        PeriodTransition validation = new PeriodTransition();
+        validation.period = period;
+        validation.fromState = PeriodState.CONTROLLED;
+        validation.toState = PeriodState.BUSINESS_VALIDATED;
+        validation.userId = "finance-" + entity.code.toLowerCase();
+        validation.persist();
     }
 
     /**

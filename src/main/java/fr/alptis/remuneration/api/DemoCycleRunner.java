@@ -66,6 +66,10 @@ public class DemoCycleRunner {
     /** The author of the cycle's business actions. */
     private static final String USER = "demo-cycle";
 
+    /** The Finance author, distinct from {@link #USER} so the payment validation respects the separation
+     * of duties (section 3): whoever validates the amounts does not validate the payment. */
+    private static final String FINANCE_USER = "demo-finance";
+
     private final CalculationEngine engine;
     private final PeriodService periods;
     private final ControlService controls;
@@ -536,11 +540,11 @@ public class DemoCycleRunner {
             payments.prepareOrderDetails(batch.getId());
         }
         for (PaymentBatch batch : PaymentBatch.<PaymentBatch>list("period = ?1", period)) {
-            payments.validateFinance(batch.getId(), USER);
+            payments.validateFinance(batch.getId(), FINANCE_USER);
         }
-        periods.transition(entity, month, PeriodState.FINANCE_VALIDATED, ALL, USER, null);
+        periods.transition(entity, month, PeriodState.FINANCE_VALIDATED, ALL, FINANCE_USER, null);
         settleOrders(period, rejectOne);
-        periods.transition(entity, month, PeriodState.CLOSED, ALL, USER, null);
+        periods.transition(entity, month, PeriodState.CLOSED, ALL, FINANCE_USER, null);
         cutoff.extract(entity, month);
     }
 

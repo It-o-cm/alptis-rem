@@ -93,6 +93,35 @@ test('PAI-04 : le net négatif de l’épargne retraite est imputé en une ligne
   await context.close();
 });
 
+test('PAI-07 : la validation du paiement par celui qui a validé les montants est refusée @screen:payment @path:PAI-07 @role-action:FINANCE_CONTROLLER-validate-lot', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=PAI-07&entity=UNEP&month=2028-04-01')).ok()).toBeTruthy();
+
+  // The amounts were validated under finance-unep's identity (seeded). Prepare the payment as the operator.
+  const opContext = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const op = await opContext.newPage();
+  await op.goto('/');
+  await op.getByTestId('open-UNEP-2028-04-01').click();
+  await expect(op.getByTestId('detail-state')).toContainText('Validée métier');
+  await op.getByTestId('advance-button').click();
+  await expect(op.getByTestId('detail-state')).toContainText('Paiement préparé');
+  await opContext.close();
+
+  // finance-unep, who validated the amounts, is refused the payment validation (separation of duties).
+  const finContext = await browser.newContext({ httpCredentials: USERS.financeUnep });
+  const fin = await finContext.newPage();
+  await fin.goto('/paiement');
+  await fin.getByTestId('pay-entity').selectOption('UNEP');
+  await fin.getByTestId('pay-month').selectOption('2028-04-01');
+  await fin.getByTestId('pay-refresh').click();
+  await fin.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+  await fin.getByTestId('lot-validate').click();
+  await expect(fin.getByTestId('pay-error')).toContainText('Séparation des tâches');
+  await finContext.close();
+});
+
 test('CPT-04 : un compte bloqué est exclu du lot jusqu’à sa date de levée @screen:payment @path:CPT-04', async ({
   browser,
   request,

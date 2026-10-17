@@ -26,8 +26,10 @@ import fr.alptis.remuneration.domain.PaymentOrder;
 import fr.alptis.remuneration.domain.PaymentOrderStatus;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
+import fr.alptis.remuneration.domain.PeriodTransition;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.ValidationException;
+import fr.alptis.remuneration.security.SeparationOfDutiesException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -130,6 +132,37 @@ class PaymentServiceTest {
         PaymentBatch bad = batch(period(LocalDate.of(2026, 10, 1), PeriodState.FINANCE_VALIDATED), "999.00");
         order(bad, "110.00");
         assertThrows(ValidationException.class, () -> service.validateFinance(bad.getId(), "fin"));
+    }
+
+    /**
+     * PAI-07: the payment validation by the very user who validated the period's amounts is refused
+     * (separation of duties, section 3), while a different user validates it.
+     */
+    @Test
+    @TestTransaction
+    void pai07_payment_validation_respects_the_separation_of_duties() {
+        Period refused = period(PeriodState.FINANCE_VALIDATED);
+        businessValidation(refused, "val");
+        PaymentBatch refusedBatch = batch(refused, "120.00");
+        order(refusedBatch, "120.00");
+        assertThrows(SeparationOfDutiesException.class,
+                () -> service.validateFinance(refusedBatch.getId(), "val"));
+
+        Period allowed = period(LocalDate.of(2026, 11, 1), PeriodState.FINANCE_VALIDATED);
+        businessValidation(allowed, "val");
+        PaymentBatch allowedBatch = batch(allowed, "120.00");
+        order(allowedBatch, "120.00");
+        assertEquals(BatchStatus.ISSUED, service.validateFinance(allowedBatch.getId(), "fin").status);
+    }
+
+    /** Records a period's business (amounts) validation by a user, as a PeriodTransition. */
+    private static void businessValidation(Period period, String userId) {
+        PeriodTransition transition = new PeriodTransition();
+        transition.period = period;
+        transition.fromState = PeriodState.CONTROLLED;
+        transition.toState = PeriodState.BUSINESS_VALIDATED;
+        transition.userId = userId;
+        transition.persist();
     }
 
     /**
