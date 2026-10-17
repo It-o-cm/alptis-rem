@@ -6,6 +6,7 @@ import {
   canOperateImports,
   canEditMapping,
   canMapExternalCode,
+  canManageReferential,
 } from './access';
 
 describe('access', () => {
@@ -50,5 +51,11 @@ describe('access', () => {
     expect(canMapExternalCode(['BUSINESS_ADMIN'])).toBe(true);
     expect(canMapExternalCode(['IT_ADMIN'])).toBe(true);
     expect(canMapExternalCode(['AUDITOR'])).toBe(false);
+  });
+
+  it('restricts product-referential management to the business administrator', () => {
+    expect(canManageReferential(['BUSINESS_ADMIN'])).toBe(true);
+    expect(canManageReferential(['OPERATOR'])).toBe(false);
+    expect(canManageReferential(['IT_ADMIN'])).toBe(false);
   });
 });

@@ -47,4 +47,12 @@ public class ProductRange extends BaseEntity {
      */
     @Column(name = "retirement_savings")
     public Boolean retirementSavings;
+
+    /** The first day the range is valid (REF-01). */
+    @Column(name = "valid_from")
+    public LocalDate validFrom;
+
+    /** The last day the range is valid, or null while in force (REF-01). */
+    @Column(name = "valid_to")
+    public LocalDate validTo;
 }

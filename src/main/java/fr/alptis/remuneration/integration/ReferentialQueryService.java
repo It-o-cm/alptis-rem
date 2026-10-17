@@ -333,7 +333,7 @@ public class ReferentialQueryService {
                 .map(p -> new ProductView(p.entity.code, p.code, p.label,
                         p.range == null ? null : p.range.code,
                         p.insurer == null ? null : p.insurer.code,
-                        Boolean.TRUE.equals(p.commissionable)))
+                        Boolean.TRUE.equals(p.commissionable), string(p.marketedFrom), string(p.marketedTo)))
                 .toList();
     }
 
@@ -346,7 +346,8 @@ public class ReferentialQueryService {
     public List<InsurerView> insurers() {
         return fr.alptis.remuneration.domain.Insurer.<fr.alptis.remuneration.domain.Insurer>list("order by code")
                 .stream()
-                .map(i -> new InsurerView(i.code, i.name, i.role == null ? null : i.role.name()))
+                .map(i -> new InsurerView(i.code, i.name, i.role == null ? null : i.role.name(),
+                        string(i.validFrom), string(i.validTo)))
                 .toList();
     }
 
@@ -359,7 +360,8 @@ public class ReferentialQueryService {
     public List<RangeView> ranges() {
         return fr.alptis.remuneration.domain.ProductRange
                 .<fr.alptis.remuneration.domain.ProductRange>list("order by code").stream()
-                .map(r -> new RangeView(r.code, r.label, r.target == null ? null : r.target.name()))
+                .map(r -> new RangeView(r.code, r.label, r.target == null ? null : r.target.name(),
+                        string(r.validFrom), string(r.validTo)))
                 .toList();
     }
 
@@ -377,7 +379,7 @@ public class ReferentialQueryService {
         return options.stream()
                 .filter(o -> o.product != null)
                 .map(o -> new OptionView(o.product.code, o.code, o.label,
-                        o.optionType == null ? null : o.optionType.name()))
+                        o.optionType == null ? null : o.optionType.name(), string(o.validFrom), string(o.validTo)))
                 .toList();
     }
 
@@ -722,29 +724,35 @@ public class ReferentialQueryService {
      * @param rangeCode      the range code, if any
      * @param insurerCode    the insurer code, if any
      * @param commissionable whether the product gives rise to commission
+     * @param validFrom      the first day of marketing, if any
+     * @param validTo        the last day of marketing, if any
      */
     public record ProductView(String entityCode, String code, String label, String rangeCode, String insurerCode,
-                              boolean commissionable) {
+                              boolean commissionable, String validFrom, String validTo) {
     }
 
     /**
      * View of an insurer (REF-01).
      *
-     * @param code the insurer code
-     * @param name the insurer name
-     * @param role the insurer role, if any
+     * @param code      the insurer code
+     * @param name      the insurer name
+     * @param role      the insurer role, if any
+     * @param validFrom the first day of validity, if any
+     * @param validTo   the last day of validity, if any
      */
-    public record InsurerView(String code, String name, String role) {
+    public record InsurerView(String code, String name, String role, String validFrom, String validTo) {
     }
 
     /**
      * View of a product range (REF-01).
      *
-     * @param code   the range code
-     * @param label  the range label
-     * @param target the range target, if any
+     * @param code      the range code
+     * @param label     the range label
+     * @param target    the range target, if any
+     * @param validFrom the first day of validity, if any
+     * @param validTo   the last day of validity, if any
      */
-    public record RangeView(String code, String label, String target) {
+    public record RangeView(String code, String label, String target, String validFrom, String validTo) {
     }
 
     /**
@@ -754,8 +762,11 @@ public class ReferentialQueryService {
      * @param code        the option code
      * @param label       the option label
      * @param optionType  the option type, if any
+     * @param validFrom   the first day of validity, if any
+     * @param validTo     the last day of validity, if any
      */
-    public record OptionView(String productCode, String code, String label, String optionType) {
+    public record OptionView(String productCode, String code, String label, String optionType, String validFrom,
+                             String validTo) {
     }
 
     /**

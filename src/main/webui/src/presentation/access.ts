@@ -108,3 +108,11 @@ export function canEditMapping(roles: readonly string[]): boolean {
 export function canMapExternalCode(roles: readonly string[]): boolean {
   return roles.includes('OPERATOR') || roles.includes('BUSINESS_ADMIN') || roles.includes('IT_ADMIN');
 }
+
+/**
+ * Tells whether a user holding the given roles may manage the product referential — create an
+ * insurer, range, option or product and end a validity (REF-01, business administrator).
+ */
+export function canManageReferential(roles: readonly string[]): boolean {
+  return roles.includes('BUSINESS_ADMIN');
+}

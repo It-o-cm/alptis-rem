@@ -40,4 +40,12 @@ public class Insurer extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 30)
     public InsurerRole role;
+
+    /** The first day the insurer is valid (REF-01). */
+    @Column(name = "valid_from")
+    public LocalDate validFrom;
+
+    /** The last day the insurer is valid, or null while in force (REF-01). */
+    @Column(name = "valid_to")
+    public LocalDate validTo;
 }

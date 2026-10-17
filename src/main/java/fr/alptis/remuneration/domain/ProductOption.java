@@ -45,4 +45,12 @@ public class ProductOption extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "option_type", length = 30)
     public OptionType optionType;
+
+    /** The first day the option is valid (REF-01). */
+    @Column(name = "valid_from")
+    public LocalDate validFrom;
+
+    /** The last day the option is valid, or null while in force (REF-01). */
+    @Column(name = "valid_to")
+    public LocalDate validTo;
 }

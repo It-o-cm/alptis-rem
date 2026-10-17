@@ -1870,3 +1870,42 @@ test('INT-23 : l’écran montre un indicateur reçu et un indicateur calculé e
 
   await adminCtx.close();
 });
+
+test('INT-24 : créer un assureur daté, en terminer la validité, refuser un chevauchement @screen:products @path:INT-24', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/produits');
+  await expect(admin.getByTestId('page-title')).toContainText('Assureurs, gammes, produits et options');
+
+  // Create an insurer with a validity window.
+  await admin.getByTestId('create-type').selectOption('insurer');
+  await admin.getByTestId('create-code').fill('INS-E2E');
+  await admin.getByTestId('create-label').fill('Assureur E2E');
+  await admin.getByTestId('create-valid-from').fill('2026-01-01');
+  await admin.getByTestId('create-submit').click();
+  await expect(admin.getByTestId('ref-message')).toBeVisible();
+  await expect(admin.getByTestId('insurer-row-INS-E2E')).toContainText('2026-01-01');
+
+  // A second insurer of the same code overlaps and is refused.
+  await admin.getByTestId('create-type').selectOption('insurer');
+  await admin.getByTestId('create-code').fill('INS-E2E');
+  await admin.getByTestId('create-label').fill('Doublon');
+  await admin.getByTestId('create-valid-from').fill('2026-06-01');
+  await admin.getByTestId('create-submit').click();
+  await expect(admin.getByTestId('load-error')).toContainText('Chevauchement');
+
+  // End the validity of the insurer: its end date shows on its row.
+  await admin.getByTestId('end-type').selectOption('insurer');
+  await admin.getByTestId('end-code').fill('INS-E2E');
+  await admin.getByTestId('end-valid-to').fill('2026-05-31');
+  await admin.getByTestId('end-submit').click();
+  await expect(admin.getByTestId('ref-message')).toContainText('terminée');
+  await expect(admin.getByTestId('insurer-row-INS-E2E')).toContainText('2026-05-31');
+
+  await adminCtx.close();
+});

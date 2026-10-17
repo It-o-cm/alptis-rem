@@ -1,6 +1,7 @@
 package fr.alptis.remuneration.api;
 
 import fr.alptis.remuneration.integration.ExternalCodeAdminService;
+import fr.alptis.remuneration.integration.ReferentialAdminService;
 import fr.alptis.remuneration.integration.ReferentialQueryService;
 import fr.alptis.remuneration.integration.ReferentialQueryService.BankAccountView;
 import fr.alptis.remuneration.integration.ReferentialQueryService.ExternalCodeView;
@@ -30,6 +31,7 @@ public class ReferentialReadResource {
 
     private final ReferentialQueryService query;
     private final ExternalCodeAdminService externalCodes;
+    private final ReferentialAdminService referentials;
 
     /**
      * Creates the resource.
@@ -38,9 +40,11 @@ public class ReferentialReadResource {
      * @param externalCodes the external-code correspondence writer
      */
     @Inject
-    public ReferentialReadResource(ReferentialQueryService query, ExternalCodeAdminService externalCodes) {
+    public ReferentialReadResource(ReferentialQueryService query, ExternalCodeAdminService externalCodes,
+            ReferentialAdminService referentials) {
         this.query = query;
         this.externalCodes = externalCodes;
+        this.referentials = referentials;
     }
 
     /**
@@ -93,6 +97,152 @@ public class ReferentialReadResource {
     @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
     public List<ReferentialQueryService.OptionView> options() {
         return query.options();
+    }
+
+    /**
+     * Creates an insurer with a validity window (REF-01, INT-24).
+     *
+     * @param request the insurer to create
+     */
+    @POST
+    @Path("/insurers")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public void createInsurer(CreateInsurerRequest request) {
+        referentials.createInsurer(request.code(), request.name(), request.role(),
+                parseDate(request.validFrom()), parseDate(request.validTo()));
+    }
+
+    /**
+     * Creates a product range with a validity window (REF-01, INT-24).
+     *
+     * @param request the range to create
+     */
+    @POST
+    @Path("/ranges")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public void createRange(CreateRangeRequest request) {
+        referentials.createRange(request.code(), request.label(), request.target(),
+                parseDate(request.validFrom()), parseDate(request.validTo()));
+    }
+
+    /**
+     * Creates an option of a product with a validity window (REF-01, INT-24).
+     *
+     * @param request the option to create
+     */
+    @POST
+    @Path("/options")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public void createOption(CreateOptionRequest request) {
+        referentials.createOption(request.productCode(), request.code(), request.label(), request.optionType(),
+                parseDate(request.validFrom()), parseDate(request.validTo()));
+    }
+
+    /**
+     * Creates a product with a marketing (validity) window (REF-01, INT-24).
+     *
+     * @param request the product to create
+     */
+    @POST
+    @Path("/products")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public void createProduct(CreateProductRequest request) {
+        referentials.createProduct(request.entityCode(), request.code(), request.label(), request.rangeCode(),
+                request.insurerCode(), parseDate(request.validFrom()), parseDate(request.validTo()));
+    }
+
+    /**
+     * Ends the validity of a referential object (REF-01, INT-24).
+     *
+     * @param objectType  the object kind: insurer, range, option or product
+     * @param code        the object code
+     * @param request     the end date and any owning product or entity
+     */
+    @POST
+    @Path("/referentials/{objectType}/{code}/end")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"BUSINESS_ADMIN"})
+    public void endValidity(@PathParam("objectType") String objectType, @PathParam("code") String code,
+            EndValidityRequest request) {
+        referentials.endValidity(objectType, code, request.productCode(), request.entityCode(),
+                parseDate(request.validTo()));
+    }
+
+    /**
+     * Parses an ISO date, treating null or blank as absent.
+     *
+     * @param value the ISO date string, or null
+     * @return the parsed date, or null
+     */
+    private static java.time.LocalDate parseDate(String value) {
+        return value == null || value.isBlank() ? null : java.time.LocalDate.parse(value);
+    }
+
+    /**
+     * Request to create an insurer (REF-01).
+     *
+     * @param code      the insurer code
+     * @param name      the insurer name
+     * @param role      the role, or null
+     * @param validFrom the first day of validity (ISO)
+     * @param validTo   the last day of validity (ISO), or null
+     */
+    public record CreateInsurerRequest(String code, String name, String role, String validFrom, String validTo) {
+    }
+
+    /**
+     * Request to create a product range (REF-01).
+     *
+     * @param code      the range code
+     * @param label     the range label
+     * @param target    the target clientele, or null
+     * @param validFrom the first day of validity (ISO)
+     * @param validTo   the last day of validity (ISO), or null
+     */
+    public record CreateRangeRequest(String code, String label, String target, String validFrom, String validTo) {
+    }
+
+    /**
+     * Request to create a product option (REF-01).
+     *
+     * @param productCode the owning product code
+     * @param code        the option code
+     * @param label       the option label
+     * @param optionType  the option type, or null
+     * @param validFrom   the first day of validity (ISO)
+     * @param validTo     the last day of validity (ISO), or null
+     */
+    public record CreateOptionRequest(String productCode, String code, String label, String optionType,
+                                      String validFrom, String validTo) {
+    }
+
+    /**
+     * Request to create a product (REF-01).
+     *
+     * @param entityCode  the owning entity code
+     * @param code        the product code
+     * @param label       the product label
+     * @param rangeCode   the range code, or null
+     * @param insurerCode the insurer code, or null
+     * @param validFrom   the first day of marketing (ISO)
+     * @param validTo     the last day of marketing (ISO), or null
+     */
+    public record CreateProductRequest(String entityCode, String code, String label, String rangeCode,
+                                       String insurerCode, String validFrom, String validTo) {
+    }
+
+    /**
+     * Request to end a referential object's validity (REF-01).
+     *
+     * @param productCode the owning product code, required for an option
+     * @param entityCode  the owning entity code, required for a product
+     * @param validTo     the last day of validity (ISO)
+     */
+    public record EndValidityRequest(String productCode, String entityCode, String validTo) {
     }
 
     /**
