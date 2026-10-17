@@ -25,6 +25,13 @@ import fr.alptis.remuneration.domain.Distributor;
 import fr.alptis.remuneration.domain.DistributorAccount;
 import fr.alptis.remuneration.domain.DistributorEntity;
 import fr.alptis.remuneration.domain.DistributorGroup;
+import fr.alptis.remuneration.domain.DistributorType;
+import fr.alptis.remuneration.domain.Insurer;
+import fr.alptis.remuneration.domain.InsurerRole;
+import fr.alptis.remuneration.domain.OptionType;
+import fr.alptis.remuneration.domain.ProductOption;
+import fr.alptis.remuneration.domain.SalesChannel;
+import fr.alptis.remuneration.domain.TariffType;
 import fr.alptis.remuneration.domain.Enrollment;
 import fr.alptis.remuneration.domain.EnrollmentStatus;
 import fr.alptis.remuneration.domain.ContractStatus;
@@ -172,6 +179,7 @@ public class CrScenarioResource {
             case "INT-22" -> seedInt22(entity, periodMonth);
             case "INT-23" -> seedInt23(entity, periodMonth);
             case "PAR-04" -> seedPar04(entity, periodMonth);
+            case "PAR-06" -> seedPar06(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1702,6 +1710,71 @@ public class CrScenarioResource {
     private void seedPar04(LegalEntity entity, LocalDate periodMonth) {
         version(entity, "PAR04-PLAN", "PAR04-R", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
                 "{\"allowedRates\":[0.15]}", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30), null);
+    }
+
+    /**
+     * PAR-06 (parcours §4.2) : périmètre d'une version de règle sur chacun des critères de la section
+     * 5.4. Une version linéaire dont le périmètre conjugue entité, gamme, produit, option, type de tarif,
+     * collège, assureur, mode de rémunération, canal de vente, distributeur, type de distributeur et
+     * groupement. Une garantie qui coche tous ces critères est couverte (ligne de 15,00 €) ; une garantie
+     * identique sauf le type de tarif (réduit au lieu de standard) n'est pas couverte (aucune ligne).
+     *
+     * @param entity      the entity the rule and garanties belong to
+     * @param periodMonth the first day of the calculation period
+     */
+    private void seedPar06(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        ProductRange range = new ProductRange();
+        range.code = "PAR06-RNG";
+        range.label = "Gamme PAR06";
+        range.target = ProductTarget.INDIVIDUAL;
+        range.persist();
+        Insurer insurer = new Insurer();
+        insurer.code = "PAR06-INS";
+        insurer.name = "Assureur PAR06";
+        insurer.role = InsurerRole.RISK_CARRIER;
+        insurer.persist();
+        Product product = product(entity, "PAR06-PROD");
+        product.range = range;
+        product.insurer = insurer;
+        ProductOption option = new ProductOption();
+        option.product = product;
+        option.code = "PAR06-OPT";
+        option.label = "Option PAR06";
+        option.optionType = OptionType.BASE;
+        option.persist();
+        DistributorGroup group = new DistributorGroup();
+        group.code = "PAR06-GRP";
+        group.label = "Groupement PAR06";
+        group.persist();
+
+        // The rule's perimeter conjoins every criterion of section 5.4 with equality semantics.
+        String scope = "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"PAR06-PROD\"],\"range\":[\"PAR06-RNG\"],"
+                + "\"insurer\":[\"PAR06-INS\"],\"option\":[\"PAR06-OPT\"],\"tariffType\":[\"STANDARD\"],"
+                + "\"college\":[\"EXECUTIVE\"],\"salesChannel\":[\"ALPTIS_CONNECT\"],\"remunerationMode\":[\"LINEAR\"],"
+                + "\"distributor\":[\"P-PAR06\"],\"distributorType\":[\"INDEPENDENT\"],\"group\":[\"PAR06-GRP\"],"
+                + "\"eventType\":[\"PREMIUM_COLLECTED\"]}";
+        version(entity, "PAR06-PLAN", "PAR06-R", RuleFamily.LINEAR, LineNature.LINEAR, scope,
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+
+        // Covered garantie: it carries every scoped value; its event yields a line.
+        Coverage covered = coverage(entity, "PAR06C", product, periodMonth, "P-PAR06", StaffCategory.EXECUTIVE);
+        covered.tariffType = TariffType.STANDARD;
+        covered.option = option;
+        covered.contract.salesChannel = SalesChannel.ALPTIS_CONNECT;
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-PAR06").firstResult();
+        distributor.distributorType = DistributorType.INDEPENDENT;
+        distributor.group = group;
+        linearChoice(covered, "0.15", periodMonth, null);
+        premium(entity, covered, "PAR06C-E", periodMonth.plusDays(4), "100.00");
+
+        // Not covered: the same garantie but a reduced tariff — outside the STANDARD-tariff perimeter.
+        Coverage notCovered = coverage(entity, "PAR06N", product, periodMonth, "P-PAR06", StaffCategory.EXECUTIVE);
+        notCovered.tariffType = TariffType.REDUCED;
+        notCovered.option = option;
+        notCovered.contract.salesChannel = SalesChannel.ALPTIS_CONNECT;
+        linearChoice(notCovered, "0.15", periodMonth, null);
+        premium(entity, notCovered, "PAR06N-E", periodMonth.plusDays(4), "100.00");
     }
 
     /**

@@ -3380,9 +3380,24 @@ public class CalculationEngine {
         attributes.put("eventType", event.eventType.name());
         if (coverage.contract.product != null) {
             attributes.put("product", coverage.contract.product.code);
+            if (coverage.contract.product.range != null) {
+                attributes.put("range", coverage.contract.product.range.code);
+            }
+            if (coverage.contract.product.insurer != null) {
+                attributes.put("insurer", coverage.contract.product.insurer.code);
+            }
+        }
+        if (coverage.option != null) {
+            attributes.put("option", coverage.option.code);
+        }
+        if (coverage.tariffType != null) {
+            attributes.put("tariffType", coverage.tariffType.name());
         }
         if (coverage.staffCategory != null) {
             attributes.put("college", coverage.staffCategory.name());
+        }
+        if (coverage.contract.salesChannel != null) {
+            attributes.put("salesChannel", coverage.contract.salesChannel.name());
         }
         if (choice != null && choice.mode != null) {
             attributes.put("remunerationMode", choice.mode.name());
@@ -3390,6 +3405,12 @@ public class CalculationEngine {
         ProductionCode origin = mainProductionCode(coverage);
         if (origin != null && origin.distributor != null) {
             attributes.put("distributor", origin.distributor.partnerCode);
+            if (origin.distributor.distributorType != null) {
+                attributes.put("distributorType", origin.distributor.distributorType.name());
+            }
+            if (origin.distributor.group != null) {
+                attributes.put("group", origin.distributor.group.code);
+            }
         }
         return attributes;
     }

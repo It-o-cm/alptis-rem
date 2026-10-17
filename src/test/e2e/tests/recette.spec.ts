@@ -1941,3 +1941,32 @@ test('PAR-04 : une version passe de « En vigueur » à « Retirée » au fil du
   await request.delete('/api/test/clock');
   await adminCtx.close();
 });
+
+test('PAR-06 : le périmètre couvre la garantie conforme et exclut celle qui diffère d’un critère @screen:commissionSearch @path:PAR-06', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=PAR-06&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  // Run the calculation of the seeded period.
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // Commission search: only the garantie matching every perimeter criterion carries a line (15,00 €);
+  // the one differing by its tariff type alone is excluded.
+  await admin.goto('/recherche-commissions');
+  await admin.getByTestId('cs-month').selectOption('2026-01-01');
+  await admin.getByTestId('cs-search').click();
+  const rows = admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'PAR06-PROD' });
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('15,00');
+
+  await adminCtx.close();
+});

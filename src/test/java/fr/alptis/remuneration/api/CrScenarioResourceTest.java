@@ -931,6 +931,18 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * PAR-06 (parcours): a rule whose perimeter conjoins every section-5.4 criterion covers the garantie
+     * that carries all those values (a 15,00 € line) and excludes an otherwise identical garantie whose
+     * tariff type alone differs (no line).
+     */
+    @Test
+    void par06_scope_covers_only_the_matching_garantie() {
+        plantAndRun("PAR-06");
+        search().body("findAll { it.product == 'PAR06-PROD' && it.nature == 'LINEAR' }.amount", hasItem(15.00f))
+                .body("findAll { it.product == 'PAR06-PROD' && it.nature == 'LINEAR' }.size()", is(1));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code
