@@ -190,6 +190,7 @@ public class CrScenarioResource {
             case "CAL-09" -> seedCal09(entity, periodMonth);
             case "CAL-10" -> seedCal10(entity, periodMonth);
             case "CAL-10-END" -> seedCal10End(entity, periodMonth);
+            case "CAL-11" -> seedCal11(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2098,6 +2099,25 @@ public class CrScenarioResource {
         Coverage b = Coverage.<Coverage>find("coverageCode = ?1 and contract.entity = ?2", "CAL10B-C1", entity)
                 .firstResult();
         event(entity, b, "CAL10B-END", EventType.TERMINATION, periodMonth.plusMonths(1).plusDays(14), null);
+    }
+
+    /**
+     * CAL-11 (parcours §4.3) : annulation d'un encaissement apuré. Une garantie escomptée dont un
+     * encaissement est imputé (apuré) sur l'escompte, puis annulé : le cumul apuré est diminué d'autant,
+     * et la ligne inverse reste hors solde (statut {@code OFFSET}, jamais payée) — elle défait
+     * l'apurement, pas un paiement.
+     *
+     * @param entity      the entity the garantie belongs to
+     * @param periodMonth the calculation period and effect date
+     */
+    private void seedCal11(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CAL11", "P-CAL11", "1000");
+        convention(entity, "P-CAL11", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+        BusinessEvent origin = premium(entity, coverage, "CAL11-E1", periodMonth.plusDays(4), "100.00");
+        BusinessEvent cancellation = event(entity, coverage, "CAL11-CANCEL", EventType.PREMIUM_CANCELLED,
+                periodMonth.plusDays(10), null);
+        cancellation.reversesEvent = origin;
     }
 
     /**

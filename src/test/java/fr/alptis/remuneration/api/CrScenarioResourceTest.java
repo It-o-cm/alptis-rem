@@ -997,6 +997,23 @@ class CrScenarioResourceTest {
                 .when().post("/api/ui/v1/advance-agreements/ALPTIS_ASSURANCES/P-PAR12/close").then().statusCode(404);
     }
 
+    /**
+     * CAL-11 (parcours): cancelling an apured encashment reverses the apurement — the apured cumul drops
+     * back (to zero here, 40,00 € apured then undone), the inverse staying out of the payable balance.
+     */
+    @Test
+    void cal11_cancelling_an_apured_encashment_reduces_the_offset() {
+        given().when().post("/api/test/cr-scenario?cr=CAL-11&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        runUnep("2026-01-01");
+        offsetOfCal11().body("totalOffset", is(0.00f));
+    }
+
+    /** The UNEP P-CAL11 discount-agreement detail, ready for body assertions. */
+    private static io.restassured.response.ValidatableResponse offsetOfCal11() {
+        return given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().get("/api/ui/v1/advance-agreements/UNEP/P-CAL11").then().statusCode(200);
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

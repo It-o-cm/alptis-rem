@@ -187,7 +187,7 @@ onMounted(load);
       <h3 class="adv-sub">Compteurs</h3>
       <DetailList>
         <DetailRow label="Total escompté"><span data-testid="adv-total-advanced">{{ amount(detail.totalAdvanced) }}</span></DetailRow>
-        <DetailRow label="Total apuré">{{ amount(detail.totalOffset) }}</DetailRow>
+        <DetailRow label="Total apuré"><span data-testid="adv-total-offset">{{ amount(detail.totalOffset) }}</span></DetailRow>
         <DetailRow label="Créance d'escompte"><span data-testid="adv-outstanding">{{ amount(detail.outstanding) }}</span></DetailRow>
       </DetailList>
 

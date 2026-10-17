@@ -482,3 +482,11 @@ distributeurs le 25. Un flux non reçu dans le mois est « en retard » passé s
   - L'écart Δ de l'apurement et du solde à l'échéance se mesure contre le **total dû** (`AdvanceState.totalDue`) ; à la **rupture**, il se mesure sur le seul montant **versé** (`advanced`), la part non versée n'ayant jamais été écrite — donc annulée.
   - Non fractionné (pas de `split`) : première part = 1, total dû = versé, date de solde nulle ; comportement inchangé (rétrocompatible, les cas d'escompte existants restent verts).
 - **Preuve** : `seedCal10` (deux garanties escomptées d'une convention fractionnée 50 % / +2 mois) ; `CrScenarioResourceTest` vérifie sur quatre mois que la garantie menée à terme reçoit 400,00 € (les deux versements) et celle résiliée avant le solde 200,00 € (CANCELLED) ; `@path:CAL-10` le montre sur l'écran Escompte.
+
+## 2026-10-17 — CAL-11 : annulation d'un encaissement apuré (section 6.4, P11)
+
+- **Section** : CAL-11 (TESTS-E2E §4.3), annulation (P11) d'un encaissement imputé (apuré) sur un escompte.
+- **Gap** : `cancel()` produisait l'inverse des lignes d'origine au statut `EARNED` (payable) et sans lien de position — une annulation d'encaissement apuré créait donc une ligne négative payable au lieu de défaire l'apurement, et le cumul apuré ne diminuait pas.
+- **Choix** : quand la ligne d'origine est apurée (`OFFSET`), l'inverse reste hors solde — statut `OFFSET`, rattaché à la même position d'escompte — et le cumul apuré matérialisé est diminué d'autant (`addOffsetByNature` avec le montant négatif). L'annulation d'un encaissement non apuré (CR-09) est inchangée (inverse `EARNED`, payable). Une ligne apurée portant toujours sa position, aucune garde de nullité n'est nécessaire.
+- **Preuve** : `seedCal11` (garantie escomptée, un encaissement de 100 € apuré pour 40 €, puis annulé) ; `CrScenarioResourceTest` vérifie que le cumul apuré revient à 0,00 € ; `@path:CAL-11` le montre sur l'écran Escompte (« Total apuré » à 0,00 €).
+- **Note** : l'idempotence au recalcul d'un apurement (lignes `OFFSET` non supprimées par D13 et donc susceptibles de doublon à la ré-exécution) est une limite préexistante, hors périmètre de CAL-11 ; le parcours est démontré sur un calcul unique.

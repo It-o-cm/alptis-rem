@@ -598,6 +598,14 @@ public class CalculationEngine {
                 inverse.originDistributor = source.originDistributor;
                 inverse.account = source.account;
                 inverse.explanation = "{\"reversalOf\":" + source.getId() + "}";
+                // Cancelling an apured encashment reverses the apurement, not a payment (CAL-11): the
+                // inverse stays out of the payable balance (OFFSET) on the same discount position, and the
+                // apured cumul is reduced by it.
+                if (source.status == LineStatus.OFFSET) {
+                    inverse.status = LineStatus.OFFSET;
+                    inverse.advancePosition = source.advancePosition;
+                    addOffsetByNature(source.advancePosition, source.nature, inverse.amount);
+                }
                 inverse.persist();
                 count++;
             }

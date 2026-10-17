@@ -2026,6 +2026,27 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CAL-11 : l’annulation d’un encaissement apuré diminue le cumul apuré @screen:advance @path:CAL-11', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CAL-11&entity=UNEP&month=2026-01-01')).ok()).toBeTruthy();
+  const auth = 'Basic ' + Buffer.from('operator-unep:operator-unep').toString('base64');
+  expect((await request.post('/api/ui/v1/calculations/UNEP/2026-01-01/run', { headers: { Authorization: auth } })).ok())
+    .toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/escompte');
+  await admin.locator('[data-testid^="advance-row-"]').filter({ hasText: 'P-CAL11' }).first().click();
+  await expect(admin.getByTestId('advance-detail')).toBeVisible();
+  // The encashment was apured then cancelled: the apured cumul is back to zero, the inverse out of balance.
+  await expect(admin.getByTestId('adv-total-offset')).toContainText('0,00');
+
+  await adminCtx.close();
+});
+
 test('CAL-10 : escompte fractionné, second versement à sa date et rupture avant le second @screen:advance @path:CAL-10', async ({
   browser,
   request,
