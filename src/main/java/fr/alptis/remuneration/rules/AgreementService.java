@@ -6,6 +6,7 @@ import fr.alptis.remuneration.domain.AdvanceAgreement;
 import fr.alptis.remuneration.domain.AdvanceAgreementProduct;
 import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AdvancePosition;
+import fr.alptis.remuneration.domain.AdvanceStatus;
 import fr.alptis.remuneration.domain.CommissionPlan;
 import fr.alptis.remuneration.domain.ConflictException;
 import fr.alptis.remuneration.domain.DateTimeProvider;
@@ -264,6 +265,67 @@ public class AgreementService {
         agreement.persist();
         audit.record(currentUser.username(), entity, "CREATE_ADVANCE_AGREEMENT", "AdvanceAgreement",
                 agreement.getId(), null, "{\"partner\":\"" + partnerCode + "\"}");
+        return toAdvanceView(agreement);
+    }
+
+    /**
+     * Suspends a discount agreement (PAR-12, section 6.4): no new discount opens on its distributor's
+     * garanties while it is suspended; the discounts already in progress are untouched.
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor's partner code
+     * @return the updated agreement view
+     * @throws ResourceNotFoundException if the entity is out of scope or the agreement is unknown
+     */
+    @Transactional
+    public AdvanceView suspendAdvanceAgreement(String entityCode, String partnerCode) {
+        return changeAdvanceStatus(entityCode, partnerCode, AdvanceAgreementStatus.SUSPENDED, false);
+    }
+
+    /**
+     * Closes a discount agreement (PAR-12, section 6.4): no new discount opens, and the discounts in
+     * progress are closed — their positions are cancelled with the reason {@code AGREEMENT_CLOSED}.
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor's partner code
+     * @return the updated agreement view
+     * @throws ResourceNotFoundException if the entity is out of scope or the agreement is unknown
+     */
+    @Transactional
+    public AdvanceView closeAdvanceAgreement(String entityCode, String partnerCode) {
+        return changeAdvanceStatus(entityCode, partnerCode, AdvanceAgreementStatus.CLOSED, true);
+    }
+
+    /**
+     * Changes a discount agreement's status, optionally closing its in-progress positions.
+     *
+     * @param entityCode      the entity code
+     * @param partnerCode     the distributor's partner code
+     * @param status          the new status
+     * @param closePositions  whether to cancel the agreement's active positions
+     * @return the updated agreement view
+     * @throws ResourceNotFoundException if the entity is out of scope or the agreement is unknown
+     */
+    private AdvanceView changeAdvanceStatus(String entityCode, String partnerCode, AdvanceAgreementStatus status,
+            boolean closePositions) {
+        LegalEntity entity = requireEntity(entityCode);
+        AdvanceAgreement agreement = AdvanceAgreement.<AdvanceAgreement>find(
+                "entity = ?1 and distributor.partnerCode = ?2 order by validFrom desc", entity, partnerCode)
+                .firstResult();
+        if (agreement == null) {
+            throw new ResourceNotFoundException("Convention d'escompte introuvable : " + partnerCode);
+        }
+        agreement.status = status;
+        if (closePositions) {
+            for (AdvancePosition position : AdvancePosition.<AdvancePosition>list(
+                    "advanceAgreement = ?1 and status = ?2", agreement, AdvanceStatus.ACTIVE)) {
+                position.status = AdvanceStatus.CANCELLED;
+                position.closedAt = clock.now();
+                position.closeReason = "AGREEMENT_CLOSED";
+            }
+        }
+        audit.record(currentUser.username(), entity, "CHANGE_ADVANCE_AGREEMENT_STATUS", "AdvanceAgreement",
+                agreement.getId(), null, "{\"partner\":\"" + partnerCode + "\",\"status\":\"" + status.name() + "\"}");
         return toAdvanceView(agreement);
     }
 

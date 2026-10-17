@@ -76,6 +76,25 @@ async function openDetail(row: AdvanceView): Promise<void> {
 }
 
 /**
+ * Changes the open convention's lifecycle status (PAR-12): suspend or close.
+ * @param action the lifecycle action ('suspend' or 'close')
+ */
+async function changeStatus(action: 'suspend' | 'close'): Promise<void> {
+  if (!detail.value || !detail.value.convention.partnerCode) return;
+  error.value = '';
+  message.value = '';
+  const c = detail.value.convention;
+  try {
+    await apiPost(`/api/ui/v1/advance-agreements/${c.entityCode}/${c.partnerCode}/${action}`, {});
+    message.value = action === 'close' ? 'Convention clôturée.' : 'Convention suspendue.';
+    await openDetail(c);
+    await load();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Action refusée';
+  }
+}
+
+/**
  * Formats an amount in euros.
  * @param value the raw amount
  */
@@ -152,7 +171,18 @@ onMounted(load);
         <DetailRow label="Rang d'impayé">{{ detail.unpaidRankThreshold ?? '—' }}</DetailRow>
         <DetailRow label="Partage">{{ detail.split ?? '—' }}</DetailRow>
         <DetailRow label="Produits">{{ detail.products.length > 0 ? detail.products.join(', ') : '—' }}</DetailRow>
+        <DetailRow label="Statut">
+          <span class="tag" data-testid="adv-status">{{ advanceAgreementStatusLabel(detail.convention.status) }}</span>
+        </DetailRow>
       </DetailList>
+
+      <div v-if="canEdit() && detail.convention.status === 'VALID'" class="adv-actions">
+        <AppButton variant="secondary" data-testid="adv-suspend" @click="changeStatus('suspend')">Suspendre</AppButton>
+        <AppButton variant="secondary" data-testid="adv-close" @click="changeStatus('close')">Clôturer</AppButton>
+      </div>
+      <div v-else-if="canEdit() && detail.convention.status === 'SUSPENDED'" class="adv-actions">
+        <AppButton variant="secondary" data-testid="adv-close" @click="changeStatus('close')">Clôturer</AppButton>
+      </div>
 
       <h3 class="adv-sub">Compteurs</h3>
       <DetailList>

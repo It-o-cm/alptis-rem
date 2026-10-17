@@ -969,6 +969,41 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * PAR-12 (parcours): a valid discount convention opens a position; suspending it leaves the position
+     * untouched; closing it cancels the in-progress position (AGREEMENT_CLOSED). Unknown or out-of-scope
+     * conventions are refused.
+     */
+    @Test
+    void par12_discount_agreement_lifecycle() {
+        plantAndRun("PAR-12");
+        // The calculation opened an active discount position on the escompté garantie.
+        advanceDetail().body("convention.status", is("VALID"))
+                .body("positions.find { it.coverageCode == 'PAR12-C1' }.status", is("ACTIVE"));
+        // Suspension changes the status without touching the position.
+        given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().post("/api/ui/v1/advance-agreements/UNEP/P-PAR12/suspend")
+                .then().statusCode(200).body("status", is("SUSPENDED"));
+        advanceDetail().body("positions.find { it.coverageCode == 'PAR12-C1' }.status", is("ACTIVE"));
+        // Closure cancels the in-progress position.
+        given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().post("/api/ui/v1/advance-agreements/UNEP/P-PAR12/close")
+                .then().statusCode(200).body("status", is("CLOSED"));
+        advanceDetail().body("convention.status", is("CLOSED"))
+                .body("positions.find { it.coverageCode == 'PAR12-C1' }.status", is("CANCELLED"));
+        // An unknown convention and an out-of-scope entity are refused.
+        given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().post("/api/ui/v1/advance-agreements/UNEP/P-NOPE/close").then().statusCode(404);
+        given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().post("/api/ui/v1/advance-agreements/ALPTIS_ASSURANCES/P-PAR12/close").then().statusCode(404);
+    }
+
+    /** The UNEP P-PAR12 discount-agreement detail, ready for body assertions. */
+    private static io.restassured.response.ValidatableResponse advanceDetail() {
+        return given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().get("/api/ui/v1/advance-agreements/UNEP/P-PAR12").then().statusCode(200);
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

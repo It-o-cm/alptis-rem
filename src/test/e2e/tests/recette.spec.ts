@@ -2025,3 +2025,35 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
 
   await adminCtx.close();
 });
+
+test('PAR-12 : clôturer une convention d’escompte ferme la position en cours @screen:advance @path:PAR-12', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=PAR-12&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  // The calculation opens a discount position on the escompté garantie.
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // Open the convention: it is valid, its position active.
+  await admin.goto('/escompte');
+  await admin.locator('[data-testid^="advance-row-"]').filter({ hasText: 'P-PAR12' }).first().click();
+  await expect(admin.getByTestId('advance-detail')).toBeVisible();
+  await expect(admin.getByTestId('adv-status')).toHaveText('Valide');
+  await expect(admin.getByTestId('adv-position-row').first()).toContainText('Active');
+
+  // Closing it closes the in-progress position.
+  await admin.getByTestId('adv-close').click();
+  await expect(admin.getByTestId('adv-status')).toHaveText('Clôturée');
+  await expect(admin.getByTestId('adv-position-row').first()).toContainText('Annulée');
+
+  await adminCtx.close();
+});

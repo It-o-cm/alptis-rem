@@ -132,6 +132,39 @@ public class AgreementsResource {
     }
 
     /**
+     * Suspends a discount convention (PAR-12): no new discount opens while it is suspended.
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor partner code
+     * @return the updated convention view
+     */
+    @POST
+    @Path("/advance-agreements/{entityCode}/{partnerCode}/suspend")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed("BUSINESS_ADMIN")
+    public AdvanceView suspendAdvanceAgreement(@PathParam("entityCode") String entityCode,
+            @PathParam("partnerCode") String partnerCode) {
+        return service.suspendAdvanceAgreement(entityCode, partnerCode);
+    }
+
+    /**
+     * Closes a discount convention (PAR-12): no new discount opens and the discounts in progress are
+     * closed.
+     *
+     * @param entityCode  the entity code
+     * @param partnerCode the distributor partner code
+     * @return the updated convention view
+     */
+    @POST
+    @Path("/advance-agreements/{entityCode}/{partnerCode}/close")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed("BUSINESS_ADMIN")
+    public AdvanceView closeAdvanceAgreement(@PathParam("entityCode") String entityCode,
+            @PathParam("partnerCode") String partnerCode) {
+        return service.closeAdvanceAgreement(entityCode, partnerCode);
+    }
+
+    /**
      * Lists the enrollments of a rule.
      *
      * @param planCode   the plan code

@@ -182,6 +182,7 @@ public class CrScenarioResource {
             case "PAR-06" -> seedPar06(entity, periodMonth);
             case "PAR-08" -> seedPar08(entity, periodMonth);
             case "PAR-09" -> seedPar09(entity, periodMonth);
+            case "PAR-12" -> seedPar12(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1853,6 +1854,21 @@ public class CrScenarioResource {
                 UPFRONT_PARAMS, periodMonth, null, clawback);
         premium(entity, coverage, "PAR09" + suffix + "-Y1", periodMonth.plusDays(14), "1000.00");
         event(entity, coverage, "PAR09" + suffix + "-END", EventType.TERMINATION, termination, null);
+    }
+
+    /**
+     * PAR-12 (parcours §4.2) : cycle de vie d'une convention d'escompte. Une convention valide et une
+     * garantie escomptée : le calcul ouvre une position d'escompte. La convention suspendue n'ouvre plus
+     * de nouvelle position ; clôturée, elle ferme la position en cours (motif {@code AGREEMENT_CLOSED}) ;
+     * son échéance bloque toute nouvelle position (fenêtre de validité, déjà appliquée par le moteur).
+     *
+     * @param entity      the entity the convention belongs to
+     * @param periodMonth the calculation period and effect date
+     */
+    private void seedPar12(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        escompteCoverage(entity, periodMonth, "PAR12", "P-PAR12", "1000");
+        convention(entity, "P-PAR12", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
     }
 
     /**

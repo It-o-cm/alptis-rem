@@ -427,3 +427,13 @@ distributeurs le 25. Un flux non reçu dans le mois est « en retard » passé s
 - **Constat** : les trois politiques existaient déjà dans `CalculationEngine.clawbackRate` — aucune (policy nulle), `AGE_STEPS` (paliers d'ancienneté, `maxDays`/`rate`), `PRO_RATA` (prorata sur `months`) ; toutes branches-couvertes (CR-02/03, cr81, `policyCase`).
 - **Choix** : aucune modification du calcul ; ajout d'un parcours (`seedPar09`) qui démontre les trois politiques sur trois garanties précomptées identiques (apport de 300,00 € chacune) résiliées : sans reprise → aucune ligne ; `AGE_STEPS` 100 % la première année → reprise −300,00 € ; `PRO_RATA` sur 24 mois à 12 mois écoulés → reprise −150,00 €. Les événements en attente se calculant tous dans une même exécution, l'âge de reprise vient de la date d'effet de chaque résiliation.
 - **Raison** : le manque de PAR-09 était la démonstration end-to-end des trois politiques côté à côté, le calcul étant déjà éprouvé unitairement.
+
+## 2026-10-17 — PAR-12 : cycle de vie d'une convention d'escompte (section 6.4)
+
+- **Section** : PAR-12 (TESTS-E2E §4.2), §6.4 (escompte), §5.7 (`advance_agreement.status` VALID/SUSPENDED/CLOSED, motif de clôture de position `AGREEMENT_CLOSED`).
+- **Question** : comment la création, la suspension, la clôture et l'échéance d'une convention agissent-elles sur les escomptes nouveaux et en cours ?
+- **Choix** :
+  - **Nouveaux** : déjà en place — `openAdvanceIfEligible` ne retient que les conventions `VALID` dans leur fenêtre de validité ; suspension, clôture et échéance (date de fin passée) empêchent donc l'ouverture d'une nouvelle position, sans modification.
+  - **Actions de cycle de vie** : `AgreementService.suspendAdvanceAgreement` / `closeAdvanceAgreement` (endpoints `POST /advance-agreements/{entité}/{partenaire}/suspend|close`, administrateur métier, audités) ; boutons sur l'écran Escompte.
+  - **En cours** : la **clôture** ferme les positions en cours de la convention de façon synchrone — statut `CANCELLED`, motif `AGREEMENT_CLOSED`, date de clôture. La suspension ne touche pas les positions en cours (elle ne fait que bloquer les nouvelles).
+- **Limite assumée et consignée** : la clôture ferme la position mais n'écrit pas elle-même la ligne de reprise de la créance d'escompte résiduelle ; cette récupération financière passe par le mécanisme de rupture existant (événement de rupture) et par l'apurement. Écrire une reprise immédiate à la clôture depuis la convention supposerait de rejouer la reconstruction d'état d'escompte dans le moteur (D8/D13) et a été écarté de cet incrément pour ne pas risquer de régression non supervisée sur les cas d'escompte ; à traiter en session dédiée.
