@@ -108,6 +108,9 @@ public class PaymentService {
             }
             BankAccount bank = findBank(batch.entity, order.account);
             if (bank == null) {
+                // Without bank details the beneficiary is excluded from this lot with its motif and
+                // settled by the quarter's cheque lot instead (section 10.5, PAI-02).
+                exclusion(batch, order.account, PaymentExclusionReason.NO_BANK_DETAILS, order.amount);
                 if (cheque == null) {
                     cheque = chequeBatch(batch);
                 }

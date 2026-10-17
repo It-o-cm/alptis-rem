@@ -13,6 +13,44 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
+test('PAI-02 : le lot exclut un bénéficiaire pour chacun des six motifs @screen:payment @path:PAI-02', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=PAI-02&entity=UNEP&month=2027-05-01')).ok()).toBeTruthy();
+
+  const context = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await context.newPage();
+
+  // Advance the business-validated period to payment-prepared (proposes the lot).
+  await page.goto('/');
+  await page.getByTestId('open-UNEP-2027-05-01').click();
+  await expect(page.getByTestId('detail-state')).toContainText('Validée métier');
+  await page.getByTestId('advance-button').click();
+  await expect(page.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  // Prepare the cycle lot, which applies the inactive / frequency / no-bank exclusions.
+  await page.goto('/paiement');
+  await page.getByTestId('pay-entity').selectOption('UNEP');
+  await page.getByTestId('pay-month').selectOption('2027-05-01');
+  await page.getByTestId('pay-refresh').click();
+  await page.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+  await page.getByTestId('lot-prepare').click();
+
+  // Each of the six exclusion motifs of section 5.7 is shown.
+  for (const label of [
+    'Compte bloqué',
+    'Solde non positif',
+    'Sous le seuil de paiement',
+    'Bénéficiaire inactif',
+    'Hors fréquence de versement',
+    'Sans coordonnées bancaires',
+  ]) {
+    await expect(page.locator('[data-testid^="exclusion-reason-"]', { hasText: label })).toHaveCount(1);
+  }
+  await context.close();
+});
+
 test('CPT-04 : un compte bloqué est exclu du lot jusqu’à sa date de levée @screen:payment @path:CPT-04', async ({
   browser,
   request,

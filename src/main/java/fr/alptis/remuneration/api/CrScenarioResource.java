@@ -54,6 +54,7 @@ import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.PayeeRule;
+import fr.alptis.remuneration.domain.PaymentFrequency;
 import fr.alptis.remuneration.domain.PayeeRuleShare;
 import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.Product;
@@ -210,6 +211,7 @@ public class CrScenarioResource {
             case "CPT-03" -> seedCpt03(entity, periodMonth);
             case "CPT-04" -> seedCpt04(entity, periodMonth);
             case "CPT-07" -> seedCpt07(entity, periodMonth);
+            case "PAI-02" -> seedPai02(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2354,6 +2356,90 @@ public class CrScenarioResource {
             repayment.amount = new BigDecimal("100.00");
             repayment.persist();
         }
+    }
+
+    /**
+     * PAI-02 (parcours §4.5) : exclusion du lot de paiement pour chacun des six motifs de la section 5.7,
+     * chaque motif affiché et, pour les cinq motifs « au compte », la somme restée au compte. Six
+     * bénéficiaires d'une période validée métier : compte bloqué (date de levée lointaine), solde
+     * débiteur, solde sous le seuil, bénéficiaire suspendu, payé au trimestre (non dû en mai), et sans
+     * coordonnées bancaires (réglé par le lot de chèques). Les trois premiers motifs sont posés à la
+     * proposition, les trois derniers à la préparation des ordres.
+     *
+     * @param entity      the entity the accounts belong to
+     * @param periodMonth the period month (a non-quarter month so the quarterly payee is not due)
+     */
+    private void seedPai02(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        DistributorAccount blocked = payee(entity, period, "P-PAI02-BLOCK", "150.00", PartnerStatus.ACTIVE, true);
+        blocked.blocked = Boolean.TRUE;
+        blocked.blockReason = "Blocage manuel";
+        blocked.blockedUntil = periodMonth.plusYears(50);
+        payee(entity, period, "P-PAI02-NEG", "-50.00", PartnerStatus.ACTIVE, true);
+        payee(entity, period, "P-PAI02-LOW", "0.50", PartnerStatus.ACTIVE, true);
+        payee(entity, period, "P-PAI02-INACTIVE", "150.00", PartnerStatus.SUSPENDED, true);
+        DistributorAccount freq = payee(entity, period, "P-PAI02-FREQ", "150.00", PartnerStatus.ACTIVE, true);
+        PayeeRule quarterly = new PayeeRule();
+        quarterly.entity = entity;
+        quarterly.distributor = Distributor.findById(freq.payeeId);
+        quarterly.paymentFrequency = PaymentFrequency.QUARTERLY;
+        quarterly.validFrom = periodMonth;
+        quarterly.persist();
+        payee(entity, period, "P-PAI02-NOBANK", "150.00", PartnerStatus.ACTIVE, false);
+    }
+
+    /**
+     * Creates a beneficiary (distributor, membership, account and a payable line) for the payment-lot
+     * scenarios, optionally with bank details (PAI-02).
+     *
+     * @param entity   the entity
+     * @param period   the period
+     * @param code     the distributor code
+     * @param amount   the payable amount (signed)
+     * @param status   the membership status in the entity
+     * @param withBank whether the beneficiary has bank details
+     * @return the beneficiary's account
+     */
+    private DistributorAccount payee(LegalEntity entity, Period period, String code, String amount,
+                                     PartnerStatus status, boolean withBank) {
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = code;
+        distributor.legalName = code;
+        distributor.persist();
+        DistributorEntity membership = new DistributorEntity();
+        membership.distributor = distributor;
+        membership.entity = entity;
+        membership.status = status;
+        membership.validFrom = period.periodMonth;
+        membership.persist();
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = distributor.getId();
+        account.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.account = account;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = period.periodMonth;
+        line.persist();
+        if (withBank) {
+            BankAccount bank = new BankAccount();
+            bank.entity = entity;
+            bank.holderType = PayeeType.DISTRIBUTOR;
+            bank.holderId = distributor.getId();
+            bank.iban = "FR7630001007941234567890185";
+            bank.bic = "AGRIFRPP";
+            bank.holderName = code;
+            bank.validFrom = period.periodMonth;
+            bank.persist();
+        }
+        return account;
     }
 
     /**

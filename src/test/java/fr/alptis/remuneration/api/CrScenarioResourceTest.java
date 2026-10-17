@@ -1233,6 +1233,29 @@ class CrScenarioResourceTest {
                 .body("find { it.status == 'PAYABLE' }.blockReason", is("Blocage manuel"));
     }
 
+    /**
+     * PAI-02 (parcours): the cycle lot excludes a beneficiary for each of the six payment motifs; three
+     * are set when the lot is proposed (blocked, non-positive, below threshold) and three when the orders
+     * are prepared (inactive payee, frequency, no bank details). The blocked account keeps its amount.
+     */
+    @Test
+    void pai02_six_exclusion_reasons() {
+        given().when().post("/api/test/cr-scenario?cr=PAI-02&entity=UNEP&month=2027-05-01").then().statusCode(204);
+        transition("operator-unep", "2027-05-01", "PAYMENT_PREPARED");
+        int lotId = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2027-05-01/lots").then().statusCode(200)
+                .extract().path("find { it.batchType == 'CYCLE' }.id");
+        // Preparing the orders applies the inactive / frequency / no-bank exclusions.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/payment/lots/" + lotId + "/prepare").then().statusCode(200)
+                .body("exclusions.reason", hasItems("ACCOUNT_BLOCKED", "NON_POSITIVE_BALANCE", "BELOW_THRESHOLD",
+                        "PAYEE_INACTIVE", "FREQUENCY", "NO_BANK_DETAILS"));
+        // The blocked beneficiary's 150 € stayed on its account.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounts/UNEP/distributor/P-PAI02-BLOCK")
+                .then().statusCode(200).body("total", is(150.00f));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")
