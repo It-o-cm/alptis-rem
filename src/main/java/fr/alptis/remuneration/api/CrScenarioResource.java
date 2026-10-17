@@ -212,6 +212,7 @@ public class CrScenarioResource {
             case "CPT-04" -> seedCpt04(entity, periodMonth);
             case "CPT-07" -> seedCpt07(entity, periodMonth);
             case "PAI-02" -> seedPai02(entity, periodMonth);
+            case "PAI-04" -> seedPai04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2773,6 +2774,54 @@ public class CrScenarioResource {
         Coverage savingsCoverage = coverage(entity, "CR86S", per, periodMonth, "P-CR86S", null);
         payable(entity, savingsCoverage, periodMonth);
         earnedOnCode(entity, period, savingsCoverage, "50.00");
+    }
+
+    /**
+     * PAI-04 (net négatif d'un lot, positif de l'autre) : un seul bénéficiaire porte, sur un même compte,
+     * une commission de cycle (+200 €) et une régularisation d'escompte retraite négative (−50 €). Le net
+     * négatif du lot épargne retraite est imputé sur l'ordre du lot de cycle, en une ligne sur son
+     * bordereau, de sorte que l'ordre reste égal au net du bordereau (150 €, §10.5/PAY-05) et qu'aucun lot
+     * d'épargne retraite n'est émis. La période est posée en « Validée métier » comme état d'entrée.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedPai04(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        DistributorAccount account = payee(entity, period, "P-PAI04", "200.00", PartnerStatus.ACTIVE, true);
+        // A negative retirement-savings adjustment on the same account, in a retirement-savings range so it
+        // is classed in the savings lot; with a negative net that lot has no order and is imputed on the
+        // cycle lot that pays.
+        ProductRange savingsRange = new ProductRange();
+        savingsRange.code = "EPARGNE-PAI04";
+        savingsRange.label = "Épargne retraite";
+        savingsRange.target = ProductTarget.INDIVIDUAL;
+        savingsRange.retirementSavings = Boolean.TRUE;
+        savingsRange.persist();
+        Product per = new Product();
+        per.entity = entity;
+        per.code = "PER-PAI04";
+        per.label = "Plan Épargne Retraite";
+        per.range = savingsRange;
+        per.persist();
+        Contract contract = new Contract();
+        contract.entity = entity;
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = "PAI04S";
+        contract.product = per;
+        contract.persist();
+        CommissionLine savings = new CommissionLine();
+        savings.entity = entity;
+        savings.period = period;
+        savings.account = account;
+        savings.contract = contract;
+        savings.direction = Direction.OUTBOUND;
+        savings.status = LineStatus.EARNED;
+        savings.nature = LineNature.ADVANCE_ADJUSTMENT;
+        savings.amount = new BigDecimal("-50.00");
+        savings.attachmentMonth = period.periodMonth;
+        savings.persist();
     }
 
     /**

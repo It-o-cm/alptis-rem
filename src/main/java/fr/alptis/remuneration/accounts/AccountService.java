@@ -290,14 +290,25 @@ public class AccountService {
             List<CommissionLine> cycleLines = nonBlocked.stream().filter(line -> !savingsLine(line)).toList();
             BigDecimal savingsNet = savingsLines.stream()
                     .map(line -> line.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal cycleNet = cycleLines.stream()
+                    .map(line -> line.amount).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal savingsPay = savingsNet.signum() > 0 ? savingsNet.min(payable) : BigDecimal.ZERO;
             BigDecimal cyclePay = payable.subtract(savingsPay);
             BigDecimal savingsPeriodTotal = savingsPeriodTotal(account, period);
             BigDecimal cyclePeriodTotal = periodTotal(account, period).subtract(savingsPeriodTotal);
-            Statement cycleStmt = cyclePay.signum() > 0
-                    ? statement(entity, period, account, BatchType.CYCLE, cyclePay, cyclePeriodTotal) : null;
-            Statement savingsStmt = savingsPay.signum() > 0
-                    ? statement(entity, period, account, BatchType.SAVINGS_CYCLE, savingsPay, savingsPeriodTotal)
+            boolean hasCycle = cyclePay.signum() > 0;
+            boolean hasSavings = savingsPay.signum() > 0;
+            // A lot with no positive net of its own is imputed on the paying lot (section 10.5, PAI-04): its
+            // net becomes a single imputation line on the paying bordereau, so the two orders still sum to
+            // the account's payable and no payment exceeds a positive balance (CPT-03).
+            BigDecimal imputedOnCycle = hasSavings ? BigDecimal.ZERO : savingsNet;
+            BigDecimal imputedOnSavings = hasCycle ? BigDecimal.ZERO : cycleNet;
+            Statement cycleStmt = hasCycle
+                    ? statement(entity, period, account, BatchType.CYCLE, cyclePay, cyclePeriodTotal, imputedOnCycle)
+                    : null;
+            Statement savingsStmt = hasSavings
+                    ? statement(entity, period, account, BatchType.SAVINGS_CYCLE, savingsPay, savingsPeriodTotal,
+                            imputedOnSavings)
                     : null;
             if (cycleStmt != null) {
                 order(cycle, account, cycleStmt, cyclePay);
@@ -310,8 +321,8 @@ public class AccountService {
                 order(savingsHolder[0], account, savingsStmt, savingsPay);
                 savingsTotal = savingsTotal.add(savingsPay);
             }
-            // Attach each line to the bordereau of the lot that pays it; an imputed lot (net <= 0) has no
-            // statement, so its lines follow the paying lot (REP-02 audit chain).
+            // Attach each line to the bordereau of the lot that pays it; an imputed lot (no own statement)
+            // has its lines follow the paying lot, where they render as one imputation line (REP-02).
             Statement savingsHome = savingsStmt != null ? savingsStmt : cycleStmt;
             Statement cycleHome = cycleStmt != null ? cycleStmt : savingsStmt;
             for (CommissionLine line : savingsLines) {
@@ -411,10 +422,11 @@ public class AccountService {
      * @param batchType   the lot type the statement belongs to
      * @param net         the net balance of the lot
      * @param periodTotal the lot's part of the period total
+     * @param imputedNet  the net imputed from the other lot (shown as one imputation line), or zero
      * @return the statement
      */
     private Statement statement(LegalEntity entity, Period period, DistributorAccount account, BatchType batchType,
-                                BigDecimal net, BigDecimal periodTotal) {
+                                BigDecimal net, BigDecimal periodTotal, BigDecimal imputedNet) {
         Statement statement = new Statement();
         statement.entity = entity;
         statement.period = period;
@@ -424,7 +436,9 @@ public class AccountService {
                 + (batchType == BatchType.SAVINGS_CYCLE ? "-S" : "");
         statement.versionNo = 1;
         statement.level = StatementLevel.PRODUCTION_CODE;
-        statement.carriedBalance = net.subtract(periodTotal);
+        // The carried balance holds the prior-period balance only; the net imputed from the other lot is
+        // shown separately as one imputation line (section 10.5, PAI-04), so it is excluded here.
+        statement.carriedBalance = net.subtract(periodTotal).subtract(imputedNet);
         statement.periodTotal = periodTotal;
         statement.netAmount = net;
         statement.status = StatementStatus.DRAFT;

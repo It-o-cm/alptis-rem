@@ -51,6 +51,48 @@ test('PAI-02 : le lot exclut un bénéficiaire pour chacun des six motifs @scree
   await context.close();
 });
 
+test('PAI-04 : le net négatif de l’épargne retraite est imputé en une ligne sur le bordereau du lot de cycle @screen:payment @screen:statements @path:PAI-04', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=PAI-04&entity=UNEP&month=2028-03-01')).ok()).toBeTruthy();
+
+  const context = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await context.newPage();
+
+  // Advance the business-validated period to payment-prepared (splits the lines into lots and proposes).
+  await page.goto('/');
+  await page.getByTestId('open-UNEP-2028-03-01').click();
+  await expect(page.getByTestId('detail-state')).toContainText('Validée métier');
+  await page.getByTestId('advance-button').click();
+  await expect(page.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  // A single cycle lot pays 150,00 € (200 € de cycle − 50 € d’épargne retraite imputés); no savings lot.
+  await page.goto('/paiement');
+  await page.getByTestId('pay-entity').selectOption('UNEP');
+  await page.getByTestId('pay-month').selectOption('2028-03-01');
+  await page.getByTestId('pay-refresh').click();
+  await expect(page.locator('[data-testid^="lot-row-"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid^="lot-type-"]').filter({ hasText: 'SAVINGS_CYCLE' })).toHaveCount(0);
+  await page.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+  // The order equals the net of the bordereau (section 10.5, PAY-05).
+  await expect(page.locator('[data-testid^="order-amount-"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid^="order-amount-"]').first()).toContainText('150,00');
+
+  // On the paying bordereau, the imputation of the savings lot figures as exactly one line, and the net is
+  // the cycle net (150 €) — the savings lines are not re-listed as rubric rows.
+  await page.goto('/bordereaux');
+  await page.getByTestId('brd-entity').selectOption('UNEP');
+  await page.getByTestId('brd-month').selectOption('2028-03-01');
+  await page.getByTestId('brd-refresh').click();
+  await page.locator('[data-testid^="statement-open-"]').first().click();
+  await expect(page.getByTestId('statement-detail')).toBeVisible();
+  await expect(page.locator('[data-testid^="statement-line-section-"]', { hasText: 'Imputation' })).toHaveCount(1);
+  await expect(page.getByTestId('statement-detail')).toContainText('Lot épargne retraite');
+  await expect(page.getByTestId('statement-net')).toContainText('150,00');
+  await context.close();
+});
+
 test('CPT-04 : un compte bloqué est exclu du lot jusqu’à sa date de levée @screen:payment @path:CPT-04', async ({
   browser,
   request,

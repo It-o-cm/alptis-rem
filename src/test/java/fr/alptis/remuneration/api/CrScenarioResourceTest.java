@@ -1256,6 +1256,21 @@ class CrScenarioResourceTest {
                 .then().statusCode(200).body("total", is(150.00f));
     }
 
+    /**
+     * PAI-04 (parcours): a beneficiary with a +200 € cycle commission and a −50 € retirement-savings
+     * adjustment on one account pays 150,00 € in the cycle lot and creates no savings lot — the negative
+     * savings net is imputed on the paying cycle lot (section 10.5, PAY-05).
+     */
+    @Test
+    void pai04_negative_savings_net_imputed_on_the_cycle_lot() {
+        given().when().post("/api/test/cr-scenario?cr=PAI-04&entity=UNEP&month=2028-03-01").then().statusCode(204);
+        transition("operator-unep", "2028-03-01", "PAYMENT_PREPARED");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2028-03-01/lots").then().statusCode(200)
+                .body("find { it.batchType == 'CYCLE' }.total", is(150.00f))
+                .body("find { it.batchType == 'SAVINGS_CYCLE' }", nullValue());
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

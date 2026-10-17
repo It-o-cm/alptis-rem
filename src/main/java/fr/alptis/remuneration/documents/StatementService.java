@@ -57,14 +57,36 @@ public class StatementService {
             throw new ResourceNotFoundException("Bordereau inconnu : " + statementId);
         }
         fr.alptis.remuneration.domain.StatementGrouping grouping = grouping(statement.account);
+        boolean savingsStatement = statement.batchType == fr.alptis.remuneration.domain.BatchType.SAVINGS_CYCLE;
+        // When the other lot of this account has its own statement, its lines render there, not here; when
+        // it has none, its net was imputed on this (paying) lot and is shown as one imputation line (PAI-04).
+        boolean otherLotHasStatement = fr.alptis.remuneration.domain.Statement.count(
+                "account = ?1 and period = ?2 and batchType = ?3", statement.account, statement.period,
+                savingsStatement ? fr.alptis.remuneration.domain.BatchType.CYCLE
+                        : fr.alptis.remuneration.domain.BatchType.SAVINGS_CYCLE) > 0;
         List<Row> rows = new ArrayList<>();
+        BigDecimal imputed = BigDecimal.ZERO;
+        boolean anyImputed = false;
         for (CommissionLine line : CommissionLine.<CommissionLine>list(
                 "account = ?1 and period = ?2 and status in ?3 order by id",
                 statement.account, statement.period, SHOWN)) {
+            if (savingsLine(line) != savingsStatement) {
+                // A line of the other lot: imputed on this bordereau when the other lot has no statement,
+                // otherwise shown on its own.
+                if (!otherLotHasStatement) {
+                    imputed = imputed.add(line.amount == null ? BigDecimal.ZERO : line.amount);
+                    anyImputed = true;
+                }
+                continue;
+            }
             String group = grouping == fr.alptis.remuneration.domain.StatementGrouping.NONE ? null
                     : groupValue(line, grouping);
             rows.add(new Row(section(line.nature), label(line), line.basisAmount, line.rate, line.amount, line.reason,
                     group));
+        }
+        if (anyImputed) {
+            rows.add(new Row("Imputation",
+                    savingsStatement ? "Lot de cycle" : "Lot épargne retraite", null, null, imputed, null, null));
         }
         return new StatementContent(statement.statementNumber, statement.versionNo,
                 statement.account.payeeType + " #" + statement.account.payeeId, statement.period.periodMonth,
@@ -246,6 +268,19 @@ public class StatementService {
         rectified.setCreatedAt(clock.now());
         rectified.persist();
         return rectified;
+    }
+
+    /**
+     * Whether a commission line belongs to a retirement-savings range (section 10.5): such lines go to
+     * the savings lot, the others to the cycle lot.
+     *
+     * @param line the commission line
+     * @return true when its product's range is a retirement-savings range
+     */
+    private static boolean savingsLine(CommissionLine line) {
+        return line.contract != null && line.contract.product != null
+                && line.contract.product.range != null
+                && Boolean.TRUE.equals(line.contract.product.range.retirementSavings);
     }
 
     /**

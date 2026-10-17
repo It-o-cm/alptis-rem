@@ -18,6 +18,7 @@ import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.Product;
+import fr.alptis.remuneration.domain.ProductRange;
 import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.Statement;
 import fr.alptis.remuneration.domain.StatementLevel;
@@ -304,6 +305,182 @@ class StatementServiceTest {
         assertTrue(content.rows().stream().anyMatch(r -> r.section().equals("Ajustements")));
         assertTrue(content.rows().stream().anyMatch(r -> r.section().equals("Commissions") && r.label().equals("AD-1-C1")));
         assertEquals(0, content.net().compareTo(new BigDecimal("100.00")));
+    }
+
+    /** A PAYABLE line of a cycle or savings product, attached to a statement (PAI-04 fixtures). */
+    private void lotLine(Period period, DistributorAccount account, boolean savings, String amount,
+                         Statement statement) {
+        Product p = new Product();
+        p.entity = unep();
+        p.code = (savings ? "PER-" : "SANTE-") + (seq++);
+        p.label = p.code;
+        if (savings) {
+            ProductRange range = new ProductRange();
+            range.code = "R-" + (seq++);
+            range.label = "Épargne retraite";
+            range.retirementSavings = Boolean.TRUE;
+            range.persist();
+            p.range = range;
+        }
+        p.persist();
+        Contract contract = new Contract();
+        contract.entity = unep();
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = "LC-" + (seq++);
+        contract.product = p;
+        contract.persist();
+        Coverage coverage = new Coverage();
+        coverage.contract = contract;
+        coverage.coverageCode = contract.contractNumber + "-C1";
+        coverage.effectDate = M;
+        coverage.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.account = account;
+        line.contract = contract;
+        line.coverage = coverage;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.PAYABLE;
+        line.nature = LineNature.LINEAR;
+        line.amount = amount == null ? null : new BigDecimal(amount);
+        line.statement = statement;
+        line.persist();
+    }
+
+    /** A persisted statement of a given lot type on an account for a period. */
+    private Statement statementOfType(DistributorAccount account, Period period, BatchType batchType) {
+        Statement s = statementOn(account, period);
+        s.batchType = batchType;
+        return s;
+    }
+
+    /**
+     * PAI-04: a savings lot with no positive net of its own is imputed on the cycle bordereau as a single
+     * imputation line; the savings lines are not re-listed as rubric rows and the net stays the cycle net.
+     */
+    @Test
+    @TestTransaction
+    void renders_one_imputation_line_when_the_other_lot_has_no_statement() {
+        Period period = aPeriod();
+        DistributorAccount account = distributorAccount(PayeeType.PRODUCTION_CODE, 70L);
+        Statement cycle = statementOfType(account, period, BatchType.CYCLE);
+        cycle.periodTotal = new BigDecimal("200.00");
+        cycle.carriedBalance = BigDecimal.ZERO;
+        cycle.netAmount = new BigDecimal("150.00");
+        lotLine(period, account, false, "200.00", cycle);
+        lotLine(period, account, true, "-50.00", cycle);
+        lotLine(period, account, true, null, cycle);
+
+        StatementService.StatementContent content = service.render(cycle.getId());
+
+        assertEquals(1, content.rows().stream().filter(r -> r.section().equals("Imputation")).count());
+        StatementService.Row imputation = content.rows().stream()
+                .filter(r -> r.section().equals("Imputation")).findFirst().orElseThrow();
+        assertEquals("Lot épargne retraite", imputation.label());
+        assertEquals(0, imputation.amount().compareTo(new BigDecimal("-50.00")));
+        assertEquals(1, content.rows().stream().filter(r -> !r.section().equals("Imputation")).count());
+        assertEquals(0, content.net().compareTo(new BigDecimal("150.00")));
+    }
+
+    /**
+     * When both lots have their own statement, each bordereau shows only its own lines and carries no
+     * imputation line (the other lot renders on its own statement).
+     */
+    @Test
+    @TestTransaction
+    void renders_each_lot_on_its_own_statement_without_imputation() {
+        Period period = aPeriod();
+        DistributorAccount account = distributorAccount(PayeeType.PRODUCTION_CODE, 71L);
+        Statement cycle = statementOfType(account, period, BatchType.CYCLE);
+        Statement savings = statementOfType(account, period, BatchType.SAVINGS_CYCLE);
+        lotLine(period, account, false, "200.00", cycle);
+        lotLine(period, account, true, "50.00", savings);
+
+        StatementService.StatementContent cycleContent = service.render(cycle.getId());
+        assertEquals(0, cycleContent.rows().stream().filter(r -> r.section().equals("Imputation")).count());
+        assertEquals(1, cycleContent.rows().size());
+
+        StatementService.StatementContent savingsContent = service.render(savings.getId());
+        assertEquals(0, savingsContent.rows().stream().filter(r -> r.section().equals("Imputation")).count());
+        assertEquals(1, savingsContent.rows().size());
+    }
+
+    /**
+     * PAI-04 (symmetric): a cycle lot with no positive net of its own is imputed on the savings bordereau
+     * as one imputation line labelled by the cycle lot.
+     */
+    @Test
+    @TestTransaction
+    void renders_imputation_of_the_cycle_lot_on_the_savings_bordereau() {
+        Period period = aPeriod();
+        DistributorAccount account = distributorAccount(PayeeType.PRODUCTION_CODE, 72L);
+        Statement savings = statementOfType(account, period, BatchType.SAVINGS_CYCLE);
+        savings.netAmount = new BigDecimal("30.00");
+        lotLine(period, account, true, "50.00", savings);
+        lotLine(period, account, false, "-20.00", savings);
+
+        StatementService.StatementContent content = service.render(savings.getId());
+
+        StatementService.Row imputation = content.rows().stream()
+                .filter(r -> r.section().equals("Imputation")).findFirst().orElseThrow();
+        assertEquals("Lot de cycle", imputation.label());
+        assertEquals(0, imputation.amount().compareTo(new BigDecimal("-20.00")));
+    }
+
+    /**
+     * A line whose contract carries a non-retirement-savings range, and one whose contract carries no
+     * product at all, are both cycle lines (not savings): on a cycle bordereau they render as native
+     * rubrics and never as an imputation line.
+     */
+    @Test
+    @TestTransaction
+    void a_line_with_a_non_savings_range_or_no_product_is_a_cycle_line() {
+        Period period = aPeriod();
+        DistributorAccount account = distributorAccount(PayeeType.PRODUCTION_CODE, 73L);
+        Statement cycle = statementOfType(account, period, BatchType.CYCLE);
+        // A product carrying a non-retirement range.
+        Product p = new Product();
+        p.entity = unep();
+        p.code = "SANTE-NR";
+        p.label = "Santé";
+        ProductRange range = new ProductRange();
+        range.code = "R-NR";
+        range.label = "Santé";
+        range.retirementSavings = Boolean.FALSE;
+        range.persist();
+        p.range = range;
+        p.persist();
+        contractLineOn(period, account, p, "NR-1", "40.00", cycle);
+        // A contract with no product at all.
+        contractLineOn(period, account, null, "NR-2", "10.00", cycle);
+
+        StatementService.StatementContent content = service.render(cycle.getId());
+
+        assertEquals(0, content.rows().stream().filter(r -> r.section().equals("Imputation")).count());
+        assertEquals(2, content.rows().size());
+    }
+
+    /** A PAYABLE line carrying a contract (optionally with a product) attached to a statement. */
+    private void contractLineOn(Period period, DistributorAccount account, Product product, String contractNumber,
+                                String amount, Statement statement) {
+        Contract contract = new Contract();
+        contract.entity = unep();
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = contractNumber;
+        contract.product = product;
+        contract.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = unep();
+        line.period = period;
+        line.account = account;
+        line.contract = contract;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.PAYABLE;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal(amount);
+        line.statement = statement;
+        line.persist();
     }
 
     /**

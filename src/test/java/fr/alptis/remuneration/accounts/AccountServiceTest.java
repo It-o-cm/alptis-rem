@@ -210,6 +210,10 @@ class AccountServiceTest {
         PaymentOrder cycle = orderOf(p, BatchType.CYCLE);
         assertNotNull(cycle);
         assertEquals(0, cycle.amount.compareTo(new BigDecimal("70.00")));
+        // The order equals the cycle bordereau net, and the imputed −30 is excluded from the carried
+        // balance (it shows as one imputation line instead): the carried balance is the prior balance, 0.
+        assertEquals(0, cycle.statement.netAmount.compareTo(new BigDecimal("70.00")));
+        assertEquals(0, cycle.statement.carriedBalance.compareTo(BigDecimal.ZERO));
     }
 
     /**
@@ -268,6 +272,10 @@ class AccountServiceTest {
         assertEquals(0, savings.amount.compareTo(new BigDecimal("70.00")));
         PaymentBatch cycle = PaymentBatch.find("period = ?1 and batchType = ?2", p, BatchType.CYCLE).firstResult();
         assertEquals(0, cycle.totalAmount.compareTo(BigDecimal.ZERO));
+        // The order equals the savings bordereau net; the imputed −30 cycle net stays out of the carried
+        // balance (shown as one imputation line instead), so the carried balance is the prior balance, 0.
+        assertEquals(0, savings.statement.netAmount.compareTo(new BigDecimal("70.00")));
+        assertEquals(0, savings.statement.carriedBalance.compareTo(BigDecimal.ZERO));
     }
 
     /**
