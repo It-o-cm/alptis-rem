@@ -2055,6 +2055,89 @@ test('CYC-03 : un retour arrière autorisé s’applique, aucun n’est permis a
   await adminCtx.close();
 });
 
+test('PAI-08 : le refus du lot de cycle par la Finance ramène la période, réacquiert les lignes, contre-passe les écritures et supprime les bordereaux @screen:periods @screen:bordereaux @screen:accounting @screen:distributor-account @path:PAI-08', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CR-86&entity=UNEP&month=2026-01-01')).ok()).toBeTruthy();
+
+  // Drive the period to payment-prepared: this generates the accounting entries (at business validation)
+  // and the provisional bordereaux (at payment preparation).
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/');
+  await admin.getByTestId('open-UNEP-2026-01-01').click();
+  await admin.getByTestId('advance-button').click();
+  await expect(admin.getByTestId('detail-state')).toContainText('Calculée');
+  await admin.getByTestId('advance-button').click();
+  await expect(admin.getByTestId('detail-state')).toContainText('Contrôlée');
+  const valCtx = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+  const val = await valCtx.newPage();
+  await val.goto('/');
+  await val.getByTestId('open-UNEP-2026-01-01').click();
+  await val.getByTestId('advance-button').click();
+  await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+  await val.getByTestId('advance-button').click();
+  await expect(val.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  // Before the refusal: provisional bordereaux and accounting entries exist for the period.
+  const finCtx = await browser.newContext({ httpCredentials: USERS.financeUnep });
+  const fin = await finCtx.newPage();
+  await fin.goto('/bordereaux');
+  await fin.getByTestId('brd-entity').selectOption('UNEP');
+  await fin.getByTestId('brd-month').selectOption('2026-01-01');
+  await fin.getByTestId('brd-refresh').click();
+  await expect(fin.locator('[data-testid^="statement-row-"]').first()).toBeVisible();
+  await fin.goto('/comptabilite');
+  await fin.getByTestId('acc-entity').selectOption('UNEP');
+  await fin.getByTestId('acc-month').selectOption('2026-01-01');
+  await fin.getByTestId('acc-refresh').click();
+  await expect(fin.locator('[data-testid^="entry-row-"]').first()).toBeVisible();
+
+  // Finance refuses the cycle lot, sending the period back to controlled with a reason.
+  const refuse = await request.post('/api/ui/v1/periods/UNEP/2026-01-01/transition', {
+    headers: {
+      Authorization: 'Basic ' + Buffer.from('finance-unep:finance-unep').toString('base64'),
+      'Content-Type': 'application/json',
+    },
+    data: { toState: 'CONTROLLED', reason: 'Refus du lot de cycle' },
+  });
+  expect(refuse.ok()).toBeTruthy();
+
+  // Période revenue en arrière, le refus tracé sur l'écran des périodes.
+  await admin.goto('/');
+  await admin.getByTestId('open-UNEP-2026-01-01').click();
+  await expect(admin.getByTestId('detail-state')).toHaveText('Contrôlée');
+  await expect(admin.getByTestId('transition-row').filter({ hasText: 'Refus du lot de cycle' })).toHaveCount(1);
+
+  // Bordereaux provisoires supprimés.
+  await fin.goto('/bordereaux');
+  await fin.getByTestId('brd-entity').selectOption('UNEP');
+  await fin.getByTestId('brd-month').selectOption('2026-01-01');
+  await fin.getByTestId('brd-refresh').click();
+  await expect(fin.getByTestId('no-statement')).toBeVisible();
+
+  // Écritures contre-passées (plus aucune écriture provisoire sur la période).
+  await fin.goto('/comptabilite');
+  await fin.getByTestId('acc-entity').selectOption('UNEP');
+  await fin.getByTestId('acc-month').selectOption('2026-01-01');
+  await fin.getByTestId('acc-refresh').click();
+  await expect(fin.getByTestId('no-entry')).toBeVisible();
+
+  // Lignes acquises : la ligne de cycle est repassée « Acquise » (plus « À payer »).
+  await admin.goto('/distributeur');
+  await admin.getByTestId('acc-entity').selectOption('UNEP');
+  await admin.getByTestId('acc-partner').selectOption('P-CR86C');
+  await admin.getByTestId('acc-search').click();
+  await expect(admin.locator('[data-testid^="line-row-"]').filter({ hasText: 'Acquise' }).first()).toBeVisible();
+  await expect(admin.locator('[data-testid^="line-row-"]').filter({ hasText: 'À payer' })).toHaveCount(0);
+
+  await adminCtx.close();
+  await valCtx.close();
+  await finCtx.close();
+});
+
 test('CYC-02 : une transition par un rôle non habilité est refusée @screen:periods @path:CYC-02', async ({
   browser,
   request,
