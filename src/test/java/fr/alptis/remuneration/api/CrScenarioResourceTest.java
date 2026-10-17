@@ -1038,6 +1038,22 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * CAL-08 (parcours): an escompté garantie in co-brokerage, ceded mid-period, stays a single unit with
+     * a single discount position, its lines split across the two brokers' accounts.
+     */
+    @Test
+    void cal08_co_brokerage_splits_across_both_accounts_with_one_position() {
+        plantAndRun("CAL-08");
+        // The garantie's commission is split across the main broker and the co-broker.
+        search().body("collect { it.distributor }", hasItems("P-CAL08A", "P-CAL08B"));
+        // A single discount position for the garantie, held under the main broker's convention.
+        given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().get("/api/ui/v1/advance-agreements/UNEP/P-CAL08A")
+                .then().statusCode(200)
+                .body("positions.findAll { it.coverageCode == 'CAL08-C1' }.size()", is(1));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

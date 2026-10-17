@@ -186,6 +186,7 @@ public class CrScenarioResource {
             case "CAL-04" -> seedCal04(entity, periodMonth);
             case "CAL-06" -> seedCal06(entity, periodMonth);
             case "CAL-06-RULE" -> seedCal06Rule(entity, periodMonth);
+            case "CAL-08" -> seedCal08(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1923,6 +1924,60 @@ public class CrScenarioResource {
     private void seedCal06Rule(LegalEntity entity, LocalDate periodMonth) {
         version(entity, "PLAN-CAL06", "R-CAL06-LIN", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
                 "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+    }
+
+    /**
+     * CAL-08 (parcours §4.3) : garantie escomptée en co-courtage, cédée en cours de période. Une seule
+     * garantie partagée entre un apporteur principal (60 %) et un co-courtier (40 %) : le moteur la traite
+     * en une seule unité, l'escompte ouvre une position unique, et les lignes se répartissent sur les deux
+     * comptes au prorata des parts. Une cession mi-période réaffecte l'apporteur principal à un repreneur,
+     * sans multiplier l'unité ni la position.
+     *
+     * @param entity      the entity the garantie belongs to
+     * @param periodMonth the calculation period and effect date
+     */
+    private void seedCal08(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Coverage coverage = escompteCoverage(entity, periodMonth, "CAL08", "P-CAL08A", "1200");
+        convention(entity, "P-CAL08A", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+        // Co-courtage: the main broker keeps 60 %, a co-broker takes 40 %.
+        CoverageAssignment main = CoverageAssignment.<CoverageAssignment>find("coverage", coverage).firstResult();
+        main.share = new BigDecimal("0.6");
+        Distributor coBroker = new Distributor();
+        coBroker.partnerCode = "P-CAL08B";
+        coBroker.legalName = "Co-courtier";
+        coBroker.persist();
+        ProductionCode coPc = new ProductionCode();
+        coPc.entity = entity;
+        coPc.code = "PC-CAL08B";
+        coPc.distributor = coBroker;
+        coPc.persist();
+        CoverageAssignment co = new CoverageAssignment();
+        co.coverage = coverage;
+        co.productionCode = coPc;
+        co.role = AssignmentRole.CO_BROKER;
+        co.share = new BigDecimal("0.4");
+        co.validFrom = periodMonth;
+        co.persist();
+        premium(entity, coverage, "CAL08-E1", periodMonth.plusDays(14), "500.00");
+        // Ceded mid-period: the main broker's portfolio is transferred to a new broker, debt repaid.
+        Distributor repreneur = new Distributor();
+        repreneur.partnerCode = "P-CAL08C";
+        repreneur.legalName = "Repreneur";
+        repreneur.persist();
+        ProductionCode repPc = new ProductionCode();
+        repPc.entity = entity;
+        repPc.code = "PC-CAL08C";
+        repPc.distributor = repreneur;
+        repPc.persist();
+        PortfolioTransfer transfer = new PortfolioTransfer();
+        transfer.entity = entity;
+        transfer.fromDistributor = main.productionCode.distributor;
+        transfer.toDistributor = repreneur;
+        transfer.effectDate = periodMonth.plusMonths(1);
+        transfer.advanceDebtHandling = AdvanceDebtHandling.REPAID_BY_TRANSFEROR;
+        transfer.status = TransferStatus.PENDING;
+        transfer.persist();
     }
 
     /**

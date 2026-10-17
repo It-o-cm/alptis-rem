@@ -2026,6 +2026,39 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CAL-08 : une garantie escomptée en co-courtage garde une unité et une position, lignes sur deux comptes @screen:commissionSearch @screen:advance @path:CAL-08', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=CAL-08&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // The co-brokered garantie's commission is split across the two brokers' accounts.
+  await admin.goto('/recherche-commissions');
+  await admin.getByTestId('cs-month').selectOption('2026-01-01');
+  await admin.getByTestId('cs-search').click();
+  await expect(admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-CAL08A' }).first()).toBeVisible();
+  await expect(admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-CAL08B' }).first()).toBeVisible();
+
+  // A single discount position for the garantie, under the main broker's convention.
+  await admin.goto('/escompte');
+  await admin.locator('[data-testid^="advance-row-"]').filter({ hasText: 'P-CAL08A' }).first().click();
+  await expect(admin.getByTestId('advance-detail')).toBeVisible();
+  await expect(admin.getByTestId('adv-position-row')).toHaveCount(1);
+  await expect(admin.getByTestId('adv-position-row').first()).toContainText('CAL08-C1');
+
+  await adminCtx.close();
+});
+
 test('CAL-06 : un événement sans règle est mis en attente puis recalculé après l’ajout de la règle @screen:heldEvents @screen:calculations @path:CAL-06', async ({
   browser,
   request,
