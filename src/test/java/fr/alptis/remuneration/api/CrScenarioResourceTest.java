@@ -956,6 +956,19 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * PAR-09 (parcours): a rule's clawback policy drives the reprise on termination — none claws nothing,
+     * age-steps (100% in year one) claws the whole 300,00 € acquisition (−300,00 €), pro-rata over 24
+     * months at 12 months elapsed claws half (−150,00 €).
+     */
+    @Test
+    void par09_clawback_policies() {
+        plantAndRun("PAR-09");
+        search().body("findAll { it.distributor == 'P-PAR09A' && it.nature == 'CLAWBACK' }.amount", hasItem(-300.00f))
+                .body("findAll { it.distributor == 'P-PAR09P' && it.nature == 'CLAWBACK' }.amount", hasItem(-150.00f))
+                .body("findAll { it.distributor == 'P-PAR09N' && it.nature == 'CLAWBACK' }.size()", is(0));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

@@ -181,6 +181,7 @@ public class CrScenarioResource {
             case "PAR-04" -> seedPar04(entity, periodMonth);
             case "PAR-06" -> seedPar06(entity, periodMonth);
             case "PAR-08" -> seedPar08(entity, periodMonth);
+            case "PAR-09" -> seedPar09(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1803,6 +1804,55 @@ public class CrScenarioResource {
         enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
         indicator(entity, distributor, QualityIndicatorType.UNPAID_RATE, "0.02", year);
         event(entity, coverage, "PAR08-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
+    }
+
+    /**
+     * PAR-09 (parcours §4.2) : politique de reprise d'une règle précomptée. Trois garanties précomptées,
+     * chacune sous une règle à politique de reprise distincte, chacune produisant un apport de 300,00 €
+     * puis résiliée : sans reprise, aucune ligne négative ; par paliers d'ancienneté (100 % la première
+     * année), reprise de −300,00 € ; au prorata sur 24 mois à 12 mois écoulés, reprise de −150,00 €. Les
+     * événements en attente se calculent tous dans la même exécution (l'âge vient de la date d'effet).
+     *
+     * @param entity      the entity the rules and garanties belong to
+     * @param periodMonth the calculation period
+     */
+    private void seedPar09(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        // No clawback policy: a termination claws nothing back.
+        par09Coverage(entity, product, periodMonth, "N", null, periodMonth.plusMonths(5));
+        // Age-step clawback, 100% in the first year: a termination at ~151 days claws the whole acquisition.
+        par09Coverage(entity, product, periodMonth, "A",
+                "{\"type\":\"AGE_STEPS\",\"natures\":[\"ACQUISITION\"],\"triggers\":[\"TERMINATION\"],"
+                        + "\"steps\":[{\"maxDays\":365,\"rate\":1.0}]}",
+                periodMonth.plusMonths(5));
+        // Pro-rata clawback over 24 months: a termination at ~380 days (12 months elapsed) claws half.
+        par09Coverage(entity, product, periodMonth, "P",
+                "{\"type\":\"PRO_RATA\",\"months\":24,\"natures\":[\"ACQUISITION\"],\"triggers\":[\"TERMINATION\"]}",
+                periodMonth.plusDays(380));
+    }
+
+    /**
+     * Seeds one precomptée garantie for PAR-09: an upfront rule scoped to its own distributor with the
+     * given clawback policy, a first-year premium yielding a 300,00 € acquisition, and a termination.
+     *
+     * @param entity      the entity
+     * @param product     the product
+     * @param periodMonth the effect date and period
+     * @param suffix      the garantie suffix (N, A, P), also the distributor's
+     * @param clawback    the clawback policy JSON, or null for none
+     * @param termination the termination date, which fixes the clawback age
+     */
+    private void par09Coverage(LegalEntity entity, Product product, LocalDate periodMonth, String suffix,
+            String clawback, LocalDate termination) {
+        Coverage coverage = coverage(entity, "PAR09" + suffix, product, periodMonth, "P-PAR09" + suffix, null);
+        upfrontChoice(coverage, "0.30", "0.10", periodMonth);
+        String scope = "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"SANTE_SELECT\"],"
+                + "\"eventType\":[\"PREMIUM_COLLECTED\"],\"distributor\":[\"P-PAR09" + suffix + "\"]}";
+        version(entity, "PLAN-PAR09" + suffix, "R-PAR09" + suffix, RuleFamily.UPFRONT, LineNature.ACQUISITION, scope,
+                UPFRONT_PARAMS, periodMonth, null, clawback);
+        premium(entity, coverage, "PAR09" + suffix + "-Y1", periodMonth.plusDays(14), "1000.00");
+        event(entity, coverage, "PAR09" + suffix + "-END", EventType.TERMINATION, termination, null);
     }
 
     /**

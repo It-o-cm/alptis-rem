@@ -29,7 +29,7 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   fonctionnalité comblé : lot `SAVINGS_CYCLE` distinct) via `CrScenarioResource` + `CrScenarioResourceTest`
   + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify -DskipE2E=true` vert (819 tests,
   JaCoCo 100 %) ; les 16 specs e2e `@cr:` vertes.
-- Parcours `@path` : 95 sur 135 du catalogue §4 (§4.1 Intégration complète ; dernier ajout : +PAR-08 barème à paliers marginal et global — montants épinglés juste sous, sur et au-dessus de chaque borne, et une clôture de développement marginale qui paie 1 350,00 € sur 60 000 € de production) (le 2026-10-16 : +INT-03 correction reprocessée, +INT-08 flux selon l'horloge, +INT-09 lignes négatives, +INT-10 événement à référence inconnue libéré à l'arrivée du référentiel). Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
+- Parcours `@path` : 96 sur 135 du catalogue §4 (§4.1 Intégration complète ; dernier ajout : +PAR-09 politique de reprise — trois garanties précomptées résiliées montrent aucune reprise, reprise par paliers d'ancienneté (−300,00 €) et reprise au prorata (−150,00 €)) (le 2026-10-16 : +INT-03 correction reprocessée, +INT-08 flux selon l'horloge, +INT-09 lignes négatives, +INT-10 événement à référence inconnue libéré à l'arrivée du référentiel). Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
   événement à l'écart), CAL-12 (annulation après changement de barème → reprise au taux d'origine
   −15,00 €, D12), PAI-03 (épargne retraite → lot distinct, bordereau propre 50,00 €, période Payée après
   le dernier lot, sur le test CR-86), CAL-13 (prévisionnel régularisé à la résiliation, sur CR-66).

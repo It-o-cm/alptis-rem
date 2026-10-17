@@ -1998,3 +1998,30 @@ test('PAR-08 : un barème marginal rémunère chaque tranche à son taux @screen
 
   await adminCtx.close();
 });
+
+test('PAR-09 : la politique de reprise décide la reprise à la résiliation @screen:commissionSearch @path:PAR-09', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=PAR-09&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // Reprise lines (nature "Reprise"): age-steps claws the whole acquisition, pro-rata claws half, none claws nothing.
+  await admin.goto('/recherche-commissions');
+  await admin.getByTestId('cs-nature-filter').selectOption('CLAWBACK');
+  await admin.getByTestId('cs-search').click();
+  await expect(admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-PAR09A' })).toContainText('300,00');
+  await expect(admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-PAR09P' })).toContainText('150,00');
+  await expect(admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-PAR09N' })).toHaveCount(0);
+
+  await adminCtx.close();
+});
