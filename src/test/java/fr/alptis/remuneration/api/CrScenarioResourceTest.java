@@ -1023,6 +1023,21 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * CAL-06 (parcours): an event with no base rule is held (no line); once the rule is added, a
+     * recalculation retries the configuration hold and produces the line.
+     */
+    @Test
+    void cal06_event_without_rule_is_held_then_recomputed_after_the_rule() {
+        plantAndRun("CAL-06");
+        search().body("size()", is(0));
+        // Add the missing rule, then recompute: the held event is retried and produces its line.
+        given().when().post("/api/test/cr-scenario?cr=CAL-06-RULE&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/run").then().statusCode(200);
+        search().body("findAll { it.nature == 'LINEAR' }.amount", hasItem(15.00f));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

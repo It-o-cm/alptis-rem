@@ -150,6 +150,15 @@ public class CalculationEngine {
                 ProcessingStatus.PENDING, period,
                 List.of(ProcessingStatus.PROCESSED, ProcessingStatus.NOT_COMMISSIONABLE));
 
+        // A hold caused by the rule configuration — no matching rule, a rate outside the grid, or
+        // concurrent rules — is retried on each run, so fixing the configuration (adding a rule, widening
+        // a grid) releases the event at the next calculation without re-importing it (CAL-06). Holds from
+        // data quality or reconciliation keep their state; an unknown reference is handled just below.
+        BusinessEvent.update("processingStatus = ?1, holdReason = null where eligiblePeriod = ?2"
+                        + " and processingStatus = ?3 and holdReason in ?4",
+                ProcessingStatus.PENDING, period, ProcessingStatus.ON_HOLD,
+                List.of(HoldReason.NO_RULE, HoldReason.RATE_OUT_OF_GRID, HoldReason.CONCURRENT_RULES));
+
         // INT-10: release an event held for a missing reference once its contract (and garantie) has
         // arrived in the referential, so it is calculated on its own; one still unresolved stays held.
         releaseResolvableHolds(entity);

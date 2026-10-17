@@ -2026,6 +2026,39 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CAL-06 : un événement sans règle est mis en attente puis recalculé après l’ajout de la règle @screen:heldEvents @screen:calculations @path:CAL-06', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=CAL-06&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  // Without a rule, the calculation holds the event.
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+  await admin.goto('/evenements-en-attente');
+  await expect(admin.getByTestId('reason-row-NO_RULE')).toContainText('Aucune règle applicable');
+  await expect(admin.locator('[data-testid^="held-row-"]')).toHaveCount(1);
+
+  // Add the missing rule, then recompute: the held event leaves the waiting list.
+  const ruled = await request.post('/api/test/cr-scenario?cr=CAL-06-RULE&entity=UNEP&month=2026-01-01');
+  expect(ruled.ok()).toBeTruthy();
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+  await admin.goto('/evenements-en-attente');
+  await expect(admin.getByTestId('no-held-event')).toBeVisible();
+
+  await adminCtx.close();
+});
+
 test('CAL-04 : un recalcul partiel ne retraite que le distributeur visé @screen:calculations @screen:commissionSearch @path:CAL-04', async ({
   browser,
   request,

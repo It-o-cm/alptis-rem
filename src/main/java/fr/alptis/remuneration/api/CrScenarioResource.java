@@ -184,6 +184,8 @@ public class CrScenarioResource {
             case "PAR-09" -> seedPar09(entity, periodMonth);
             case "PAR-12" -> seedPar12(entity, periodMonth);
             case "CAL-04" -> seedCal04(entity, periodMonth);
+            case "CAL-06" -> seedCal06(entity, periodMonth);
+            case "CAL-06-RULE" -> seedCal06Rule(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1892,6 +1894,35 @@ public class CrScenarioResource {
         Coverage b = coverage(entity, "CAL04B", product, periodMonth, "P-CAL04B", null);
         linearChoice(b, "0.20", periodMonth, null);
         premium(entity, b, "CAL04B-E", periodMonth.plusDays(4), "100.00");
+    }
+
+    /**
+     * CAL-06 (parcours §4.3) : événement sans règle de base. Une garantie avec son choix linéaire et un
+     * encaissement, mais aucune règle : l'événement est mis en attente sur « Aucune règle », sans ligne.
+     * La règle ajoutée (scénario {@code CAL-06-RULE}) puis le calcul relancé, l'événement est re-traité et
+     * produit sa ligne de 15,00 € — une mise en attente due à la configuration est rejouée à chaque calcul.
+     *
+     * @param entity      the entity the garantie belongs to
+     * @param periodMonth the calculation period
+     */
+    private void seedCal06(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        Coverage coverage = coverage(entity, "CAL06", product, periodMonth, "P-CAL06", null);
+        linearChoice(coverage, "0.15", periodMonth, null);
+        premium(entity, coverage, "CAL06-E", periodMonth.plusDays(4), "100.00");
+    }
+
+    /**
+     * CAL-06 complement: adds the linear base rule the {@link #seedCal06} garantie was missing, so a
+     * recalculation releases its held event.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation period
+     */
+    private void seedCal06Rule(LegalEntity entity, LocalDate periodMonth) {
+        version(entity, "PLAN-CAL06", "R-CAL06-LIN", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
     }
 
     /**
