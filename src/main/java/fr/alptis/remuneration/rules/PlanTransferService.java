@@ -9,6 +9,11 @@ import fr.alptis.remuneration.domain.Rule;
 import fr.alptis.remuneration.domain.RuleBasis;
 import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.RuleVersion;
+import fr.alptis.remuneration.domain.Scale;
+import fr.alptis.remuneration.domain.ScaleMeasure;
+import fr.alptis.remuneration.domain.ScaleMode;
+import fr.alptis.remuneration.domain.ScaleOutput;
+import fr.alptis.remuneration.domain.ScaleTier;
 import fr.alptis.remuneration.domain.ValidationException;
 import fr.alptis.remuneration.domain.VersionAnchor;
 import fr.alptis.remuneration.domain.VersionStatus;
@@ -55,9 +60,27 @@ public class PlanTransferService {
                         v.versionAnchor == null ? null : v.versionAnchor.name(), v.scope,
                         v.basis == null ? null : v.basis.name(),
                         v.outputNature == null ? null : v.outputNature.name(), v.parameters, v.clawbackPolicy,
-                        v.paymentSchedule, v.priority, v.exclusionGroup))
+                        v.paymentSchedule, v.priority, v.exclusionGroup, exportScale(v)))
                 .toList();
         return new RuleExport(rule.code, rule.label, rule.family.name(), versions);
+    }
+
+    /**
+     * Exports a version's tiered scale, if it has one (PAR-13): a scale would otherwise be lost on the
+     * export/import round-trip.
+     *
+     * @param version the rule version
+     * @return the scale export, or null when the version carries no scale
+     */
+    private ScaleExport exportScale(RuleVersion version) {
+        Scale scale = Scale.find("ruleVersion", version).firstResult();
+        if (scale == null) {
+            return null;
+        }
+        List<TierExport> tiers = ScaleTier.<ScaleTier>list("scale = ?1 order by lowerBound", scale).stream()
+                .map(t -> new TierExport(t.lowerBound, t.upperBound, t.rate, t.amount, t.fromFirstUnit))
+                .toList();
+        return new ScaleExport(scale.mode.name(), scale.measure.name(), scale.output.name(), tiers);
     }
 
     /**
@@ -107,9 +130,38 @@ public class PlanTransferService {
                 version.priority = versionExport.priority();
                 version.exclusionGroup = versionExport.exclusionGroup();
                 version.persist();
+                importScale(version, versionExport.scale());
             }
         }
         return newPlanCode;
+    }
+
+    /**
+     * Recreates a version's tiered scale from its export, if any (PAR-13).
+     *
+     * @param version the recreated version
+     * @param export  the scale export, or null
+     */
+    private void importScale(RuleVersion version, ScaleExport export) {
+        if (export == null) {
+            return;
+        }
+        Scale scale = new Scale();
+        scale.ruleVersion = version;
+        scale.mode = ScaleMode.valueOf(export.mode());
+        scale.measure = ScaleMeasure.valueOf(export.measure());
+        scale.output = ScaleOutput.valueOf(export.output());
+        scale.persist();
+        for (TierExport tierExport : export.tiers()) {
+            ScaleTier tier = new ScaleTier();
+            tier.scale = scale;
+            tier.lowerBound = tierExport.lowerBound();
+            tier.upperBound = tierExport.upperBound();
+            tier.rate = tierExport.rate();
+            tier.amount = tierExport.amount();
+            tier.fromFirstUnit = tierExport.fromFirstUnit();
+            tier.persist();
+        }
     }
 
     /**
@@ -179,10 +231,35 @@ public class PlanTransferService {
      * @param paymentSchedule the payment schedule JSON
      * @param priority        the priority
      * @param exclusionGroup  the exclusion group
+     * @param scale           the tiered scale, or null when the version has none
      */
     public record VersionExport(Integer versionNo, LocalDate validFrom, LocalDate validTo, String versionAnchor,
                                 String scope, String basis, String outputNature, String parameters,
                                 String clawbackPolicy, String paymentSchedule, Integer priority,
-                                String exclusionGroup) {
+                                String exclusionGroup, ScaleExport scale) {
+    }
+
+    /**
+     * A tiered scale export: its mode, measure, output and tiers (PAR-13).
+     *
+     * @param mode    the scale mode (MARGINAL, WHOLE)
+     * @param measure the scale measure
+     * @param output  the scale output
+     * @param tiers   the tiers
+     */
+    public record ScaleExport(String mode, String measure, String output, List<TierExport> tiers) {
+    }
+
+    /**
+     * A scale-tier export.
+     *
+     * @param lowerBound    the inclusive lower bound
+     * @param upperBound    the upper bound, or null for an open tier
+     * @param rate          the tier rate, or null
+     * @param amount        the tier flat amount, or null
+     * @param fromFirstUnit whether the rate applies from the first unit once the tier is reached
+     */
+    public record TierExport(java.math.BigDecimal lowerBound, java.math.BigDecimal upperBound,
+                             java.math.BigDecimal rate, java.math.BigDecimal amount, Boolean fromFirstUnit) {
     }
 }

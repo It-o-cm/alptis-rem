@@ -9,6 +9,11 @@ import fr.alptis.remuneration.domain.Rule;
 import fr.alptis.remuneration.domain.RuleBasis;
 import fr.alptis.remuneration.domain.RuleFamily;
 import fr.alptis.remuneration.domain.RuleVersion;
+import fr.alptis.remuneration.domain.Scale;
+import fr.alptis.remuneration.domain.ScaleMeasure;
+import fr.alptis.remuneration.domain.ScaleMode;
+import fr.alptis.remuneration.domain.ScaleOutput;
+import fr.alptis.remuneration.domain.ScaleTier;
 import fr.alptis.remuneration.domain.ValidationException;
 import fr.alptis.remuneration.domain.VersionAnchor;
 import fr.alptis.remuneration.domain.VersionStatus;
@@ -21,7 +26,9 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests of the plan export and import (PAR-15): a plan round-trips to a new code with every version
@@ -73,6 +80,42 @@ class PlanTransferServiceTest {
         sparse.versionNo = 2;
         sparse.status = VersionStatus.DRAFT;
         sparse.persist();
+        // A tiered rule with a marginal scale, so the round-trip exercises scale export/import (PAR-13).
+        Rule tiered = new Rule();
+        tiered.plan = plan;
+        tiered.code = "R2";
+        tiered.label = "Barème";
+        tiered.family = RuleFamily.TIERED;
+        tiered.persist();
+        RuleVersion tv = new RuleVersion();
+        tv.rule = tiered;
+        tv.versionNo = 1;
+        tv.status = VersionStatus.ACTIVE;
+        tv.validFrom = LocalDate.of(2026, 1, 1);
+        tv.scope = "{\"entity\":[\"UNEP\"]}";
+        tv.persist();
+        Scale scale = new Scale();
+        scale.ruleVersion = tv;
+        scale.mode = ScaleMode.MARGINAL;
+        scale.measure = ScaleMeasure.AMOUNT;
+        scale.output = ScaleOutput.RATE;
+        scale.persist();
+        scaleTier(scale, "20000", "45000", "0.03", false);
+        // An open, from-first-unit tier with a flat amount, covering the nullable tier fields.
+        ScaleTier open = scaleTier(scale, "45000", null, null, true);
+        open.amount = new java.math.BigDecimal("500");
+    }
+
+    /** Persists a scale tier and returns it. */
+    private static ScaleTier scaleTier(Scale scale, String lower, String upper, String rate, boolean fromFirstUnit) {
+        ScaleTier tier = new ScaleTier();
+        tier.scale = scale;
+        tier.lowerBound = new java.math.BigDecimal(lower);
+        tier.upperBound = upper == null ? null : new java.math.BigDecimal(upper);
+        tier.rate = rate == null ? null : new java.math.BigDecimal(rate);
+        tier.fromFirstUnit = fromFirstUnit;
+        tier.persist();
+        return tier;
     }
 
     /**
@@ -86,7 +129,7 @@ class PlanTransferServiceTest {
 
         PlanExport export = service.export("UNEP", "SRC");
         assertEquals("SRC", export.code());
-        assertEquals(1, export.rules().size());
+        assertEquals(2, export.rules().size());
         assertEquals(2, export.rules().get(0).versions().size());
         assertEquals("EVENT_DATE", export.rules().get(0).versions().get(0).versionAnchor());
 
@@ -94,11 +137,23 @@ class PlanTransferServiceTest {
         assertEquals("DST", created);
         CommissionPlan imported = CommissionPlan.find("entity = ?1 and code = ?2", unep(), "DST").firstResult();
         assertEquals("Source", imported.label);
-        assertEquals(2, RuleVersion.count("rule.plan = ?1", imported));
+        assertEquals(3, RuleVersion.count("rule.plan = ?1", imported));
         assertEquals(0, RuleVersion.count("rule.plan = ?1 and status <> ?2", imported, VersionStatus.DRAFT));
 
         PlanExport again = service.export("UNEP", "DST");
         assertEquals(RuleBasis.COLLECTED_PREMIUM.name(), again.rules().get(0).versions().get(0).basis());
+        // PAR-13: the tiered rule's scale survives the round-trip — mode and both tiers, open tier included.
+        var scale = again.rules().stream().filter(r -> r.code().equals("R2")).findFirst().orElseThrow()
+                .versions().get(0).scale();
+        assertEquals("MARGINAL", scale.mode());
+        assertEquals(2, scale.tiers().size());
+        assertEquals(0, scale.tiers().get(0).rate().compareTo(new java.math.BigDecimal("0.03")));
+        assertNull(scale.tiers().get(1).upperBound());
+        assertTrue(scale.tiers().get(1).fromFirstUnit());
+        assertEquals(0, scale.tiers().get(1).amount().compareTo(new java.math.BigDecimal("500")));
+        // The linear rule has no scale.
+        assertNull(again.rules().stream().filter(r -> r.code().equals("R1")).findFirst().orElseThrow()
+                .versions().get(0).scale());
     }
 
     /**

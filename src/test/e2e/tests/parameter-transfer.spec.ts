@@ -30,6 +30,34 @@ test('l’administrateur exporte le plan de base et le réimporte sous un nouvea
   await admin.close();
 });
 
+test('PAR-13 : le paramétrage est identique après un aller-retour export/import @screen:paramTransfer @path:PAR-13', async ({
+  browser,
+}) => {
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/parametrage-transfert');
+  await page.getByTestId('pt-plan').selectOption('GUIDE_2026');
+  await page.getByTestId('pt-export').click();
+  await expect(page.getByTestId('pt-json')).toHaveValue(/GUIDE_2026/);
+  const exported = JSON.parse(await page.getByTestId('pt-json').inputValue());
+
+  await page.getByTestId('pt-newcode').fill('GUIDE_RT');
+  await page.getByTestId('pt-import').click();
+  await expect(page.getByTestId('pt-message')).toContainText('GUIDE_RT');
+
+  // Re-export the imported plan: the parametrage is identical but for the plan code (status is not part
+  // of the export; the import recreates every version, scale included, in draft).
+  await page.reload();
+  await page.getByTestId('pt-plan').selectOption('GUIDE_RT');
+  await page.getByTestId('pt-export').click();
+  await expect(page.getByTestId('pt-json')).toHaveValue(/GUIDE_RT/);
+  const roundTripped = JSON.parse(await page.getByTestId('pt-json').inputValue());
+
+  roundTripped.code = exported.code;
+  expect(roundTripped).toEqual(exported);
+  await admin.close();
+});
+
 test.describe('Paramétrage — accessibilité', () => {
   test.use({ httpCredentials: USERS.adminAlptis });
 
