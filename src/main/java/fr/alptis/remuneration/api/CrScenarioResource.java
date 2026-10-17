@@ -192,6 +192,7 @@ public class CrScenarioResource {
             case "CAL-10-END" -> seedCal10End(entity, periodMonth);
             case "CAL-11" -> seedCal11(entity, periodMonth);
             case "CYC-01" -> seedCyc01(entity, periodMonth);
+            case "CYC-02" -> seedCyc02(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2132,6 +2133,19 @@ public class CrScenarioResource {
     private void seedCyc01(LegalEntity entity, LocalDate periodMonth) {
         Period p = period(entity, periodMonth);
         p.state = PeriodState.OPEN;
+    }
+
+    /**
+     * CYC-02 (parcours §4.4) : une transition tentée par un rôle non habilité est refusée. Une période
+     * contrôlée, dont le passage en validée métier n'est permis qu'au validateur : un autre rôle qui le
+     * tente est refusé.
+     *
+     * @param entity      the entity the period belongs to
+     * @param periodMonth the period month
+     */
+    private void seedCyc02(LegalEntity entity, LocalDate periodMonth) {
+        Period p = period(entity, periodMonth);
+        p.state = PeriodState.CONTROLLED;
     }
 
     /**

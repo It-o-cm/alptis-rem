@@ -1026,6 +1026,19 @@ class CrScenarioResourceTest {
                 .then().statusCode(200).body("period.state", is("OPEN"));
     }
 
+    /**
+     * CYC-02 (parcours): a controlled period's business-validation transition is refused to a role other
+     * than the validator (the operator here), with the role message.
+     */
+    @Test
+    void cyc02_transition_refused_to_the_wrong_role() {
+        given().when().post("/api/test/cr-scenario?cr=CYC-02&entity=UNEP&month=2027-07-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body("{\"toState\":\"BUSINESS_VALIDATED\"}")
+                .when().post("/api/ui/v1/periods/UNEP/2027-07-01/transition")
+                .then().statusCode(400).body("detail", org.hamcrest.Matchers.containsString("Rôle non autorisé"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

@@ -496,3 +496,9 @@ distributeurs le 25. Un flux non reçu dans le mois est « en retard » passé s
 - **Section** : CYC-01 (TESTS-E2E §4.4), machine à états de la période (section 7.1), rôles habilités, trace.
 - **Constat** : déjà en place — `PeriodService.TRANSITIONS` porte chaque transition avant/arrière avec son rôle ; `transition()` vérifie le rôle, applique les effets et enregistre la transition (trace lue par le détail de période). Couvert unitairement par `PeriodServiceTest`/`CycleResourceTest`.
 - **Choix** : aucune modification ; `seedCyc01` ouvre une période sans mois précédent (pour franchir la garde du calcul) ; `@path:CYC-01` la fait avancer OPEN → LOADED → CALCULATED → CONTROLLED → BUSINESS_VALIDATED → PAYMENT_PREPARED → FINANCE_VALIDATED → PAID → CLOSED, chaque transition par le rôle habilité (opérateur, administrateur métier, validateur, finance), et vérifie que l'historique des transitions compte une ligne de plus à chaque étape (la trace).
+
+## 2026-10-17 — CYC-02 : transition refusée au mauvais rôle (section 7.1)
+
+- **Section** : CYC-02 (TESTS-E2E §4.4), contrôle de rôle sur les transitions (section 7.1).
+- **Constat** : déjà en place — `PeriodService.transition()` refuse une transition dont le rôle n'est pas détenu (`ValidationException « Rôle non autorisé »`, mappée en 400 `application/problem+json`).
+- **Choix** : aucune modification ; `seedCyc02` ouvre une période contrôlée ; `CrScenarioResourceTest` vérifie que l'opérateur se voit refuser (400, message de rôle) le passage en validée métier ; `@path:CYC-02` montre à l'écran que l'opérateur et la finance, tentant la transition réservée au validateur, sont refusés (la période reste contrôlée).

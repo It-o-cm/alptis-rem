@@ -2026,6 +2026,28 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CYC-02 : une transition par un rôle non habilité est refusée @screen:periods @path:CYC-02', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CYC-02&entity=UNEP&month=2027-07-01')).ok()).toBeTruthy();
+
+  // The controlled period's passage to business-validated is reserved to the validator; other driving
+  // roles that try it are refused.
+  for (const user of [USERS.operatorUnep, USERS.financeUnep]) {
+    const ctx = await browser.newContext({ httpCredentials: user });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.getByTestId('open-UNEP-2027-07-01').click();
+    await expect(page.getByTestId('period-detail')).toBeVisible();
+    await page.getByTestId('advance-button').click();
+    await expect(page.getByTestId('periods-error')).toContainText('Rôle non autorisé');
+    await expect(page.getByTestId('detail-state')).toHaveText('Contrôlée');
+    await ctx.close();
+  }
+});
+
 test('CYC-01 : chaque transition d’état est faite par le rôle habilité et tracée @screen:periods @path:CYC-01', async ({
   browser,
   request,
