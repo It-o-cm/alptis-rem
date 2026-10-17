@@ -1058,6 +1058,24 @@ class CrScenarioResourceTest {
                 .then().statusCode(400).body("detail", org.hamcrest.Matchers.containsString("Transition interdite"));
     }
 
+    /**
+     * CYC-04 (parcours): two periods are open at once; the first's data cutoff is the last day of its
+     * month. A premium received on 2027-10-15 lands in the first period, one received on 2027-11-05
+     * (after the cutoff) lands in the next — each period a single LINEAR line of 15,00 € (section 7.2).
+     */
+    @Test
+    void cyc04_late_event_goes_to_the_next_period() {
+        given().when().post("/api/test/cr-scenario?cr=CYC-04&entity=UNEP&month=2027-10-01").then().statusCode(204);
+        runUnep("2027-10-01");
+        runUnep("2027-11-01");
+        // The first period holds only the event received by its cutoff.
+        search("2027-10-01").body("findAll { it.nature == 'LINEAR' }.amount", hasItem(15.00f))
+                .body("findAll { it.nature == 'LINEAR' }.size()", is(1));
+        // The late event lands in the next period, not the first.
+        search("2027-11-01").body("findAll { it.nature == 'LINEAR' }.amount", hasItem(15.00f))
+                .body("findAll { it.nature == 'LINEAR' }.size()", is(1));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

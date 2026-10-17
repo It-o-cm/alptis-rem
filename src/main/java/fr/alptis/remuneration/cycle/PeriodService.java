@@ -146,6 +146,11 @@ public class PeriodService {
      * @param toState the target state
      */
     private void applyEffects(LegalEntity entity, Period period, PeriodState toState) {
+        if (toState == PeriodState.LOADED && period.dataCutoffDate == null) {
+            // Freezing the data fixes the cutoff — the last day of the period's month by default (section
+            // 7.2). Events received after it belong to the next period (CYC-04).
+            period.dataCutoffDate = period.periodMonth.plusMonths(1).minusDays(1);
+        }
         if (toState == PeriodState.BUSINESS_VALIDATED) {
             accounts.postToAccounts(entity, period);
             accounting.generateForValidation(entity, period);

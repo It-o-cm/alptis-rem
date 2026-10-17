@@ -194,6 +194,7 @@ public class CrScenarioResource {
             case "CYC-01" -> seedCyc01(entity, periodMonth);
             case "CYC-02" -> seedCyc02(entity, periodMonth);
             case "CYC-03" -> seedCyc03(entity, periodMonth);
+            case "CYC-04" -> seedCyc04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2160,6 +2161,33 @@ public class CrScenarioResource {
     private void seedCyc03(LegalEntity entity, LocalDate periodMonth) {
         period(entity, periodMonth).state = PeriodState.PAYMENT_PREPARED;
         period(entity, periodMonth.plusMonths(1)).state = PeriodState.FINANCE_VALIDATED;
+    }
+
+    /**
+     * CYC-04 (parcours §4.4) : deux périodes ouvertes en même temps. La première a sa date d'arrêté
+     * fixée au dernier jour de son mois ; une garantie reçoit deux encaissements, l'un reçu avant
+     * l'arrêté (il part sur la première période) et l'autre reçu après (il part sur la suivante, section
+     * 7.2). Chaque période produit une seule ligne {@code LINEAR} de 15,00 €.
+     *
+     * @param entity      the entity the garantie belongs to
+     * @param periodMonth the first period's month (the second is the following month)
+     */
+    private void seedCyc04(LegalEntity entity, LocalDate periodMonth) {
+        Period first = period(entity, periodMonth);
+        first.state = PeriodState.LOADED;
+        first.dataCutoffDate = periodMonth.plusMonths(1).minusDays(1);
+        Period next = period(entity, periodMonth.plusMonths(1));
+        next.state = PeriodState.LOADED;
+        next.dataCutoffDate = periodMonth.plusMonths(2).minusDays(1);
+        Product product = product(entity, "SANTE_SELECT");
+        version(entity, "PLAN-CYC04", "R-CYC04", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        Coverage coverage = coverage(entity, "CYC04", product, periodMonth, "P-CYC04", null);
+        linearChoice(coverage, "0.15", periodMonth, null);
+        // Received 2027-10-15: on or before the first period's cutoff → first period.
+        premium(entity, coverage, "CYC04-IN", periodMonth.plusDays(14), "100.00");
+        // Received 2027-11-05: after the first period's cutoff → next period.
+        premium(entity, coverage, "CYC04-LATE", periodMonth.plusMonths(1).plusDays(4), "100.00");
     }
 
     /**

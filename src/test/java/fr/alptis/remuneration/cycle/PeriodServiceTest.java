@@ -109,8 +109,14 @@ class PeriodServiceTest {
     @TestTransaction
     void recalculation_rollbacks() {
         period(M, PeriodState.CALCULATED);
-        assertEquals(PeriodState.LOADED,
-                service.transition("UNEP", M, PeriodState.LOADED, java.util.Set.of(Role.OPERATOR), "u", null).state);
+        // First load fixes the data cutoff at the last day of the month (section 7.2, CYC-04).
+        Period loaded = service.transition("UNEP", M, PeriodState.LOADED, java.util.Set.of(Role.OPERATOR), "u", null);
+        assertEquals(PeriodState.LOADED, loaded.state);
+        assertEquals(java.time.LocalDate.of(2026, 3, 31), loaded.dataCutoffDate);
+        service.transition("UNEP", M, PeriodState.CALCULATED, java.util.Set.of(Role.BUSINESS_ADMIN), "u", null);
+        // A second load leaves the already-fixed cutoff in place.
+        Period reloaded = service.transition("UNEP", M, PeriodState.LOADED, java.util.Set.of(Role.OPERATOR), "u", null);
+        assertEquals(java.time.LocalDate.of(2026, 3, 31), reloaded.dataCutoffDate);
         service.transition("UNEP", M, PeriodState.CALCULATED, java.util.Set.of(Role.BUSINESS_ADMIN), "u", null);
         service.transition("UNEP", M, PeriodState.CONTROLLED, java.util.Set.of(Role.OPERATOR), "u", null);
         assertEquals(PeriodState.OPEN,

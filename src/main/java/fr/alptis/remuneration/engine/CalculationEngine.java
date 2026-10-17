@@ -177,9 +177,12 @@ public class CalculationEngine {
         // members over members in portfolio, stored next to the indicators received from the CRM.
         computeInternalIndicators(entity, period);
 
+        // Only events received by the period's data cutoff are in scope; those received later belong to
+        // the next period (section 7.2, CYC-04). A period never frozen (no cutoff) takes them all.
         List<BusinessEvent> events = BusinessEvent.list(
-                "entity = ?1 and processingStatus = ?2 order by coverage.id, eventDate, receivedDate, sourceKey",
-                entity, ProcessingStatus.PENDING);
+                "entity = ?1 and processingStatus = ?2 and (?3 is null or receivedDate <= ?3)"
+                        + " order by coverage.id, eventDate, receivedDate, sourceKey",
+                entity, ProcessingStatus.PENDING, period.dataCutoffDate);
 
         // Group the events by coverage (D4): one work unit per garantie, the rest handled on their own.
         java.util.Map<Long, List<BusinessEvent>> byCoverage = new java.util.LinkedHashMap<>();

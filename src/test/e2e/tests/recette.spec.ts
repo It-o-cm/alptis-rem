@@ -2111,6 +2111,41 @@ test('CYC-01 : chaque transition d’état est faite par le rôle habilité et t
   }
 });
 
+test('CYC-04 : un encaissement reçu après la date d’arrêté part sur la période suivante @screen:calculations @screen:commissionSearch @path:CYC-04', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CYC-04&entity=UNEP&month=2027-10-01')).ok()).toBeTruthy();
+
+  const ctx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await ctx.newPage();
+
+  // Two periods are open at once; run each in turn.
+  for (const month of ['2027-10-01', '2027-11-01']) {
+    await page.goto('/calculs');
+    await page.getByTestId('calc-period').selectOption(`UNEP|${month}`);
+    await page.getByTestId('calc-run').click();
+    await expect(page.getByTestId('calc-message')).toBeVisible();
+  }
+
+  // The first period holds the event received by its cutoff; the late one is carried to the next period.
+  const linesOf = async (month: string) => {
+    await page.goto('/recherche-commissions');
+    await page.getByTestId('cs-month').selectOption(month);
+    await page.getByTestId('cs-search').click();
+    return page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-CYC04' });
+  };
+  const first = await linesOf('2027-10-01');
+  await expect(first).toHaveCount(1);
+  await expect(first).toContainText('15,00');
+  const next = await linesOf('2027-11-01');
+  await expect(next).toHaveCount(1);
+  await expect(next).toContainText('15,00');
+
+  await ctx.close();
+});
+
 test('CAL-11 : l’annulation d’un encaissement apuré diminue le cumul apuré @screen:advance @path:CAL-11', async ({
   browser,
   request,
