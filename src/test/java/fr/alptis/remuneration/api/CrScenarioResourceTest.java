@@ -1076,6 +1076,40 @@ class CrScenarioResourceTest {
                 .body("findAll { it.nature == 'LINEAR' }.size()", is(1));
     }
 
+    /**
+     * CYC-05 (parcours): a second validation level is required or not per configuration (WKF-02). A
+     * modest, steady month validates in one step; a month whose total passes the entity threshold needs
+     * a first level and then a second one, given by a different (group-level) validator.
+     */
+    @Test
+    void cyc05_second_level_required_only_when_configured() {
+        given().when().post("/api/test/cr-scenario?cr=CYC-05&entity=UNEP&month=2027-03-01").then().statusCode(204);
+        // Not-required month: a single validation moves it to business-validated.
+        given().auth().preemptive().basic("validator-unep", "validator-unep")
+                .when().get("/api/ui/v1/validation/UNEP/2027-03-01")
+                .then().statusCode(200).body("secondLevelRequired", is(false));
+        given().auth().preemptive().basic("validator-unep", "validator-unep")
+                .when().post("/api/ui/v1/validation/UNEP/2027-03-01/validate")
+                .then().statusCode(200).body("state", is("BUSINESS_VALIDATED"));
+        // Required month (total over the threshold): the first level leaves it controlled.
+        given().auth().preemptive().basic("validator-unep", "validator-unep")
+                .when().get("/api/ui/v1/validation/UNEP/2027-04-01")
+                .then().statusCode(200).body("secondLevelRequired", is(true));
+        given().auth().preemptive().basic("validator-unep", "validator-unep")
+                .when().post("/api/ui/v1/validation/UNEP/2027-04-01/validate")
+                .then().statusCode(200).body("state", is("CONTROLLED"))
+                .body("firstLevelValidatedBy", is("validator-unep"));
+        // The same validator cannot give the second level.
+        given().auth().preemptive().basic("validator-unep", "validator-unep")
+                .when().post("/api/ui/v1/validation/UNEP/2027-04-01/validate")
+                .then().statusCode(400)
+                .body("detail", org.hamcrest.Matchers.containsString("autre utilisateur"));
+        // A different, group-level validator completes it.
+        given().auth().preemptive().basic("group-validator", "group-validator")
+                .when().post("/api/ui/v1/validation/UNEP/2027-04-01/validate")
+                .then().statusCode(200).body("state", is("BUSINESS_VALIDATED"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

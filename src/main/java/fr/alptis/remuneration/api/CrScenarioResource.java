@@ -195,6 +195,7 @@ public class CrScenarioResource {
             case "CYC-02" -> seedCyc02(entity, periodMonth);
             case "CYC-03" -> seedCyc03(entity, periodMonth);
             case "CYC-04" -> seedCyc04(entity, periodMonth);
+            case "CYC-05" -> seedCyc05(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2188,6 +2189,28 @@ public class CrScenarioResource {
         premium(entity, coverage, "CYC04-IN", periodMonth.plusDays(14), "100.00");
         // Received 2027-11-05: after the first period's cutoff → next period.
         premium(entity, coverage, "CYC04-LATE", periodMonth.plusMonths(1).plusDays(4), "100.00");
+    }
+
+    /**
+     * CYC-05 (parcours §4.4) : second niveau de validation selon le paramétrage (WKF-02). Un mois dont
+     * le total est modeste et proche du mois précédent, sans ajustement, ne demande qu'une validation ;
+     * le mois suivant, dont le total dépasse le seuil de second niveau de l'entité (100 000 € par
+     * défaut), exige un second validateur distinct. Le mois précédent est validé métier (garde du
+     * calcul) ; les lignes sont posées directement comme état d'entrée.
+     *
+     * @param entity      the entity the periods belong to
+     * @param periodMonth the not-required period's month (previous month and next month surround it)
+     */
+    private void seedCyc05(LegalEntity entity, LocalDate periodMonth) {
+        Period previous = period(entity, periodMonth.minusMonths(1));
+        previous.state = PeriodState.BUSINESS_VALIDATED;
+        forecastLine(entity, previous, "15.00", null);
+        Period notRequired = period(entity, periodMonth);
+        notRequired.state = PeriodState.CONTROLLED;
+        forecastLine(entity, notRequired, "15.00", null);
+        Period required = period(entity, periodMonth.plusMonths(1));
+        required.state = PeriodState.CONTROLLED;
+        forecastLine(entity, required, "150000.00", null);
     }
 
     /**

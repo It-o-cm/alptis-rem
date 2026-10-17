@@ -39,6 +39,45 @@ test('le validateur lit les totaux et donne un premier niveau de validation @scr
   await context.close();
 });
 
+test('CYC-05 : un second niveau de validation est exigé ou non selon le paramétrage @screen:validation @path:CYC-05', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CYC-05&entity=UNEP&month=2027-03-01')).ok()).toBeTruthy();
+
+  // The entity validator opens the screen.
+  const context = await browser.newContext({ httpCredentials: USERS.validatorUnep });
+  const page = await context.newPage();
+  await page.goto('/validation');
+
+  // The modest, steady month needs no second level: a single validation business-validates it.
+  await page.getByTestId('validation-period').selectOption('UNEP|2027-03-01');
+  await expect(page.getByTestId('validation-second')).toHaveText('Non requis');
+  await page.getByTestId('validation-validate').click();
+  await expect(page.getByTestId('validation-message')).toContainText('validée par le métier');
+  await expect(page.getByTestId('validation-state')).toHaveText('Validée métier');
+
+  // The month over the threshold requires a second level: the first validation leaves it controlled.
+  await page.getByTestId('validation-period').selectOption('UNEP|2027-04-01');
+  await expect(page.getByTestId('validation-second')).toHaveText('Requis');
+  await page.getByTestId('validation-validate').click();
+  await expect(page.getByTestId('validation-message')).toContainText('second validateur');
+  await expect(page.getByTestId('validation-first')).toHaveText('validator-unep');
+  await expect(page.getByTestId('validation-state')).toHaveText('Contrôlée');
+  await context.close();
+
+  // A different, group-level validator gives the second level; the period is business-validated.
+  const groupCtx = await browser.newContext({ httpCredentials: USERS.groupValidator });
+  const groupPage = await groupCtx.newPage();
+  await groupPage.goto('/validation');
+  await groupPage.getByTestId('validation-period').selectOption('UNEP|2027-04-01');
+  await groupPage.getByTestId('validation-validate').click();
+  await expect(groupPage.getByTestId('validation-message')).toContainText('validée par le métier');
+  await expect(groupPage.getByTestId('validation-state')).toHaveText('Validée métier');
+  await groupCtx.close();
+});
+
 test.describe('Validation métier — accès', () => {
   test.beforeEach(async ({ request }) => {
     await resetDb(request);
