@@ -77,6 +77,18 @@ class SurcommissionLogicTest {
         assertEquals(0, entitlement(descWhole, "250000").compareTo(new BigDecimal("15000.00")));
     }
 
+    /**
+     * PAR-08: just below, on and just above a tier bound in marginal mode. At the 45 000 € bound the
+     * first tier is full (750,00 €); a euro below removes 0,03 €, a euro above adds the next tier's
+     * 0,04 €.
+     */
+    @Test
+    void marginal_boundaries() {
+        assertEquals(0, entitlement(SANTE, "44999").compareTo(new BigDecimal("749.97")));
+        assertEquals(0, entitlement(SANTE, "45000").compareTo(new BigDecimal("750.00")));
+        assertEquals(0, entitlement(SANTE, "45001").compareTo(new BigDecimal("750.04")));
+    }
+
     /** Computes the marginal entitlement of a scale at a measure. */
     private static BigDecimal entitlement(String tiers, String measure) {
         return CalculationEngine.marginalEntitlement(MAPPER, tiers, new BigDecimal(measure));

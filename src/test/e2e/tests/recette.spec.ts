@@ -1970,3 +1970,31 @@ test('PAR-06 : le périmètre couvre la garantie conforme et exclut celle qui di
 
   await adminCtx.close();
 });
+
+test('PAR-08 : un barème marginal rémunère chaque tranche à son taux @screen:commissionSearch @path:PAR-08', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=PAR-08&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  // Close the month's development surcommission (RCD).
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('close-development').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // The marginal scale pays 25 000 € at 3 % + 15 000 € at 4 % = 1 350,00 € on 60 000 € of new business.
+  await admin.goto('/recherche-commissions');
+  await admin.getByTestId('cs-nature-filter').selectOption('RCD');
+  await admin.getByTestId('cs-search').click();
+  const rows = admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-PAR08' });
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('350,00');
+
+  await adminCtx.close();
+});

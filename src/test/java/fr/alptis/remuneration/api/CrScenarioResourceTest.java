@@ -943,6 +943,19 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * PAR-08 (parcours): a marginal development scale pays each production slice at its rate — 60 000 €
+     * of new business gives 25 000 € × 3 % + 15 000 € × 4 % = 1 350,00 €; the development close writes it.
+     */
+    @Test
+    void par08_marginal_development_surcommission() {
+        given().when().post("/api/test/cr-scenario?cr=PAR-08&entity=UNEP&month=2026-01-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/close-development").then().statusCode(200);
+        search().body("findAll { it.nature == 'RCD' && it.distributor == 'P-PAR08' }.amount", hasItem(1350.00f))
+                .body("findAll { it.nature == 'RCD' && it.distributor == 'P-PAR08' }.size()", is(1));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

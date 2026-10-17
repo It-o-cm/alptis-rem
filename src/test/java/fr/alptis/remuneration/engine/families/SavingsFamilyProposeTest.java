@@ -106,4 +106,15 @@ class SavingsFamilyProposeTest {
                 "[{\"lowerBound\":0,\"rate\":0.10},{\"lowerBound\":14000,\"rate\":0.15},"
                         + "{\"lowerBound\":10000,\"rate\":0.12}]").compareTo(new BigDecimal("0.15")));
     }
+
+    /**
+     * PAR-08: just below, on and just above a tier bound in whole mode. The lower bound is inclusive, so
+     * at exactly 10 000 € the second tier (12%) already applies; a euro below keeps the first tier (10%).
+     */
+    @Test
+    void whole_mode_boundaries() {
+        assertEquals(0, TieredFamily.rateFor(new BigDecimal("9999"), TIERS).compareTo(new BigDecimal("0.10")));
+        assertEquals(0, TieredFamily.rateFor(new BigDecimal("10000"), TIERS).compareTo(new BigDecimal("0.12")));
+        assertEquals(0, TieredFamily.rateFor(new BigDecimal("10001"), TIERS).compareTo(new BigDecimal("0.12")));
+    }
 }

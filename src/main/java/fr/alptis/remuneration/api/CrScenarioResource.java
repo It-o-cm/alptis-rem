@@ -180,6 +180,7 @@ public class CrScenarioResource {
             case "INT-23" -> seedInt23(entity, periodMonth);
             case "PAR-04" -> seedPar04(entity, periodMonth);
             case "PAR-06" -> seedPar06(entity, periodMonth);
+            case "PAR-08" -> seedPar08(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1775,6 +1776,33 @@ public class CrScenarioResource {
         notCovered.contract.salesChannel = SalesChannel.ALPTIS_CONNECT;
         linearChoice(notCovered, "0.15", periodMonth, null);
         premium(entity, notCovered, "PAR06N-E", periodMonth.plusDays(4), "100.00");
+    }
+
+    /**
+     * PAR-08 (parcours §4.2) : barème à paliers en mode marginal. Une surcommission de développement
+     * (RCD) dont le barème santé marginal rémunère chaque tranche à son taux : une production nouvelle
+     * annualisée de 60 000 € donne 25 000 € × 3 % + 15 000 € × 4 % = 1 350,00 €. La clôture de
+     * développement écrit cette ligne ; les montants juste sous, sur et au-dessus de chaque borne sont
+     * épinglés par SurcommissionLogicTest et SavingsFamilyProposeTest.
+     *
+     * @param entity      the entity the rule and distributor belong to
+     * @param periodMonth the development close month
+     */
+    private void seedPar08(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE");
+        Coverage coverage = coverage(entity, "PAR08", product, LocalDate.of(year, 1, 10), "P-PAR08", null);
+        coverage.annualPremium = new BigDecimal("60000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-PAR08").firstResult();
+        RuleVersion version = version(entity, "PLAN-PAR08", "R-PAR08", RuleFamily.TIERED, LineNature.RCD,
+                santeScope(entity), "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
+                LocalDate.of(year, 1, 1), null, null);
+        santeDevelopmentScale(version);
+        condition(version, QualityIndicatorType.UNPAID_RATE, ConditionOperator.LT, "0.05");
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
+        indicator(entity, distributor, QualityIndicatorType.UNPAID_RATE, "0.02", year);
+        event(entity, coverage, "PAR08-SUB", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
     }
 
     /**
