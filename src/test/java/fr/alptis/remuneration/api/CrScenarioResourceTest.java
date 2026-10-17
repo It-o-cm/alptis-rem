@@ -1054,6 +1054,21 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * CAL-09 (parcours): a convention capped at one contract admits by registration date — the
+     * earliest-registered garantie gets the single discount position even though it was created later
+     * (higher id); the other is processed without discount.
+     */
+    @Test
+    void cal09_contract_cap_admits_by_registration_date() {
+        plantAndRun("CAL-09");
+        given().auth().preemptive().basic("admin-unep", "admin-unep")
+                .when().get("/api/ui/v1/advance-agreements/UNEP/P-CAL09")
+                .then().statusCode(200)
+                .body("positions.size()", is(1))
+                .body("positions[0].coverageCode", is("CAL09A-C1"));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

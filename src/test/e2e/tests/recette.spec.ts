@@ -2026,6 +2026,32 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CAL-09 : le plafond d’adhésions admet par date d’enregistrement @screen:advance @path:CAL-09', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=CAL-09&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  // The convention capped at one contract admitted the earliest-registered garantie only.
+  await admin.goto('/escompte');
+  await admin.locator('[data-testid^="advance-row-"]').filter({ hasText: 'P-CAL09' }).first().click();
+  await expect(admin.getByTestId('advance-detail')).toBeVisible();
+  await expect(admin.getByTestId('adv-position-row')).toHaveCount(1);
+  await expect(admin.getByTestId('adv-position-row').first()).toContainText('CAL09A-C1');
+
+  await adminCtx.close();
+});
+
 test('CAL-08 : une garantie escomptée en co-courtage garde une unité et une position, lignes sur deux comptes @screen:commissionSearch @screen:advance @path:CAL-08', async ({
   browser,
   request,

@@ -195,8 +195,17 @@ public class CalculationEngine {
             }
         }
 
+        // Process the garanties in registration-date order (then id), so a convention's contract cap
+        // admits the earliest-registered garanties first and the rest go without discount (CAL-09); the
+        // events within a garantie stay in chronological order (D5).
+        List<List<BusinessEvent>> units = new ArrayList<>(byCoverage.values());
+        units.sort(java.util.Comparator.<List<BusinessEvent>, LocalDate>comparing(
+                        u -> u.get(0).coverage.contract.registrationDate,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(u -> u.get(0).coverage.getId()));
+
         int lineCount = 0;
-        for (List<BusinessEvent> unit : byCoverage.values()) {
+        for (List<BusinessEvent> unit : units) {
             lineCount += processUnit(period, run, unit.get(0).coverage, unit, versions);
         }
         // Discount versement is triggered by the échéance (D3), so a garantie eligible for the

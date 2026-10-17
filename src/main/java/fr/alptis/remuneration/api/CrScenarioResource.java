@@ -187,6 +187,7 @@ public class CrScenarioResource {
             case "CAL-06" -> seedCal06(entity, periodMonth);
             case "CAL-06-RULE" -> seedCal06Rule(entity, periodMonth);
             case "CAL-08" -> seedCal08(entity, periodMonth);
+            case "CAL-09" -> seedCal09(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1978,6 +1979,82 @@ public class CrScenarioResource {
         transfer.advanceDebtHandling = AdvanceDebtHandling.REPAID_BY_TRANSFEROR;
         transfer.status = TransferStatus.PENDING;
         transfer.persist();
+    }
+
+    /**
+     * CAL-09 (parcours §4.3) : plafond d'adhésions d'une convention atteint dans la période. Une
+     * convention plafonnée à une adhésion et deux garanties escomptées du même distributeur : l'admission
+     * se fait par date d'enregistrement, donc la garantie enregistrée le plus tôt reçoit l'escompte même
+     * si elle a été créée après l'autre (identifiant plus grand) ; la suivante est traitée sans escompte.
+     *
+     * @param entity      the entity the convention belongs to
+     * @param periodMonth the calculation period and effect date
+     */
+    private void seedCal09(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        version(entity, "PLAN-CAL09", "R-CAL09", RuleFamily.UPFRONT, LineNature.ACQUISITION, premiumScope(entity),
+                UPFRONT_PARAMS, periodMonth, null, null);
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = "P-CAL09";
+        distributor.legalName = "P-CAL09";
+        distributor.persist();
+        // B is created first (lower id) but registered the 10th; A is created second but registered the 5th.
+        Coverage b = escompteShared(entity, product, distributor, "CAL09B", periodMonth, periodMonth.plusDays(9));
+        Coverage a = escompteShared(entity, product, distributor, "CAL09A", periodMonth, periodMonth.plusDays(4));
+        premium(entity, b, "CAL09B-E", periodMonth.plusDays(14), "500.00");
+        premium(entity, a, "CAL09A-E", periodMonth.plusDays(14), "500.00");
+        convention(entity, "P-CAL09", 1, LocalDate.of(periodMonth.getYear(), 12, 31));
+    }
+
+    /**
+     * Creates an escompté upfront garantie sharing a given distributor, with its own production code and a
+     * registration date, for the contract-cap admission test (CAL-09).
+     *
+     * @param entity       the entity
+     * @param product      the product
+     * @param distributor  the shared distributor
+     * @param num          the contract number (and code prefix)
+     * @param effect       the effect date
+     * @param registration the contract registration date
+     * @return the created garantie
+     */
+    private Coverage escompteShared(LegalEntity entity, Product product, Distributor distributor, String num,
+            LocalDate effect, LocalDate registration) {
+        Contract contract = new Contract();
+        contract.entity = entity;
+        contract.sourceSystem = "SYS";
+        contract.contractNumber = num;
+        contract.product = product;
+        contract.registrationDate = registration;
+        contract.persist();
+        Coverage coverage = new Coverage();
+        coverage.contract = contract;
+        coverage.coverageCode = num + "-C1";
+        coverage.effectDate = effect;
+        coverage.annualPremium = new BigDecimal("1000");
+        coverage.persist();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = entity;
+        pc.code = "PC-" + num;
+        pc.distributor = distributor;
+        pc.persist();
+        CoverageAssignment assignment = new CoverageAssignment();
+        assignment.coverage = coverage;
+        assignment.productionCode = pc;
+        assignment.role = AssignmentRole.MAIN;
+        assignment.share = BigDecimal.ONE;
+        assignment.validFrom = effect;
+        assignment.persist();
+        RemunerationChoice choice = new RemunerationChoice();
+        choice.coverage = coverage;
+        choice.mode = RemunerationMode.UPFRONT;
+        choice.acquisitionRate = new BigDecimal("0.30");
+        choice.servicingRate = new BigDecimal("0.10");
+        choice.advanceRequested = true;
+        choice.validFrom = effect;
+        choice.persist();
+        return coverage;
     }
 
     /**
