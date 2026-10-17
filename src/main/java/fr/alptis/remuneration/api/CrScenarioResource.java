@@ -5,6 +5,9 @@ import fr.alptis.remuneration.domain.AdvanceAgreementStatus;
 import fr.alptis.remuneration.domain.AdvancePosition;
 import fr.alptis.remuneration.domain.AccountEntry;
 import fr.alptis.remuneration.domain.AccountEntryType;
+import fr.alptis.remuneration.domain.Adjustment;
+import fr.alptis.remuneration.domain.AdjustmentStatus;
+import fr.alptis.remuneration.domain.AdjustmentType;
 import fr.alptis.remuneration.domain.AccountingEntry;
 import fr.alptis.remuneration.domain.AccountingEvent;
 import fr.alptis.remuneration.domain.BatchStatus;
@@ -203,6 +206,7 @@ public class CrScenarioResource {
             case "CYC-05" -> seedCyc05(entity, periodMonth);
             case "CTL-01" -> seedCtl01(entity, periodMonth);
             case "CTL-04" -> seedCtl04(entity, periodMonth);
+            case "AJU-05" -> seedAju05(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2297,6 +2301,59 @@ public class CrScenarioResource {
     }
 
     /**
+     * AJU-05 (parcours §4.4) : avance exceptionnelle à échéancier (CAL-14). Une avance exceptionnelle de
+     * 300 € versée au distributeur ouvre une créance (débit de 300 € sur son compte) et porte son
+     * échéancier de remboursement (trois échéances de 100 €). Les remboursements reçus aux échéances
+     * (écritures {@code REPAYMENT_RECEIVED} aux trois mois suivants) apurent la créance : le solde
+     * remonte de −300 € à zéro. Les remboursements arrivent comme mouvements de compte (H-47), non
+     * générés automatiquement par l'échéancier.
+     *
+     * @param entity      the entity the account belongs to
+     * @param periodMonth the advance's month
+     */
+    private void seedAju05(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.CALCULATED;
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = "P-AJU05";
+        distributor.legalName = "P-AJU05";
+        distributor.persist();
+        DistributorEntity membership = new DistributorEntity();
+        membership.distributor = distributor;
+        membership.entity = entity;
+        membership.status = PartnerStatus.ACTIVE;
+        membership.validFrom = periodMonth;
+        membership.persist();
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = distributor.getId();
+        account.persist();
+        // The exceptional advance paid out: a debit on the account, with its three-instalment schedule.
+        Adjustment advance = new Adjustment();
+        advance.entity = entity;
+        advance.period = period;
+        advance.adjustmentType = AdjustmentType.EXCEPTIONAL_ADVANCE;
+        advance.amount = new BigDecimal("-300.00");
+        advance.account = account;
+        advance.reason = "Avance exceptionnelle";
+        advance.repaymentSchedule = "\"3 échéances de 100,00 € (300,00 €)\"";
+        advance.status = AdjustmentStatus.APPLIED;
+        advance.persist();
+        controlLine(entity, period, null, LineNature.MANUAL, "-300.00", null, null).account = account;
+        // Repayments received at the three due dates apurer the debt, bringing the balance back to zero.
+        for (int i = 1; i <= 3; i++) {
+            AccountEntry repayment = new AccountEntry();
+            repayment.account = account;
+            repayment.period = period;
+            repayment.entryType = AccountEntryType.REPAYMENT_RECEIVED;
+            repayment.entryDate = periodMonth.plusMonths(i);
+            repayment.amount = new BigDecimal("100.00");
+            repayment.persist();
+        }
+    }
+
+    /**
      * CTL-04 (parcours §4.4) : indicateur de qualité manquant pour la RCP. Une ligne de RCP rattachée à
      * un distributeur sans indicateur de condition pour le mois déclenche le contrôle bloquant
      * « indicateur de condition manquant » ; par exception (section 7.3, H-48), cette anomalie ne peut
@@ -2359,9 +2416,10 @@ public class CrScenarioResource {
      * @param amount   the signed amount
      * @param basis    the basis amount (external line), or null
      * @param rate     the rate (external line), or null
+     * @return the created line
      */
-    private void controlLine(LegalEntity entity, Period period, Coverage coverage, LineNature nature, String amount,
-                             String basis, String rate) {
+    private CommissionLine controlLine(LegalEntity entity, Period period, Coverage coverage, LineNature nature,
+                                       String amount, String basis, String rate) {
         CommissionLine line = new CommissionLine();
         line.entity = entity;
         line.period = period;
@@ -2374,6 +2432,7 @@ public class CrScenarioResource {
         line.rate = rate == null ? null : new BigDecimal(rate);
         line.attachmentMonth = period.periodMonth;
         line.persist();
+        return line;
     }
 
     /**

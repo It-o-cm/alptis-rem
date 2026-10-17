@@ -1153,6 +1153,29 @@ class CrScenarioResourceTest {
                 .then().statusCode(200).body("decision", is("FIXED"));
     }
 
+    /**
+     * AJU-05 (parcours): an exceptional advance of 300 € opens a 300 € debit on the account and carries a
+     * three-instalment schedule; the repayments received at the three due dates bring the balance back
+     * from -300 € to zero, and the schedule is listed for the debtor.
+     */
+    @Test
+    void aju05_exceptional_advance_repaid_on_schedule() {
+        given().when().post("/api/test/cr-scenario?cr=AJU-05&entity=UNEP&month=2027-07-01").then().statusCode(204);
+        // The running balance steps back to zero as each instalment is repaid.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounts/UNEP/distributor/P-AJU05/balance-series")
+                .then().statusCode(200)
+                .body("find { it.month == '2027-07-01' }.balance", is(-300.0f))
+                .body("find { it.month == '2027-08-01' }.balance", is(-200.0f))
+                .body("find { it.month == '2027-09-01' }.balance", is(-100.0f))
+                .body("find { it.month == '2027-10-01' }.balance", is(0.0f));
+        // The repayment schedule is listed for the debtor (CPT-07, CAL-14).
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounts/UNEP/repayment-schedules")
+                .then().statusCode(200)
+                .body("find { it.holder == 'P-AJU05' }.schedule", org.hamcrest.Matchers.containsString("3 échéances"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

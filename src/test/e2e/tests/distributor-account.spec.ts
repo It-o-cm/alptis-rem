@@ -12,6 +12,31 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
+test('AJU-05 : une avance exceptionnelle est remboursée à ses échéances @screen:distributor-account @path:AJU-05', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=AJU-05&entity=UNEP&month=2027-07-01')).ok()).toBeTruthy();
+
+  const context = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await context.newPage();
+  await page.goto('/distributeur');
+
+  // The debtor's three-instalment repayment schedule is listed (CPT-07, CAL-14).
+  await expect(page.getByTestId('schedule-row').filter({ hasText: '3 échéances' }).first()).toBeVisible();
+
+  // The account detail: the 300 € advance has been fully repaid by its three instalments (balance zero).
+  await page.getByTestId('acc-entity').selectOption('UNEP');
+  await page.getByTestId('acc-partner').selectOption('P-AJU05');
+  await page.getByTestId('acc-search').click();
+  await expect(page.getByTestId('account-view')).toBeVisible();
+  await expect(page.getByTestId('account-total')).toContainText('0,00');
+  await expect(page.getByTestId('chart-account-balance')).toBeVisible();
+  // The exceptional-advance line is shown among the account's commission lines.
+  await expect(page.locator('[data-testid^="line-row-"]').filter({ hasText: '300,00' }).first()).toBeVisible();
+  await context.close();
+});
+
 test.describe('Compte distributeur — opérateur', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 
