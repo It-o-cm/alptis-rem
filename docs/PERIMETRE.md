@@ -29,7 +29,7 @@ Premier passage (conservé pour mémoire) : 37 `complet`, 24 `partiel`, 12 `abse
   fonctionnalité comblé : lot `SAVINGS_CYCLE` distinct) via `CrScenarioResource` + `CrScenarioResourceTest`
   + `recette.spec` ; CR-87/88 (variable FDV) dans `fdv.spec`. `mvn verify -DskipE2E=true` vert (819 tests,
   JaCoCo 100 %) ; les 16 specs e2e `@cr:` vertes.
-- Parcours `@path` : 106 sur 135 du catalogue §4 (§4.1, §4.2, §4.3 complètes ; §4.4 en cours ; dernier ajout : +CYC-02 une transition tentée par un rôle non habilité est refusée (message de rôle, période inchangée)) (le 2026-10-16 : +INT-03 correction reprocessée, +INT-08 flux selon l'horloge, +INT-09 lignes négatives, +INT-10 événement à référence inconnue libéré à l'arrivée du référentiel). Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
+- Parcours `@path` : 107 sur 135 du catalogue §4 (§4.1, §4.2, §4.3 complètes ; §4.4 en cours ; dernier ajout : +CYC-03 retour arrière autorisé (refus finance paiement préparé → contrôlée, tracé avec motif) et refus de tout retour après validation finance) (le 2026-10-16 : +INT-03 correction reprocessée, +INT-08 flux selon l'horloge, +INT-09 lignes négatives, +INT-10 événement à référence inconnue libéré à l'arrivée du référentiel). Ajoutés le 2026-10-16 : CAL-07 (règles concurrentes →
   événement à l'écart), CAL-12 (annulation après changement de barème → reprise au taux d'origine
   −15,00 €, D12), PAI-03 (épargne retraite → lot distinct, bordereau propre 50,00 €, période Payée après
   le dernier lot, sur le test CR-86), CAL-13 (prévisionnel régularisé à la résiliation, sur CR-66).

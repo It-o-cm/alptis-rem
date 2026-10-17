@@ -502,3 +502,10 @@ distributeurs le 25. Un flux non reçu dans le mois est « en retard » passé s
 - **Section** : CYC-02 (TESTS-E2E §4.4), contrôle de rôle sur les transitions (section 7.1).
 - **Constat** : déjà en place — `PeriodService.transition()` refuse une transition dont le rôle n'est pas détenu (`ValidationException « Rôle non autorisé »`, mappée en 400 `application/problem+json`).
 - **Choix** : aucune modification ; `seedCyc02` ouvre une période contrôlée ; `CrScenarioResourceTest` vérifie que l'opérateur se voit refuser (400, message de rôle) le passage en validée métier ; `@path:CYC-02` montre à l'écran que l'opérateur et la finance, tentant la transition réservée au validateur, sont refusés (la période reste contrôlée).
+
+## 2026-10-17 — CYC-03 : retours arrière et refus après validation finance (section 7.1)
+
+- **Section** : CYC-03 (TESTS-E2E §4.4), retours arrière autorisés (section 7.1), refus d'un retour après `FINANCE_VALIDATED`.
+- **Constat** : déjà en place — `PeriodService.TRANSITIONS` déclare les retours arrière (calcul/contrôle → chargée/ouverte ; paiement préparé → contrôlée, avec motif et effet `reopen`) ; aucun retour n'est déclaré depuis `FINANCE_VALIDATED`, d'où « Transition interdite ».
+- **Choix** : aucune modification ; `seedCyc03` plante une période en « paiement préparé » et une en « validée finance » ; `CrScenarioResourceTest` vérifie le refus finance (paiement préparé → contrôlée, 200) et l'interdiction d'un retour depuis validée finance (400) ; `@path:CYC-03` applique le refus finance par l'API, montre l'état revenu à « Contrôlée » et le retour tracé avec son motif sur l'écran des périodes, et vérifie qu'aucun retour depuis validée finance n'est permis.
+- **Note** : il n'existe pas d'écran dédié aux retours arrière ; ils passent par l'API de transition (le parcours la pilote et vérifie l'effet sur l'écran).

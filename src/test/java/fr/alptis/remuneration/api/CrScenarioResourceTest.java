@@ -1039,6 +1039,25 @@ class CrScenarioResourceTest {
                 .then().statusCode(400).body("detail", org.hamcrest.Matchers.containsString("Rôle non autorisé"));
     }
 
+    /**
+     * CYC-03 (parcours): a prepared-payment period is sent back to controlled by Finance (with a reason);
+     * a finance-validated period allows no rollback.
+     */
+    @Test
+    void cyc03_authorised_rollback_and_refusal_after_finance_validation() {
+        given().when().post("/api/test/cr-scenario?cr=CYC-03&entity=UNEP&month=2027-08-01").then().statusCode(204);
+        // Authorised rollback: Finance refuses the preparation, the period returns to controlled.
+        given().auth().preemptive().basic("finance-unep", "finance-unep").contentType("application/json")
+                .body("{\"toState\":\"CONTROLLED\",\"reason\":\"Refus finance\"}")
+                .when().post("/api/ui/v1/periods/UNEP/2027-08-01/transition")
+                .then().statusCode(200).body("state", is("CONTROLLED"));
+        // No rollback is defined from finance-validated: it is refused.
+        given().auth().preemptive().basic("finance-unep", "finance-unep").contentType("application/json")
+                .body("{\"toState\":\"PAYMENT_PREPARED\",\"reason\":\"x\"}")
+                .when().post("/api/ui/v1/periods/UNEP/2027-09-01/transition")
+                .then().statusCode(400).body("detail", org.hamcrest.Matchers.containsString("Transition interdite"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

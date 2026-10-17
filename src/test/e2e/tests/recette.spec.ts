@@ -2026,6 +2026,35 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CYC-03 : un retour arrière autorisé s’applique, aucun n’est permis après la validation finance @screen:periods @path:CYC-03', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  expect((await request.post('/api/test/cr-scenario?cr=CYC-03&entity=UNEP&month=2027-08-01')).ok()).toBeTruthy();
+  const finance = 'Basic ' + Buffer.from('finance-unep:finance-unep').toString('base64');
+
+  // Finance sends the prepared-payment period back to controlled, with a reason.
+  const back = await request.post('/api/ui/v1/periods/UNEP/2027-08-01/transition',
+    { headers: { Authorization: finance, 'Content-Type': 'application/json' },
+      data: { toState: 'CONTROLLED', reason: 'Refus finance' } });
+  expect(back.ok()).toBeTruthy();
+  // No rollback is permitted from a finance-validated period.
+  const refused = await request.post('/api/ui/v1/periods/UNEP/2027-09-01/transition',
+    { headers: { Authorization: finance, 'Content-Type': 'application/json' },
+      data: { toState: 'PAYMENT_PREPARED', reason: 'x' } });
+  expect(refused.status()).toBe(400);
+
+  // The periods screen shows the reverted state and the rollback traced with its reason.
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/');
+  await admin.getByTestId('open-UNEP-2027-08-01').click();
+  await expect(admin.getByTestId('detail-state')).toHaveText('Contrôlée');
+  await expect(admin.getByTestId('transition-row').filter({ hasText: 'Refus finance' })).toHaveCount(1);
+  await adminCtx.close();
+});
+
 test('CYC-02 : une transition par un rôle non habilité est refusée @screen:periods @path:CYC-02', async ({
   browser,
   request,

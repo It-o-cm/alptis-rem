@@ -193,6 +193,7 @@ public class CrScenarioResource {
             case "CAL-11" -> seedCal11(entity, periodMonth);
             case "CYC-01" -> seedCyc01(entity, periodMonth);
             case "CYC-02" -> seedCyc02(entity, periodMonth);
+            case "CYC-03" -> seedCyc03(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2146,6 +2147,19 @@ public class CrScenarioResource {
     private void seedCyc02(LegalEntity entity, LocalDate periodMonth) {
         Period p = period(entity, periodMonth);
         p.state = PeriodState.CONTROLLED;
+    }
+
+    /**
+     * CYC-03 (parcours §4.4) : retour arrière autorisé et refus après validation finance. Une période en
+     * « paiement préparé » que la finance renvoie en « contrôlée » (refus finance, avec motif) ; et une
+     * période « validée finance », d'où aucun retour arrière n'est permis.
+     *
+     * @param entity      the entity the periods belong to
+     * @param periodMonth the first period month (the second is the following month)
+     */
+    private void seedCyc03(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth).state = PeriodState.PAYMENT_PREPARED;
+        period(entity, periodMonth.plusMonths(1)).state = PeriodState.FINANCE_VALIDATED;
     }
 
     /**
