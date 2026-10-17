@@ -209,6 +209,7 @@ public class CrScenarioResource {
             case "AJU-05" -> seedAju05(entity, periodMonth);
             case "CPT-03" -> seedCpt03(entity, periodMonth);
             case "CPT-04" -> seedCpt04(entity, periodMonth);
+            case "CPT-07" -> seedCpt07(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2353,6 +2354,70 @@ public class CrScenarioResource {
             repayment.amount = new BigDecimal("100.00");
             repayment.persist();
         }
+    }
+
+    /**
+     * CPT-07 (parcours §4.4) : statut de chaque commission d'un distributeur, les six statuts visibles
+     * avec leur motif (CPT-06). Un distributeur porte sur son compte une ligne de chacun des six statuts
+     * d'une ligne de commission (section 5.7) — prévisionnelle, acquise, à payer, payée, imputée sur un
+     * escompte, annulée — dont une à payer bloquée avec son motif.
+     *
+     * @param entity      the entity the account belongs to
+     * @param periodMonth the period month
+     */
+    private void seedCpt07(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.CALCULATED;
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = "P-CPT07";
+        distributor.legalName = "P-CPT07";
+        distributor.persist();
+        DistributorEntity membership = new DistributorEntity();
+        membership.distributor = distributor;
+        membership.entity = entity;
+        membership.status = PartnerStatus.ACTIVE;
+        membership.validFrom = periodMonth;
+        membership.persist();
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = PayeeType.DISTRIBUTOR;
+        account.payeeId = distributor.getId();
+        account.persist();
+        statusLine(entity, period, account, LineStatus.FORECAST, "180.00", null);
+        statusLine(entity, period, account, LineStatus.EARNED, "15.00", null);
+        statusLine(entity, period, account, LineStatus.PAYABLE, "15.00", "Blocage manuel");
+        statusLine(entity, period, account, LineStatus.PAID, "15.00", null);
+        statusLine(entity, period, account, LineStatus.OFFSET, "15.00", null);
+        statusLine(entity, period, account, LineStatus.CANCELLED, "-15.00", null);
+    }
+
+    /**
+     * Poses a commission line of a given status on an account, optionally blocked with a reason, for the
+     * commission-status scenario (CPT-07).
+     *
+     * @param entity      the entity
+     * @param period      the period
+     * @param account     the account
+     * @param status      the line status
+     * @param amount      the signed amount
+     * @param blockReason the block reason, or null for an unblocked line
+     */
+    private void statusLine(LegalEntity entity, Period period, DistributorAccount account, LineStatus status,
+                            String amount, String blockReason) {
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.account = account;
+        line.direction = Direction.OUTBOUND;
+        line.nature = LineNature.LINEAR;
+        line.status = status;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = period.periodMonth;
+        if (blockReason != null) {
+            line.blocked = Boolean.TRUE;
+            line.blockReason = blockReason;
+        }
+        line.persist();
     }
 
     /**

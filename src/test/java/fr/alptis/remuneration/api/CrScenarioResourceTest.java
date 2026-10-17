@@ -1218,6 +1218,21 @@ class CrScenarioResourceTest {
                 .body("orders.size()", is(1));
     }
 
+    /**
+     * CPT-07 (parcours): the status of each of a distributor's commissions is given, the six line
+     * statuses visible, with the block reason where set.
+     */
+    @Test
+    void cpt07_six_commission_statuses_visible() {
+        given().when().post("/api/test/cr-scenario?cr=CPT-07&entity=UNEP&month=2027-05-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounts/UNEP/distributor/P-CPT07/lines")
+                .then().statusCode(200)
+                .body("status", hasItems("FORECAST", "EARNED", "PAYABLE", "PAID", "OFFSET", "CANCELLED"))
+                // The blocked payable line carries its reason.
+                .body("find { it.status == 'PAYABLE' }.blockReason", is("Blocage manuel"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

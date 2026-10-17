@@ -12,6 +12,30 @@ test.beforeEach(async ({ request }) => {
   await seedCycle(request);
 });
 
+test('CPT-07 : les six statuts d’une commission sont visibles avec leur motif @screen:distributor-account @path:CPT-07', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=CPT-07&entity=UNEP&month=2027-05-01')).ok()).toBeTruthy();
+
+  const context = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await context.newPage();
+  await page.goto('/distributeur');
+  await page.getByTestId('acc-entity').selectOption('UNEP');
+  await page.getByTestId('acc-partner').selectOption('P-CPT07');
+  await page.getByTestId('acc-search').click();
+  await expect(page.getByTestId('account-view')).toBeVisible();
+
+  // Each of the six commission statuses of section 5.7 is shown.
+  const lines = page.locator('[data-testid^="line-row-"]');
+  for (const label of ['Prévisionnelle', 'Acquise', 'À payer', 'Payée', 'Imputée sur escompte', 'Annulée']) {
+    await expect(lines.filter({ hasText: label }).first()).toBeVisible();
+  }
+  // The blocked payable line carries its reason (motif).
+  await expect(lines.filter({ hasText: 'À payer' }).filter({ hasText: 'Blocage manuel' }).first()).toBeVisible();
+  await context.close();
+});
+
 test('CPT-03 : la compensation ne se fait jamais entre deux sociétés distinctes @screen:distributor-account @path:CPT-03', async ({
   browser,
   request,
