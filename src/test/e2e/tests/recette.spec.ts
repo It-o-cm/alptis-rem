@@ -2026,6 +2026,46 @@ test('PAR-09 : la politique de reprise décide la reprise à la résiliation @sc
   await adminCtx.close();
 });
 
+test('CAL-04 : un recalcul partiel ne retraite que le distributeur visé @screen:calculations @screen:commissionSearch @path:CAL-04', async ({
+  browser,
+  request,
+}) => {
+  await resetDb(request);
+  const seeded = await request.post('/api/test/cr-scenario?cr=CAL-04&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminUnep });
+  const admin = await adminCtx.newPage();
+
+  // Full calculation: a line for each distributor.
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('calc-run').click();
+  await expect(admin.getByTestId('calc-message')).toBeVisible();
+
+  const assertLines = async () => {
+    await admin.goto('/recherche-commissions');
+    await admin.getByTestId('cs-month').selectOption('2026-01-01');
+    await admin.getByTestId('cs-search').click();
+    await expect(admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-CAL04A' })).toContainText('15,00');
+    await expect(admin.locator('[data-testid^="cs-row-"]').filter({ hasText: 'P-CAL04B' })).toContainText('20,00');
+  };
+  await assertLines();
+
+  // Partial recalc scoped to P-CAL04A: a partial run appears for that distributor only.
+  await admin.goto('/calculs');
+  await admin.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await admin.getByTestId('recalc-type').selectOption('DISTRIBUTOR');
+  await admin.getByTestId('recalc-value').fill('P-CAL04A');
+  await admin.getByTestId('recalc-run').click();
+  await expect(admin.locator('[data-testid^="run-row-"]').filter({ hasText: 'DISTRIBUTOR P-CAL04A' })).toBeVisible();
+
+  // Both lines are unchanged — the unscoped distributor's line was not touched.
+  await assertLines();
+
+  await adminCtx.close();
+});
+
 test('PAR-12 : clôturer une convention d’escompte ferme la position en cours @screen:advance @path:PAR-12', async ({
   browser,
   request,

@@ -9,10 +9,10 @@ la section 13 (cas de recette) et la section 4 de `TESTS-E2E.md` (parcours).
 | Écrans (routes) | 56 | 56 | — |
 | Exigences §8 | 135 | 135 | — |
 | Cas de recette §13 | 70 | 70 | — |
-| Parcours §4 | 135 | 98 | ADM-02, ADM-04, AJU-05, BRD-02, BRD-03, BRD-04, BRD-07, CAL-04, CAL-06, CAL-08, CAL-09, CAL-10, CAL-11, CPT-03, CPT-04, CPT-07, CTL-01, CTL-04, CYC-01, CYC-02, CYC-03, CYC-04, CYC-05, FDV-03, FDV-07, FDV-10, FIN-04, FIN-06, FIN-09, HIS-01, PAI-02, PAI-04, PAI-07, PAI-08, PAI-09, PAI-11, PAI-12 |
+| Parcours §4 | 135 | 99 | ADM-02, ADM-04, AJU-05, BRD-02, BRD-03, BRD-04, BRD-07, CAL-06, CAL-08, CAL-09, CAL-10, CAL-11, CPT-03, CPT-04, CPT-07, CTL-01, CTL-04, CYC-01, CYC-02, CYC-03, CYC-04, CYC-05, FDV-03, FDV-07, FDV-10, FIN-04, FIN-06, FIN-09, HIS-01, PAI-02, PAI-04, PAI-07, PAI-08, PAI-09, PAI-11, PAI-12 |
 | Couples rôle-action | — | 22 | — |
 
 Écrans couverts (`@screen`) : accounting, adjustments, advance, alignment, audit, bank-accounts, bordereaux, calculations, claims, commissionSearch, contract-search, controls, cutoff, dashboards, demo, discounts, distributor, distributor-account, distributor-search, documentTemplates, enrollments, entities, events, exports, external-codes, families, fdvCollaborators, fdvCommercial, fdvMeasures, fdvObjectives, fdvPlan, fdvValidation, flows, formats, groupView, groupings, heldEvents, imports, indicators, manualEvent, mapping, margin, menu, paramTransfer, payee-rules, payment, periods, production-hierarchy, products, purge, quality-indicators, reconciliation, reprise, role-mappings, rules, shell, simulation, statements, states, supervision, taxCertificates, transfers, validation
 
 Nombre de fichiers de tests : 50
-Nombre de tests : 292
+Nombre de tests : 293

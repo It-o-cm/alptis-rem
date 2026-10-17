@@ -1004,6 +1004,25 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * CAL-04 (parcours): a partial recalculation scoped to one distributor re-processes only that
+     * distributor's garantie (one unit); the other distributor's line is left unchanged.
+     */
+    @Test
+    void cal04_partial_recalc_touches_only_the_scoped_distributor() {
+        plantAndRun("CAL-04");
+        search().body("findAll { it.distributor == 'P-CAL04A' && it.nature == 'LINEAR' }.amount", hasItem(15.00f))
+                .body("findAll { it.distributor == 'P-CAL04B' && it.nature == 'LINEAR' }.amount", hasItem(20.00f));
+        // A partial recalc scoped to P-CAL04A re-processes a single unit.
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2026-01-01/recalc?type=DISTRIBUTOR&value=P-CAL04A")
+                .then().statusCode(200)
+                .body("runs.find { it.partialScope == 'DISTRIBUTOR P-CAL04A' }.processed", is(1));
+        // Both lines remain, the unscoped distributor's untouched.
+        search().body("findAll { it.distributor == 'P-CAL04A' && it.nature == 'LINEAR' }.amount", hasItem(15.00f))
+                .body("findAll { it.distributor == 'P-CAL04B' && it.nature == 'LINEAR' }.amount", hasItem(20.00f));
+    }
+
+    /**
      * Posts an external-code mapping as the UNEP business administrator.
      *
      * @param entityCode     the entity code

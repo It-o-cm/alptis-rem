@@ -183,6 +183,7 @@ public class CrScenarioResource {
             case "PAR-08" -> seedPar08(entity, periodMonth);
             case "PAR-09" -> seedPar09(entity, periodMonth);
             case "PAR-12" -> seedPar12(entity, periodMonth);
+            case "CAL-04" -> seedCal04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -1869,6 +1870,28 @@ public class CrScenarioResource {
         period(entity, periodMonth);
         escompteCoverage(entity, periodMonth, "PAR12", "P-PAR12", "1000");
         convention(entity, "P-PAR12", 100, LocalDate.of(periodMonth.getYear(), 12, 31));
+    }
+
+    /**
+     * CAL-04 (parcours §4.3) : recalcul partiel scopé à un distributeur. Deux distributeurs, chacun une
+     * garantie linéaire : le calcul complet produit une ligne de 15,00 € (P-CAL04A) et une de 20,00 €
+     * (P-CAL04B). Un recalcul partiel scopé au distributeur P-CAL04A ne retraite que sa garantie (une
+     * seule unité) ; la ligne de P-CAL04B ne change pas.
+     *
+     * @param entity      the entity the garanties belong to
+     * @param periodMonth the calculation period
+     */
+    private void seedCal04(LegalEntity entity, LocalDate periodMonth) {
+        period(entity, periodMonth);
+        Product product = product(entity, "SANTE_SELECT");
+        version(entity, "PLAN-CAL04", "R-CAL04-LIN", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15,0.20]}", periodMonth, null, null);
+        Coverage a = coverage(entity, "CAL04A", product, periodMonth, "P-CAL04A", null);
+        linearChoice(a, "0.15", periodMonth, null);
+        premium(entity, a, "CAL04A-E", periodMonth.plusDays(4), "100.00");
+        Coverage b = coverage(entity, "CAL04B", product, periodMonth, "P-CAL04B", null);
+        linearChoice(b, "0.20", periodMonth, null);
+        premium(entity, b, "CAL04B-E", periodMonth.plusDays(4), "100.00");
     }
 
     /**
