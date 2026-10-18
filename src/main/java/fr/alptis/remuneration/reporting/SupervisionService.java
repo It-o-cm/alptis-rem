@@ -7,9 +7,13 @@ import fr.alptis.remuneration.domain.ImportBatch;
 import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
+import fr.alptis.remuneration.domain.RunStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Treatment and flow supervision (section 3, OUT-07, NFR-16): a health point and the metrics of the
@@ -35,6 +39,39 @@ public class SupervisionService {
                 lastImport == null ? null : lastImport.receivedAt,
                 lastExport == null ? null : lastExport.generatedAt,
                 lastCalc == null ? null : lastCalc.finishedAt);
+    }
+
+    /**
+     * Lists the failed treatments still awaiting a relaunch (ADM-04): each calculation run left in
+     * {@code FAILED} that is still the latest run of its period, so a run superseded by a later
+     * successful one drops off the list. It carries no amount (the technical administrator has no right
+     * on amounts), only the entity, the month, the run type and when it failed.
+     *
+     * @return the failed treatments, newest first
+     */
+    public List<FailedTreatment> failedTreatments() {
+        List<FailedTreatment> treatments = new ArrayList<>();
+        for (CalculationRun run : CalculationRun.<CalculationRun>list("status = ?1 order by id desc",
+                RunStatus.FAILED)) {
+            CalculationRun latest = CalculationRun.<CalculationRun>find("period = ?1 order by id desc",
+                    run.period).firstResult();
+            if (latest.getId().equals(run.getId())) {
+                treatments.add(new FailedTreatment(run.period.entity.code, run.period.periodMonth,
+                        run.runType.name(), run.finishedAt));
+            }
+        }
+        return treatments;
+    }
+
+    /**
+     * A failed treatment awaiting a relaunch (ADM-04).
+     *
+     * @param entityCode the entity code of the treatment's period
+     * @param month      the period month
+     * @param runType    the run type that failed
+     * @param failedAt   when the run finished in failure, or null
+     */
+    public record FailedTreatment(String entityCode, LocalDate month, String runType, OffsetDateTime failedAt) {
     }
 
     /**

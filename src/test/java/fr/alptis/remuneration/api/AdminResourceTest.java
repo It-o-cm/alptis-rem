@@ -100,4 +100,29 @@ class AdminResourceTest {
                 .when().get("/api/ui/v1/admin/purge/eligible")
                 .then().statusCode(200).body("count", is(0));
     }
+
+    /**
+     * ADM-04: the technical administrator sees a failed treatment and relaunches it; the relaunch
+     * re-runs the period's calculation and the treatment, now superseded by a successful run, drops off
+     * the failed list. An operator may not relaunch.
+     */
+    @Test
+    void failed_treatment_is_visible_and_relaunchable() {
+        given().when().post("/api/test/cr-scenario?cr=ADM-04&entity=UNEP&month=2026-05-01").then().statusCode(204);
+
+        given().auth().preemptive().basic("it-admin", "it-admin")
+                .when().get("/api/ui/v1/admin/supervision/failed")
+                .then().statusCode(200).body("size()", is(1))
+                .body("[0].entityCode", is("UNEP")).body("[0].month", is("2026-05-01"))
+                .body("[0].runType", is("ACTUAL"));
+
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body(java.util.Map.of("entityCode", "UNEP", "month", "2026-05-01"))
+                .when().post("/api/ui/v1/admin/supervision/relaunch").then().statusCode(403);
+
+        given().auth().preemptive().basic("it-admin", "it-admin").contentType("application/json")
+                .body(java.util.Map.of("entityCode", "UNEP", "month", "2026-05-01"))
+                .when().post("/api/ui/v1/admin/supervision/relaunch")
+                .then().statusCode(200).body("size()", is(0));
+    }
 }

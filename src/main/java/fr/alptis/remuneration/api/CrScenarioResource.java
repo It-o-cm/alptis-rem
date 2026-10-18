@@ -103,6 +103,10 @@ import java.time.LocalDate;
 @UnlessBuildProfile("prod")
 public class CrScenarioResource {
 
+    /** The application date/time provider, to stamp seeded runs. */
+    @jakarta.inject.Inject
+    fr.alptis.remuneration.domain.DateTimeProvider clock;
+
     /**
      * Plants a recette case's data for an entity and month.
      *
@@ -226,6 +230,7 @@ public class CrScenarioResource {
             case "FIN-09" -> seedFin09(entity, periodMonth);
             case "HIS-01" -> seedHis01(entity, periodMonth);
             case "ADM-02" -> seedAdm02(entity, periodMonth);
+            case "ADM-04" -> seedAdm04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -764,6 +769,33 @@ public class CrScenarioResource {
         DistributorAccount account = payee(entity, period, "P-ADM02", "30.00", PartnerStatus.ACTIVE, true);
         CommissionLine line = CommissionLine.<CommissionLine>find("account = ?1", account).firstResult();
         line.status = LineStatus.PAYABLE;
+    }
+
+    /**
+     * ADM-04 (parcours « Supervision ») : une garantie calculable (choix linéaire 15 %, un encaissement
+     * de 100 €) dont le dernier calcul a échoué — un {@code CalculationRun} en statut {@code FAILED}. Le
+     * traitement en échec est visible sur l'écran de supervision ; le relancer rejoue le calcul réel de
+     * la période, produit la ligne et un run abouti, et le traitement quitte la liste des échecs.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedAdm04(LegalEntity entity, LocalDate periodMonth) {
+        Product product = product(entity, "ADM04");
+        Coverage coverage = coverage(entity, "ADM04", product, periodMonth, "P-ADM04", null);
+        linearChoice(coverage, "0.15", periodMonth, null);
+        version(entity, "PLAN-ADM04", "R-ADM04-LIN", RuleFamily.LINEAR, LineNature.LINEAR, premiumScope(entity),
+                "{\"allowedRates\":[0.15]}", periodMonth, null, null);
+        premium(entity, coverage, "ADM04-E1", periodMonth.plusDays(4), "100.00");
+        fr.alptis.remuneration.domain.CalculationRun run = new fr.alptis.remuneration.domain.CalculationRun();
+        run.period = period(entity, periodMonth);
+        run.runType = fr.alptis.remuneration.domain.RunType.ACTUAL;
+        run.status = fr.alptis.remuneration.domain.RunStatus.FAILED;
+        run.startedAt = clock.now();
+        run.finishedAt = clock.now();
+        run.launchedBy = "engine";
+        run.setCreatedAt(clock.now());
+        run.persist();
     }
 
     /**

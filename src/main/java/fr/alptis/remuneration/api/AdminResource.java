@@ -1,10 +1,13 @@
 package fr.alptis.remuneration.api;
 
+import fr.alptis.remuneration.engine.CalculationEngine;
 import fr.alptis.remuneration.reporting.PurgeService;
 import fr.alptis.remuneration.reporting.SupervisionService;
+import fr.alptis.remuneration.reporting.SupervisionService.FailedTreatment;
 import fr.alptis.remuneration.reporting.SupervisionService.Health;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -12,6 +15,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Interface endpoints for the technical administration screens (section 3, 8.13): the supervision of
@@ -24,17 +29,20 @@ public class AdminResource {
 
     private final SupervisionService supervision;
     private final PurgeService purge;
+    private final CalculationEngine engine;
 
     /**
      * Creates the resource.
      *
      * @param supervision the supervision service
      * @param purge       the purge service
+     * @param engine      the calculation engine, to relaunch a failed treatment
      */
     @Inject
-    public AdminResource(SupervisionService supervision, PurgeService purge) {
+    public AdminResource(SupervisionService supervision, PurgeService purge, CalculationEngine engine) {
         this.supervision = supervision;
         this.purge = purge;
+        this.engine = engine;
     }
 
     /**
@@ -47,6 +55,43 @@ public class AdminResource {
     @RolesAllowed({"IT_ADMIN", "AUDITOR"})
     public Health supervision() {
         return supervision.health();
+    }
+
+    /**
+     * Lists the failed treatments still awaiting a relaunch (ADM-04). No amount is reported.
+     *
+     * @return the failed treatments
+     */
+    @GET
+    @Path("/supervision/failed")
+    @RolesAllowed({"IT_ADMIN", "AUDITOR"})
+    public List<FailedTreatment> failedTreatments() {
+        return supervision.failedTreatments();
+    }
+
+    /**
+     * Relaunches a failed treatment by re-running the calculation of its period (ADM-04); reserved to
+     * the technical administrator. The response carries only the refreshed failed list, no amount.
+     *
+     * @param request the entity and month of the treatment to relaunch
+     * @return the refreshed failed treatments
+     */
+    @POST
+    @Path("/supervision/relaunch")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"IT_ADMIN"})
+    public List<FailedTreatment> relaunch(RelaunchRequest request) {
+        engine.runReal(request.entityCode(), LocalDate.parse(request.month()));
+        return supervision.failedTreatments();
+    }
+
+    /**
+     * The entity and month of a failed treatment to relaunch (ADM-04).
+     *
+     * @param entityCode the entity code
+     * @param month      the period month
+     */
+    public record RelaunchRequest(String entityCode, String month) {
     }
 
     /**

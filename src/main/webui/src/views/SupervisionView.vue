@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { apiGet, ApiError } from '../api/client';
+import { apiGet, apiPost, ApiError } from '../api/client';
+import { useSessionStore } from '../stores/session';
 import { healthLabel } from '../presentation/imports';
-import { AppCard, AppMessage, DetailList, DetailRow, PageHeading } from '../components/ui';
+import { AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, PageHeading } from '../components/ui';
+import type { Column } from '../components/ui';
 
 interface Health {
   status: string;
@@ -14,8 +16,21 @@ interface Health {
   lastCalcAt: string | null;
 }
 
+interface FailedTreatment {
+  entityCode: string;
+  month: string;
+  runType: string;
+  failedAt: string | null;
+}
+
+const session = useSessionStore();
 const data = ref<Health | null>(null);
+const failed = ref<FailedTreatment[]>([]);
 const error = ref('');
+const message = ref('');
+
+/** Whether the current user (technical administrator) may relaunch a failed treatment. */
+const canRelaunch = (): boolean => session.roles.includes('IT_ADMIN');
 
 /**
  * Formats a timestamp for display, or a dash when absent.
@@ -25,14 +40,41 @@ function at(value: string | null): string {
   return value ?? '—';
 }
 
-/** Loads the supervision health snapshot. */
+/** Columns of the failed-treatments table. */
+const failedColumns: Column<FailedTreatment>[] = [
+  { key: 'entityCode', label: 'Entité' },
+  { key: 'month', label: 'Période' },
+  { key: 'runType', label: 'Traitement' },
+  { key: 'failedAt', label: 'Échec', value: (t) => at(t.failedAt) },
+];
+
+/** Loads the supervision health snapshot and the failed treatments. */
 async function load() {
   error.value = '';
   try {
     data.value = await apiGet<Health>('/api/ui/v1/admin/supervision');
+    failed.value = await apiGet<FailedTreatment[]>('/api/ui/v1/admin/supervision/failed');
   } catch (e) {
     data.value = null;
     error.value = e instanceof ApiError ? e.message : 'Chargement impossible';
+  }
+}
+
+/**
+ * Relaunches a failed treatment by re-running its period's calculation.
+ * @param treatment the failed treatment to relaunch
+ */
+async function relaunch(treatment: FailedTreatment): Promise<void> {
+  error.value = '';
+  message.value = '';
+  try {
+    failed.value = await apiPost<FailedTreatment[]>('/api/ui/v1/admin/supervision/relaunch', {
+      entityCode: treatment.entityCode,
+      month: treatment.month,
+    });
+    message.value = `Traitement relancé pour ${treatment.entityCode} ${treatment.month}.`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Relance impossible';
   }
 }
 
@@ -47,6 +89,28 @@ onMounted(load);
     />
 
     <AppMessage v-if="error" variant="error" data-testid="sup-error">{{ error }}</AppMessage>
+    <AppMessage v-if="message" variant="success" data-testid="sup-message">{{ message }}</AppMessage>
+
+    <AppCard title="Traitements en échec" data-testid="sup-failed">
+      <DataTable
+        :columns="failedColumns"
+        :rows="failed"
+        empty="Aucun traitement en échec."
+        empty-testid="sup-no-failed"
+        :row-testid="(t) => `failed-row-${t.entityCode}-${t.month}`"
+      >
+        <template #actions="{ row }">
+          <AppButton
+            v-if="canRelaunch()"
+            variant="secondary"
+            :data-testid="`failed-relaunch-${row.entityCode}-${row.month}`"
+            @click="relaunch(row)"
+          >
+            Relancer
+          </AppButton>
+        </template>
+      </DataTable>
+    </AppCard>
 
     <template v-if="data">
       <p><span class="tag ok" data-testid="sup-status">{{ healthLabel(data.status) }}</span></p>

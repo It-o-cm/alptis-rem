@@ -54,10 +54,13 @@ class DemoVisibilityTest {
     private static final List<String> MONTHS = List.of("2026-09-01", "2026-10-01", "2026-08-01", "2026-06-01");
 
     /**
-     * Section-7 exceptions: endpoints whose emptiness is a normal state, named with their reason. None
-     * are needed — every list endpoint the dataset exposes carries data for the users that may see it.
+     * Section-7 exceptions: endpoints whose emptiness is a normal state, named with their reason. The
+     * failed-treatments list (ADM-04) is empty in a healthy demonstration — every seeded treatment
+     * succeeded — so its emptiness is the expected, nominal state, not a gap in the dataset.
      */
-    private static final Map<String, String> EXCEPTIONS = Map.of();
+    private static final Map<String, String> EXCEPTIONS = Map.of(
+            "/api/ui/v1/admin/supervision/failed",
+            "ADM-04: a healthy demonstration carries no failed treatment to relaunch");
 
     /** Resets the baseline and loads the demonstration dataset before each test. */
     @BeforeEach
