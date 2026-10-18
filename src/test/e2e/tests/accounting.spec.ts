@@ -104,6 +104,42 @@ test('le contrôleur Finance remonte la chaîne du virement au bordereau, à la 
   await finance.close();
 });
 
+test('FIN-04 : la modification du schéma comptable porte le nouveau compte dans l’extraction suivante @screen:accounting @screen:periods @req:FIN-02 @path:FIN-04 @role-action:BUSINESS_ADMIN-edit-accounting-scheme', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=FIN-04&entity=ALPTIS_ASSURANCES&month=2029-05-01')).ok()).toBeTruthy();
+
+  // The business administrator changes the EARNED_COMMISSIONS account.
+  const adminCtx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const admin = await adminCtx.newPage();
+  await admin.goto('/comptabilite');
+  await admin.getByTestId('acc-entity').selectOption('ALPTIS_ASSURANCES');
+  await admin.getByTestId('acc-refresh').click();
+  await admin.getByTestId('acc-map-role').selectOption('EARNED_COMMISSIONS');
+  await admin.getByTestId('acc-map-account').fill('467999');
+  await admin.getByTestId('acc-map-save').click();
+  await expect(admin.getByTestId('acc-message')).toContainText('467999');
+
+  // The validator validates the period, generating the entries with the new account.
+  const valCtx = await browser.newContext({ httpCredentials: USERS.validatorAlptis });
+  const val = await valCtx.newPage();
+  await val.goto('/');
+  await val.getByTestId('open-ALPTIS_ASSURANCES-2029-05-01').click();
+  await val.getByTestId('advance-button').click();
+  await expect(val.getByTestId('detail-state')).toContainText('Validée métier');
+  await valCtx.close();
+
+  // The next extraction carries the new account.
+  await admin.goto('/comptabilite');
+  await admin.getByTestId('acc-entity').selectOption('ALPTIS_ASSURANCES');
+  await admin.getByTestId('acc-month').selectOption('2029-05-01');
+  await admin.getByTestId('acc-refresh').click();
+  await admin.getByTestId('acc-extract').click();
+  await expect(admin.getByTestId('acc-extract-csv')).toContainText('467999');
+  await adminCtx.close();
+});
+
 test.describe('Comptabilité — accessibilité', () => {
   test.use({ httpCredentials: USERS.financeAlptis });
 

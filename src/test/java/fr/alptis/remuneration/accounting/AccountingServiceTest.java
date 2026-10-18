@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Acceptance tests of the accounting generation (section 10.2, FIN-01): the accounting cycle of the
@@ -43,6 +44,9 @@ class AccountingServiceTest {
 
     @Inject
     AccountingService service;
+
+    @Inject
+    fr.alptis.remuneration.accounting.AccountingSetupService setup;
 
     private static final LocalDate M = LocalDate.of(2026, 9, 1);
 
@@ -101,6 +105,25 @@ class AccountingServiceTest {
         assertEquals(0, new BigDecimal(amount).compareTo(e.amount), event + " amount");
         assertEquals(debit, e.debitAccount, event + " debit");
         assertEquals(credit, e.creditAccount, event + " credit");
+    }
+
+    /**
+     * FIN-02/FIN-04: editing the account of a role updates the mapping; an unmapped role (an entity never
+     * set up) is reported as not found.
+     */
+    @Test
+    @TestTransaction
+    void updates_a_role_account_and_rejects_an_unmapped_role() {
+        fr.alptis.remuneration.domain.AccountMapping updated =
+                setup.updateAccount(unep(), fr.alptis.remuneration.domain.AccountRole.EARNED_COMMISSIONS, "467999");
+        assertEquals("467999", updated.accountNumber);
+
+        LegalEntity fresh = new LegalEntity();
+        fresh.code = "NOMAP";
+        fresh.name = "Sans mapping";
+        fresh.persist();
+        assertThrows(fr.alptis.remuneration.domain.ResourceNotFoundException.class,
+                () -> setup.updateAccount(fresh, fr.alptis.remuneration.domain.AccountRole.EARNED_COMMISSIONS, "1"));
     }
 
     /**

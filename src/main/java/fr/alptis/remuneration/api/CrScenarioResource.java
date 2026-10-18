@@ -221,6 +221,7 @@ public class CrScenarioResource {
             case "BRD-03" -> seedBrd03(periodMonth);
             case "BRD-04" -> seedBrd04(entity, periodMonth);
             case "BRD-07" -> seedBrd07(entity, periodMonth);
+            case "FIN-04" -> seedFin04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -3002,6 +3003,20 @@ public class CrScenarioResource {
      * @param entity      the entity
      * @param periodMonth the calculation month
      */
+    /**
+     * FIN-04 (modification du schéma comptable) : une période contrôlée portant une commission acquise,
+     * prête à être validée par le métier. Modifier le compte d'un rôle avant la validation fait porter le
+     * nouveau compte aux écritures générées, visibles dans l'extraction suivante (FIN-02).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedFin04(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.CONTROLLED;
+        payee(entity, period, "P-FIN04", "100.00", PartnerStatus.ACTIVE, true);
+    }
+
     private void seedBrd07(LegalEntity entity, LocalDate periodMonth) {
         Period period = period(entity, periodMonth);
         period.state = PeriodState.FINANCE_VALIDATED;

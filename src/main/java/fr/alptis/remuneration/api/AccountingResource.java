@@ -33,6 +33,7 @@ public class AccountingResource {
 
     private final AccountingQueryService query;
     private final CutoffService cutoff;
+    private final fr.alptis.remuneration.accounting.AccountingSetupService setup;
     private final EntityScope scope;
 
     /**
@@ -40,12 +41,15 @@ public class AccountingResource {
      *
      * @param query  the accounting read model
      * @param cutoff the cut-off service
+     * @param setup  the accounting schema/mapping setup service
      * @param scope  the entity partition
      */
     @Inject
-    public AccountingResource(AccountingQueryService query, CutoffService cutoff, EntityScope scope) {
+    public AccountingResource(AccountingQueryService query, CutoffService cutoff,
+                              fr.alptis.remuneration.accounting.AccountingSetupService setup, EntityScope scope) {
         this.query = query;
         this.cutoff = cutoff;
+        this.setup = setup;
         this.scope = scope;
     }
 
@@ -62,6 +66,38 @@ public class AccountingResource {
     public SchemeView scheme(@PathParam("entity") String entityCode) {
         requireScope(entityCode);
         return query.scheme(entityCode);
+    }
+
+    /**
+     * Updates the account number mapped to a role of an entity's accounting schema (FIN-02); reserved to
+     * the business administrator. The change applies to entries generated afterwards.
+     *
+     * @param entityCode the entity code
+     * @param edit       the role and its new account number
+     * @return the updated schema view
+     */
+    @POST
+    @Path("/{entity}/scheme/mapping")
+    @jakarta.ws.rs.Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed("BUSINESS_ADMIN")
+    public SchemeView updateMapping(@PathParam("entity") String entityCode, MappingEdit edit) {
+        requireScope(entityCode);
+        fr.alptis.remuneration.domain.LegalEntity entity =
+                fr.alptis.remuneration.domain.LegalEntity.<fr.alptis.remuneration.domain.LegalEntity>find(
+                        "code", entityCode).firstResult();
+        setup.updateAccount(entity, fr.alptis.remuneration.domain.AccountRole.valueOf(edit.role()),
+                edit.accountNumber());
+        return query.scheme(entityCode);
+    }
+
+    /**
+     * Request body of an account-mapping edit (FIN-02).
+     *
+     * @param role          the account role name
+     * @param accountNumber the new account number
+     */
+    public record MappingEdit(String role, String accountNumber) {
     }
 
     /**

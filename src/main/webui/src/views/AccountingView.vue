@@ -75,6 +75,28 @@ const extracting = ref(false);
 /** Whether the current user may produce the accounting extract. */
 const canExtract = () => canProduceExport(session.roles);
 
+/** Whether the current user may edit the accounting schema mapping (FIN-02). */
+const canEditScheme = () => session.roles.includes('BUSINESS_ADMIN');
+
+const editRole = ref('');
+const editAccount = ref('');
+
+/** Saves a new account number for the selected role, then reloads the scheme (FIN-02/FIN-04). */
+async function saveMapping(): Promise<void> {
+  error.value = '';
+  message.value = '';
+  try {
+    await apiPost(`/api/ui/v1/accounting/${entity.value}/scheme/mapping`, {
+      role: editRole.value,
+      accountNumber: editAccount.value,
+    });
+    message.value = `Compte du rôle mis à jour : ${editAccount.value}.`;
+    await loadScheme();
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Modification refusée';
+  }
+}
+
 /** Columns of the accounting scheme table. */
 const schemeColumns: Column<SchemeRow & { i: number }>[] = [
   { key: 'event', label: 'Événement', value: (s) => accountingEventLabel(s.event) },
@@ -242,6 +264,18 @@ onMounted(refresh);
         empty="Aucune correspondance."
         :row-testid="(m) => `mapping-row-${m.i}`"
       />
+      <div v-if="canEditScheme()" class="ui-bar" data-testid="acc-mapping-edit">
+        <FormField label="Rôle" stacked width="short" v-slot="{ id }">
+          <select :id="id" data-testid="acc-map-role" v-model="editRole">
+            <option value="" disabled>Choisir un rôle</option>
+            <option v-for="m in mappingRows" :key="m.role" :value="m.role">{{ accountRoleLabel(m.role) }}</option>
+          </select>
+        </FormField>
+        <FormField label="Nouveau compte" stacked width="short" v-slot="{ id }">
+          <input :id="id" data-testid="acc-map-account" type="text" v-model="editAccount" />
+        </FormField>
+        <AppButton variant="secondary" data-testid="acc-map-save" @click="saveMapping">Modifier le compte</AppButton>
+      </div>
     </AppCard>
 
     <AppCard title="Écritures du mois">

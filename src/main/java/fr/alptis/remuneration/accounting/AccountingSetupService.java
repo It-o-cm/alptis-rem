@@ -2,6 +2,7 @@ package fr.alptis.remuneration.accounting;
 
 import fr.alptis.remuneration.domain.AccountMapping;
 import fr.alptis.remuneration.domain.AccountRole;
+import fr.alptis.remuneration.domain.ResourceNotFoundException;
 import fr.alptis.remuneration.domain.AccountingEvent;
 import fr.alptis.remuneration.domain.AccountingScheme;
 import fr.alptis.remuneration.domain.AccountingVariant;
@@ -117,5 +118,27 @@ public class AccountingSetupService {
                 scheme.persist();
             }
         }
+    }
+
+    /**
+     * Updates the account number mapped to a role for an entity (FIN-02): the change applies to the
+     * accounting entries generated from then on, so a later period's extraction carries the new account
+     * while already-extracted entries keep theirs.
+     *
+     * @param entity        the entity
+     * @param role          the account role
+     * @param accountNumber the new account number
+     * @return the updated mapping
+     * @throws ResourceNotFoundException when the role is not mapped for the entity
+     */
+    @Transactional
+    public AccountMapping updateAccount(LegalEntity entity, AccountRole role, String accountNumber) {
+        AccountMapping mapping = AccountMapping.<AccountMapping>find("entity = ?1 and accountRole = ?2",
+                entity, role).firstResult();
+        if (mapping == null) {
+            throw new ResourceNotFoundException("Rôle de compte non paramétré : " + role);
+        }
+        mapping.accountNumber = accountNumber;
+        return mapping;
     }
 }

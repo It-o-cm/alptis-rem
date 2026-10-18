@@ -1381,6 +1381,28 @@ class CrScenarioResourceTest {
                 .body("findAll { it.status == 'DRAFT' }.size()", is(2));
     }
 
+    /**
+     * FIN-04 (parcours « Modification du schéma comptable ») : après avoir changé le compte d'un rôle,
+     * les écritures de la période validée ensuite — et donc son extraction — portent le nouveau compte.
+     */
+    @Test
+    void fin04_scheme_change_appears_in_the_next_extraction() {
+        given().when().post("/api/test/cr-scenario?cr=FIN-04&entity=ALPTIS_ASSURANCES&month=2028-11-01")
+                .then().statusCode(204);
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").contentType("application/json")
+                .body(java.util.Map.of("role", "EARNED_COMMISSIONS", "accountNumber", "467999"))
+                .when().post("/api/ui/v1/accounting/ALPTIS_ASSURANCES/scheme/mapping").then().statusCode(200)
+                .body("mapping.find { it.role == 'EARNED_COMMISSIONS' }.accountNumber", is("467999"));
+        given().auth().preemptive().basic("validator-alptis", "validator-alptis").contentType("application/json")
+                .body(java.util.Map.of("toState", "BUSINESS_VALIDATED", "reason", "test"))
+                .when().post("/api/ui/v1/periods/ALPTIS_ASSURANCES/2028-11-01/transition").then().statusCode(200);
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/accounting/ALPTIS_ASSURANCES/2028-11-01/extract").then().statusCode(200);
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/accounting/ALPTIS_ASSURANCES/2028-11-01/extract.csv").then().statusCode(200)
+                .body(containsString("467999"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")
