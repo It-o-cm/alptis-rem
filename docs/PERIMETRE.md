@@ -33,6 +33,22 @@ PAI-04/07/08/09/11/12). **Corrigés :**
 JaCoCo 100 % ; suite Playwright complète 330/330). Condition 4 de `PERIMETRE.md`
 rétablie pour ces trois cas.
 
+### Reste à faire — parcours §4.6/§4.7 (13), prochaine étape BRD-02
+
+Ordre §4 : BRD-02, BRD-03, BRD-04, BRD-07, FIN-04, FIN-06, FIN-09, HIS-01, ADM-02,
+ADM-04, FDV-03, FDV-07, FDV-10.
+
+**BRD-02/BRD-03 (bordereau au niveau du bénéficiaire : code de production, distributeur,
+groupement)** n'est **pas** un simple test e2e : `AccountService.statement()` fixe
+`level = PRODUCTION_CODE` en dur alors que `proposePayments` itère des comptes de tout
+`payeeType`. À faire : (1) mapper `statement.level` depuis `account.payeeType`
+(`PRODUCTION_CODE`/`DISTRIBUTOR`/`GROUP`) ; (2) exposer le niveau et un bénéficiaire
+**nommé** (code de production, `legalName` du distributeur, code du groupement) sur le
+bordereau (`StatementView` + `StatementContent` + écran), au lieu de « PRODUCTION_CODE
+#id » ; (3) scénario à trois comptes (un par niveau) avec lignes et coordonnées ;
+(4) e2e vérifiant un bordereau par niveau, bon bénéficiaire, bonnes lignes. Tests
+unitaires + JaCoCo 100 %.
+
 Méthode : un écran de l'inventaire servi comme partie d'un autre écran n'est
 `complet` que si tout ce que décrit sa ligne y est réellement utilisable ; sinon
 `partiel`. Les statuts de ce premier passage sont déduits de la lecture du code ;
