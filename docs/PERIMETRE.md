@@ -42,9 +42,27 @@ FDV-03, FDV-07, FDV-10.
 mappe désormais `level` depuis `account.payeeType` ; `StatementService` expose le niveau
 et un bénéficiaire **nommé** (code de production / `legalName` distributeur / code
 groupement) dans `StatementContent`, affiché sur l'écran des bordereaux ; scénario
-BRD-02 (trois comptes, un par niveau) + e2e `@path:BRD-02`. Attention : `BRD-03` en
-tant que **parcours** est « bordereau multi-entités → sous-total par entité » (différent
-de l'exigence BRD-03 « produire au niveau du bénéficiaire », couverte ici).
+BRD-02 (trois comptes, un par niveau) + e2e `@path:BRD-02`.
+
+**BRD-03 (parcours « bordereau multi-entités → sous-total par entité ») = exigence
+BRD-04.** C'est une FONCTIONNALITÉ MAJEURE, pas un e2e : la spéc (§5.7 p.578) décrit un
+bordereau multi-entités comme un `statement` à `entity_id`/période/compte **nuls**,
+rattaché à ses lignes de commission inter-entités et, s'il y a paiement, à un ordre
+**par entité** (le sous-total de l'entité, PAY-05 p.1462). Déclenché par une préférence
+du distributeur (comme `statementGrouping` ; BRD-04 : « un bordereau par entité, OU un
+bordereau unique couvrant plusieurs entités avec un sous-total par entité »). Le modèle
+actuel ne produit que des bordereaux par (entité, compte) ; le cycle tourne par entité,
+donc la consolidation inter-entités ne s'y insère pas naturellement.
+Conception retenue à implémenter (tranchée dans `docs/DECISIONS.md` au moment de coder) :
+(1) champ `Distributor.consolidatedBordereau` (préférence, synchronisée du CRM, défaut
+faux = comportement actuel) ; (2) vue consolidée **à la demande** dans `StatementService`
+(`consolidated(partnerCode, month)`) agrégeant les bordereaux de cycle par entité du
+distributeur en un `StatementContent` à entité/période/compte nuls, avec une ligne
+**sous-total par entité** et un total ; l'ordre par entité existe déjà (PAY-08/PAI-12) ;
+(3) point d'accès `/documents/{entity}/{month}/consolidated/{partner}` + écran ;
+(4) scénario (distributeur préférence consolidée, payable en deux entités le même mois)
++ e2e `@path:BRD-03` vérifiant un sous-total par entité ; (5) tests unitaires, JaCoCo
+100 %. Ne PAS commencer sans avoir relu §9.5 et §5.7 sur le bordereau multi-entités.
 
 Méthode : un écran de l'inventaire servi comme partie d'un autre écran n'est
 `complet` que si tout ce que décrit sa ligne y est réellement utilisable ; sinon
