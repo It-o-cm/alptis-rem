@@ -92,7 +92,9 @@ test.describe('Imports — opérateur', () => {
       buffer: Buffer.from(events, 'utf-8'),
     });
     await page.getByTestId('upload-submit').click();
-    await expect(page.getByTestId('upload-message')).toContainText('1 intégrée(s), 0 rejetée(s), 0 en attente');
+    await expect(page.getByTestId('upload-message')).toContainText(
+      '1 intégrée(s), 0 rejetée(s), 0 en attente, 0 filtrée(s)',
+    );
     // The journal batch carries its fingerprint and the operator who actually deposited it — not a
     // generic placeholder but the authenticated user (INT-01).
     const row = page.locator('[data-testid^="batch-row-"]').first();
@@ -100,11 +102,18 @@ test.describe('Imports — opérateur', () => {
     await row.click();
     await expect(page.getByTestId('batch-fingerprint')).not.toBeEmpty();
     await expect(page.getByTestId('batch-author')).toHaveText('operator-alptis');
-    // The loaded event is visible with its status on the events screen.
+    // The five counters of the journal (section 9.1): read = filtered + loaded + rejected + held.
+    await expect(page.getByTestId('batch-lines-read')).toHaveText('1');
+    await expect(page.getByTestId('batch-lines-filtered')).toHaveText('0');
+    await expect(page.getByTestId('batch-lines-loaded')).toHaveText('1');
+    await expect(page.getByTestId('batch-lines-rejected')).toHaveText('0');
+    await expect(page.getByTestId('batch-lines-held')).toHaveText('0');
+    // The loaded event is visible with its status on the events screen (awaiting the next calculation).
     await page.goto('/evenements');
     await page.getByTestId('events-search').click();
     const eventRow = page.locator('[data-testid^="event-row-"]').filter({ hasText: 'Prime encaissée' });
     await expect(eventRow).toHaveCount(1);
+    await expect(eventRow).toContainText('En attente de calcul');
   });
 
   test('correction d’un rejet à l’écran : la ligne repart seule, le rejet est corrigé (INT-03) @screen:imports @screen:events @path:INT-03', async ({ page, request }) => {

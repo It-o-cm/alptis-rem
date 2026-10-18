@@ -746,6 +746,19 @@ test.describe('Rejeu des cas de recette par l’interface', () => {
     // The journal batch records the two source lines read, one filtered and one integrated.
     const row = page.locator('[data-testid^="batch-row-"]').first();
     await expect(row).toBeVisible();
+    // INT-14: the integrated insurer event carries the entity's part only — 0,24 € (the UMR part 0,19 €
+    // of the 0,43 € total is filtered out), proven by the event's raw gross amount on its detail.
+    await page.goto('/evenements');
+    await page.getByTestId('events-type').selectOption('INSURER_COMMISSION');
+    await page.getByTestId('events-q').fill('AD-1');
+    await page.getByTestId('events-search').click();
+    const insurerRows = page.locator('[data-testid^="event-row-"]');
+    await expect(insurerRows).toHaveCount(1);
+    await page.locator('[data-testid^="open-event-"]').first().click();
+    // The insurer commission arrives already computed, so the integrated part is the received amount.
+    await expect(page.getByTestId('detail-precomputed')).toContainText('0,24');
+    await expect(page.getByTestId('detail-precomputed')).not.toContainText('0,43');
+    await expect(page.getByTestId('detail-precomputed')).not.toContainText('0,19');
   });
 
   test('CR-38 : le fichier de production UMR donne des commissions reçues de 451,54 € @screen:imports @screen:calculations @screen:commissionSearch @cr:CR-38', async ({
@@ -1866,7 +1879,11 @@ test('INT-23 : l’écran montre un indicateur reçu et un indicateur calculé e
   await expect(computed).toHaveCount(1);
   await expect(computed).toContainText('UNPAID_RATE');
   await expect(computed).toContainText('50');
-  await expect(rows.filter({ hasText: 'Reçu' })).toContainText('COMPLAINT_RATE');
+  // INT-23: each indicator is dated by its period (the 2026-01 period under test).
+  await expect(computed).toContainText('2026');
+  const received = rows.filter({ hasText: 'Reçu' });
+  await expect(received).toContainText('COMPLAINT_RATE');
+  await expect(received).toContainText('2026');
 
   await adminCtx.close();
 });

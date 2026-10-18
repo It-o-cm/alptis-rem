@@ -181,7 +181,8 @@ public class EventQueryService {
                 event.contract == null ? null : event.contract.contractNumber,
                 event.eventDate, event.processingStatus.name(),
                 event.holdReason == null ? null : event.holdReason.name(),
-                CommissionLine.count("event = ?1", event), event.entity.code);
+                CommissionLine.count("event = ?1", event), event.entity.code, event.grossAmount,
+                event.precomputedAmount);
     }
 
     /**
@@ -197,10 +198,12 @@ public class EventQueryService {
      * @param holdReason     the hold reason code, possibly null
      * @param lineCount      the number of commission lines the event produced
      * @param entityCode     the entity code
+     * @param grossAmount       the raw gross amount carried by the event (the entity's integrated part)
+     * @param precomputedAmount the amount given already computed by the insurer, when present
      */
     public record EventView(Long id, String sourceKey, String sourceSystem, String eventType, String contractNumber,
                             LocalDate eventDate, String status, String holdReason, long lineCount,
-                            String entityCode) {
+                            String entityCode, BigDecimal grossAmount, BigDecimal precomputedAmount) {
     }
 
     /**

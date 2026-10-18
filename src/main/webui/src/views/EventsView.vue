@@ -24,6 +24,8 @@ interface EventView {
   holdReason: string | null;
   lineCount: number;
   entityCode: string;
+  grossAmount: number | null;
+  precomputedAmount: number | null;
 }
 
 interface ProducedLine {
@@ -144,6 +146,14 @@ onMounted(search);
         </div>
         <div><dt>Adhésion</dt><dd>{{ detail.event.contractNumber ?? '—' }}</dd></div>
         <div><dt>Date</dt><dd>{{ formatDate(detail.event.eventDate) }}</dd></div>
+        <div>
+          <dt>Montant brut</dt>
+          <dd data-testid="detail-gross">{{ formatAmount(detail.event.grossAmount ?? undefined) }}</dd>
+        </div>
+        <div v-if="detail.event.precomputedAmount !== null">
+          <dt>Montant reçu</dt>
+          <dd data-testid="detail-precomputed">{{ formatAmount(detail.event.precomputedAmount ?? undefined) }}</dd>
+        </div>
       </dl>
       <h3 class="ui-detail-section">Lignes produites</h3>
       <DataTable

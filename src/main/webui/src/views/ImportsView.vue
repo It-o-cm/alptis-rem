@@ -322,6 +322,13 @@ onMounted(async () => {
         Empreinte <span class="mono" data-testid="batch-fingerprint">{{ selected.fileHash }}</span> ·
         déposé par <span data-testid="batch-author">{{ selected.importedBy }}</span>
       </p>
+      <p class="page__subtitle">
+        Lues <span data-testid="batch-lines-read">{{ selected.linesRead ?? 0 }}</span> ·
+        Filtrées <span data-testid="batch-lines-filtered">{{ selected.linesFiltered ?? 0 }}</span> ·
+        Intégrées <span data-testid="batch-lines-loaded">{{ selected.linesLoaded ?? 0 }}</span> ·
+        Rejetées <span data-testid="batch-lines-rejected">{{ selected.linesRejected ?? 0 }}</span> ·
+        En attente <span data-testid="batch-lines-held">{{ selected.linesOnHold ?? 0 }}</span>
+      </p>
       <AppMessage v-if="correctionError" variant="error" data-testid="correction-error">{{ correctionError }}</AppMessage>
       <DataTable
         :columns="detailColumns"

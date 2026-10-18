@@ -19,15 +19,16 @@ ou, si l'écran ne montre pas la donnée, fonctionnalité). Les règles de solid
 s'appliquent (effet vu depuis un autre écran, fichier produit ouvert). Ce tableau est tenu à
 jour à chaque commit de la §10.1 ; il n'est pas clos tant qu'il reste un **GAP**.
 
-**Bilan initial de la revue : 60 parcours portent au moins un GAP** (INT 8, PAR 7, CAL 6,
+**Bilan initial de la revue : 60 parcours portaient au moins un GAP** (INT 8, PAR 7, CAL 6,
 CYC/CTL/AJU/CPT 9, PAI 5, BRD 7, FIN 4, FLX 2, SIM 1, HIS 1, REP 2, ADM 2, FDV 4, DEM 2).
-Les 75 autres sont entièrement prouvés. Détail par sous-section :
+**Avancement (2026-10-18) : INT-01, INT-14, INT-23 clos → 57 parcours avec GAP restants**
+(INT 5 : INT-03/09/11/15/18). Détail par sous-section :
 
 ### §4.1 Intégration et référentiels
 
 | Parcours | Éléments → preuve (ou GAP) |
 | --- | --- |
-| INT-01 | empreinte ✓ ; auteur ✓ ; **GAP** cinq compteurs (seuls 3 affirmés, lignes lues/filtrées absentes) ; **GAP** statut de l'événement non affirmé |
+| INT-01 | empreinte ✓ ; auteur ✓ ; cinq compteurs ✓ (`batch-lines-read/filtered/loaded/rejected/held` sur le détail du lot) ; statut de l'événement ✓ (« En attente de calcul » sur la liste des événements) |
 | INT-02 | un rejet par code (6) ✓ ; libellé ✓ ; ligne brute ✓ ; autres intégrées ✓ |
 | INT-03 | la ligne repart seule ✓ ; **GAP** compteurs mis à jour après correction non relus ; **GAP** trace d'audit |
 | INT-04 | statut du rejet ✓ ; aucun événement créé ✓ |
@@ -40,7 +41,7 @@ Les 75 autres sont entièrement prouvés. Détail par sous-section :
 | INT-11 | événement créé ✓ ; tracé ✓ ; **GAP** pris par le calcul suivant (aucun calcul lancé) |
 | INT-12 | données visibles sur les garanties ✓ |
 | INT-13 | test du mapping ✓ ; résultat pivot ✓ |
-| INT-14 | lignes filtrées comptées ✓ ; **GAP** part de l'entité (0,24 €) jamais affirmée |
+| INT-14 | lignes filtrées comptées ✓ ; part de l'entité (0,24 €) ✓ (`detail-precomputed` du seul événement assureur intégré = 0,24, ni 0,43 ni 0,19) |
 | INT-15 | nouvelle version ✓ ; **GAP** imports passés gardent l'ancienne (rétention non exercée) |
 | INT-16 | fiche à jour ✓ ; attributs propres conservés ✓ |
 | INT-17 | paiements bloqués ✓ ; débloqués aux bonnes dates ✓ |
@@ -49,7 +50,7 @@ Les 75 autres sont entièrement prouvés. Détail par sous-section :
 | INT-20 | réaffectées à la date d'effet ✓ ; historique ✓ |
 | INT-21 | hiérarchie historisée ✓ ; fiche groupement à jour ✓ |
 | INT-22 | code mis en correspondance ✓ ; débloque les en attente ✓ |
-| INT-23 | valeurs par distributeur ✓ ; **GAP** par période (aucune période affirmée) |
+| INT-23 | valeurs par distributeur ✓ ; par période ✓ (chaque ligne d'indicateur porte « 2026 » — période sous test) |
 | INT-24 | création ✓ ; fin de validité ✓ ; refus chevauchement ✓ |
 
 ### §4.2 Paramétrage des règles
