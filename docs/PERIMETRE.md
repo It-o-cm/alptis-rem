@@ -9,6 +9,36 @@ commit de rubrique.
 Barème d'état : `complet` (tout ce que décrit la ligne est réalisé et prouvé),
 `partiel` (une partie manque — le manque est nommé), `absent` (rien).
 
+## À CORRIGER — échecs pré-existants révélés par le premier `mvn verify` complet (2026-10-18)
+
+Le premier `mvn verify` **sans option** mené jusqu'au bout (les passes précédentes
+avaient été interrompues avant la fin de la suite) montre **3 échecs e2e** sur 330,
+tous dans du code non touché par la passe §4.5 (ce ne sont pas des régressions de
+PAI-04/07/08/09/11/12, vérifiés un à un) :
+
+1. **CPT-01 / CR-60** (`recette.spec.ts`) — un compte **débiteur** (solde reporté
+   négatif) ne reçoit **aucun bordereau** : `AccountService.proposePayments` fait
+   `continue` sur l'exclusion `NON_POSITIVE_BALANCE` et ne crée pas de `Statement`.
+   La spécification l'exige pourtant (§9.5 p.1720 « le bordereau aurait été produit
+   quand même, avec la mention du solde débiteur reporté et sans virement » ; BRD-01
+   « dès qu'il existe une ligne ou un solde reporté, qu'un paiement soit émis ou
+   non » ; pied §10.5 « solde débiteur reporté au mois suivant »). **À faire :**
+   produire un bordereau sans ordre pour un compte débiteur portant un solde reporté,
+   avec sa ligne « Report » et son net négatif. Attention : changement de
+   comportement de `proposePayments` à re-vérifier sur toute la suite.
+2. **PAR-01 / PAR-05** (`rules.spec.ts`) — tests **fragiles à l'horloge** : la version
+   créée est valide du 2026-01-01 au 2026-12-31 et le test attend le statut
+   « Approuvée » après approbation ; or `effectiveStatus` suit l'horloge (approuvée +
+   `today >= validFrom` ⇒ `ACTIVE` « En vigueur ») et la date simulée (2026-10-18) est
+   dans la fenêtre. **À faire :** rendre ces tests déterministes vis-à-vis de l'horloge
+   (fixer l'horloge dev via `/api/test`, ou dater la version hors fenêtre courante) de
+   sorte que la version approuvée non encore en vigueur affiche bien « Approuvée ».
+
+**Conséquence :** la condition 4 (suite e2e complète verte) de `PERIMETRE.md`
+**n'est pas remplie**. CPT-01, PAR-01, PAR-05 étaient comptés `complet` à tort (jamais
+rejoués dans une passe complète). Ces 3 corrections sont prioritaires avant de
+reprendre §4.6/§4.7.
+
 Méthode : un écran de l'inventaire servi comme partie d'un autre écran n'est
 `complet` que si tout ce que décrit sa ligne y est réellement utilisable ; sinon
 `partiel`. Les statuts de ce premier passage sont déduits de la lecture du code ;
