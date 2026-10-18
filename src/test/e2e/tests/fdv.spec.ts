@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { resetDb, seedFdv, USERS } from '../support/helpers';
+import { loadDemo, resetDb, seedFdv, USERS } from '../support/helpers';
 
 // Per-screen tests for the sales-force module (section 8.14): the variable plan with collaborators
 // and objectives (FDV-01/03/04), the monthly calculation, validation, adjustment and pay export
@@ -257,20 +257,17 @@ test('l’administrateur applique la réduction sur résiliation @screen:fdvPlan
 
 test('le commercial consulte son variable et le simule @screen:fdvCommercial @req:FDV-15 @req:FDV-11 @req:FDV-16 @path:FDV-11', async ({
   browser,
+  request,
 }) => {
-  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
-  const adminPage = await admin.newPage();
-  await adminPage.goto('/fdv/plan');
-  await adminPage.getByTestId('fdvp-run').click();
-  await expect(adminPage.getByTestId('fdvp-message')).toContainText('lancé');
-  await admin.close();
+  // The full demonstration carries rep-alptis as a collaborator with computed results of its own.
+  await loadDemo(request);
 
   const rep = await browser.newContext({ httpCredentials: USERS.salesRep });
   const page = await rep.newPage();
   await page.goto('/fdv/commercial');
   // ADM-03: the entity is chosen from a list shown by its name, never typed as a code.
   await expect(page.getByTestId('fdvc-entity').locator('option', { hasText: 'Alptis Assurances' })).toHaveCount(1);
-  await page.getByTestId('fdvc-id').fill('C-DEMO');
+  await page.getByTestId('fdvc-id').fill('rep-alptis');
   await page.getByTestId('fdvc-load').click();
   await expect(page.locator('[data-testid^="my-result-"]').first()).toBeVisible();
   await expect(page.locator('[data-testid^="chart-gauge-"]').first()).toBeVisible();
@@ -287,6 +284,41 @@ test('le commercial consulte son variable et le simule @screen:fdvCommercial @re
   await page.getByTestId('sim-run').click();
   await expect(page.getByTestId('sim-amount')).toContainText('atteinte 100 %');
   await rep.close();
+});
+
+test('FDV-10 : le commercial ne voit que son variable, le responsable ne voit que son équipe @screen:fdvCommercial @req:FDV-11 @path:FDV-10', async ({
+  browser,
+  request,
+}) => {
+  await loadDemo(request);
+
+  // A sales representative reads its own variable, and only its own: another collaborator is out of
+  // its perimeter.
+  const repCtx = await browser.newContext({ httpCredentials: USERS.salesRep });
+  const rep = await repCtx.newPage();
+  await rep.goto('/fdv/commercial');
+  await rep.getByTestId('fdvc-id').fill('rep-alptis');
+  await rep.getByTestId('fdvc-load').click();
+  await expect(rep.locator('[data-testid^="my-result-"]').first()).toBeVisible();
+  await rep.getByTestId('fdvc-id').fill('EMP-ALPTIS-3');
+  await rep.getByTestId('fdvc-load').click();
+  await expect(rep.getByTestId('fdvc-error')).toContainText('hors de votre périmètre');
+  await expect(rep.locator('[data-testid^="my-result-"]')).toHaveCount(0);
+  await repCtx.close();
+
+  // A sales manager reads a member of its team, but not a collaborator outside it (here another
+  // manager, who answers to no one).
+  const mgrCtx = await browser.newContext({ httpCredentials: USERS.managerAlptis });
+  const mgr = await mgrCtx.newPage();
+  await mgr.goto('/fdv/commercial');
+  await mgr.getByTestId('fdvc-id').fill('rep-alptis');
+  await mgr.getByTestId('fdvc-load').click();
+  await expect(mgr.locator('[data-testid^="my-result-"]').first()).toBeVisible();
+  await mgr.getByTestId('fdvc-id').fill('EMP-ALPTIS-1');
+  await mgr.getByTestId('fdvc-load').click();
+  await expect(mgr.getByTestId('fdvc-error')).toContainText('hors de votre périmètre');
+  await expect(mgr.locator('[data-testid^="my-result-"]')).toHaveCount(0);
+  await mgrCtx.close();
 });
 
 // Parcours FDV-04 (section 4.7) and recette case CR-87: market weighting. A collaborator with 10 000 €

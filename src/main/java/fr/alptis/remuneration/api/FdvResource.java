@@ -443,7 +443,36 @@ public class FdvResource {
     public List<ResultView> myVariable(@PathParam("entity") String entityCode,
                                        @PathParam("externalId") String externalId) {
         requireScope(entityCode);
+        requireCollaboratorVisibility(entityCode, externalId);
         return query.myVariable(entityCode, externalId);
+    }
+
+    /**
+     * Confines the commercial screen (FDV-10): a sales representative sees only its own variable, a
+     * sales manager only its own and its team's (the collaborators it manages); the business
+     * administrator and the auditor see everyone. The collaborator is linked to the dev user by its
+     * matricule (the username). Out of perimeter, the collaborator is reported as not found.
+     *
+     * @param entityCode the entity code
+     * @param externalId the requested collaborator's matricule
+     */
+    private void requireCollaboratorVisibility(String entityCode, String externalId) {
+        if (currentUser.hasRole("BUSINESS_ADMIN") || currentUser.hasRole("AUDITOR")) {
+            return;
+        }
+        String me = currentUser.username();
+        if (externalId.equals(me)) {
+            return;
+        }
+        if (currentUser.hasRole("SALES_MANAGER")) {
+            fr.alptis.remuneration.domain.Employee target =
+                    fr.alptis.remuneration.domain.Employee.<fr.alptis.remuneration.domain.Employee>find(
+                            "entity.code = ?1 and externalId = ?2", entityCode, externalId).firstResult();
+            if (target != null && target.manager != null && me.equals(target.manager.externalId)) {
+                return;
+            }
+        }
+        throw new ResourceNotFoundException("Collaborateur hors de votre périmètre : " + externalId);
     }
 
     /**
@@ -465,6 +494,7 @@ public class FdvResource {
                                                        @jakarta.ws.rs.QueryParam("month") String month,
                                                        @jakarta.ws.rs.QueryParam("production") BigDecimal production) {
         requireScope(entityCode);
+        requireCollaboratorVisibility(entityCode, externalId);
         return service.simulateMonthly(entityCode, externalId, LocalDate.parse(month), production);
     }
 

@@ -433,10 +433,10 @@ class FdvResourceTest {
      */
     @Test
     void simulates_the_variable() {
-        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
                 .when().get("/api/ui/v1/fdv/" + ENTITY + "/simulate/E1?month=" + MONTH + "&production=2000")
                 .then().statusCode(200).body("achieved", is(true)).body("amount", is(146.0f));
-        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
                 .when().get("/api/ui/v1/fdv/" + ENTITY + "/simulate/E1?month=" + MONTH)
                 .then().statusCode(200).body("weightedProduction", org.hamcrest.Matchers.notNullValue());
         given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
@@ -444,18 +444,81 @@ class FdvResourceTest {
     }
 
     /**
-     * A commercial consults its own variable; a UNEP user is out of scope and a viewer may not run.
+     * The administrator reads a collaborator's variable; a UNEP user is out of scope and a viewer may
+     * not run.
      */
     @Test
     void my_variable_scope_and_role() {
         given().auth().preemptive().basic("admin-alptis", "admin-alptis")
                 .when().post("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/run").then().statusCode(200);
-        given().auth().preemptive().basic("rep-alptis", "rep-alptis")
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
                 .when().get("/api/ui/v1/fdv/" + ENTITY + "/my-variable/E1")
                 .then().statusCode(200).body("employee", hasItem("E1"));
         given().auth().preemptive().basic("finance-unep", "finance-unep")
                 .when().get("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/results").then().statusCode(404);
         given().auth().preemptive().basic("viewer-alptis", "viewer-alptis")
                 .when().post("/api/ui/v1/fdv/" + ENTITY + "/" + MONTH + "/run").then().statusCode(403);
+    }
+
+    /**
+     * FDV-10: the commercial screen is confined to the caller's perimeter — a sales representative sees
+     * only its own variable, a sales manager only its own and its team's, while the administrator and the
+     * auditor see everyone. The collaborator is linked to the user by its matricule (the username).
+     */
+    @Test
+    void my_variable_is_confined_to_the_perimeter() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            LegalEntity entity = LegalEntity.<LegalEntity>find("code", ENTITY).firstResult();
+            Employee boss = perimeterEmployee(entity, "manager-alptis", JobCode.RR, null);
+            perimeterEmployee(entity, "rep-alptis", JobCode.CAC, boss);
+            Employee otherBoss = perimeterEmployee(entity, "manager2", JobCode.RR, null);
+            perimeterEmployee(entity, "OTHER-REP", JobCode.CAC, otherBoss);
+        });
+        String mine = "/api/ui/v1/fdv/" + ENTITY + "/my-variable/";
+        // The administrator and the auditor see everyone.
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis").when().get(mine + "rep-alptis")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("auditor", "auditor").when().get(mine + "rep-alptis")
+                .then().statusCode(200);
+        // A sales representative sees its own variable, and only its own.
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis").when().get(mine + "rep-alptis")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("rep-alptis", "rep-alptis").when().get(mine + "manager-alptis")
+                .then().statusCode(404);
+        // A sales manager sees its own and its team's, but not an unknown one, a manager with no manager,
+        // nor a collaborator of another manager's team.
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").when().get(mine + "manager-alptis")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").when().get(mine + "rep-alptis")
+                .then().statusCode(200);
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").when().get(mine + "UNKNOWN-XYZ")
+                .then().statusCode(404);
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").when().get(mine + "manager2")
+                .then().statusCode(404);
+        given().auth().preemptive().basic("manager-alptis", "manager-alptis").when().get(mine + "OTHER-REP")
+                .then().statusCode(404);
+    }
+
+    /**
+     * Persists a minimal collaborator for the perimeter test.
+     *
+     * @param entity     the entity
+     * @param externalId the matricule (matching a dev username)
+     * @param jobCode    the post
+     * @param manager    the manager, or null
+     * @return the persisted employee
+     */
+    private static Employee perimeterEmployee(LegalEntity entity, String externalId, JobCode jobCode,
+                                              Employee manager) {
+        Employee employee = new Employee();
+        employee.entity = entity;
+        employee.externalId = externalId;
+        employee.lastName = externalId;
+        employee.firstName = "Agent";
+        employee.jobCode = jobCode;
+        employee.manager = manager;
+        employee.validFrom = LocalDate.of(2026, 1, 1);
+        employee.persist();
+        return employee;
     }
 }
