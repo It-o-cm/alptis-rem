@@ -380,6 +380,42 @@ test('CR-88 : la mensualité de 146,00 € est versée objectif atteint, mais bl
   await admin.close();
 });
 
+test('FDV-03 : mensuel — objectif atteint paie la mensualité, manqué ou dix jours d’absence ne paient rien @screen:fdvPlan @screen:fdvValidation @req:FDV-05 @path:FDV-03', async ({
+  browser,
+  request,
+}) => {
+  const month = '2026-11-01';
+  expect(
+    (await request.post(`/api/test/fdv-demo/fdv03?entity=ALPTIS_ASSURANCES&month=${month}`)).ok(),
+  ).toBeTruthy();
+
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+
+  // Run the monthly individual variable of the month for every CAC collaborator.
+  await page.goto('/fdv/plan');
+  await page.getByTestId('fdvp-month').selectOption(month);
+  await page.getByTestId('fdvp-run').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('lancé');
+
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption(month);
+  await page.getByTestId('fdvv-refresh').click();
+
+  // Objective met, no absence: the 146,00 € instalment is paid.
+  const reached = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Atteint' });
+  await expect(reached).toContainText('146,00');
+  // Objective missed (production below target): nothing.
+  const missed = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Manque' });
+  await expect(missed).toContainText('0,00');
+  await expect(missed).not.toContainText('146');
+  // Objective met but ten working days of absence: nothing.
+  const absent = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Absent' });
+  await expect(absent).toContainText('0,00');
+  await expect(absent).not.toContainText('146');
+  await admin.close();
+});
+
 // Parcours FDV-01 (section 4.5): importing collaborators and their measures feeds the collaborator
 // fiches and the measures by period.
 test('l’import des collaborateurs et des mesures alimente les fiches et les mesures par période @screen:fdvCollaborators @screen:fdvMeasures @req:FDV-01 @req:FDV-02 @path:FDV-01', async ({

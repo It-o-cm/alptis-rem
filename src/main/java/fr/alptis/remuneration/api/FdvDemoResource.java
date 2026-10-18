@@ -187,6 +187,94 @@ public class FdvDemoResource {
     }
 
     /**
+     * Plants a focused monthly-individual scene for FDV-03: three CAC collaborators sharing the post's
+     * monthly plan (146 € instalment, objective 1 000), one meeting the objective, one missing it, one
+     * met but absent ten working days. Running the month then pays the instalment, nothing, and nothing.
+     *
+     * @param entityCode the entity code
+     * @param month      the period month (ISO date)
+     * @return 204 once seeded
+     */
+    @POST
+    @Path("/fdv03")
+    @Transactional
+    public Response seedFdv03(@QueryParam("entity") String entityCode, @QueryParam("month") String month) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        LocalDate periodMonth = LocalDate.parse(month);
+        Period period = new Period();
+        period.entity = entity;
+        period.periodMonth = periodMonth;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        VariablePlan plan = new VariablePlan();
+        plan.entity = entity;
+        plan.jobCode = JobCode.CAC;
+        plan.component = VariableComponent.MONTHLY_INDIVIDUAL;
+        plan.envelopeAmount = new BigDecimal("2450.00");
+        plan.instalmentAmount = new BigDecimal("146.00");
+        plan.validFrom = LocalDate.of(periodMonth.getYear(), 1, 1);
+        plan.validTo = LocalDate.of(periodMonth.getYear(), 12, 31);
+        plan.persist();
+        fdv03Employee(entity, periodMonth, "FDV03-OK", "Atteint", "2000.00", "0.00");
+        fdv03Employee(entity, periodMonth, "FDV03-MISS", "Manque", "500.00", "0.00");
+        fdv03Employee(entity, periodMonth, "FDV03-ABS", "Absent", "2000.00", "10.00");
+        return Response.noContent().build();
+    }
+
+    /**
+     * Seeds one CAC collaborator of the FDV-03 scene with its monthly objective (1 000), production and
+     * absence measures.
+     *
+     * @param entity      the entity
+     * @param periodMonth the period month
+     * @param externalId  the matricule
+     * @param lastName    the last name, used to locate the row
+     * @param production  the month's weighted production
+     * @param absenceDays the month's absence days
+     */
+    private void fdv03Employee(LegalEntity entity, LocalDate periodMonth, String externalId, String lastName,
+                               String production, String absenceDays) {
+        LocalDate first = periodMonth.withDayOfMonth(1);
+        LocalDate last = periodMonth.withDayOfMonth(periodMonth.lengthOfMonth());
+        Employee employee = new Employee();
+        employee.entity = entity;
+        employee.externalId = externalId;
+        employee.lastName = lastName;
+        employee.firstName = "FDV03";
+        employee.jobCode = JobCode.CAC;
+        employee.team = "Courtage";
+        employee.region = "Sud";
+        employee.validFrom = LocalDate.of(periodMonth.getYear(), 1, 1);
+        employee.persist();
+        SalesObjective objective = new SalesObjective();
+        objective.entity = entity;
+        objective.employee = employee;
+        objective.jobCode = JobCode.CAC;
+        objective.objectiveType = ObjectiveType.INDIVIDUAL_QUANTITATIVE;
+        objective.periodFrom = first;
+        objective.periodTo = last;
+        objective.targetValue = new BigDecimal("1000.00");
+        objective.versionNo = 1;
+        objective.persist();
+        EmployeeMeasure prod = new EmployeeMeasure();
+        prod.employee = employee;
+        prod.measureType = MeasureType.PRODUCTION;
+        prod.dimension = "particulier";
+        prod.periodFrom = first;
+        prod.periodTo = last;
+        prod.value = new BigDecimal(production);
+        prod.persist();
+        EmployeeMeasure absence = new EmployeeMeasure();
+        absence.employee = employee;
+        absence.measureType = MeasureType.ABSENCE;
+        absence.dimension = "absence";
+        absence.periodFrom = first;
+        absence.periodTo = last;
+        absence.value = new BigDecimal(absenceDays);
+        absence.persist();
+    }
+
+    /**
      * Seeds one activity measure for a criterion dimension of the demo collaborator (FDV-07).
      *
      * @param employee  the collaborator
