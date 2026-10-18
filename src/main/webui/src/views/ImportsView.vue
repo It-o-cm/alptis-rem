@@ -233,11 +233,16 @@ async function discard(rejection: RejectionView): Promise<void> {
   await refreshSelected();
 }
 
-/** Reloads the selected batch and the journal after a line action. */
+/** Reloads the journal and re-selects the (now refreshed) batch after a line action, so its
+ * counters reflect the correction or discard just applied (INT-03). */
 async function refreshSelected(): Promise<void> {
   if (selected.value) {
-    await selectBatch(selected.value);
+    const id = selected.value.id;
     await loadJournal();
+    const fresh = batches.value.find((b) => b.id === id);
+    if (fresh) {
+      await selectBatch(fresh);
+    }
   }
 }
 

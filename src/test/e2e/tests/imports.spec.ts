@@ -141,9 +141,21 @@ test.describe('Imports — opérateur', () => {
 
     // The rejection is corrected and the corrected line reprocessed into a visible event (it reparts alone).
     await expect(page.locator('[data-testid^="rejection-row-"]').first()).toContainText('CORRECTED');
+    // INT-03: the batch counters are updated — one more loaded, one fewer rejected (none left rejected).
+    await expect(page.getByTestId('batch-lines-loaded')).toHaveText('1');
+    await expect(page.getByTestId('batch-lines-rejected')).toHaveText('0');
     await page.goto('/evenements');
     await page.getByTestId('events-search').click();
     await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'ENC-FIX' })).toHaveCount(1);
+    // INT-03: the manual correction is kept in the audit trail, with its author and before/after.
+    await page.goto('/audit');
+    const correction = page.locator('[data-testid="audit-row"]').filter({ hasText: 'CORRECT_REJECTION' }).first();
+    await expect(correction).toBeVisible();
+    await expect(correction.getByTestId('audit-user')).toHaveText('operator-alptis');
+    await expect(correction).toContainText('OPEN');
+    await expect(correction).toContainText('CORRECTED');
+    const reprocess = page.locator('[data-testid="audit-row"]').filter({ hasText: 'REPROCESS_REJECTION' }).first();
+    await expect(reprocess).toContainText('ENC-FIX');
   });
 
   test('les flux attendus sont reçu / en retard / manquant selon l’horloge (INT-08) @screen:imports @path:INT-08', async ({ page, request }) => {

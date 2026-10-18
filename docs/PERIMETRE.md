@@ -21,8 +21,8 @@ jour à chaque commit de la §10.1 ; il n'est pas clos tant qu'il reste un **GAP
 
 **Bilan initial de la revue : 60 parcours portaient au moins un GAP** (INT 8, PAR 7, CAL 6,
 CYC/CTL/AJU/CPT 9, PAI 5, BRD 7, FIN 4, FLX 2, SIM 1, HIS 1, REP 2, ADM 2, FDV 4, DEM 2).
-**Avancement (2026-10-18) : INT-01, INT-14, INT-23 clos → 57 parcours avec GAP restants**
-(INT 5 : INT-03/09/11/15/18). Détail par sous-section :
+**Avancement (2026-10-18) : INT-01, INT-14, INT-23, INT-03 clos → 56 parcours avec GAP restants**
+(INT 4 : INT-09/11/15/18). Détail par sous-section :
 
 ### §4.1 Intégration et référentiels
 
@@ -30,7 +30,7 @@ CYC/CTL/AJU/CPT 9, PAI 5, BRD 7, FIN 4, FLX 2, SIM 1, HIS 1, REP 2, ADM 2, FDV 4
 | --- | --- |
 | INT-01 | empreinte ✓ ; auteur ✓ ; cinq compteurs ✓ (`batch-lines-read/filtered/loaded/rejected/held` sur le détail du lot) ; statut de l'événement ✓ (« En attente de calcul » sur la liste des événements) |
 | INT-02 | un rejet par code (6) ✓ ; libellé ✓ ; ligne brute ✓ ; autres intégrées ✓ |
-| INT-03 | la ligne repart seule ✓ ; **GAP** compteurs mis à jour après correction non relus ; **GAP** trace d'audit |
+| INT-03 | la ligne repart seule ✓ ; compteurs mis à jour ✓ (après correction, le détail du lot affiche Intégrées 1 / Rejetées 0) ; trace d'audit ✓ (`CORRECT_REJECTION` OPEN→CORRECTED par operator-alptis + `REPROCESS_REJECTION` → ENC-FIX sur /audit) |
 | INT-04 | statut du rejet ✓ ; aucun événement créé ✓ |
 | INT-05 | refus ✓ ; aucun doublon ✓ |
 | INT-06 | les deux acceptés ✓ ; distingués au journal ✓ |
