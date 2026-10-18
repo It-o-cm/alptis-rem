@@ -442,7 +442,13 @@ public class AccountService {
         statement.statementNumber = "ST-" + entity.code + "-" + period.periodMonth + "-" + account.getId()
                 + (batchType == BatchType.SAVINGS_CYCLE ? "-S" : "");
         statement.versionNo = 1;
-        statement.level = StatementLevel.PRODUCTION_CODE;
+        // The bordereau is produced at its beneficiary's level (BRD-03): production code, distributor or
+        // grouping, taken from the account's payee type.
+        statement.level = switch (account.payeeType) {
+            case DISTRIBUTOR -> StatementLevel.DISTRIBUTOR;
+            case GROUP -> StatementLevel.GROUP;
+            case PRODUCTION_CODE -> StatementLevel.PRODUCTION_CODE;
+        };
         // The carried balance holds the prior-period balance only; the net imputed from the other lot is
         // shown separately as one imputation line (section 10.5, PAI-04), so it is excluded here.
         statement.carriedBalance = net.subtract(periodTotal).subtract(imputedNet);

@@ -39,6 +39,21 @@ interface StatementContent {
   carried: number;
   net: number;
   grouping: string;
+  level: string | null;
+}
+
+/** French label of a bordereau beneficiary level (BRD-03). */
+function levelLabel(level: string | null): string {
+  switch (level) {
+    case 'PRODUCTION_CODE':
+      return 'Code de production';
+    case 'DISTRIBUTOR':
+      return 'Distributeur';
+    case 'GROUP':
+      return 'Groupement';
+    default:
+      return '—';
+  }
 }
 
 const session = useSessionStore();
@@ -285,7 +300,10 @@ onMounted(loadStatements);
       <h2 class="ui-detail-title">
         {{ content.statementNumber }}<span v-if="content.versionNo"> v{{ content.versionNo }}</span>
       </h2>
-      <p class="page__subtitle">{{ content.beneficiary }} — {{ monthLabel(content.month) }}</p>
+      <p class="page__subtitle">
+        <span data-testid="statement-level">{{ levelLabel(content.level) }}</span> —
+        <span data-testid="statement-beneficiary">{{ content.beneficiary }}</span> — {{ monthLabel(content.month) }}
+      </p>
       <DataTable
         :columns="rowColumns"
         :rows="content.rows"

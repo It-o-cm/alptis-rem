@@ -1316,6 +1316,19 @@ class CrScenarioResourceTest {
                 .then().statusCode(200).body("total", is(60.00f));
     }
 
+    /**
+     * BRD-02 (parcours): three beneficiaries, one per level (production code, distributor, grouping),
+     * each payable, so the prepared period carries one bordereau per level.
+     */
+    @Test
+    void brd02_one_bordereau_per_beneficiary_level() {
+        given().when().post("/api/test/cr-scenario?cr=BRD-02&entity=UNEP&month=2028-07-01").then().statusCode(204);
+        transition("operator-unep", "2028-07-01", "PAYMENT_PREPARED");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/documents/UNEP/2028-07-01/statements").then().statusCode(200)
+                .body("size()", is(3));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

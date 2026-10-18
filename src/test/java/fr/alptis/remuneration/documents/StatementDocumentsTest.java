@@ -34,7 +34,7 @@ class StatementDocumentsTest {
                 new BigDecimal("100.00"), "R&D \\ <x>", null));
         rows.add(new Row("Reprises", "CB-2", null, null, null, null, null));
         return new StatementContent("BORD-1", 1, "DISTRIBUTOR #7", LocalDate.of(2026, 9, 1), rows,
-                new BigDecimal("100.00"), new BigDecimal("0.00"), new BigDecimal("100.00"), "NONE");
+                new BigDecimal("100.00"), new BigDecimal("0.00"), new BigDecimal("100.00"), "NONE", "DISTRIBUTOR");
     }
 
     /**
@@ -62,7 +62,7 @@ class StatementDocumentsTest {
     @Test
     void renders_a_pdf_without_version() {
         StatementContent content = new StatementContent("RELEVE-X", null, "Code X", LocalDate.of(2026, 9, 1),
-                List.of(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, "NONE");
+                List.of(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, "NONE", "PRODUCTION_CODE");
         String text = new String(StatementDocuments.pdf(content), StandardCharsets.ISO_8859_1);
         assertTrue(text.contains("Bordereau RELEVE-X") && !text.contains("RELEVE-X v"));
     }

@@ -68,6 +68,52 @@ test('l’opérateur consulte un bordereau, l’exporte, le publie puis le recti
   await operator.close();
 });
 
+test('BRD-02 : un bordereau à chaque niveau — code de production, distributeur, groupement @screen:statements @req:BRD-03 @path:BRD-02', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=BRD-02&entity=UNEP&month=2028-07-01')).ok()).toBeTruthy();
+
+  const ctx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await ctx.newPage();
+  // Prepare the payment so the three bordereaux (one per level) are produced.
+  await page.goto('/');
+  await page.getByTestId('open-UNEP-2028-07-01').click();
+  await page.getByTestId('advance-button').click();
+  await expect(page.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  await page.goto('/bordereaux');
+  await page.getByTestId('brd-entity').selectOption('UNEP');
+  await page.getByTestId('brd-month').selectOption('2028-07-01');
+  await page.getByTestId('brd-refresh').click();
+  await expect(page.locator('[data-testid^="statement-open-"]')).toHaveCount(3);
+
+  // Open each bordereau and collect its level, beneficiary and net. Wait for the detail to show the
+  // opened statement's number before reading, so the asynchronous content reload is not read stale.
+  const levels: string[] = [];
+  const beneficiaries: string[] = [];
+  const nets: string[] = [];
+  for (let i = 0; i < 3; i += 1) {
+    const row = page.locator('[data-testid^="statement-row-"]').nth(i);
+    const number = (((await row.textContent()) ?? '').match(/ST-[A-Z_]+-\d{4}-\d{2}-\d{2}-\d+/) ?? [''])[0];
+    await row.locator('[data-testid^="statement-open-"]').click();
+    await expect(page.getByTestId('statement-detail')).toContainText(number);
+    levels.push(((await page.getByTestId('statement-level').textContent()) ?? '').trim());
+    beneficiaries.push(((await page.getByTestId('statement-beneficiary').textContent()) ?? '').trim());
+    nets.push(((await page.getByTestId('statement-net').textContent()) ?? '').trim());
+  }
+  // One bordereau per level, each naming the right beneficiary.
+  expect([...levels].sort()).toEqual(['Code de production', 'Distributeur', 'Groupement']);
+  expect(beneficiaries).toEqual(
+    expect.arrayContaining(['Code de production PC-BRD02', 'Distributeur Distributeur BRD02', 'Groupement G-BRD02']),
+  );
+  // Each bordereau carries its own beneficiary's lines (net 100,00 / 80,00 / 60,00).
+  expect(nets.some((n) => n.includes('100,00'))).toBeTruthy();
+  expect(nets.some((n) => n.includes('80,00'))).toBeTruthy();
+  expect(nets.some((n) => n.includes('60,00'))).toBeTruthy();
+  await ctx.close();
+});
+
 test('l’opérateur consulte le relevé informatif d’un membre @screen:statements @req:BRD-11 @path:BRD-06', async ({
   browser,
 }) => {

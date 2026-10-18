@@ -33,6 +33,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -481,6 +482,36 @@ class StatementServiceTest {
         line.amount = new BigDecimal(amount);
         line.statement = statement;
         line.persist();
+    }
+
+    /**
+     * BRD-02/BRD-03: a grouping statement names its grouping and carries the GROUP level; an unknown
+     * grouping falls back to its id; a statement with no level yields a null level.
+     */
+    @Test
+    @TestTransaction
+    void renders_beneficiary_label_and_level_for_a_grouping_and_a_null_level() {
+        Period period = aPeriod();
+        fr.alptis.remuneration.domain.DistributorGroup g = new fr.alptis.remuneration.domain.DistributorGroup();
+        g.code = "GX";
+        g.label = "Groupement X";
+        g.persist();
+        Statement groupStmt = statementOfType(distributorAccount(PayeeType.GROUP, g.getId()), period, BatchType.CYCLE);
+        groupStmt.level = StatementLevel.GROUP;
+        StatementService.StatementContent group = service.render(groupStmt.getId());
+        assertEquals("GROUP", group.level());
+        assertEquals("Groupement GX", group.beneficiary());
+
+        // An account whose grouping no longer exists falls back to the raw id.
+        StatementService.StatementContent ghost = service.render(
+                statementOfType(distributorAccount(PayeeType.GROUP, 999999L), period, BatchType.CYCLE).getId());
+        assertEquals("Groupement 999999", ghost.beneficiary());
+
+        // A statement with no level yields a null level in the content.
+        Statement noLevel = statementOfType(distributorAccount(PayeeType.PRODUCTION_CODE, 888L), period,
+                BatchType.CYCLE);
+        noLevel.level = null;
+        assertNull(service.render(noLevel.getId()).level());
     }
 
     /**

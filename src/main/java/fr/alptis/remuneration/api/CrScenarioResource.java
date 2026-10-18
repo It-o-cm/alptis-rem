@@ -217,6 +217,7 @@ public class CrScenarioResource {
             case "PAI-07" -> seedPai07(entity, periodMonth);
             case "PAI-11" -> seedPai11(entity, periodMonth);
             case "PAI-12" -> seedPai12(periodMonth);
+            case "BRD-02" -> seedBrd02(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2877,6 +2878,75 @@ public class CrScenarioResource {
      *
      * @param periodMonth the calculation month
      */
+    /**
+     * BRD-02 (bordereau à chaque niveau : code de production, distributeur, groupement) : trois
+     * bénéficiaires payables sur une même période, un par niveau — un code de production (100 €), un
+     * distributeur (80 €) et un groupement (60 €) — chacun avec sa propre ligne et ses coordonnées, de
+     * sorte que la préparation produit un bordereau par niveau, portant le bon bénéficiaire et ses lignes
+     * (§9.5, BRD-03). La période est posée en « Validée métier » comme état d'entrée.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedBrd02(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        Distributor distributor = new Distributor();
+        distributor.partnerCode = "P-BRD02";
+        distributor.legalName = "Distributeur BRD02";
+        distributor.oriasStatus = OriasStatus.REGISTERED;
+        distributor.persist();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = entity;
+        pc.code = "PC-BRD02";
+        pc.distributor = distributor;
+        pc.persist();
+        levelAccount(entity, period, PayeeType.PRODUCTION_CODE, pc.getId(), "100.00");
+        levelAccount(entity, period, PayeeType.DISTRIBUTOR, distributor.getId(), "80.00");
+        DistributorGroup group = new DistributorGroup();
+        group.code = "G-BRD02";
+        group.label = "Groupement BRD02";
+        group.persist();
+        levelAccount(entity, period, PayeeType.GROUP, group.getId(), "60.00");
+    }
+
+    /**
+     * Posts a payable account for a beneficiary of a given level: the account, an acquired line and bank
+     * details (used by BRD-02).
+     *
+     * @param entity    the entity
+     * @param period    the period
+     * @param type      the payee type (beneficiary level)
+     * @param payeeId   the payee id
+     * @param amount    the acquired amount
+     */
+    private void levelAccount(LegalEntity entity, Period period, PayeeType type, Long payeeId, String amount) {
+        DistributorAccount account = new DistributorAccount();
+        account.entity = entity;
+        account.payeeType = type;
+        account.payeeId = payeeId;
+        account.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.account = account;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = period.periodMonth;
+        line.persist();
+        BankAccount bank = new BankAccount();
+        bank.entity = entity;
+        bank.holderType = type;
+        bank.holderId = payeeId;
+        bank.iban = "FR7630001007941234567890185";
+        bank.bic = "AGRIFRPP";
+        bank.holderName = "BRD02";
+        bank.validFrom = period.periodMonth;
+        bank.persist();
+    }
+
     private void seedPai12(LocalDate periodMonth) {
         Distributor shared = new Distributor();
         shared.partnerCode = "P-PAI12";

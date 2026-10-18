@@ -89,8 +89,35 @@ public class StatementService {
                     savingsStatement ? "Lot de cycle" : "Lot épargne retraite", null, null, imputed, null, null));
         }
         return new StatementContent(statement.statementNumber, statement.versionNo,
-                statement.account.payeeType + " #" + statement.account.payeeId, statement.period.periodMonth,
-                rows, statement.periodTotal, statement.carriedBalance, statement.netAmount, grouping.name());
+                beneficiaryLabel(statement.account), statement.period.periodMonth,
+                rows, statement.periodTotal, statement.carriedBalance, statement.netAmount, grouping.name(),
+                statement.level == null ? null : statement.level.name());
+    }
+
+    /**
+     * A readable label naming the statement's beneficiary at its level (BRD-03): the production code, the
+     * distributor's legal name or the grouping's code — never a raw payee id.
+     *
+     * @param account the statement's account
+     * @return the beneficiary label
+     */
+    private static String beneficiaryLabel(fr.alptis.remuneration.domain.DistributorAccount account) {
+        return switch (account.payeeType) {
+            case PRODUCTION_CODE -> {
+                ProductionCode pc = ProductionCode.findById(account.payeeId);
+                yield "Code de production " + (pc == null ? account.payeeId : pc.code);
+            }
+            case DISTRIBUTOR -> {
+                fr.alptis.remuneration.domain.Distributor d =
+                        fr.alptis.remuneration.domain.Distributor.findById(account.payeeId);
+                yield "Distributeur " + (d == null ? account.payeeId : d.legalName);
+            }
+            case GROUP -> {
+                fr.alptis.remuneration.domain.DistributorGroup g =
+                        fr.alptis.remuneration.domain.DistributorGroup.findById(account.payeeId);
+                yield "Groupement " + (g == null ? account.payeeId : g.code);
+            }
+        };
     }
 
     /**
@@ -169,7 +196,8 @@ public class StatementService {
         }
         return new StatementContent("RELEVE-" + memberCode, null, "Code de production " + memberCode,
                 period.periodMonth, rows, total, BigDecimal.ZERO, total,
-                fr.alptis.remuneration.domain.StatementGrouping.NONE.name());
+                fr.alptis.remuneration.domain.StatementGrouping.NONE.name(),
+                fr.alptis.remuneration.domain.StatementLevel.PRODUCTION_CODE.name());
     }
 
     /**
@@ -347,9 +375,10 @@ public class StatementService {
      * @param carried         the carried balance
      * @param net             the net amount
      * @param grouping        the bordereau declension preference (NONE, BY_INSURER, BY_PRODUCT, BRD-04)
+     * @param level           the beneficiary level (PRODUCTION_CODE, DISTRIBUTOR, GROUP, BRD-03), or null
      */
     public record StatementContent(String statementNumber, Integer versionNo, String beneficiary,
                                    java.time.LocalDate month, List<Row> rows, BigDecimal periodTotal,
-                                   BigDecimal carried, BigDecimal net, String grouping) {
+                                   BigDecimal carried, BigDecimal net, String grouping, String level) {
     }
 }

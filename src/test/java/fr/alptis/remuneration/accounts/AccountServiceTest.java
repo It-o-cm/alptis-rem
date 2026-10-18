@@ -313,6 +313,48 @@ class AccountServiceTest {
     }
 
     /**
+     * BRD-02/BRD-03: a statement takes its level from the account's payee type — production code,
+     * distributor or grouping.
+     */
+    @Test
+    @TestTransaction
+    void proposePayments_sets_the_statement_level_from_the_payee_type() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Period p = period(LocalDate.of(2026, 1, 1));
+        Distributor d = distributor("DL");
+        DistributorAccount pcAcct = accountOf(d, "PC-L");
+        line(pcAcct, p, "100");
+        DistributorAccount distAcct = new DistributorAccount();
+        distAcct.entity = unep();
+        distAcct.payeeType = PayeeType.DISTRIBUTOR;
+        distAcct.payeeId = d.getId();
+        distAcct.persist();
+        line(distAcct, p, "80");
+        fr.alptis.remuneration.domain.DistributorGroup g = new fr.alptis.remuneration.domain.DistributorGroup();
+        g.code = "GL";
+        g.label = "GL";
+        g.persist();
+        DistributorAccount grpAcct = new DistributorAccount();
+        grpAcct.entity = unep();
+        grpAcct.payeeType = PayeeType.GROUP;
+        grpAcct.payeeId = g.getId();
+        grpAcct.persist();
+        line(grpAcct, p, "60");
+
+        service.proposePayments(unep(), p);
+
+        assertEquals(fr.alptis.remuneration.domain.StatementLevel.PRODUCTION_CODE, levelOf(pcAcct));
+        assertEquals(fr.alptis.remuneration.domain.StatementLevel.DISTRIBUTOR, levelOf(distAcct));
+        assertEquals(fr.alptis.remuneration.domain.StatementLevel.GROUP, levelOf(grpAcct));
+    }
+
+    /** The level of an account's cycle statement. */
+    private static fr.alptis.remuneration.domain.StatementLevel levelOf(DistributorAccount account) {
+        return fr.alptis.remuneration.domain.Statement
+                .<fr.alptis.remuneration.domain.Statement>find("account = ?1", account).firstResult().level;
+    }
+
+    /**
      * The balance series accumulates the account's lines (by period month) and entries (by entry
      * month) into a running balance, month by month.
      */
