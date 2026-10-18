@@ -225,6 +225,7 @@ public class CrScenarioResource {
             case "FIN-06" -> seedFin06(entity, periodMonth);
             case "FIN-09" -> seedFin09(entity, periodMonth);
             case "HIS-01" -> seedHis01(entity, periodMonth);
+            case "ADM-02" -> seedAdm02(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -746,6 +747,23 @@ public class CrScenarioResource {
         enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
         event(entity, january, "HIS01-SUB1", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
         event(entity, february, "HIS01-SUB2", EventType.SUBSCRIPTION, LocalDate.of(year, 2, 15), null);
+    }
+
+    /**
+     * ADM-02 (parcours « Paramètres d'une entité ») : une période validée par le métier portant une
+     * commission payable de 30,00 € à un distributeur bancarisé et actif. Le seuil minimal de paiement
+     * de l'entité est lu au moment de la préparation du paiement : relever le seuil au-dessus de 30 €
+     * avant la préparation exclut le bénéficiaire du lot au cycle suivant (motif « sous le seuil »).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedAdm02(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        DistributorAccount account = payee(entity, period, "P-ADM02", "30.00", PartnerStatus.ACTIVE, true);
+        CommissionLine line = CommissionLine.<CommissionLine>find("account = ?1", account).firstResult();
+        line.status = LineStatus.PAYABLE;
     }
 
     /**

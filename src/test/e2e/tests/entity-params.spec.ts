@@ -35,6 +35,38 @@ test.describe('Entités et paramètres — administrateur', () => {
     await expect(page.getByTestId('field-min-payment')).toHaveValue('42.5');
   });
 
+  test('ADM-02 : un seuil de paiement relevé exclut le bénéficiaire au cycle suivant @screen:entities @screen:periods @screen:payment @req:ADM-05 @path:ADM-02', async ({
+    page,
+    request,
+  }) => {
+    const month = '2027-06-01';
+    expect(
+      (await request.post(`/api/test/cr-scenario?cr=ADM-02&entity=ALPTIS_ASSURANCES&month=${month}`)).ok(),
+    ).toBeTruthy();
+
+    // Raise the entity's minimum payment above the 30 € payable.
+    await page.goto('/entites');
+    await page.getByTestId('entity-row-ALPTIS_ASSURANCES').click();
+    await page.getByTestId('field-min-payment').fill('50.00');
+    await page.getByTestId('save-entity').click();
+    await expect(page.getByTestId('save-message')).toHaveText('Paramètres enregistrés.');
+
+    // The next cycle prepares the payment: advancing the validated period reads the new threshold.
+    await page.goto('/');
+    await page.getByTestId(`open-ALPTIS_ASSURANCES-${month}`).click();
+    await page.getByTestId('advance-button').click();
+    await expect(page.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+    // The payee is excluded from the lot, below the raised threshold.
+    await page.goto('/paiement');
+    await page.getByTestId('pay-entity').selectOption('ALPTIS_ASSURANCES');
+    await page.getByTestId('pay-month').selectOption(month);
+    await page.getByTestId('pay-refresh').click();
+    await page.locator('[data-testid^="lot-open-"]').first().click();
+    await expect(page.getByTestId('lot-detail')).toBeVisible();
+    await expect(page.getByTestId('exclusion-reason-0')).toHaveText('Sous le seuil de paiement');
+  });
+
   test('aucune violation d’accessibilité grave ou critique @screen:entities', async ({ page }) => {
     await page.goto('/entites');
     const results = await new AxeBuilder({ page }).analyze();

@@ -1457,6 +1457,21 @@ class CrScenarioResourceTest {
         search("2029-02-01").body("find { it.nature == 'RCD' }.amount as double", is(1050.0));
     }
 
+    /**
+     * ADM-02 (parcours « Paramètres d'une entité ») : le scénario sème une période validée par le métier
+     * portant une commission payable de 30,00 €, prête à sortir en paiement au seuil minimal courant ;
+     * l'effet d'un seuil relevé au cycle suivant est vérifié de bout en bout par l'e2e.
+     */
+    @Test
+    void adm02_seeds_a_validated_period_with_a_payable_commission() {
+        given().when().post("/api/test/cr-scenario?cr=ADM-02&entity=ALPTIS_ASSURANCES&month=2029-06-01")
+                .then().statusCode(204);
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/periods/ALPTIS_ASSURANCES/2029-06-01").then().statusCode(200)
+                .body("period.state", is("BUSINESS_VALIDATED"))
+                .body("lines", is(1));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")
