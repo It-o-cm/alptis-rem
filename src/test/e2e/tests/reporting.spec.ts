@@ -222,6 +222,50 @@ test('le contrôleur Finance lit la marge et le rapprochement assureurs @screen:
   await finance.close();
 });
 
+test('FIN-09 : une commission reçue différente de l’attendu affiche l’écart, l’anomalie et la marge @screen:calculations @screen:controls @screen:margin @req:FIN-09 @path:FIN-09', async ({
+  browser,
+  request,
+}) => {
+  const seeded = await request.post('/api/test/cr-scenario?cr=FIN-09&entity=UNEP&month=2026-01-01');
+  expect(seeded.ok()).toBeTruthy();
+
+  // The operator runs the real calculation: the twin inbound rule records the expected insurer
+  // commission (−71,25 €) as the CAL-13 control against the one actually received (50,00 €), with no
+  // line; the gap and the anomaly are read on the controls screen.
+  const opCtx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const op = await opCtx.newPage();
+  await op.goto('/calculs');
+  await op.getByTestId('calc-period').selectOption('UNEP|2026-01-01');
+  await op.getByTestId('calc-run').click();
+  await expect(op.getByTestId('calc-message')).toContainText('Calcul lancé');
+  await op.goto('/controles');
+  await op.getByTestId('ctl-month').selectOption('2026-01-01');
+  await op.getByTestId('ctl-refresh').click();
+  const anomaly = op.locator('[data-testid^="anomaly-row-"]').filter({ hasText: 'CAL-13' });
+  await expect(anomaly).toHaveCount(1);
+  await expect(anomaly.first()).toContainText('-71.25'); // attendu
+  await expect(anomaly.first()).toContainText('50.00'); // constaté (reçu)
+  await opCtx.close();
+
+  // The finance controller reads the same gap and the entity margin on the margin screen.
+  const finCtx = await browser.newContext({ httpCredentials: USERS.financeUnep });
+  const fin = await finCtx.newPage();
+  await fin.goto('/marge');
+  await fin.getByTestId('margin-entity').selectOption('UNEP');
+  await fin.getByTestId('margin-refresh').click();
+  const recon = fin.getByTestId('insurer-recon');
+  await expect(recon).toBeVisible();
+  await expect(recon.locator('[data-testid^="recon-row-"]')).toHaveCount(1);
+  await expect(recon).toContainText('50,00'); // reçu
+  await expect(recon).toContainText('71,25'); // attendu
+  await expect(recon).toContainText('121,25'); // écart (reçu − attendu)
+  // The margin (received − paid) is shown: 50,00 − 30,00 = 20,00 for the one insurer axis row.
+  const marginRow = fin.locator('[data-testid^="margin-insurer-"]').first();
+  await expect(marginRow).toBeVisible();
+  await expect(marginRow).toContainText('20,00');
+  await finCtx.close();
+});
+
 test('le consultant lit les indicateurs de fonctionnement mois par mois @screen:indicators @req:REP-09', async ({
   browser,
 }) => {

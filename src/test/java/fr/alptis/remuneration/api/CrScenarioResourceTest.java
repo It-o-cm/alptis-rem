@@ -287,6 +287,19 @@ class CrScenarioResourceTest {
     }
 
     /**
+     * FIN-09 (parcours « Commission reçue différente de l'attendu ») : la commission reçue de l'assureur
+     * (50,00 €) diffère du rappel attendu (−71,25 €) ; le calcul conserve les deux sur le contrôle CAL-13,
+     * sans ligne, et aucune ligne de commission reçue n'est produite par le calcul.
+     */
+    @Test
+    void fin09_received_insurer_commission_differs_from_expected() {
+        plantAndRun("FIN-09", "2027-03-01");
+        anomalies("2027-03-01")
+                .body("find { it.controlCode == 'CAL-13' }.expectedValue as double", is(-71.25))
+                .body("find { it.controlCode == 'CAL-13' }.observedValue as double", is(50.0));
+    }
+
+    /**
      * CR-35: closing the year on a distributor whose production stays under 10 000 € applies the 10% tier
      * to each contract, giving COMPLEMENT lines of 351,00 € and 352,98 €, 703,98 € in all.
      */

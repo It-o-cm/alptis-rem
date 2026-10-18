@@ -223,6 +223,7 @@ public class CrScenarioResource {
             case "BRD-07" -> seedBrd07(entity, periodMonth);
             case "FIN-04" -> seedFin04(entity, periodMonth);
             case "FIN-06" -> seedFin06(entity, periodMonth);
+            case "FIN-09" -> seedFin09(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -663,9 +664,10 @@ public class CrScenarioResource {
      * @param key         the scenario key (contract and partner suffix)
      * @param payments    the number of scheduled payments before suspension
      * @param amount      each scheduled payment amount
+     * @return the seeded coverage
      */
-    private void seedInsurerRecall(LegalEntity entity, LocalDate periodMonth, String key, int payments,
-                                   String amount) {
+    private Coverage seedInsurerRecall(LegalEntity entity, LocalDate periodMonth, String key, int payments,
+                                       String amount) {
         Product product = product(entity, "PER");
         Coverage coverage = coverage(entity, key, product, periodMonth, "P-" + key, null);
         linearChoice(coverage, "0.0145", periodMonth, null);
@@ -675,6 +677,45 @@ public class CrScenarioResource {
             event(entity, coverage, key + "-S" + i, EventType.SCHEDULED_PAYMENT, periodMonth.plusDays(i), amount);
         }
         event(entity, coverage, key + "-SUS", EventType.PLAN_SUSPENDED, periodMonth.plusDays(27), null);
+        return coverage;
+    }
+
+    /**
+     * FIN-09 (parcours « Commission reçue différente de l'attendu ») : l'assureur verse une commission de
+     * 50,00 € (ligne {@code INSURER} reçue) là où la règle jumelle `INBOUND` attendait un rappel de
+     * −71,25 € ; le calcul réel conserve l'écart sur le contrôle CAL-13 (constaté 50,00 €, attendu
+     * −71,25 €), sans ligne. L'écart et l'anomalie se lisent sur l'écran des contrôles, l'écart et la
+     * marge (reçu − payé) sur l'écran de marge (P17, section 6.6).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedFin09(LegalEntity entity, LocalDate periodMonth) {
+        Coverage coverage = seedInsurerRecall(entity, periodMonth, "FIN09", 25, "100.00");
+        Period period = period(entity, periodMonth);
+        // The commission actually received from the insurer, kept as the observed value of CAL-13 and
+        // counted as the inbound (received) side of the margin.
+        CommissionLine received = new CommissionLine();
+        received.entity = entity;
+        received.period = period;
+        received.contract = coverage.contract;
+        received.coverage = coverage;
+        received.direction = Direction.INBOUND;
+        received.status = LineStatus.PAID;
+        received.nature = LineNature.INSURER;
+        received.amount = new BigDecimal("50.00");
+        received.persist();
+        // The commission paid to the distributor on the same guarantee: the outbound side of the margin.
+        CommissionLine paid = new CommissionLine();
+        paid.entity = entity;
+        paid.period = period;
+        paid.contract = coverage.contract;
+        paid.coverage = coverage;
+        paid.direction = Direction.OUTBOUND;
+        paid.status = LineStatus.PAID;
+        paid.nature = LineNature.LINEAR;
+        paid.amount = new BigDecimal("30.00");
+        paid.persist();
     }
 
     /**
