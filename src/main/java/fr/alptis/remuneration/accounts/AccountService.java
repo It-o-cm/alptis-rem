@@ -278,6 +278,13 @@ public class AccountService {
                 exclusion.amount = payable;
                 exclusion.setCreatedAt(clock.now());
                 exclusion.persist();
+                // A debtor account (non-positive carried balance) still gets a bordereau carrying its
+                // reported balance, with no order emitted (section 9.5 p.1720, section 10.5 footer, BRD-01,
+                // CPT-01): the bordereau is produced whenever a line or a carried balance exists.
+                if (reason == PaymentExclusionReason.NON_POSITIVE_BALANCE) {
+                    statement(entity, period, account, BatchType.CYCLE, payable, periodTotal(account, period),
+                            BigDecimal.ZERO);
+                }
                 continue;
             }
             // Split the payable between the retirement-savings lot and the cycle lot (section 10.5): the

@@ -295,6 +295,14 @@ class AccountServiceTest {
         PaymentBatch febBatch = service.proposePayments(unep(), february);
         assertEquals(0, PaymentOrder.count("batch", febBatch));
         assertEquals(0, service.balance(a).compareTo(new BigDecimal("-400")));
+        // The debtor account still gets a bordereau carrying its reported balance, with no order (CPT-01,
+        // §9.5): period total 600, carried −1 000 (the opening balance), net −400.
+        fr.alptis.remuneration.domain.Statement febStatement = fr.alptis.remuneration.domain.Statement
+                .<fr.alptis.remuneration.domain.Statement>find("account = ?1 and period = ?2", a, february)
+                .firstResult();
+        assertNotNull(febStatement);
+        assertEquals(0, febStatement.netAmount.compareTo(new BigDecimal("-400")));
+        assertEquals(0, febStatement.carriedBalance.compareTo(new BigDecimal("-1000")));
 
         Period march = period(LocalDate.of(2026, 3, 1));
         line(a, march, "700");

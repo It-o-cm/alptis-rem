@@ -33,8 +33,10 @@ test.describe('Paramétrage des règles', () => {
     await expect(admin.getByTestId('rule-row-E2E_RULE')).toBeVisible();
 
     await admin.getByTestId('rule-open-E2E_RULE').click();
-    await admin.getByTestId('v-from').fill('2026-01-01');
-    await admin.getByTestId('v-to').fill('2026-12-31');
+    // A far-future validity window so the approved version is "Approuvée" (not yet in force) whatever the
+    // (advancing) dev clock: effectiveStatus is APPROVED while today < validFrom, ACTIVE once reached.
+    await admin.getByTestId('v-from').fill('2099-01-01');
+    await admin.getByTestId('v-to').fill('2099-12-31');
     await admin.getByTestId('v-scope').fill('{"product":["E2E_PROD"]}');
     await admin.getByTestId('v-parameters').fill('{"allowedRates":[0.15]}');
     await admin.getByTestId('v-group').fill('TEST');
@@ -268,8 +270,9 @@ test.describe('Paramétrage des règles', () => {
       await admin.getByTestId('rule-family').selectOption('LINEAR');
       await admin.getByTestId('rule-create').click();
       await admin.getByTestId(`rule-open-${code}`).click();
-      await admin.getByTestId('v-from').fill('2026-01-01');
-      await admin.getByTestId('v-to').fill('2026-12-31');
+      // Far-future window so the approved version stays "Approuvée" whatever the (advancing) dev clock.
+      await admin.getByTestId('v-from').fill('2099-01-01');
+      await admin.getByTestId('v-to').fill('2099-12-31');
       await admin.getByTestId('v-scope').fill('{"product":["SAME"]}');
       await admin.getByTestId('v-parameters').fill('{"allowedRates":[0.15]}');
       await admin.getByTestId('v-group').fill('CONFGROUP');
