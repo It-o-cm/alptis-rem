@@ -1301,6 +1301,21 @@ class CrScenarioResourceTest {
                 .body("find { it.batchType == 'CYCLE' }.orders", is(2));
     }
 
+    /**
+     * PAI-12 (parcours): one distributor is payable in both entities, each with its own account and
+     * amount (100 € in UNEP, 60 € in Alptis), so each entity pays it in its own order.
+     */
+    @Test
+    void pai12_a_common_distributor_is_payable_in_both_entities() {
+        given().when().post("/api/test/cr-scenario?cr=PAI-12&entity=UNEP&month=2028-06-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/accounts/UNEP/distributor/P-PAI12")
+                .then().statusCode(200).body("total", is(100.00f));
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis")
+                .when().get("/api/ui/v1/accounts/ALPTIS_ASSURANCES/distributor/P-PAI12")
+                .then().statusCode(200).body("total", is(60.00f));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

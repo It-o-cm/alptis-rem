@@ -183,6 +183,58 @@ test('PAI-11 : un ordre réglé, un rejeté dont les lignes repartent payables p
   await opCtx.close();
 });
 
+test('PAI-12 : un distributeur commun à deux entités est payé par un ordre dans chaque entité débitrice @screen:payment @screen:distributor-account @path:PAI-12', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=PAI-12&entity=UNEP&month=2028-06-01')).ok()).toBeTruthy();
+
+  // Each entity drives its own cycle to payment-prepared (role-null transition, by that entity's operator).
+  const unepCtx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const unep = await unepCtx.newPage();
+  await unep.goto('/');
+  await unep.getByTestId('open-UNEP-2028-06-01').click();
+  await unep.getByTestId('advance-button').click();
+  await expect(unep.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  const alptisCtx = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const alptis = await alptisCtx.newPage();
+  await alptis.goto('/');
+  await alptis.getByTestId('open-ALPTIS_ASSURANCES-2028-06-01').click();
+  await alptis.getByTestId('advance-button').click();
+  await expect(alptis.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  // The same distributor is a creditor in both entities, with its own account and amount in each.
+  await unep.goto('/distributeur');
+  await unep.getByTestId('acc-entity').selectOption('UNEP');
+  await unep.getByTestId('acc-partner').selectOption('P-PAI12');
+  await unep.getByTestId('acc-search').click();
+  await expect(unep.getByTestId('account-total')).toContainText('100,00');
+  await alptis.goto('/distributeur');
+  await alptis.getByTestId('acc-entity').selectOption('ALPTIS_ASSURANCES');
+  await alptis.getByTestId('acc-partner').selectOption('P-PAI12');
+  await alptis.getByTestId('acc-search').click();
+  await expect(alptis.getByTestId('account-total')).toContainText('60,00');
+
+  // Each entity's cycle lot carries its own order for the distributor (one order per debtor entity).
+  await unep.goto('/paiement');
+  await unep.getByTestId('pay-entity').selectOption('UNEP');
+  await unep.getByTestId('pay-month').selectOption('2028-06-01');
+  await unep.getByTestId('pay-refresh').click();
+  await unep.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+  await expect(unep.getByTestId('lot-detail')).toContainText('100,00');
+
+  await alptis.goto('/paiement');
+  await alptis.getByTestId('pay-entity').selectOption('ALPTIS_ASSURANCES');
+  await alptis.getByTestId('pay-month').selectOption('2028-06-01');
+  await alptis.getByTestId('pay-refresh').click();
+  await alptis.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+  await expect(alptis.getByTestId('lot-detail')).toContainText('60,00');
+
+  await unepCtx.close();
+  await alptisCtx.close();
+});
+
 test('CPT-04 : un compte bloqué est exclu du lot jusqu’à sa date de levée @screen:payment @path:CPT-04', async ({
   browser,
   request,

@@ -216,6 +216,7 @@ public class CrScenarioResource {
             case "PAI-04" -> seedPai04(entity, periodMonth);
             case "PAI-07" -> seedPai07(entity, periodMonth);
             case "PAI-11" -> seedPai11(entity, periodMonth);
+            case "PAI-12" -> seedPai12(periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2864,6 +2865,80 @@ public class CrScenarioResource {
         period.state = PeriodState.BUSINESS_VALIDATED;
         payee(entity, period, "P-PAI11-A", "100.00", PartnerStatus.ACTIVE, true);
         payee(entity, period, "P-PAI11-B", "120.00", PartnerStatus.ACTIVE, true);
+    }
+
+    /**
+     * PAI-12 (distributeur commun à deux entités) : un même distributeur est payable à la fois dans UNEP
+     * (100 €) et dans Alptis Assurances (60 €). Chaque entité mène son propre cycle, de sorte que la
+     * préparation du paiement produit un lot par entité, chacun portant un seul ordre pour ce distributeur
+     * (§10.5 : le compte reste unique par entité et par bénéficiaire). Les deux périodes sont posées en
+     * « Validée métier » comme état d'entrée. Le paramètre d'entité de l'appel est ignoré : le scénario
+     * porte toujours sur les deux entités du groupe.
+     *
+     * @param periodMonth the calculation month
+     */
+    private void seedPai12(LocalDate periodMonth) {
+        Distributor shared = new Distributor();
+        shared.partnerCode = "P-PAI12";
+        shared.legalName = "Distributeur commun";
+        shared.oriasStatus = OriasStatus.REGISTERED;
+        shared.persist();
+        payableScene(LegalEntity.<LegalEntity>find("code", "UNEP").firstResult(), shared, "PC-PAI12-U", "100.00",
+                periodMonth);
+        payableScene(LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult(), shared, "PC-PAI12-A",
+                "60.00", periodMonth);
+    }
+
+    /**
+     * Sets up a business-validated period where a distributor's production code is payable in an entity:
+     * an active entity link, a production-code account, an acquired line and bank details (used by
+     * PAI-12).
+     *
+     * @param entity      the entity
+     * @param distributor the (shared) distributor
+     * @param pcCode      the production code
+     * @param amount      the acquired amount
+     * @param periodMonth the period month
+     */
+    private void payableScene(LegalEntity entity, Distributor distributor, String pcCode, String amount,
+                              LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        DistributorEntity link = new DistributorEntity();
+        link.distributor = distributor;
+        link.entity = entity;
+        link.status = PartnerStatus.ACTIVE;
+        link.validFrom = periodMonth;
+        link.persist();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = entity;
+        pc.code = pcCode;
+        pc.distributor = distributor;
+        pc.persist();
+        DistributorAccount acct = new DistributorAccount();
+        acct.entity = entity;
+        acct.payeeType = PayeeType.PRODUCTION_CODE;
+        acct.payeeId = pc.getId();
+        acct.persist();
+        CommissionLine line = new CommissionLine();
+        line.entity = entity;
+        line.period = period;
+        line.account = acct;
+        line.direction = Direction.OUTBOUND;
+        line.status = LineStatus.EARNED;
+        line.nature = LineNature.LINEAR;
+        line.amount = new BigDecimal(amount);
+        line.attachmentMonth = periodMonth;
+        line.persist();
+        BankAccount bank = new BankAccount();
+        bank.entity = entity;
+        bank.holderType = PayeeType.PRODUCTION_CODE;
+        bank.holderId = pc.getId();
+        bank.iban = "FR7630001007941234567890185";
+        bank.bic = "AGRIFRPP";
+        bank.holderName = pcCode;
+        bank.validFrom = periodMonth;
+        bank.persist();
     }
 
     /**
