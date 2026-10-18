@@ -416,6 +416,40 @@ test('FDV-03 : mensuel — objectif atteint paie la mensualité, manqué ou dix 
   await admin.close();
 });
 
+test('FDV-07 : régularisation annuelle — montant positif versé, écart négatif soumis au responsable @screen:fdvPlan @screen:fdvValidation @req:FDV-06 @path:FDV-07', async ({
+  browser,
+  request,
+}) => {
+  expect(
+    (await request.post('/api/test/fdv-demo/fdv07?entity=ALPTIS_ASSURANCES&year=2026')).ok(),
+  ).toBeTruthy();
+
+  // The business administrator, who manages the module and to whom the negative gap is submitted for
+  // decision (H-53, FDV-13), launches the annual regularization of the year, booked in January N+1.
+  const admin = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await admin.newPage();
+  await page.goto('/fdv/plan');
+  await expect(page.locator('[data-testid^="plan-row-"]').first()).toBeVisible();
+  await page.getByTestId('fdvp-reg-year').fill('2026');
+  await page.getByTestId('fdvp-reg').click();
+  await expect(page.getByTestId('fdvp-message')).toContainText('Régularisation annuelle 2026 lancée');
+
+  // The regularization results of January N+1: a positive amount to pay, and a negative gap.
+  await page.goto('/fdv/validation');
+  await page.getByTestId('fdvv-month').selectOption('2027-01-01');
+  await page.getByTestId('fdvv-refresh').click();
+
+  const positive = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Positif' });
+  await expect(positive).toContainText('600,00');
+  const negative = page.locator('[data-testid^="result-row-"]').filter({ hasText: 'Negatif' });
+  await expect(negative).toContainText('-300,00');
+
+  // The negative gap, submitted for decision, is resolved by validating it.
+  await negative.locator('[data-testid^="result-validate-"]').click();
+  await expect(negative.locator('[data-testid^="result-status-"]')).toContainText('Validé');
+  await admin.close();
+});
+
 // Parcours FDV-01 (section 4.5): importing collaborators and their measures feeds the collaborator
 // fiches and the measures by period.
 test('l’import des collaborateurs et des mesures alimente les fiches et les mesures par période @screen:fdvCollaborators @screen:fdvMeasures @req:FDV-01 @req:FDV-02 @path:FDV-01', async ({

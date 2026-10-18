@@ -11,6 +11,8 @@ import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.SalesObjective;
 import fr.alptis.remuneration.domain.VariableComponent;
 import fr.alptis.remuneration.domain.VariablePlan;
+import fr.alptis.remuneration.domain.VariableResult;
+import fr.alptis.remuneration.domain.VariableResultStatus;
 import io.quarkus.arc.profile.UnlessBuildProfile;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.POST;
@@ -272,6 +274,116 @@ public class FdvDemoResource {
         absence.periodTo = last;
         absence.value = new BigDecimal(absenceDays);
         absence.persist();
+    }
+
+    /**
+     * Plants a focused annual-regularization scene for FDV-07: two CAC collaborators sharing the post's
+     * monthly plan (1 000 € envelope), each with a full-year objective of 1 000. One over-achieved and
+     * was under-paid monthly (annual right 1 000 − 400 paid = +600 to pay); the other under-achieved and
+     * was over-paid (annual right 500 − 800 paid = −300, a negative gap submitted to the manager, H-53).
+     *
+     * @param entityCode the entity code
+     * @param year       the regularized year
+     * @return 204 once seeded
+     */
+    @POST
+    @Path("/fdv07")
+    @Transactional
+    public Response seedFdv07(@QueryParam("entity") String entityCode, @QueryParam("year") int year) {
+        LegalEntity entity = LegalEntity.<LegalEntity>find("code", entityCode).firstResult();
+        Period midYear = fdvPeriod(entity, LocalDate.of(year, 6, 1));
+        // The regularization books into the January N+1 period, which must already exist.
+        fdvPeriod(entity, LocalDate.of(year + 1, 1, 1));
+        // A distinct post (RB), so the post's monthly plan does not collide with the CAC/RR plans the
+        // cycle/sales-force demo may already carry for the entity.
+        VariablePlan plan = new VariablePlan();
+        plan.entity = entity;
+        plan.jobCode = JobCode.RB;
+        plan.component = VariableComponent.MONTHLY_INDIVIDUAL;
+        plan.envelopeAmount = new BigDecimal("1000.00");
+        plan.instalmentAmount = new BigDecimal("146.00");
+        plan.validFrom = LocalDate.of(year, 1, 1);
+        plan.validTo = LocalDate.of(year, 12, 31);
+        plan.persist();
+        fdv07Employee(entity, year, midYear, "FDV07-POS", "Positif", "2000.00", "400.00");
+        fdv07Employee(entity, year, midYear, "FDV07-NEG", "Negatif", "500.00", "800.00");
+        return Response.noContent().build();
+    }
+
+    /**
+     * Finds the entity's period for a month, creating a controlled one when absent (the sales-force demo
+     * may run alongside the cycle demo, which already plants some of these periods).
+     *
+     * @param entity      the entity
+     * @param periodMonth the period month
+     * @return the existing or newly created period
+     */
+    private Period fdvPeriod(LegalEntity entity, LocalDate periodMonth) {
+        Period existing = Period.<Period>find("entity = ?1 and periodMonth = ?2", entity, periodMonth).firstResult();
+        if (existing != null) {
+            return existing;
+        }
+        Period period = new Period();
+        period.entity = entity;
+        period.periodMonth = periodMonth;
+        period.state = PeriodState.CONTROLLED;
+        period.persist();
+        return period;
+    }
+
+    /**
+     * Seeds one RB collaborator of the FDV-07 scene: its full-year objective (1 000), weighted
+     * production (market weight one) and the monthly individual instalments already paid over the year.
+     *
+     * @param entity     the entity
+     * @param year       the regularized year
+     * @param midYear    a mid-year period carrying the paid instalment
+     * @param externalId the matricule
+     * @param lastName   the last name, used to locate the row
+     * @param production the full-year weighted production
+     * @param paid       the monthly individual amount already paid over the year
+     */
+    private void fdv07Employee(LegalEntity entity, int year, Period midYear, String externalId, String lastName,
+                               String production, String paid) {
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        Employee employee = new Employee();
+        employee.entity = entity;
+        employee.externalId = externalId;
+        employee.lastName = lastName;
+        employee.firstName = "FDV07";
+        employee.jobCode = JobCode.RB;
+        employee.team = "Courtage";
+        employee.region = "Sud";
+        employee.validFrom = yearStart;
+        employee.persist();
+        SalesObjective objective = new SalesObjective();
+        objective.entity = entity;
+        objective.employee = employee;
+        objective.jobCode = JobCode.RB;
+        objective.objectiveType = ObjectiveType.INDIVIDUAL_QUANTITATIVE;
+        objective.periodFrom = yearStart;
+        objective.periodTo = yearEnd;
+        objective.targetValue = new BigDecimal("1000.00");
+        objective.versionNo = 1;
+        objective.persist();
+        EmployeeMeasure prod = new EmployeeMeasure();
+        prod.employee = employee;
+        prod.measureType = MeasureType.PRODUCTION;
+        prod.dimension = "emprunteur";
+        prod.periodFrom = yearStart;
+        prod.periodTo = yearEnd;
+        prod.value = new BigDecimal(production);
+        prod.persist();
+        VariableResult paidResult = new VariableResult();
+        paidResult.period = midYear;
+        paidResult.employee = employee;
+        paidResult.plan = null;
+        paidResult.component = VariableComponent.MONTHLY_INDIVIDUAL;
+        paidResult.achievementRate = BigDecimal.ONE;
+        paidResult.amount = new BigDecimal(paid);
+        paidResult.status = VariableResultStatus.VALIDATED;
+        paidResult.persist();
     }
 
     /**
