@@ -10,7 +10,7 @@ la section 13 (cas de recette) et la section 4 de `TESTS-E2E.md` (parcours).
 | Exigences §8 | 135 | 135 | — |
 | Cas de recette §13 | 70 | 70 | — |
 | Parcours §4 | 135 | 135 | — |
-| Couples rôle-action | — | 23 | — |
+| Couples rôle-action | — | 26 | — |
 
 Écrans couverts (`@screen`) : accounting, adjustments, advance, alignment, audit, bank-accounts, bordereaux, calculations, claims, commissionSearch, contract-search, controls, cutoff, dashboards, demo, discounts, distributor, distributor-account, distributor-search, documentTemplates, enrollments, entities, events, exports, external-codes, families, fdvCollaborators, fdvCommercial, fdvMeasures, fdvObjectives, fdvPlan, fdvValidation, flows, formats, groupView, groupings, heldEvents, imports, indicators, manualEvent, mapping, margin, menu, paramTransfer, payee-rules, payment, periods, production-hierarchy, products, purge, quality-indicators, reconciliation, reprise, role-mappings, rules, shell, simulation, statements, states, supervision, taxCertificates, transfers, validation
 
