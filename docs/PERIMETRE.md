@@ -9,6 +9,190 @@ commit de rubrique.
 Barème d'état : `complet` (tout ce que décrit la ligne est réalisé et prouvé),
 `partiel` (une partie manque — le manque est nommé), `absent` (rien).
 
+## Revue des parcours (§10.1) — état par élément de la colonne « Vérifications »
+
+Revue engagée le 2026-10-18 : chacune des 135 étiquettes `@path` est confrontée, élément
+par élément, à la colonne « Vérifications » de la section 4 de `TESTS-E2E.md`. Un élément
+n'est clos que s'il correspond à une **assertion métier** (montant, libellé, statut, présence
+sur un autre écran, contenu d'un fichier produit). `✓` = prouvé ; **GAP** = à compléter (test
+ou, si l'écran ne montre pas la donnée, fonctionnalité). Les règles de solidité de la §1
+s'appliquent (effet vu depuis un autre écran, fichier produit ouvert). Ce tableau est tenu à
+jour à chaque commit de la §10.1 ; il n'est pas clos tant qu'il reste un **GAP**.
+
+**Bilan initial de la revue : 60 parcours portent au moins un GAP** (INT 8, PAR 7, CAL 6,
+CYC/CTL/AJU/CPT 9, PAI 5, BRD 7, FIN 4, FLX 2, SIM 1, HIS 1, REP 2, ADM 2, FDV 4, DEM 2).
+Les 75 autres sont entièrement prouvés. Détail par sous-section :
+
+### §4.1 Intégration et référentiels
+
+| Parcours | Éléments → preuve (ou GAP) |
+| --- | --- |
+| INT-01 | empreinte ✓ ; auteur ✓ ; **GAP** cinq compteurs (seuls 3 affirmés, lignes lues/filtrées absentes) ; **GAP** statut de l'événement non affirmé |
+| INT-02 | un rejet par code (6) ✓ ; libellé ✓ ; ligne brute ✓ ; autres intégrées ✓ |
+| INT-03 | la ligne repart seule ✓ ; **GAP** compteurs mis à jour après correction non relus ; **GAP** trace d'audit |
+| INT-04 | statut du rejet ✓ ; aucun événement créé ✓ |
+| INT-05 | refus ✓ ; aucun doublon ✓ |
+| INT-06 | les deux acceptés ✓ ; distingués au journal ✓ |
+| INT-07 | flux « reçu » ✓ ; zéro ligne ✓ |
+| INT-08 | reçu ✓ ; en retard ✓ ; manquant ✓ |
+| INT-09 | mise en attente avec motif ✓ ; **GAP** annulation liée (lien à l'origine non affirmé) ; **GAP** annulation rapprochée (rapprochement non affiché) |
+| INT-10 | en attente avec motif ✓ ; calculé seul à l'arrivée du référentiel ✓ |
+| INT-11 | événement créé ✓ ; tracé ✓ ; **GAP** pris par le calcul suivant (aucun calcul lancé) |
+| INT-12 | données visibles sur les garanties ✓ |
+| INT-13 | test du mapping ✓ ; résultat pivot ✓ |
+| INT-14 | lignes filtrées comptées ✓ ; **GAP** part de l'entité (0,24 €) jamais affirmée |
+| INT-15 | nouvelle version ✓ ; **GAP** imports passés gardent l'ancienne (rétention non exercée) |
+| INT-16 | fiche à jour ✓ ; attributs propres conservés ✓ |
+| INT-17 | paiements bloqués ✓ ; débloqués aux bonnes dates ✓ |
+| INT-18 | refus ✓ ; **GAP** signalement avant le paiement suivant (porté seulement sur l'écran bancaire) |
+| INT-19 | refus ✓ ; périodicité appliquée ✓ |
+| INT-20 | réaffectées à la date d'effet ✓ ; historique ✓ |
+| INT-21 | hiérarchie historisée ✓ ; fiche groupement à jour ✓ |
+| INT-22 | code mis en correspondance ✓ ; débloque les en attente ✓ |
+| INT-23 | valeurs par distributeur ✓ ; **GAP** par période (aucune période affirmée) |
+| INT-24 | création ✓ ; fin de validité ✓ ; refus chevauchement ✓ |
+
+### §4.2 Paramétrage des règles
+
+| Parcours | Éléments → preuve (ou GAP) |
+| --- | --- |
+| PAR-01 | version en projet ✓ ; **GAP** formulaire tiré du schéma (textarea libre) ; **GAP** relue à l'identique ; **GAP** les neuf familles (seul LINEAR) |
+| PAR-02 | refus par famille (9) avec message du schéma ✓ |
+| PAR-03 | refus auteur ✓ ; approuvée par un second ✓ ; **GAP** non modifiable ensuite (immutabilité non tentée) |
+| PAR-04 | ACTIVE ✓ ; RETIRED ✓ ; sans intervention ✓ |
+| PAR-05 | approbation refusée ✓ ; règles nommées ✓ |
+| PAR-06 | couvert ✓ ; non couvert ✓ ; **GAP** chacun des critères §5.4 (un seul critère) |
+| PAR-07 | alerte à la saisie ✓ |
+| PAR-08 | mode marginal ✓ ; **GAP** mode global ; **GAP** bornes (sous/sur/au-dessus) |
+| PAR-09 | paliers ✓ ; prorata ✓ ; aucune ✓ |
+| PAR-10 | en projet ✓ ; dates N+1 ✓ ; **GAP** toutes les versions copiées (une seule vérifiée) |
+| PAR-11 | non signé → inactif ✓ ; signé → actif ✓ ; **GAP** import en masse vu seulement par l'API |
+| PAR-12 | clôture ✓ ; **GAP** création (pré-semée) ; **GAP** suspension ; **GAP** échéance ; **GAP** effet §6.4 sur escomptes nouveaux |
+| PAR-13 | paramétrage identique après aller-retour ✓ (toEqual) |
+
+### §4.3 Calcul
+
+| Parcours | Éléments → preuve (ou GAP) |
+| --- | --- |
+| CAL-01 | **GAP** compteurs (seul /[1-9]/) ; **GAP** période verrouillée pendant le calcul |
+| CAL-02 | mêmes lignes/aucun doublon ✓ ; mêmes montants ✓ |
+| CAL-03 | unité en échec + motif ✓ ; autres calculées (faible) ; **GAP** relance de la seule unité fautive + échec résolu |
+| CAL-04 | seules les lignes concernées changent ✓ |
+| CAL-05 | refus ✓ |
+| CAL-06 | en attente ✓ ; anomalie/motif ✓ ; recalculé après ajout ✓ |
+| CAL-07 | en attente avec motif ✓ |
+| CAL-08 | lignes sur deux comptes ✓ ; position unique ✓ ; **GAP** une seule unité (non affirmée) |
+| CAL-09 | admission par date ✓ ; **GAP** suivantes sans escompte (seulement count=1) |
+| CAL-10 | second versement ✓ ; rupture ✓ |
+| CAL-11 | cumul apuré diminué ✓ ; **GAP** ligne inverse hors solde (commentaire seul) |
+| CAL-12 | ligne inverse au taux d'origine ✓ |
+| CAL-13 | régularisée à la résiliation ✓ ; **GAP** lignes prévisionnelles affichées ; **GAP** jamais payées |
+| CAL-14 | escompte soldé ✓ ; régularisation créée ✓ |
+
+### §4.4 Cycle, contrôles, ajustements, comptes
+
+| Parcours | Éléments → preuve (ou GAP) |
+| --- | --- |
+| CYC-01 | état suivant (8 transitions) ✓ ; trace ✓ |
+| CYC-02 | refus ✓ ; **GAP (borderline)** pas « chaque transition par chacun des autres rôles » (2 rôles, 1 transition) |
+| CYC-03 | effets §7.1 ✓ ; refus après FINANCE_VALIDATED ✓ |
+| CYC-04 | événements après arrêté → suivante ✓ |
+| CYC-05 | non requis ✓ ; requis + 2ᵉ niveau ✓ |
+| CTL-01 | 10 familles ✓ ; **GAP** gravité (1/10) ; **GAP** constat (1/10) |
+| CTL-02 | acceptée/corrigée/reportée ✓ ; compteur ✓ ; **GAP** trace (pas d'audit/rechargement) |
+| CTL-03 | bloquante ouverte ✓ ; validation refusée ✓ |
+| CTL-04 | anomalie levée ✓ ; ne peut être acceptée ✓ |
+| CTL-05 | effet au calcul suivant ✓ ; version du contrôle ✓ |
+| CTL-06 | cochée ✓ ; **GAP** persistée (pas de rechargement/autre écran) ; **GAP** tracée (pas d'audit) |
+| AJU-01 | ligne au compte (5 types) ✓ ; bordereau suivant ✓ |
+| AJU-02 | refus motif ✓ ; pièce ✓ ; lien ✓ |
+| AJU-03 | refus auteur ✓ ; refus seuil ✓ ; approuvé ✓ |
+| AJU-04 | contrepassation période suivante ✓ ; **GAP** montant/sens inverse non affirmé |
+| AJU-05 | **GAP** remboursements aux échéances (lignes par échéance non affirmées, seul solde final) |
+| AJU-06 | deux lignes ✓ ; somme nulle ✓ |
+| AJU-07 | lignes créées ✓ ; **GAP** toutes à approuver (une seule ligne, non prouvé) |
+| REC-01 | état à chaque étape ✓ ; ajustement lié ✓ |
+| CPT-01 | aucun paiement si non positif ✓ ; report en une ligne ✓ |
+| CPT-02 | paiement du net ✓ ; **GAP** deux lignes de transfert (seul le toast « 2 lignes ») |
+| CPT-03 | jamais entre deux sociétés ✓ |
+| CPT-04 | exclu du lot ✓ ; levé à la date ✓ |
+| CPT-05 | comptes des membres regroupés ✓ |
+| CPT-06 | liste ✓ ; échéancier ✓ |
+| CPT-07 | six statuts visibles ✓ ; **GAP** motif pour un seul des six |
+
+### §4.5 Paiement et documents
+
+| Parcours | Éléments → preuve (ou GAP) |
+| --- | --- |
+| PAI-01 | un ordre par bénéficiaire ✓ ; **GAP** total = somme des lignes rattachées (comparé aux ordres) |
+| PAI-02 | six motifs ✓ ; **GAP** somme restée au compte (compte jamais ouvert) |
+| PAI-03 | lot distinct ✓ ; bordereau propre ✓ ; PAID après dernier lot ✓ |
+| PAI-04 | imputation en une ligne ✓ ; sur le bordereau du lot qui paie ✓ |
+| PAI-05 | émission saisie ✓ ; ordre réglé ✓ ; **GAP** liste lue depuis un élément in-page, pas un téléchargement |
+| PAI-06 | libéré après réinscription ✓ ; sans attendre le mois suivant ✓ |
+| PAI-07 | refus ✓ |
+| PAI-08 | période revenue ✓ ; lignes acquises ✓ ; bordereaux provisoires supprimés ✓ ; **GAP** écritures contre-passées (seule l'absence affirmée) |
+| PAI-09 | lot revenu en préparation ✓ ; période inchangée ✓ |
+| PAI-10 | date d'exécution ✓ ; **GAP** XML lu depuis un élément in-page ; **GAP** nombre d'ordres/somme/EndToEndId/libellé affirmés en présence seulement, pas en valeur |
+| PAI-11 | lignes payées ✓ ; revenues payables ✓ ; anomalie ✓ ; réémission + suffixe ✓ |
+| PAI-12 | un ordre par entité débitrice ✓ |
+| BRD-01 | tableur lu ✓ ; **GAP** en-tête ; **GAP** total (brut) ; **GAP** solde reporté ; rubriques §9.5 (faible) ; net (présence) ; PDF : champs métier non lus |
+| BRD-02 | chaque niveau ✓ ; bon bénéficiaire ✓ ; bonnes lignes ✓ |
+| BRD-03 | une ligne par entité ✓ ; net consolidé ✓ ; **GAP** sous-total par entité (chaque montant non affirmé) |
+| BRD-04 | le lendemain ✓ ; métadonnées GED ✓ |
+| BRD-05 | v2 créée ✓ ; v1 consultable ✓ ; **GAP** v2 « publiée » (statut non affirmé) ; **GAP** v1 « intacte » (contenu inchangé non affirmé) |
+| BRD-06 | **GAP** sa part seulement (aucune exclusion des autres affirmée) |
+| BRD-07 | anciens inchangés ✓ ; **GAP** logo ; **GAP** mentions ; **GAP** colonnes (saisis mais non affirmés dans le bordereau produit) |
+| BRD-08 | **GAP** total de l'année civile (montant non vérifié/rapproché) |
+| BRD-09 | détail par adhérent (faible) ; **GAP** versé ; **GAP** apuré ; **GAP** créance (non affirmés individuellement) |
+
+### §4.6 Comptabilité, restitutions, flux
+
+| Parcours | Éléments → preuve (ou GAP) |
+| --- | --- |
+| FIN-01 | aucune écriture avant validation ✓ (fichier lu) |
+| FIN-02 | **GAP** écritures de chaque événement §10.2 (schéma seul, ~4 libellés) ; **GAP** équilibrées (pas de débit=crédit) |
+| FIN-03 | quatre variantes ✓ ; **GAP** sens des écritures par variante |
+| FIN-04 | nouveau compte dans l'extraction suivante ✓ |
+| FIN-05 | colonnes ✓ ; mois comptable ✓ ; **GAP** équilibre ; **GAP** total égal aux lignes |
+| FIN-06 | plus rien ne change ✓ ; toute action refusée ✓ |
+| FIN-07 | même total aux quatre mailles ✓ ; **GAP** exemple §10.4 (figure non pinée) |
+| FIN-08 | au global ✓ ; par bénéficiaire ✓ |
+| FIN-09 | écart ✓ ; anomalie ✓ ; marge ✓ |
+| FLX-01 | journal + auteur ✓ ; **GAP** chacun des exports §9.12 (3/7) ; **GAP** fichier lu (non inspecté) ; **GAP** lignes ; **GAP** total (seul « € ») |
+| FLX-02 | un fichier par objet ✓ ; incrément du jour ✓ |
+| FLX-03 | chaque ressource §9.8 ✓ ; avec/sans entité ✓ ; contenu ✓ ; cloisonnement ✓ |
+| FLX-04 | catalogue ✓ ; formats ✓ ; **GAP** conformes à §9 (2 codes, 1 convention seulement) |
+| SIM-01 | écart limité au taux ✓ ; aucune ligne réelle ✓ ; **GAP** aucun compte touché ; **GAP** aucune écriture touchée |
+| SIM-02 | avec substitution ✓ ; sans → en attente ✓ |
+| SIM-03 | lignes identiques au centime ✓ |
+| HIS-01 | cumuls ouverts ✓ ; première période ✓ ; **GAP** soldes ouverts (faible, pas sur écran) ; **GAP** positions d'escompte ouvertes (faible) |
+| REP-01 | chiffres = sommes (1 tableau) ✓ ; **GAP** chaque tableau de bord (autres seulement visibles) |
+| REP-02 | chaîne virement→bordereau→ligne→événement→règle→écriture ✓ |
+| REP-03 | réservée aux habilités ✓ ; **GAP** totaux par entité non rapprochés au jeu |
+| ADM-01 | changement ✓ ; droits à la connexion suivante ✓ |
+| ADM-02 | seuil de paiement ✓ ; **GAP** tolérances ; **GAP** calendrier |
+| ADM-03 | montants conservés ✓ ; **GAP** anonymisation non montrée sur écran (compte seul) |
+| ADM-04 | échec visible ✓ ; relançable ✓ |
+
+### §4.7 Forces de vente / §4.8 Démonstration
+
+| Parcours | Éléments → preuve (ou GAP) |
+| --- | --- |
+| FDV-01 | fiches ✓ ; mesures par période ✓ |
+| FDV-02 | nouvelle version ✓ ; ancienne conservée ✓ |
+| FDV-03 | atteint → 146 ✓ ; manqué → 0 ✓ ; absence → 0 ✓ |
+| FDV-04 | 13 500 € ✓ |
+| FDV-05 | six semaines → rien ✓ ; **GAP** montant par critère (seul /[1-9]/ sur le total) |
+| FDV-06 | enveloppe ✓ ; **GAP** proratisée (prorata d'absence non exercé) |
+| FDV-07 | positif ✓ ; écart négatif soumis au responsable ✓ |
+| FDV-08 | sans motif → refus ✓ ; avec motif → ajustement tracé ✓ |
+| FDV-09 | seul contrôleur Finance ✓ ; **GAP** fichier lu (CSV non ouvert) ; **GAP** après validation de TOUS les résultats |
+| FDV-10 | commercial → son variable ✓ ; responsable → son équipe ✓ |
+| FDV-11 | plafonné à 100 % ✓ ; **GAP** exemple à 95 % (2 327,50 € non simulé/affirmé) |
+| DEM-01 | **GAP** de l'import à la clôture, chaque transition par son rôle (chaîne non pilotée, états vus passivement) |
+| DEM-02 | **GAP** chacun des 19 écrans de la maquette, chiffres clés à l'identique (≈4/19 visités, visibilité seule) |
+
 ## RÉSOLU — 3 échecs pré-existants révélés puis corrigés (2026-10-18)
 
 Le premier `mvn verify` **sans option** mené jusqu'au bout (les passes précédentes
