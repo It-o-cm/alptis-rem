@@ -17,15 +17,36 @@ interface UploadResponse {
   linesOnHold: number;
 }
 
+/** The opening datasets of the history reprise (ING-11), each with its flow code and column header. */
+const DATASETS = [
+  { flow: 'opening_balances', label: 'Soldes des comptes', header: 'payee_type;payee_code;opening_balance\n' },
+  {
+    flow: 'opening_advances',
+    label: "Positions d'escompte",
+    header: 'coverage_code;advanced;total_due;settlement_due_date\n',
+  },
+  {
+    flow: 'opening_counters',
+    label: 'Cumuls annuels des surcommissions',
+    header: 'rule_code;payee_type;payee_code;year;month;cumulative_basis;cumulative_entitlement\n',
+  },
+];
+
 const session = useSessionStore();
 const entity = ref(session.entities.length > 0 && session.entities[0] !== '*' ? session.entities[0] : 'ALPTIS_ASSURANCES');
 const sourceSystem = ref('REPRISE');
-const content = ref('payee_type;payee_code;opening_balance\n');
+const dataset = ref(DATASETS[0].flow);
+const content = ref(DATASETS[0].header);
 const result = ref<UploadResponse | null>(null);
 const error = ref('');
 const uploading = ref(false);
 
 const canUpload = () => canOperateImports(session.roles);
+
+/** Resets the editable content to the chosen dataset's column header. */
+function onDatasetChange(): void {
+  content.value = DATASETS.find((d) => d.flow === dataset.value)!.header;
+}
 
 /** Columns of the upload-result table. */
 const columns: Column<UploadResponse>[] = [
@@ -44,9 +65,9 @@ async function upload(): Promise<void> {
   try {
     result.value = await apiPost<UploadResponse>('/api/ui/v1/imports', {
       entityCode: entity.value,
-      flowCode: 'opening_balances',
+      flowCode: dataset.value,
       sourceSystem: sourceSystem.value,
-      fileName: 'opening_balances.csv',
+      fileName: `${dataset.value}.csv`,
       content: content.value,
     });
   } catch (e) {
@@ -62,13 +83,18 @@ async function upload(): Promise<void> {
   <div class="page">
     <PageHeading
       title="Reprise d'historique"
-      subtitle="Dépôt des fichiers d'ouverture à la bascule d'un périmètre : soldes des comptes repris en écriture d'ouverture, contrôlés ligne à ligne (ING-11). Colonnes : payee_type ; payee_code ; opening_balance."
+      subtitle="Dépôt des fichiers d'ouverture à la bascule d'un périmètre, lot par lot : soldes des comptes (écriture d'ouverture), positions d'escompte en cours et cumuls annuels des surcommissions, contrôlés ligne à ligne ; la première période est calculée dessus (ING-11)."
     />
 
     <AppCard v-if="canUpload()" data-testid="reprise-form">
       <AppForm @submit="upload">
         <FormField label="Entité" width="short" v-slot="{ id }">
           <EntitySelect :id="id" data-testid="reprise-entity" v-model="entity" />
+        </FormField>
+        <FormField label="Jeu d'ouverture" width="short" v-slot="{ id }">
+          <select :id="id" data-testid="reprise-dataset" v-model="dataset" @change="onDatasetChange">
+            <option v-for="d in DATASETS" :key="d.flow" :value="d.flow">{{ d.label }}</option>
+          </select>
         </FormField>
         <FormField label="Système source" width="short" v-slot="{ id }">
           <input :id="id" data-testid="reprise-source" type="text" v-model="sourceSystem" />

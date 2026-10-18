@@ -25,7 +25,9 @@ import fr.alptis.remuneration.domain.Period;
 import fr.alptis.remuneration.domain.PeriodState;
 import fr.alptis.remuneration.domain.ProcessingStatus;
 import fr.alptis.remuneration.domain.Product;
+import fr.alptis.remuneration.domain.PayeeType;
 import fr.alptis.remuneration.domain.ProductionCode;
+import fr.alptis.remuneration.domain.ProductionCounter;
 import fr.alptis.remuneration.domain.QualityIndicator;
 import fr.alptis.remuneration.domain.QualityIndicatorType;
 import fr.alptis.remuneration.domain.RemunerationChoice;
@@ -425,6 +427,39 @@ class SurcommissionEngineTest {
         engine.runDevelopment("UNEP", LocalDate.of(2026, 1, 1), 2026);
 
         assertEquals(0, amountOf(LineNature.RCD).compareTo(new BigDecimal("6000.00")));
+    }
+
+    /**
+     * HIS-01 (reprise): an annual counter carried in at a perimeter switch-over — rather than produced
+     * by a prior run — is consumed as the entitlement already acquired, so the first calculated month
+     * pays only the gain over the carried cumul. January's 300,00 € entitlement is reprised; running
+     * February over a 60 000 € cumulative production pays the 1 050,00 € gain, exactly as if January had
+     * been run in the application (ING-11, section 6.7).
+     */
+    @Test
+    @TestTransaction
+    void reprised_annual_counter_feeds_the_first_development_month() {
+        Product p = product("SANTE");
+        Distributor d = distributor("D1");
+        RuleVersion v = developmentRule(d);
+        Coverage jan = coverage("S-1", p, d, LocalDate.of(2026, 1, 10), "30000");
+        event(jan, "SUB1", EventType.SUBSCRIPTION, LocalDate.of(2026, 1, 15), null);
+        Coverage feb = coverage("S-2", p, d, LocalDate.of(2026, 2, 10), "30000");
+        event(feb, "SUB2", EventType.SUBSCRIPTION, LocalDate.of(2026, 2, 15), null);
+        ProductionCounter opening = new ProductionCounter();
+        opening.entity = unep();
+        opening.rule = v.rule;
+        opening.payeeType = PayeeType.DISTRIBUTOR;
+        opening.payeeId = d.getId();
+        opening.counterYear = (short) 2026;
+        opening.counterMonth = (short) 1;
+        opening.cumulativeBasis = new BigDecimal("30000");
+        opening.cumulativeEntitlement = new BigDecimal("300.00");
+        opening.persist();
+
+        engine.runDevelopment("UNEP", LocalDate.of(2026, 2, 1), 2026);
+
+        assertEquals(0, amountOf(LineNature.RCD).compareTo(new BigDecimal("1050.00")));
     }
 
     /**

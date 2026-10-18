@@ -1438,6 +1438,25 @@ class CrScenarioResourceTest {
                 .body("detail", containsString("clôturée"));
     }
 
+    /**
+     * HIS-01 (parcours « Reprise d'historique ») : après dépôt du cumul annuel de janvier (reprise), la
+     * surcommission de développement de février ne verse que le gain sur le cumul repris — 1 050,00 € sur
+     * une production cumulée de 60 000 € — et non toute l'année.
+     */
+    @Test
+    void his01_reprised_counter_pays_only_the_gain_in_the_first_month() {
+        given().when().post("/api/test/cr-scenario?cr=HIS-01&entity=UNEP&month=2029-02-01").then().statusCode(204);
+        given().auth().preemptive().basic("operator-unep", "operator-unep").contentType("application/json")
+                .body(java.util.Map.of("entityCode", "UNEP", "flowCode", "opening_counters", "sourceSystem",
+                        "REPRISE", "fileName", "counters.csv", "content",
+                        "rule_code;payee_type;payee_code;year;month;cumulative_basis;cumulative_entitlement\n"
+                                + "R-HIS01-RCD;DISTRIBUTOR;P-HIS01;2029;1;30000.00;300.00\n"))
+                .when().post("/api/ui/v1/imports").then().statusCode(201).body("linesLoaded", is(1));
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/calculations/UNEP/2029-02-01/close-development").then().statusCode(200);
+        search("2029-02-01").body("find { it.nature == 'RCD' }.amount as double", is(1050.0));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

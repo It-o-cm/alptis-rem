@@ -94,6 +94,8 @@ public class ImportService {
             case PayeeExternalImportService.PAYEE_RULES -> payeeAndCodes.importPayeeRules(entityCode, sourceSystem, fileName, content);
             case PayeeExternalImportService.EXTERNAL_CODES -> payeeAndCodes.importExternalCodes(entityCode, sourceSystem, fileName, content);
             case OpeningBalanceImportService.OPENING_BALANCES -> openingBalances.importOpeningBalances(entityCode, sourceSystem, fileName, content);
+            case OpeningBalanceImportService.OPENING_ADVANCES -> openingBalances.importOpeningAdvances(entityCode, sourceSystem, fileName, content);
+            case OpeningBalanceImportService.OPENING_COUNTERS -> openingBalances.importOpeningCounters(entityCode, sourceSystem, fileName, content);
             case EmployeeImportService.EMPLOYEES -> employees.importEmployees(entityCode, sourceSystem, fileName, content);
             case EmployeeImportService.EMPLOYEE_MEASURES -> employees.importMeasures(entityCode, sourceSystem, fileName, content);
             default -> throw new ValidationException("Flux inconnu : " + flowCode);

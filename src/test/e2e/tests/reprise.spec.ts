@@ -29,6 +29,60 @@ test('l’opérateur dépose un fichier d’ouverture et lit les compteurs @scre
   await operator.close();
 });
 
+test('HIS-01 : la reprise ouvre soldes, escomptes et cumuls, et la première période se calcule dessus @screen:reprise @screen:calculations @screen:commissionSearch @req:ING-11 @path:HIS-01', async ({
+  browser,
+  request,
+}) => {
+  const month = '2027-02-01';
+  expect((await request.post(`/api/test/cr-scenario?cr=HIS-01&entity=UNEP&month=${month}`)).ok()).toBeTruthy();
+
+  const op = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await op.newPage();
+  await page.goto('/reprise');
+  await page.getByTestId('reprise-entity').selectOption('UNEP');
+
+  // Lot by lot (ING-11): opening account balances (soldes des comptes).
+  await page.getByTestId('reprise-dataset').selectOption('opening_balances');
+  await page
+    .getByTestId('reprise-content')
+    .fill('payee_type;payee_code;opening_balance\nDISTRIBUTOR;P-HIS01;-250.00\n');
+  await page.getByTestId('reprise-upload').click();
+  await expect(page.getByTestId('reprise-loaded')).toHaveText('1');
+
+  // Open discount positions (positions d'escompte en cours).
+  await page.getByTestId('reprise-dataset').selectOption('opening_advances');
+  await page
+    .getByTestId('reprise-content')
+    .fill('coverage_code;advanced;total_due;settlement_due_date\nHIS01-1-C1;400.00;400.00;2027-12-31\n');
+  await page.getByTestId('reprise-upload').click();
+  await expect(page.getByTestId('reprise-loaded')).toHaveText('1');
+
+  // Annual surcommission counters (cumuls annuels) : January's carried cumul of the RCD rule.
+  await page.getByTestId('reprise-dataset').selectOption('opening_counters');
+  await page
+    .getByTestId('reprise-content')
+    .fill(
+      'rule_code;payee_type;payee_code;year;month;cumulative_basis;cumulative_entitlement\n' +
+        'R-HIS01-RCD;DISTRIBUTOR;P-HIS01;2027;1;30000.00;300.00\n',
+    );
+  await page.getByTestId('reprise-upload').click();
+  await expect(page.getByTestId('reprise-loaded')).toHaveText('1');
+
+  // The first month (February) is calculated on top of the opening state: the development remuneration
+  // pays only the 1 050,00 € gain over the carried January cumul, not the whole year (ING-11, §6.7).
+  await page.goto('/calculs');
+  await page.getByTestId('calc-period').selectOption(`UNEP|${month}`);
+  await page.getByTestId('close-development').click();
+  await expect(page.getByTestId('calc-message')).toContainText('Surcommission de développement calculée');
+
+  await page.goto('/recherche-commissions');
+  await page.getByTestId('cs-month').selectOption(month);
+  await page.getByTestId('cs-search').click();
+  const row = page.locator('[data-testid^="cs-row-"]').filter({ hasText: 'Développement (RCD)' }).first();
+  await expect(row).toContainText('1 050,00');
+  await op.close();
+});
+
 test.describe('Reprise — accessibilité', () => {
   test.use({ httpCredentials: USERS.operatorAlptis });
 

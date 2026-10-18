@@ -224,6 +224,7 @@ public class CrScenarioResource {
             case "FIN-04" -> seedFin04(entity, periodMonth);
             case "FIN-06" -> seedFin06(entity, periodMonth);
             case "FIN-09" -> seedFin09(entity, periodMonth);
+            case "HIS-01" -> seedHis01(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -716,6 +717,35 @@ public class CrScenarioResource {
         paid.nature = LineNature.LINEAR;
         paid.amount = new BigDecimal("30.00");
         paid.persist();
+    }
+
+    /**
+     * HIS-01 (parcours « Reprise d'historique ») : le référentiel d'un périmètre basculé (production
+     * annuelle de développement de janvier et février, convention d'escompte absente), sans aucun état
+     * d'ouverture. Après dépôt des fichiers d'ouverture (solde du compte du distributeur {@code P-HIS01},
+     * position d'escompte en cours sur la garantie {@code HIS01-1-C1}, cumul annuel de janvier de la
+     * règle {@code R-HIS01-RCD}), la première période (février) se calcule dessus : la surcommission de
+     * développement ne verse que le gain sur le cumul repris, pas toute l'année.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month (February)
+     */
+    private void seedHis01(LegalEntity entity, LocalDate periodMonth) {
+        int year = periodMonth.getYear();
+        Product product = product(entity, "HISPER");
+        Coverage january = coverage(entity, "HIS01-1", product, LocalDate.of(year, 1, 10), "P-HIS01", null);
+        january.annualPremium = new BigDecimal("30000");
+        Coverage february = coverage(entity, "HIS01-2", product, LocalDate.of(year, 2, 10), "P-HIS01", null);
+        february.annualPremium = new BigDecimal("30000");
+        Distributor distributor = Distributor.<Distributor>find("partnerCode", "P-HIS01").firstResult();
+        String scope = "{\"entity\":[\"" + entity.code + "\"],\"product\":[\"HISPER\"]}";
+        RuleVersion version = version(entity, "PLAN-HIS01", "R-HIS01-RCD", RuleFamily.TIERED, LineNature.RCD,
+                scope, "{\"counterCode\":\"RCD\",\"calculationFrequency\":\"MONTHLY\"}",
+                LocalDate.of(year, 1, 1), null, null);
+        santeDevelopmentScale(version);
+        enrol(version.rule, distributor, AgreementType.RCD_AMENDMENT, true);
+        event(entity, january, "HIS01-SUB1", EventType.SUBSCRIPTION, LocalDate.of(year, 1, 15), null);
+        event(entity, february, "HIS01-SUB2", EventType.SUBSCRIPTION, LocalDate.of(year, 2, 15), null);
     }
 
     /**
