@@ -41,6 +41,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -288,6 +289,24 @@ class CalculationEngineTest {
         assertEquals(0, lines.get(0).amount.compareTo(new BigDecimal("15.00")));
         assertEquals(LineStatus.EARNED, lines.get(0).status);
         assertEquals("PC-AD-1", lines.get(0).originProductionCode.code);
+    }
+
+    /**
+     * FIN-06: a closed period is sealed — a real calculation on it is refused, so nothing changes once
+     * the cycle is over. Only a simulation, routed through its own service, may still replay it (SIM-03).
+     */
+    @Test
+    @TestTransaction
+    void fin06_a_closed_period_refuses_a_real_calculation() {
+        fr.alptis.remuneration.domain.Period period = new fr.alptis.remuneration.domain.Period();
+        period.entity = unep();
+        period.periodMonth = MONTH;
+        period.state = fr.alptis.remuneration.domain.PeriodState.CLOSED;
+        period.persist();
+
+        fr.alptis.remuneration.domain.ValidationException error = assertThrows(
+                fr.alptis.remuneration.domain.ValidationException.class, () -> engine.runReal("UNEP", MONTH));
+        assertTrue(error.getMessage().contains("clôturée"));
     }
 
     /**

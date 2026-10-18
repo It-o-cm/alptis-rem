@@ -222,6 +222,7 @@ public class CrScenarioResource {
             case "BRD-04" -> seedBrd04(entity, periodMonth);
             case "BRD-07" -> seedBrd07(entity, periodMonth);
             case "FIN-04" -> seedFin04(entity, periodMonth);
+            case "FIN-06" -> seedFin06(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -3015,6 +3016,20 @@ public class CrScenarioResource {
         Period period = period(entity, periodMonth);
         period.state = PeriodState.CONTROLLED;
         payee(entity, period, "P-FIN04", "100.00", PartnerStatus.ACTIVE, true);
+    }
+
+    /**
+     * FIN-06 (clôture) : une période payée, prête à être clôturée. Une fois clôturée, plus rien ne
+     * change : toute action sur la période est refusée (ni calcul ni recalcul ne la touchent), et elle
+     * quitte la liste des périodes ouvertes.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedFin06(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.PAID;
+        payee(entity, period, "P-FIN06", "100.00", PartnerStatus.ACTIVE, true);
     }
 
     private void seedBrd07(LegalEntity entity, LocalDate periodMonth) {

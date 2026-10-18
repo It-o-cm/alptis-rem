@@ -58,3 +58,37 @@ test.describe('Périodes — lecteur', () => {
     await expect(page.getByTestId('advance-button')).toHaveCount(0);
   });
 });
+
+test('FIN-06 : une période clôturée est scellée — plus rien ne change, toute action est refusée @screen:periods @req:FIN-06 @path:FIN-06 @role-action:FINANCE_CONTROLLER-close-period', async ({
+  browser,
+  request,
+}) => {
+  const month = '2029-08-01';
+  expect(
+    (await request.post(`/api/test/cr-scenario?cr=FIN-06&entity=ALPTIS_ASSURANCES&month=${month}`)).ok(),
+  ).toBeTruthy();
+
+  // The finance controller closes the paid period.
+  const finCtx = await browser.newContext({ httpCredentials: USERS.financeAlptis });
+  const fin = await finCtx.newPage();
+  await fin.goto('/');
+  await fin.getByTestId(`open-ALPTIS_ASSURANCES-${month}`).click();
+  await expect(fin.getByTestId('detail-state')).toContainText('Payée');
+  await fin.getByTestId('advance-button').click();
+  await expect(fin.getByTestId('detail-state')).toContainText('Clôturée');
+  // Nothing more to do: the cycle is over, no further transition is offered.
+  await expect(fin.getByTestId('advance-button')).toHaveCount(0);
+
+  // The closed period has left the list of open periods.
+  await fin.goto('/');
+  await expect(fin.getByTestId(`period-row-ALPTIS_ASSURANCES-${month}`)).toHaveCount(0);
+  await finCtx.close();
+
+  // Any action on it is refused by the server: a real recalculation is rejected.
+  const auth = 'Basic ' + Buffer.from(`${USERS.adminAlptis.username}:${USERS.adminAlptis.password}`).toString('base64');
+  const resp = await request.post(`/api/ui/v1/calculations/ALPTIS_ASSURANCES/${month}/run`, {
+    headers: { Authorization: auth },
+  });
+  expect(resp.status()).toBe(400);
+  expect((await resp.json()).detail).toContain('clôturée');
+});

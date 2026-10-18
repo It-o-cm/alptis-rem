@@ -1403,6 +1403,28 @@ class CrScenarioResourceTest {
                 .body(containsString("467999"));
     }
 
+    /**
+     * FIN-06 (parcours « Clôture ») : une période payée est clôturée par la Finance ; elle devient alors
+     * scellée — un recalcul réel est refusé par le serveur, plus rien ne change.
+     */
+    @Test
+    void fin06_a_closed_period_is_sealed_against_any_action() {
+        given().when().post("/api/test/cr-scenario?cr=FIN-06&entity=ALPTIS_ASSURANCES&month=2029-08-01")
+                .then().statusCode(204);
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/periods/ALPTIS_ASSURANCES/2029-08-01").then().statusCode(200)
+                .body("period.state", is("PAID"));
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis").contentType("application/json")
+                .body(java.util.Map.of("toState", "CLOSED"))
+                .when().post("/api/ui/v1/periods/ALPTIS_ASSURANCES/2029-08-01/transition").then().statusCode(200);
+        given().auth().preemptive().basic("finance-alptis", "finance-alptis")
+                .when().get("/api/ui/v1/periods/ALPTIS_ASSURANCES/2029-08-01").then().statusCode(200)
+                .body("period.state", is("CLOSED"));
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().post("/api/ui/v1/calculations/ALPTIS_ASSURANCES/2029-08-01/run").then().statusCode(400)
+                .body("detail", containsString("clôturée"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

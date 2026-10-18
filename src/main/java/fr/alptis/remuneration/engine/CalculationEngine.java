@@ -2258,6 +2258,11 @@ public class CalculationEngine {
             period.state = PeriodState.OPEN;
             period.setCreatedAt(clock.now());
             period.persist();
+        } else if (period.state == PeriodState.CLOSED) {
+            // FIN-06: a closed period is sealed. No real calculation touches it again; only a simulation,
+            // which runs through a separate service, may replay it (SIM-03).
+            throw new fr.alptis.remuneration.domain.ValidationException(
+                    "La période est clôturée : aucun calcul ni recalcul n'est possible");
         }
         return period;
     }
