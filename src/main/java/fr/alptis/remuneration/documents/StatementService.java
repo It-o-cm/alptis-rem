@@ -201,6 +201,72 @@ public class StatementService {
     }
 
     /**
+     * Produces a consolidated multi-entity bordereau for a distributor over a month (BRD-04): one
+     * subtotal line per covered entity (the distributor's cycle net there) and the grand total, so a
+     * distributor active in several entities gets a single bordereau with a subtotal per entity. The
+     * covered entities are limited to those the caller may see (null for all).
+     *
+     * @param partnerCode  the distributor partner code
+     * @param month        the period month
+     * @param visibleCodes the entity codes the caller may see, or null for all entities
+     * @return the consolidated content
+     * @throws ResourceNotFoundException when the distributor is unknown
+     */
+    public StatementContent consolidated(String partnerCode, java.time.LocalDate month, List<String> visibleCodes) {
+        fr.alptis.remuneration.domain.Distributor distributor =
+                fr.alptis.remuneration.domain.Distributor.<fr.alptis.remuneration.domain.Distributor>find(
+                        "partnerCode", partnerCode).firstResult();
+        if (distributor == null) {
+            throw new ResourceNotFoundException("Distributeur inconnu : " + partnerCode);
+        }
+        List<fr.alptis.remuneration.domain.Statement> statements = visibleCodes == null
+                ? fr.alptis.remuneration.domain.Statement.list("period.periodMonth = ?1 and batchType = ?2",
+                        month, fr.alptis.remuneration.domain.BatchType.CYCLE)
+                : fr.alptis.remuneration.domain.Statement.list(
+                        "period.periodMonth = ?1 and batchType = ?2 and entity.code in ?3", month,
+                        fr.alptis.remuneration.domain.BatchType.CYCLE, visibleCodes);
+        java.util.Map<String, BigDecimal> subtotals = new java.util.TreeMap<>();
+        for (fr.alptis.remuneration.domain.Statement statement : statements) {
+            fr.alptis.remuneration.domain.Distributor owner = distributorOf(statement.account);
+            if (owner != null && owner.getId().equals(distributor.getId())) {
+                subtotals.merge(statement.entity.name,
+                        statement.netAmount == null ? BigDecimal.ZERO : statement.netAmount, BigDecimal::add);
+            }
+        }
+        List<Row> rows = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (java.util.Map.Entry<String, BigDecimal> entry : subtotals.entrySet()) {
+            rows.add(new Row("Sous-total entité", entry.getKey(), null, null, entry.getValue(), null, null));
+            total = total.add(entry.getValue());
+        }
+        return new StatementContent("CONSO-" + partnerCode + "-" + month, null,
+                "Distributeur " + distributor.legalName, month, rows, total, BigDecimal.ZERO, total,
+                fr.alptis.remuneration.domain.StatementGrouping.NONE.name(), null);
+    }
+
+    /**
+     * Resolves the distributor behind a statement's account (its production code's distributor, or the
+     * distributor itself), or null for a grouping account.
+     *
+     * @param account the statement account
+     * @return the distributor, or null
+     */
+    private static fr.alptis.remuneration.domain.Distributor distributorOf(
+            fr.alptis.remuneration.domain.DistributorAccount account) {
+        if (account == null) {
+            return null;
+        }
+        if (account.payeeType == fr.alptis.remuneration.domain.PayeeType.PRODUCTION_CODE) {
+            ProductionCode pc = ProductionCode.findById(account.payeeId);
+            return pc == null ? null : pc.distributor;
+        }
+        if (account.payeeType == fr.alptis.remuneration.domain.PayeeType.DISTRIBUTOR) {
+            return fr.alptis.remuneration.domain.Distributor.findById(account.payeeId);
+        }
+        return null;
+    }
+
+    /**
      * Publishes a statement: its real PDF is produced and archived under a reference and its SHA-256
      * hash (BRD-06), its spreadsheet reference is recorded, and it is marked published at the current
      * time. The archived document is never modified afterwards.

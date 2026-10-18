@@ -515,6 +515,110 @@ class StatementServiceTest {
     }
 
     /**
+     * BRD-04: the consolidated multi-entity bordereau of a distributor gives one subtotal per entity
+     * (its cycle net there) and the grand total; it aggregates the distributor's production-code and
+     * distributor-level accounts, ignoring other distributors, groupings and account-less statements; an
+     * unknown distributor is reported as not found.
+     */
+    @Test
+    @TestTransaction
+    void consolidated_gives_a_subtotal_per_entity() {
+        LocalDate month = LocalDate.of(2027, 3, 1);
+        LegalEntity unep = unep();
+        LegalEntity alptis = LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult();
+        Period pUnep = periodFor(unep, month);
+        Period pAlptis = periodFor(alptis, month);
+        Distributor d = new Distributor();
+        d.partnerCode = "D-CONSO";
+        d.legalName = "Consolidé";
+        d.persist();
+        ProductionCode pc = new ProductionCode();
+        pc.entity = unep;
+        pc.code = "PC-CONSO";
+        pc.distributor = d;
+        pc.persist();
+        // UNEP: a production-code account of the distributor (100). ALPTIS: a distributor-level account (60).
+        DistributorAccount pcAccount = accountOf(unep, PayeeType.PRODUCTION_CODE, pc.getId());
+        cycleStatement(unep, pUnep, pcAccount, "100.00");
+        cycleStatement(alptis, pAlptis, accountOf(alptis, PayeeType.DISTRIBUTOR, d.getId()), "60.00");
+        // Noise, all excluded by distributorOf: a grouping account, another distributor's code, an unknown
+        // code and an account-less statement.
+        fr.alptis.remuneration.domain.DistributorGroup g = new fr.alptis.remuneration.domain.DistributorGroup();
+        g.code = "GZ";
+        g.label = "GZ";
+        g.persist();
+        cycleStatement(unep, pUnep, accountOf(unep, PayeeType.GROUP, g.getId()), "5.00");
+        Distributor other = new Distributor();
+        other.partnerCode = "D-OTHER";
+        other.legalName = "Autre";
+        other.persist();
+        ProductionCode pcOther = new ProductionCode();
+        pcOther.entity = unep;
+        pcOther.code = "PC-OTHER";
+        pcOther.distributor = other;
+        pcOther.persist();
+        cycleStatement(unep, pUnep, accountOf(unep, PayeeType.PRODUCTION_CODE, pcOther.getId()), "7.00");
+        cycleStatement(unep, pUnep, accountOf(unep, PayeeType.PRODUCTION_CODE, 999999L), "9.00");
+        cycleStatement(unep, pUnep, null, "3.00");
+        // A distributor-owned statement with no net contributes zero (covers the null-net branch).
+        cycleStatement(unep, pUnep, pcAccount, null);
+
+        StatementService.StatementContent content = service.consolidated("D-CONSO", month, null);
+
+        assertEquals(2, content.rows().size());
+        assertEquals(0, content.net().compareTo(new BigDecimal("160.00")));
+        assertTrue(content.rows().stream().allMatch(r -> r.section().equals("Sous-total entité")));
+        assertEquals(0, content.rows().stream().filter(r -> r.label().equals(unep.name)).findFirst().orElseThrow()
+                .amount().compareTo(new BigDecimal("100.00")));
+        assertEquals(0, content.rows().stream().filter(r -> r.label().equals(alptis.name)).findFirst().orElseThrow()
+                .amount().compareTo(new BigDecimal("60.00")));
+        assertEquals("Distributeur Consolidé", content.beneficiary());
+
+        // Restricting to a single entity keeps only its subtotal.
+        assertEquals(0, service.consolidated("D-CONSO", month, java.util.List.of("UNEP")).net()
+                .compareTo(new BigDecimal("100.00")));
+        assertThrows(ResourceNotFoundException.class, () -> service.consolidated("NOPE", month, null));
+    }
+
+    /** A persisted period for an entity and month. */
+    private Period periodFor(LegalEntity ent, LocalDate month) {
+        Period period = new Period();
+        period.entity = ent;
+        period.periodMonth = month;
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        period.persist();
+        return period;
+    }
+
+    /** A persisted account of a given payee type for an entity. */
+    private DistributorAccount accountOf(LegalEntity ent, PayeeType type, long payeeId) {
+        DistributorAccount account = new DistributorAccount();
+        account.entity = ent;
+        account.payeeType = type;
+        account.payeeId = payeeId;
+        account.persist();
+        return account;
+    }
+
+    /** A persisted cycle statement for an entity, period and (possibly null) account, with a net. */
+    private Statement cycleStatement(LegalEntity ent, Period period, DistributorAccount account, String net) {
+        Statement s = new Statement();
+        s.entity = ent;
+        s.period = period;
+        s.account = account;
+        s.batchType = BatchType.CYCLE;
+        s.statementNumber = "ST-C-" + (seq++);
+        s.versionNo = 1;
+        s.level = StatementLevel.PRODUCTION_CODE;
+        s.carriedBalance = BigDecimal.ZERO;
+        s.periodTotal = net == null ? null : new BigDecimal(net);
+        s.netAmount = net == null ? null : new BigDecimal(net);
+        s.status = StatementStatus.DRAFT;
+        s.persist();
+        return s;
+    }
+
+    /**
      * Publishing archives the statement with a hash and marks it published; the spreadsheet carries
      * the lines and the footer.
      */

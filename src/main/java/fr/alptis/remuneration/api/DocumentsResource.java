@@ -184,6 +184,24 @@ public class DocumentsResource {
     }
 
     /**
+     * Returns the consolidated multi-entity bordereau of a distributor for a month (BRD-04): a subtotal
+     * per covered entity, limited to the entities the caller may see.
+     *
+     * @param partnerCode the distributor partner code
+     * @param month       the period month
+     * @return the consolidated content
+     */
+    @GET
+    @Path("/consolidated/{partnerCode}/{month}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"OPERATOR", "BUSINESS_ADMIN", "BUSINESS_VALIDATOR", "FINANCE_CONTROLLER", "VIEWER", "AUDITOR"})
+    public StatementContent consolidated(@PathParam("partnerCode") String partnerCode,
+                                         @PathParam("month") String month) {
+        return statements.consolidated(partnerCode, LocalDate.parse(month),
+                scope.unrestricted() ? null : scope.visibleCodes());
+    }
+
+    /**
      * Returns the spreadsheet (CSV) form of a statement.
      *
      * @param statementId the statement id

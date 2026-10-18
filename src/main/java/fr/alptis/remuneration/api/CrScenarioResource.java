@@ -218,6 +218,7 @@ public class CrScenarioResource {
             case "PAI-11" -> seedPai11(entity, periodMonth);
             case "PAI-12" -> seedPai12(periodMonth);
             case "BRD-02" -> seedBrd02(entity, periodMonth);
+            case "BRD-03" -> seedBrd03(periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2945,6 +2946,26 @@ public class CrScenarioResource {
         bank.holderName = "BRD02";
         bank.validFrom = period.periodMonth;
         bank.persist();
+    }
+
+    /**
+     * BRD-03 (bordereau multi-entités → sous-total par entité) : un même distributeur `P-BRD03` est
+     * payable dans UNEP (100 €) et dans Alptis (60 €) le même mois. Une fois les deux cycles préparés, le
+     * bordereau consolidé du distributeur porte un sous-total par entité (BRD-04). Le paramètre d'entité
+     * de l'appel est ignoré : le scénario porte sur les deux entités.
+     *
+     * @param periodMonth the calculation month
+     */
+    private void seedBrd03(LocalDate periodMonth) {
+        Distributor shared = new Distributor();
+        shared.partnerCode = "P-BRD03";
+        shared.legalName = "Distributeur consolidé";
+        shared.oriasStatus = OriasStatus.REGISTERED;
+        shared.persist();
+        payableScene(LegalEntity.<LegalEntity>find("code", "UNEP").firstResult(), shared, "PC-BRD03-U", "100.00",
+                periodMonth);
+        payableScene(LegalEntity.<LegalEntity>find("code", "ALPTIS_ASSURANCES").firstResult(), shared, "PC-BRD03-A",
+                "60.00", periodMonth);
     }
 
     private void seedPai12(LocalDate periodMonth) {

@@ -1329,6 +1329,28 @@ class CrScenarioResourceTest {
                 .body("size()", is(3));
     }
 
+    /**
+     * BRD-03 (parcours « bordereau multi-entités → sous-total par entité ») : un distributeur payable dans
+     * UNEP (100 €) et Alptis (60 €) ; son bordereau consolidé porte un sous-total par entité. Un
+     * utilisateur groupe (auditeur) voit les deux (160 €) ; un opérateur mono-entité ne voit que la sienne.
+     */
+    @Test
+    void brd03_consolidated_bordereau_subtotal_per_entity() {
+        given().when().post("/api/test/cr-scenario?cr=BRD-03&entity=UNEP&month=2028-08-01").then().statusCode(204);
+        transition("operator-unep", "2028-08-01", "PAYMENT_PREPARED");
+        given().auth().preemptive().basic("operator-alptis", "operator-alptis").contentType("application/json")
+                .body(java.util.Map.of("toState", "PAYMENT_PREPARED", "reason", "test"))
+                .when().post("/api/ui/v1/periods/ALPTIS_ASSURANCES/2028-08-01/transition").then().statusCode(200);
+        // A group-level user (auditor) sees both entities' subtotals, total 160.
+        given().auth().preemptive().basic("auditor", "auditor")
+                .when().get("/api/ui/v1/documents/consolidated/P-BRD03/2028-08-01").then().statusCode(200)
+                .body("net", is(160.00f)).body("rows.size()", is(2));
+        // A mono-entity operator sees only its own entity's subtotal (100).
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/documents/consolidated/P-BRD03/2028-08-01").then().statusCode(200)
+                .body("net", is(100.00f)).body("rows.size()", is(1));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

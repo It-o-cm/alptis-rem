@@ -44,8 +44,25 @@ et un bénéficiaire **nommé** (code de production / `legalName` distributeur /
 groupement) dans `StatementContent`, affiché sur l'écran des bordereaux ; scénario
 BRD-02 (trois comptes, un par niveau) + e2e `@path:BRD-02`.
 
-**BRD-03 (parcours « bordereau multi-entités → sous-total par entité ») = exigence
-BRD-04.** C'est une FONCTIONNALITÉ MAJEURE, pas un e2e : la spéc (§5.7 p.578) décrit un
+**BRD-03 — BACKEND FAIT, UI/e2e à poser (parcours encore ouvert).** Le service est
+réalisé et testé : `StatementService.consolidated(partnerCode, month, visibleCodes)`
+agrège les bordereaux de cycle du distributeur par entité (sous-total par entité +
+total), `distributorOf` résout le propriétaire d'un compte (code de production /
+distributeur) ; point d'accès `GET /api/ui/v1/documents/consolidated/{partner}/{month}`
+borné aux entités visibles de l'appelant (auditeur `*` → toutes). Couvert à 100 % par
+`StatementServiceTest.consolidated_gives_a_subtotal_per_entity` et le test REST
+`CrScenarioResourceTest.brd03_consolidated_bordereau_subtotal_per_entity` (auditeur
+voit 160 €/2 entités, opérateur mono-entité 100 €). Scénario `BRD-03` (P-BRD03 payable
+UNEP 100 € + Alptis 60 €). **Reste (prochaine passe) : l'UI + e2e `@path:BRD-03`.**
+L'écran `/bordereaux` est mono-entité (rôles OPERATOR/BUSINESS_ADMIN) ; aucun de ses
+utilisateurs ne couvre plusieurs entités. Le bon foyer est la **Vision consolidée
+groupe** (`GroupView`, accessible à l'auditeur `*`). Friction à trancher : le
+sélecteur de mois y est à sourcer (les mois de `MonthSelect` sont par entité) — p. ex.
+offrir un `DistributorSelect` + un mois (via une entité source, ou la liste des mois du
+groupe) ; puis afficher le contenu consolidé (lignes sous-total + total) et un e2e
+auditeur. Tranché ainsi pour éviter un bricolage du modèle de menu.
+
+Note historique (conception initiale) : c'est une FONCTIONNALITÉ MAJEURE — la spéc (§5.7 p.578) décrit un
 bordereau multi-entités comme un `statement` à `entity_id`/période/compte **nuls**,
 rattaché à ses lignes de commission inter-entités et, s'il y a paiement, à un ordre
 **par entité** (le sous-total de l'entité, PAY-05 p.1462). Déclenché par une préférence
