@@ -1287,6 +1287,20 @@ class CrScenarioResourceTest {
                 .when().post("/api/ui/v1/payment/lots/" + lotId + "/validate").then().statusCode(403);
     }
 
+    /**
+     * PAI-11 (parcours): two payable beneficiaries feed one cycle lot of 220,00 € (100 + 120), each its
+     * own order — one will be settled and the other rejected and reissued in the e2e.
+     */
+    @Test
+    void pai11_two_payees_feed_one_cycle_lot() {
+        given().when().post("/api/test/cr-scenario?cr=PAI-11&entity=UNEP&month=2028-05-01").then().statusCode(204);
+        transition("operator-unep", "2028-05-01", "PAYMENT_PREPARED");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/payment/UNEP/2028-05-01/lots").then().statusCode(200)
+                .body("find { it.batchType == 'CYCLE' }.total", is(220.00f))
+                .body("find { it.batchType == 'CYCLE' }.orders", is(2));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

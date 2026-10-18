@@ -124,7 +124,7 @@ public class PaymentService {
                 order.iban = bank.iban;
                 order.bic = bank.bic;
                 order.creditorName = bank.holderName;
-                order.endToEndId = order.statement.statementNumber;
+                order.endToEndId = order.statement.statementNumber + reissueSuffix(order.account);
                 transferTotal = transferTotal.add(order.amount);
             }
         }
@@ -201,7 +201,7 @@ public class PaymentService {
         order.account = account;
         order.amount = amount;
         order.status = PaymentOrderStatus.TO_VALIDATE;
-        order.endToEndId = batch.batchReference + "-" + account.getId();
+        order.endToEndId = batch.batchReference + "-" + account.getId() + reissueSuffix(account);
         BankAccount bank = findBank(batch.entity, account);
         if (bank != null) {
             order.iban = bank.iban;
@@ -297,6 +297,19 @@ public class PaymentService {
                     entity, account.payeeId, periodMonth).firstResult();
         }
         return rule == null || rule.paymentFrequency == null ? PaymentFrequency.MONTHLY : rule.paymentFrequency;
+    }
+
+    /**
+     * Returns the reissue suffix for an account's next payment order (section 9.11, PAI-11): {@code -R}
+     * followed by the number of that account's orders already rejected by the bank, or an empty string
+     * when none — so the end-to-end reference of a payment reissued after a rejection is marked.
+     *
+     * @param account the beneficiary account
+     * @return the reissue suffix, possibly empty
+     */
+    private static String reissueSuffix(DistributorAccount account) {
+        long rejected = PaymentOrder.count("account = ?1 and status = ?2", account, PaymentOrderStatus.REJECTED);
+        return rejected == 0 ? "" : "-R" + rejected;
     }
 
     /**

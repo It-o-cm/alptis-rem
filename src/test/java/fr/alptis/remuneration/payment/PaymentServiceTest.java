@@ -40,6 +40,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -214,6 +215,34 @@ class PaymentServiceTest {
         issued.totalAmount = BigDecimal.ZERO;
         issued.persist();
         assertThrows(ValidationException.class, () -> service.refuseLot(issued.getId()));
+    }
+
+    /**
+     * PAI-11: an order reissued for an account whose previous order was rejected by the bank carries the
+     * {@code -R} suffix (section 9.11) with the rejection rank.
+     */
+    @Test
+    @TestTransaction
+    void pai11_a_reissued_order_carries_the_reissue_suffix() {
+        unep().minPaymentAmount = BigDecimal.ZERO;
+        Period p = period(PeriodState.FINANCE_VALIDATED);
+        Distributor d = distributor("RI", OriasStatus.REGISTERED);
+        DistributorAccount acct = pcAccount(d, "PC-RI");
+        earnedLine(p, acct, "100.00");
+        bank(acct, "FR7630001007941234567890185");
+        // A prior order of this account was rejected by the bank.
+        PaymentBatch old = batch(p, "100.00");
+        PaymentOrder rejected = new PaymentOrder();
+        rejected.batch = old;
+        rejected.account = acct;
+        rejected.amount = new BigDecimal("100.00");
+        rejected.status = PaymentOrderStatus.REJECTED;
+        rejected.persist();
+
+        PaymentBatch off = service.offCycleLot("UNEP", "RI", p.periodMonth);
+        PaymentOrder reissue = PaymentOrder.<PaymentOrder>find("batch = ?1", off).firstResult();
+        assertNotNull(reissue);
+        assertTrue(reissue.endToEndId.endsWith("-R1"), reissue.endToEndId);
     }
 
     /**

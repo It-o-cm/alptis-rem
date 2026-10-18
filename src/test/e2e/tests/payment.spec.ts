@@ -122,6 +122,67 @@ test('PAI-07 : la validation du paiement par celui qui a validé les montants es
   await finContext.close();
 });
 
+test('PAI-11 : un ordre réglé, un rejeté dont les lignes repartent payables puis réémises avec leur suffixe @screen:payment @screen:controls @screen:distributor-account @path:PAI-11 @role-action:FINANCE_CONTROLLER-record-bank-result', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=PAI-11&entity=UNEP&month=2028-05-01')).ok()).toBeTruthy();
+
+  // Operator prepares the payment: business-validated -> payment-prepared proposes a cycle lot of 2 orders.
+  const opCtx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const op = await opCtx.newPage();
+  await op.goto('/');
+  await op.getByTestId('open-UNEP-2028-05-01').click();
+  await expect(op.getByTestId('detail-state')).toContainText('Validée métier');
+  await op.getByTestId('advance-button').click();
+  await expect(op.getByTestId('detail-state')).toContainText('Paiement préparé');
+
+  // Finance validates the cycle lot, then records the bank result: the 100 € settles, the 120 € is rejected.
+  const finCtx = await browser.newContext({ httpCredentials: USERS.financeUnep });
+  const fin = await finCtx.newPage();
+  await fin.goto('/paiement');
+  await fin.getByTestId('pay-entity').selectOption('UNEP');
+  await fin.getByTestId('pay-month').selectOption('2028-05-01');
+  await fin.getByTestId('pay-refresh').click();
+  await fin.locator('[data-testid^="lot-row-"]', { hasText: 'CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+  await fin.getByTestId('lot-validate').click();
+  await expect(fin.locator('[data-testid^="order-status-"]').filter({ hasText: 'Émis' })).toHaveCount(2);
+  await fin.locator('[data-testid^="order-row-"]', { hasText: '120,00' }).getByRole('button', { name: 'Rejeté' }).click();
+  await fin.locator('[data-testid^="order-row-"]', { hasText: '100,00' }).getByRole('button', { name: 'Réglé' }).click();
+  await expect(fin.locator('[data-testid^="order-status-"]').filter({ hasText: 'Réglé' })).toHaveCount(1);
+  await expect(fin.locator('[data-testid^="order-status-"]').filter({ hasText: 'Rejeté' })).toHaveCount(1);
+  await finCtx.close();
+
+  // The rejection raised a payment anomaly on the controls screen.
+  await op.goto('/controles');
+  await op.getByTestId('ctl-entity').selectOption('UNEP');
+  await op.getByTestId('ctl-month').selectOption('2028-05-01');
+  await op.getByTestId('ctl-refresh').click();
+  await expect(op.locator('[data-testid^="anomaly-row-"]', { hasText: 'PAY-REJECT' })).toHaveCount(1);
+
+  // The settled beneficiary's line is paid; the rejected one's line returned payable.
+  await op.goto('/distributeur');
+  await op.getByTestId('acc-entity').selectOption('UNEP');
+  await op.getByTestId('acc-partner').selectOption('P-PAI11-A');
+  await op.getByTestId('acc-search').click();
+  await expect(op.locator('[data-testid^="line-row-"]', { hasText: 'Payée' }).first()).toBeVisible();
+  await op.getByTestId('acc-partner').selectOption('P-PAI11-B');
+  await op.getByTestId('acc-search').click();
+  await expect(op.locator('[data-testid^="line-row-"]', { hasText: 'À payer' }).first()).toBeVisible();
+
+  // The rejected beneficiary is reissued off cycle: its order reference carries the -R1 reissue suffix.
+  await op.goto('/paiement');
+  await op.getByTestId('pay-entity').selectOption('UNEP');
+  await op.getByTestId('pay-month').selectOption('2028-05-01');
+  await op.getByTestId('pay-refresh').click();
+  await op.getByTestId('pay-offcycle-partner').fill('P-PAI11-B');
+  await op.getByTestId('pay-offcycle-submit').click();
+  await op.getByTestId('pay-refresh').click();
+  await op.locator('[data-testid^="lot-row-"]', { hasText: 'OFF_CYCLE' }).getByRole('button', { name: 'Détail' }).click();
+  await expect(op.getByTestId('lot-detail')).toContainText('-R1');
+  await opCtx.close();
+});
+
 test('CPT-04 : un compte bloqué est exclu du lot jusqu’à sa date de levée @screen:payment @path:CPT-04', async ({
   browser,
   request,

@@ -215,6 +215,7 @@ public class CrScenarioResource {
             case "PAI-02" -> seedPai02(entity, periodMonth);
             case "PAI-04" -> seedPai04(entity, periodMonth);
             case "PAI-07" -> seedPai07(entity, periodMonth);
+            case "PAI-11" -> seedPai11(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2847,6 +2848,22 @@ public class CrScenarioResource {
         validation.toState = PeriodState.BUSINESS_VALIDATED;
         validation.userId = "finance-" + entity.code.toLowerCase();
         validation.persist();
+    }
+
+    /**
+     * PAI-11 (résultat bancaire : tout réglé ; un rejet) : une période prête à payer avec deux
+     * bénéficiaires payables (100 € et 120 €), de sorte que le lot de cycle porte deux ordres — l'un
+     * réglé, l'autre rejeté par la banque, puis réémis avec son suffixe (section 9.11). La période est
+     * posée en « Validée métier » comme état d'entrée.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedPai11(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.BUSINESS_VALIDATED;
+        payee(entity, period, "P-PAI11-A", "100.00", PartnerStatus.ACTIVE, true);
+        payee(entity, period, "P-PAI11-B", "120.00", PartnerStatus.ACTIVE, true);
     }
 
     /**
