@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue';
 import { apiGet, apiGetText, ApiError } from '../api/client';
 import { formatAmount } from '../presentation/format';
-import { AppButton, AppCard, AppMessage, DataTable, PageHeading } from '../components/ui';
+import {
+  AppButton, AppCard, AppMessage, DataTable, DistributorSelect, FormField, MonthSelect, PageHeading,
+} from '../components/ui';
 import type { Column } from '../components/ui';
 import BarChart from '../components/charts/BarChart.vue';
 
@@ -22,10 +24,43 @@ interface Consolidated {
   cells: EntityMonth[];
 }
 
+interface ConsolidatedRow {
+  section: string;
+  label: string;
+  amount: number;
+}
+interface ConsolidatedStatement {
+  beneficiary: string;
+  rows: ConsolidatedRow[];
+  net: number;
+}
+
 const data = ref<Consolidated | null>(null);
 const csv = ref('');
 const error = ref('');
 const forbidden = ref(false);
+const consoPartner = ref('');
+const consoMonth = ref('');
+const consolidated = ref<ConsolidatedStatement | null>(null);
+
+/** Columns of the consolidated bordereau: one subtotal row per entity. */
+const consoColumns: Column<ConsolidatedRow>[] = [
+  { key: 'label', label: 'Entité' },
+  { key: 'amount', label: 'Sous-total', align: 'num', value: (r) => amount(r.amount) },
+];
+
+/** Loads the consolidated multi-entity bordereau of a distributor for a month (BRD-04). */
+async function loadConsolidated(): Promise<void> {
+  error.value = '';
+  try {
+    consolidated.value = await apiGet<ConsolidatedStatement>(
+      `/api/ui/v1/documents/consolidated/${consoPartner.value}/${consoMonth.value}`,
+    );
+  } catch (e) {
+    consolidated.value = null;
+    error.value = e instanceof ApiError ? e.message : 'Bordereau consolidé introuvable';
+  }
+}
 
 /**
  * Formats an amount with the common currency formatting.
@@ -149,6 +184,34 @@ onMounted(load);
         >
           <template #cell-code="{ row }"><span class="mono">{{ row.code }}</span></template>
         </DataTable>
+      </AppCard>
+
+      <AppCard title="Bordereau consolidé multi-entités (BRD-04)" data-testid="conso-form">
+        <div class="ui-bar">
+          <FormField label="Distributeur" stacked width="short" v-slot="{ id }">
+            <DistributorSelect :id="id" data-testid="conso-partner" v-model="consoPartner" allow-empty />
+          </FormField>
+          <FormField label="Mois" stacked width="short" v-slot="{ id }">
+            <MonthSelect :id="id" data-testid="conso-month" v-model="consoMonth" allow-empty />
+          </FormField>
+          <AppButton variant="secondary" data-testid="conso-btn" @click="loadConsolidated">
+            Bordereau consolidé
+          </AppButton>
+        </div>
+      </AppCard>
+
+      <AppCard v-if="consolidated" data-testid="conso-detail">
+        <h2 class="group-block-title">{{ consolidated.beneficiary }}</h2>
+        <DataTable
+          :columns="consoColumns"
+          :rows="consolidated.rows"
+          :row-key="(r) => consolidated?.rows.indexOf(r) ?? 0"
+          empty="Aucune entité."
+          :row-testid="(r) => `conso-row-${consolidated?.rows.indexOf(r)}`"
+        />
+        <p class="group-block-title">
+          Total : <span data-testid="conso-net">{{ amount(consolidated.net) }}</span>
+        </p>
       </AppCard>
     </template>
   </div>

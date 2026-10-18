@@ -162,6 +162,42 @@ test('l’auditeur lit la vision consolidée, le consultant en est écarté @scr
   await viewer.close();
 });
 
+test('BRD-03 : le bordereau consolidé multi-entités porte un sous-total par entité @screen:groupView @req:BRD-04 @path:BRD-03', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=BRD-03&entity=UNEP&month=2028-08-01')).ok()).toBeTruthy();
+
+  // Drive both entities' cycles to payment-prepared so the distributor's bordereaux exist in each.
+  const unepCtx = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const unep = await unepCtx.newPage();
+  await unep.goto('/');
+  await unep.getByTestId('open-UNEP-2028-08-01').click();
+  await unep.getByTestId('advance-button').click();
+  await expect(unep.getByTestId('detail-state')).toContainText('Paiement préparé');
+  await unepCtx.close();
+
+  const alptisCtx = await browser.newContext({ httpCredentials: USERS.operatorAlptis });
+  const alptis = await alptisCtx.newPage();
+  await alptis.goto('/');
+  await alptis.getByTestId('open-ALPTIS_ASSURANCES-2028-08-01').click();
+  await alptis.getByTestId('advance-button').click();
+  await expect(alptis.getByTestId('detail-state')).toContainText('Paiement préparé');
+  await alptisCtx.close();
+
+  // The auditor (group-level) reads the distributor's consolidated bordereau: a subtotal per entity.
+  const auditorCtx = await browser.newContext({ httpCredentials: USERS.auditor });
+  const auditor = await auditorCtx.newPage();
+  await auditor.goto('/vision-groupe');
+  await auditor.getByTestId('conso-partner').selectOption('P-BRD03');
+  await auditor.getByTestId('conso-month').selectOption('2028-08-01');
+  await auditor.getByTestId('conso-btn').click();
+  await expect(auditor.getByTestId('conso-detail')).toBeVisible();
+  await expect(auditor.locator('[data-testid^="conso-row-"]')).toHaveCount(2);
+  await expect(auditor.getByTestId('conso-net')).toContainText('160,00');
+  await auditorCtx.close();
+});
+
 test('le contrôleur Finance lit la marge et le rapprochement assureurs @screen:margin @req:REP-08 @req:FIN-08', async ({
   browser,
 }) => {
