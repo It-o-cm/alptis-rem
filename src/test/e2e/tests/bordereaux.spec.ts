@@ -114,6 +114,27 @@ test('BRD-02 : un bordereau à chaque niveau — code de production, distributeu
   await ctx.close();
 });
 
+test('BRD-04 : la publication date le bordereau du lendemain de l’exécution et dépose ses métadonnées en GED @screen:statements @req:BRD-10 @path:BRD-04 @role-action:OPERATOR-publish-statement', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=BRD-04&entity=UNEP&month=2029-03-01')).ok()).toBeTruthy();
+
+  const op = await browser.newContext({ httpCredentials: USERS.operatorUnep });
+  const page = await op.newPage();
+  await page.goto('/bordereaux');
+  await page.getByTestId('brd-entity').selectOption('UNEP');
+  await page.getByTestId('brd-month').selectOption('2029-03-01');
+  await page.getByTestId('brd-refresh').click();
+  await page.locator('[data-testid^="statement-publish-"]').first().click();
+  await expect(page.locator('[data-testid^="statement-status-"]').first()).toContainText('Publié');
+
+  // Published the day after the cycle execution (2029-03-15) → 16/03/2029; GED metadata deposited.
+  await expect(page.locator('[data-testid^="statement-publication-"]').first()).toHaveText('16/03/2029');
+  await expect(page.locator('[data-testid^="statement-ged-"]').first()).toContainText('GED-');
+  await op.close();
+});
+
 test('l’opérateur consulte le relevé informatif d’un membre @screen:statements @req:BRD-11 @path:BRD-06', async ({
   browser,
 }) => {

@@ -1351,6 +1351,22 @@ class CrScenarioResourceTest {
                 .body("net", is(100.00f)).body("rows.size()", is(1));
     }
 
+    /**
+     * BRD-04 (parcours « Publication ») : un bordereau dont le lot de cycle a été exécuté le 15 est publié
+     * daté du lendemain (le 16) et dépose ses métadonnées en GED.
+     */
+    @Test
+    void brd04_publication_dated_the_day_after_execution() {
+        given().when().post("/api/test/cr-scenario?cr=BRD-04&entity=UNEP&month=2028-09-01").then().statusCode(204);
+        int id = given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().get("/api/ui/v1/documents/UNEP/2028-09-01/statements").then().statusCode(200)
+                .extract().path("[0].id");
+        given().auth().preemptive().basic("operator-unep", "operator-unep")
+                .when().post("/api/ui/v1/documents/statements/" + id + "/publish").then().statusCode(200)
+                .body("publicationDate", is("2028-09-16"))
+                .body("gedReference", containsString("GED-"));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

@@ -633,6 +633,10 @@ class StatementServiceTest {
         assertTrue(published.pdfRef.endsWith("_v1.pdf"));
         assertTrue(published.sheetRef.endsWith("_v1.xlsx"));
         assertNotNull(published.publishedAt);
+        // BRD-04: with no executed cycle lot the publication date defaults to today, and the GED metadata
+        // is deposited under a reference.
+        assertNotNull(published.publicationDate);
+        assertTrue(published.gedReference.startsWith("GED-"));
 
         String csv = service.spreadsheet(statement.getId());
         assertTrue(csv.contains("rubrique;libelle"));
@@ -644,6 +648,28 @@ class StatementServiceTest {
         byte[] workbook = service.workbook(statement.getId());
         assertEquals('P', workbook[0]);
         assertEquals('K', workbook[1]);
+    }
+
+    /**
+     * BRD-04: a statement whose period's cycle lot was executed is published dated the day after that
+     * execution.
+     */
+    @Test
+    @TestTransaction
+    void publishes_on_the_day_after_the_cycle_execution() {
+        Statement statement = seed();
+        fr.alptis.remuneration.domain.PaymentBatch cycle = new fr.alptis.remuneration.domain.PaymentBatch();
+        cycle.entity = unep();
+        cycle.period = statement.period;
+        cycle.batchType = BatchType.CYCLE;
+        cycle.batchReference = "CYCLE-PUB";
+        cycle.status = fr.alptis.remuneration.domain.BatchStatus.ISSUED;
+        cycle.totalAmount = BigDecimal.ZERO;
+        cycle.executionDate = LocalDate.of(2026, 9, 15);
+        cycle.persist();
+
+        Statement published = service.publish(statement.getId());
+        assertEquals(LocalDate.of(2026, 9, 16), published.publicationDate);
     }
 
     /**

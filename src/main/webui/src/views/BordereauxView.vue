@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { apiGet, apiGetText, apiPost, apiDownload, ApiError } from '../api/client';
 import { useSessionStore } from '../stores/session';
 import { canOperateCycle, paymentStatusLabel } from '../presentation/cycle';
-import { formatAmount } from '../presentation/format';
+import { formatAmount, formatDate } from '../presentation/format';
 import { monthLabel } from '../presentation/months';
 import {
   AppButton, AppCard, AppMessage, DataTable, DetailList, DetailRow, EntitySelect, FilterBar, FormField,
@@ -17,6 +17,8 @@ interface StatementView {
   versionNo: number;
   netAmount: number;
   status: string;
+  publicationDate: string | null;
+  gedReference: string | null;
 }
 
 interface Row {
@@ -76,6 +78,8 @@ const statementColumns: Column<StatementView>[] = [
   { key: 'versionNo', label: 'Version', value: (s) => `v${s.versionNo}` },
   { key: 'netAmount', label: 'Net', align: 'num', value: (s) => amount(s.netAmount) },
   { key: 'status', label: 'Statut' },
+  { key: 'publicationDate', label: 'Publication', value: (s) => (s.publicationDate ? formatDate(s.publicationDate) : '—') },
+  { key: 'gedReference', label: 'GED', value: (s) => s.gedReference ?? '—' },
 ];
 
 /** Columns of the statement detail table. */
@@ -270,6 +274,12 @@ onMounted(loadStatements);
       >
         <template #cell-status="{ row }">
           <span :data-testid="`statement-status-${row.id}`">{{ statusLabel(row.status) }}</span>
+        </template>
+        <template #cell-publicationDate="{ row }">
+          <span :data-testid="`statement-publication-${row.id}`">{{ row.publicationDate ? formatDate(row.publicationDate) : '—' }}</span>
+        </template>
+        <template #cell-gedReference="{ row }">
+          <span :data-testid="`statement-ged-${row.id}`">{{ row.gedReference ?? '—' }}</span>
         </template>
         <template #actions="{ row }">
           <AppButton variant="secondary" :data-testid="`statement-open-${row.id}`" @click="openStatement(row.id)">Aperçu</AppButton>

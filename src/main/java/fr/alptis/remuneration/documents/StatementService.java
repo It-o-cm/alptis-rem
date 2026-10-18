@@ -245,6 +245,19 @@ public class StatementService {
     }
 
     /**
+     * Returns the execution date of a period's cycle lot, or null when there is none (BRD-04).
+     *
+     * @param period the statement's period
+     * @return the cycle-lot execution date, or null
+     */
+    private static java.time.LocalDate cycleExecutionDate(Period period) {
+        fr.alptis.remuneration.domain.PaymentBatch cycle = fr.alptis.remuneration.domain.PaymentBatch.find(
+                "period = ?1 and batchType = ?2", period, fr.alptis.remuneration.domain.BatchType.CYCLE)
+                .firstResult();
+        return cycle == null ? null : cycle.executionDate;
+    }
+
+    /**
      * Resolves the distributor behind a statement's account (its production code's distributor, or the
      * distributor itself), or null for a grouping account.
      *
@@ -287,6 +300,13 @@ public class StatementService {
         statement.pdfHash = HashUtil.sha256(new String(rendered, java.nio.charset.StandardCharsets.ISO_8859_1));
         statement.sheetRef = base + ".xlsx";
         statement.publishedAt = clock.now();
+        // The bordereau is published the day after the payment execution (section 7.1, BRD-04): the
+        // publication date is the period's cycle-lot execution date plus one day, defaulting to the
+        // current day when no execution date is set yet.
+        java.time.LocalDate execution = cycleExecutionDate(statement.period);
+        statement.publicationDate = execution == null ? clock.today() : execution.plusDays(1);
+        // The metadata (number, references, hash) is deposited for the GED under this reference (BRD-10).
+        statement.gedReference = "GED-" + base;
         statement.status = StatementStatus.PUBLISHED;
         return statement;
     }

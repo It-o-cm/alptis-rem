@@ -81,7 +81,7 @@ public class PaymentQueryService {
         List<StatementView> views = new ArrayList<>();
         for (Statement statement : Statement.<Statement>list("period = ?1 order by id", period)) {
             views.add(new StatementView(statement.getId(), statement.statementNumber, statement.versionNo,
-                    statement.netAmount, statement.status));
+                    statement.netAmount, statement.status, statement.publicationDate, statement.gedReference));
         }
         return views;
     }
@@ -168,6 +168,6 @@ public class PaymentQueryService {
      * @param status          the status
      */
     public record StatementView(Long id, String statementNumber, Integer versionNo, BigDecimal netAmount,
-                                StatementStatus status) {
+                                StatementStatus status, java.time.LocalDate publicationDate, String gedReference) {
     }
 }

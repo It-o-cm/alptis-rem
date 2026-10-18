@@ -98,4 +98,12 @@ public class Statement extends BaseEntity {
     /** When the statement was published. */
     @Column(name = "published_at")
     public OffsetDateTime publishedAt;
+
+    /** The publication date: the day after the payment execution (section 7.1, BRD-04). */
+    @Column(name = "publication_date")
+    public java.time.LocalDate publicationDate;
+
+    /** The reference of the metadata deposited for the GED at publication (BRD-04, BRD-10). */
+    @Column(name = "ged_reference")
+    public String gedReference;
 }

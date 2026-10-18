@@ -219,6 +219,7 @@ public class CrScenarioResource {
             case "PAI-12" -> seedPai12(periodMonth);
             case "BRD-02" -> seedBrd02(entity, periodMonth);
             case "BRD-03" -> seedBrd03(periodMonth);
+            case "BRD-04" -> seedBrd04(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2956,6 +2957,42 @@ public class CrScenarioResource {
      *
      * @param periodMonth the calculation month
      */
+    /**
+     * BRD-04 (publication) : une période validée par la Finance, dont le lot de cycle a été exécuté le 15
+     * du mois, porte un bordereau en brouillon. Sa publication le date du lendemain de l'exécution (le 16)
+     * et dépose ses métadonnées pour la GED (§7.1, BRD-04/BRD-10).
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedBrd04(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.FINANCE_VALIDATED;
+        PaymentBatch cycle = new PaymentBatch();
+        cycle.entity = entity;
+        cycle.period = period;
+        cycle.batchType = BatchType.CYCLE;
+        cycle.batchReference = "CYCLE-BRD04-" + entity.code + "-" + periodMonth;
+        cycle.status = BatchStatus.ISSUED;
+        cycle.totalAmount = new BigDecimal("100.00");
+        cycle.executionDate = periodMonth.withDayOfMonth(15);
+        cycle.persist();
+        DistributorAccount account = payee(entity, period, "P-BRD04", "100.00", PartnerStatus.ACTIVE, true);
+        fr.alptis.remuneration.domain.Statement statement = new fr.alptis.remuneration.domain.Statement();
+        statement.entity = entity;
+        statement.period = period;
+        statement.account = account;
+        statement.batchType = BatchType.CYCLE;
+        statement.statementNumber = "ST-BRD04-" + entity.code + "-" + periodMonth;
+        statement.versionNo = 1;
+        statement.level = fr.alptis.remuneration.domain.StatementLevel.PRODUCTION_CODE;
+        statement.carriedBalance = BigDecimal.ZERO;
+        statement.periodTotal = new BigDecimal("100.00");
+        statement.netAmount = new BigDecimal("100.00");
+        statement.status = fr.alptis.remuneration.domain.StatementStatus.DRAFT;
+        statement.persist();
+    }
+
     private void seedBrd03(LocalDate periodMonth) {
         Distributor shared = new Distributor();
         shared.partnerCode = "P-BRD03";
