@@ -21,8 +21,8 @@ jour à chaque commit de la §10.1 ; il n'est pas clos tant qu'il reste un **GAP
 
 **Bilan initial de la revue : 60 parcours portaient au moins un GAP** (INT 8, PAR 7, CAL 6,
 CYC/CTL/AJU/CPT 9, PAI 5, BRD 7, FIN 4, FLX 2, SIM 1, HIS 1, REP 2, ADM 2, FDV 4, DEM 2).
-**Avancement (2026-10-18) : INT-01, INT-14, INT-23, INT-03 clos → 56 parcours avec GAP restants**
-(INT 4 : INT-09/11/15/18). Détail par sous-section :
+**Avancement (2026-10-18) : INT-01, INT-14, INT-23, INT-03, INT-09 clos → 55 parcours avec GAP restants**
+(INT 3 : INT-11/15/18). Détail par sous-section :
 
 ### §4.1 Intégration et référentiels
 
@@ -36,7 +36,7 @@ CYC/CTL/AJU/CPT 9, PAI 5, BRD 7, FIN 4, FLX 2, SIM 1, HIS 1, REP 2, ADM 2, FDV 4
 | INT-06 | les deux acceptés ✓ ; distingués au journal ✓ |
 | INT-07 | flux « reçu » ✓ ; zéro ligne ✓ |
 | INT-08 | reçu ✓ ; en retard ✓ ; manquant ✓ |
-| INT-09 | mise en attente avec motif ✓ ; **GAP** annulation liée (lien à l'origine non affirmé) ; **GAP** annulation rapprochée (rapprochement non affiché) |
+| INT-09 | mise en attente avec motif ✓ ; annulation liée ✓ (`detail-reverses` d'ANN-1 = ENC-1, lié par clé) ; annulation rapprochée ✓ (`detail-reverses` de NEG-1 sans clé = ENC-2, rapproché par montant opposé) |
 | INT-10 | en attente avec motif ✓ ; calculé seul à l'arrivée du référentiel ✓ |
 | INT-11 | événement créé ✓ ; tracé ✓ ; **GAP** pris par le calcul suivant (aucun calcul lancé) |
 | INT-12 | données visibles sur les garanties ✓ |

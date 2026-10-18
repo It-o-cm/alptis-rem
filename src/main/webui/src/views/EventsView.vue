@@ -26,6 +26,7 @@ interface EventView {
   entityCode: string;
   grossAmount: number | null;
   precomputedAmount: number | null;
+  reversesSourceKey: string | null;
 }
 
 interface ProducedLine {
@@ -153,6 +154,10 @@ onMounted(search);
         <div v-if="detail.event.precomputedAmount !== null">
           <dt>Montant reçu</dt>
           <dd data-testid="detail-precomputed">{{ formatAmount(detail.event.precomputedAmount ?? undefined) }}</dd>
+        </div>
+        <div v-if="detail.event.reversesSourceKey !== null">
+          <dt>Annule l'événement</dt>
+          <dd data-testid="detail-reverses">{{ detail.event.reversesSourceKey }}</dd>
         </div>
       </dl>
       <h3 class="ui-detail-section">Lignes produites</h3>

@@ -220,6 +220,14 @@ test.describe('Imports — opérateur', () => {
     await expect(held).toContainText('Négatif non rapproché');
     await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'ANN-1' })).toContainText('En attente de calcul');
     await expect(page.locator('[data-testid^="event-row-"]').filter({ hasText: 'NEG-1' })).toContainText('En attente de calcul');
+    // INT-09: ANN-1 is linked to the original it cancels by its explicit key (ENC-1); NEG-1, which
+    // carries no key, is reconciled to ENC-2 by opposite amount. Both links are shown on the detail.
+    await page.locator('[data-testid^="event-row-"]').filter({ hasText: 'ANN-1' })
+      .locator('[data-testid^="open-event-"]').click();
+    await expect(page.getByTestId('detail-reverses')).toHaveText('ENC-1');
+    await page.locator('[data-testid^="event-row-"]').filter({ hasText: 'NEG-1' })
+      .locator('[data-testid^="open-event-"]').click();
+    await expect(page.getByTestId('detail-reverses')).toHaveText('ENC-2');
   });
 
   test('mise à l’écart d’un doublon : statut du rejet, aucun événement créé (INT-04) @screen:imports @path:INT-04', async ({ page, request }) => {
