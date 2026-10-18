@@ -106,4 +106,9 @@ public class Statement extends BaseEntity {
     /** The reference of the metadata deposited for the GED at publication (BRD-04, BRD-10). */
     @Column(name = "ged_reference")
     public String gedReference;
+
+    /** The document-template version applied at publication (BRD-05/BRD-07): the bordereau keeps the
+     * template as it was published, a later template edit affecting only subsequent bordereaux. */
+    @Column(name = "template_version")
+    public Integer templateVersion;
 }

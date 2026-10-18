@@ -135,6 +135,44 @@ test('BRD-04 : la publication date le bordereau du lendemain de l’exécution e
   await op.close();
 });
 
+test('BRD-07 : la modification d’un modèle s’applique au bordereau suivant, les anciens restent inchangés @screen:statements @screen:documentTemplates @path:BRD-07', async ({
+  browser,
+  request,
+}) => {
+  expect((await request.post('/api/test/cr-scenario?cr=BRD-07&entity=ALPTIS_ASSURANCES&month=2029-04-01')).ok()).toBeTruthy();
+
+  const ctx = await browser.newContext({ httpCredentials: USERS.adminAlptis });
+  const page = await ctx.newPage();
+  await page.goto('/bordereaux');
+  await page.getByTestId('brd-entity').selectOption('ALPTIS_ASSURANCES');
+  await page.getByTestId('brd-month').selectOption('2029-04-01');
+  await page.getByTestId('brd-refresh').click();
+  const rowA = page.locator('[data-testid^="statement-row-"]', { hasText: 'ST-BRD07-A' });
+  const rowB = page.locator('[data-testid^="statement-row-"]', { hasText: 'ST-BRD07-B' });
+
+  // Publish A under the current template (v1).
+  await rowA.locator('[data-testid^="statement-publish-"]').click();
+  await expect(rowA.locator('[data-testid^="statement-template-"]')).toHaveText('v1');
+
+  // The administrator edits the statement template: a new version (v2).
+  await page.goto('/modeles-documents');
+  await page.getByTestId('tpl-entity').selectOption('ALPTIS_ASSURANCES');
+  await page.getByTestId('tpl-type').selectOption('STATEMENT');
+  await page.getByTestId('tpl-content').fill('{"logo":"ALPTIS","mentions":"Nouvelles mentions","columns":["garantie"]}');
+  await page.getByTestId('tpl-save').click();
+  await expect(page.getByTestId('tpl-message')).toContainText('version 2');
+
+  // Publish B: it follows the new template (v2); A is unchanged (still v1).
+  await page.goto('/bordereaux');
+  await page.getByTestId('brd-entity').selectOption('ALPTIS_ASSURANCES');
+  await page.getByTestId('brd-month').selectOption('2029-04-01');
+  await page.getByTestId('brd-refresh').click();
+  await rowB.locator('[data-testid^="statement-publish-"]').click();
+  await expect(rowB.locator('[data-testid^="statement-template-"]')).toHaveText('v2');
+  await expect(rowA.locator('[data-testid^="statement-template-"]')).toHaveText('v1');
+  await ctx.close();
+});
+
 test('l’opérateur consulte le relevé informatif d’un membre @screen:statements @req:BRD-11 @path:BRD-06', async ({
   browser,
 }) => {

@@ -45,7 +45,20 @@ final class StatementDocuments {
      * @return the PDF bytes
      */
     static byte[] pdf(StatementContent content) {
-        byte[] stream = contentStream(content);
+        return pdf(content, null, null);
+    }
+
+    /**
+     * Renders the statement as a PDF applying a document template's header (BRD-05/BRD-07): the template
+     * logo and mentions are drawn above the statement body.
+     *
+     * @param content  the statement content
+     * @param logo     the template logo text, or null
+     * @param mentions the template mentions text, or null
+     * @return the PDF bytes
+     */
+    static byte[] pdf(StatementContent content, String logo, String mentions) {
+        byte[] stream = contentStream(content, logo, mentions);
         List<byte[]> objects = new ArrayList<>();
         objects.add(ascii("<</Type/Catalog/Pages 2 0 R>>"));
         objects.add(ascii("<</Type/Pages/Kids[3 0 R]/Count 1>>"));
@@ -79,8 +92,14 @@ final class StatementDocuments {
      * @param content the statement content
      * @return the content-stream bytes
      */
-    private static byte[] contentStream(StatementContent content) {
+    private static byte[] contentStream(StatementContent content, String logo, String mentions) {
         List<String> lines = new ArrayList<>();
+        if (logo != null) {
+            lines.add(logo);
+        }
+        if (mentions != null) {
+            lines.add(mentions);
+        }
         lines.add("Bordereau " + content.statementNumber()
                 + (content.versionNo() == null ? "" : " v" + content.versionNo()));
         lines.add("Beneficiaire : " + content.beneficiary());

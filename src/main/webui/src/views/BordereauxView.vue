@@ -19,6 +19,7 @@ interface StatementView {
   status: string;
   publicationDate: string | null;
   gedReference: string | null;
+  templateVersion: number | null;
 }
 
 interface Row {
@@ -80,6 +81,7 @@ const statementColumns: Column<StatementView>[] = [
   { key: 'status', label: 'Statut' },
   { key: 'publicationDate', label: 'Publication', value: (s) => (s.publicationDate ? formatDate(s.publicationDate) : '—') },
   { key: 'gedReference', label: 'GED', value: (s) => s.gedReference ?? '—' },
+  { key: 'templateVersion', label: 'Modèle', value: (s) => (s.templateVersion ? `v${s.templateVersion}` : '—') },
 ];
 
 /** Columns of the statement detail table. */
@@ -280,6 +282,9 @@ onMounted(loadStatements);
         </template>
         <template #cell-gedReference="{ row }">
           <span :data-testid="`statement-ged-${row.id}`">{{ row.gedReference ?? '—' }}</span>
+        </template>
+        <template #cell-templateVersion="{ row }">
+          <span :data-testid="`statement-template-${row.id}`">{{ row.templateVersion ? `v${row.templateVersion}` : '—' }}</span>
         </template>
         <template #actions="{ row }">
           <AppButton variant="secondary" :data-testid="`statement-open-${row.id}`" @click="openStatement(row.id)">Aperçu</AppButton>

@@ -1367,6 +1367,20 @@ class CrScenarioResourceTest {
                 .body("gedReference", containsString("GED-"));
     }
 
+    /**
+     * BRD-07 (parcours « Modification d'un modèle ») : la période prête à publier porte deux bordereaux en
+     * brouillon, à publier avant et après une modification du modèle.
+     */
+    @Test
+    void brd07_two_draft_statements_to_publish() {
+        given().when().post("/api/test/cr-scenario?cr=BRD-07&entity=ALPTIS_ASSURANCES&month=2028-10-01")
+                .then().statusCode(204);
+        given().auth().preemptive().basic("admin-alptis", "admin-alptis")
+                .when().get("/api/ui/v1/documents/ALPTIS_ASSURANCES/2028-10-01/statements").then().statusCode(200)
+                .body("size()", is(2))
+                .body("findAll { it.status == 'DRAFT' }.size()", is(2));
+    }
+
     /** Runs the real calculation of a UNEP month as the operator. */
     private static void runUnep(String month) {
         given().auth().preemptive().basic("operator-unep", "operator-unep")

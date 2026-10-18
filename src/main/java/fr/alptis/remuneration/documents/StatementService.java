@@ -293,7 +293,10 @@ public class StatementService {
         if (statement == null) {
             throw new ResourceNotFoundException("Bordereau inconnu : " + statementId);
         }
-        byte[] rendered = StatementDocuments.pdf(render(statementId));
+        // The bordereau keeps the document template as it is at publication (BRD-05/BRD-07): a later
+        // template edit affects only subsequent bordereaux, not this archived one.
+        statement.templateVersion = currentStatementTemplateVersion(statement.entity);
+        byte[] rendered = pdf(statementId);
         String base = statement.entity.code + "_BORDEREAU_" + statement.statementNumber + "_v" + statement.versionNo;
         statement.pdfRef = base + ".pdf";
         // ISO-8859-1 maps every byte to a char losslessly, so this hashes the exact PDF content.
@@ -318,7 +321,65 @@ public class StatementService {
      * @return the PDF bytes
      */
     public byte[] pdf(Long statementId) {
-        return StatementDocuments.pdf(render(statementId));
+        Statement statement = Statement.findById(statementId);
+        if (statement == null) {
+            throw new ResourceNotFoundException("Bordereau inconnu : " + statementId);
+        }
+        String[] header = templateHeader(statement);
+        return StatementDocuments.pdf(render(statementId), header[0], header[1]);
+    }
+
+    /**
+     * Returns the version of the current STATEMENT document template of an entity, or null when none is
+     * defined (BRD-05).
+     *
+     * @param entity the entity
+     * @return the current template version, or null
+     */
+    private static Integer currentStatementTemplateVersion(fr.alptis.remuneration.domain.LegalEntity entity) {
+        fr.alptis.remuneration.domain.DocumentTemplate template = statementTemplate(entity, null);
+        return template == null ? null : template.versionNo;
+    }
+
+    /**
+     * Returns the logo and mentions of the STATEMENT template applied to a statement — its published
+     * version, or the current one for a draft — as {@code [logo, mentions]}, each possibly null (BRD-07).
+     *
+     * @param statement the statement
+     * @return the two-element [logo, mentions] array
+     */
+    private static String[] templateHeader(Statement statement) {
+        fr.alptis.remuneration.domain.DocumentTemplate template =
+                statementTemplate(statement.entity, statement.templateVersion);
+        if (template == null) {
+            return new String[]{null, null};
+        }
+        try {
+            io.vertx.core.json.JsonObject json = new io.vertx.core.json.JsonObject(template.content);
+            return new String[]{json.getString("logo"), json.getString("mentions")};
+        } catch (RuntimeException e) {
+            return new String[]{null, null};
+        }
+    }
+
+    /**
+     * Resolves an entity's STATEMENT document template: the given version, or the current (highest) one
+     * when the version is null; null when none exists.
+     *
+     * @param entity  the entity
+     * @param version the version to resolve, or null for the current one
+     * @return the template, or null
+     */
+    private static fr.alptis.remuneration.domain.DocumentTemplate statementTemplate(
+            fr.alptis.remuneration.domain.LegalEntity entity, Integer version) {
+        if (version == null) {
+            return fr.alptis.remuneration.domain.DocumentTemplate.find(
+                    "entity = ?1 and documentType = ?2 order by versionNo desc", entity,
+                    fr.alptis.remuneration.domain.DocumentType.STATEMENT).firstResult();
+        }
+        return fr.alptis.remuneration.domain.DocumentTemplate.find(
+                "entity = ?1 and documentType = ?2 and versionNo = ?3", entity,
+                fr.alptis.remuneration.domain.DocumentType.STATEMENT, version).firstResult();
     }
 
     /**

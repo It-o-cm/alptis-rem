@@ -220,6 +220,7 @@ public class CrScenarioResource {
             case "BRD-02" -> seedBrd02(entity, periodMonth);
             case "BRD-03" -> seedBrd03(periodMonth);
             case "BRD-04" -> seedBrd04(entity, periodMonth);
+            case "BRD-07" -> seedBrd07(entity, periodMonth);
             default -> {
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cas inconnu : " + crCode).build();
             }
@@ -2989,6 +2990,62 @@ public class CrScenarioResource {
         statement.carriedBalance = BigDecimal.ZERO;
         statement.periodTotal = new BigDecimal("100.00");
         statement.netAmount = new BigDecimal("100.00");
+        statement.status = fr.alptis.remuneration.domain.StatementStatus.DRAFT;
+        statement.persist();
+    }
+
+    /**
+     * BRD-07 (modification d'un modèle) : une période validée par la Finance avec deux bordereaux en
+     * brouillon (le modèle de bordereau de l'entité est fourni par le jeu de démonstration). Publié l'un,
+     * puis le modèle modifié, puis l'autre : le second suit le nouveau modèle, le premier reste inchangé.
+     *
+     * @param entity      the entity
+     * @param periodMonth the calculation month
+     */
+    private void seedBrd07(LegalEntity entity, LocalDate periodMonth) {
+        Period period = period(entity, periodMonth);
+        period.state = PeriodState.FINANCE_VALIDATED;
+        // Seed a STATEMENT template (the cycle-only demo does not seed templates), as the next version so
+        // it is the current one whatever already exists.
+        fr.alptis.remuneration.domain.DocumentTemplate template =
+                new fr.alptis.remuneration.domain.DocumentTemplate();
+        template.entity = entity;
+        template.documentType = fr.alptis.remuneration.domain.DocumentType.STATEMENT;
+        template.versionNo = (int) fr.alptis.remuneration.domain.DocumentTemplate.count(
+                "entity = ?1 and documentType = ?2", entity,
+                fr.alptis.remuneration.domain.DocumentType.STATEMENT) + 1;
+        template.content = "{\"logo\":\"" + entity.code + "\",\"mentions\":\"Mentions initiales\","
+                + "\"columns\":[\"garantie\",\"assiette\",\"taux\",\"montant\"]}";
+        template.validFrom = periodMonth;
+        template.persist();
+        draftStatement(entity, period, payee(entity, period, "P-BRD07-A", "100.00", PartnerStatus.ACTIVE, true),
+                "ST-BRD07-A-" + entity.code + "-" + periodMonth, "100.00");
+        draftStatement(entity, period, payee(entity, period, "P-BRD07-B", "80.00", PartnerStatus.ACTIVE, true),
+                "ST-BRD07-B-" + entity.code + "-" + periodMonth, "80.00");
+    }
+
+    /**
+     * Persists a draft cycle statement for an account (used by BRD-04/BRD-07).
+     *
+     * @param entity  the entity
+     * @param period  the period
+     * @param account the account
+     * @param number  the statement number
+     * @param net     the net amount
+     */
+    private void draftStatement(LegalEntity entity, Period period, DistributorAccount account, String number,
+                                String net) {
+        fr.alptis.remuneration.domain.Statement statement = new fr.alptis.remuneration.domain.Statement();
+        statement.entity = entity;
+        statement.period = period;
+        statement.account = account;
+        statement.batchType = BatchType.CYCLE;
+        statement.statementNumber = number;
+        statement.versionNo = 1;
+        statement.level = fr.alptis.remuneration.domain.StatementLevel.PRODUCTION_CODE;
+        statement.carriedBalance = BigDecimal.ZERO;
+        statement.periodTotal = new BigDecimal(net);
+        statement.netAmount = new BigDecimal(net);
         statement.status = fr.alptis.remuneration.domain.StatementStatus.DRAFT;
         statement.persist();
     }

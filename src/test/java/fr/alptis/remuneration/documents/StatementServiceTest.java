@@ -673,6 +673,57 @@ class StatementServiceTest {
     }
 
     /**
+     * BRD-05/BRD-07: publishing applies the current STATEMENT template — its mentions appear in the PDF —
+     * and records the applied version; the archived bordereau keeps that version.
+     */
+    @Test
+    @TestTransaction
+    void applies_the_current_statement_template_header() {
+        fr.alptis.remuneration.domain.DocumentTemplate tpl = new fr.alptis.remuneration.domain.DocumentTemplate();
+        tpl.entity = unep();
+        tpl.documentType = fr.alptis.remuneration.domain.DocumentType.STATEMENT;
+        tpl.versionNo = 1;
+        tpl.content = "{\"logo\":\"Alptis\",\"mentions\":\"Mentions du modele\",\"columns\":[\"garantie\"]}";
+        tpl.validFrom = M;
+        tpl.persist();
+        Statement statement = seed();
+
+        Statement published = service.publish(statement.getId());
+        assertEquals(1, published.templateVersion);
+        assertTrue(new String(service.pdf(statement.getId()), java.nio.charset.StandardCharsets.ISO_8859_1)
+                .contains("Mentions du modele"));
+    }
+
+    /**
+     * BRD-07: publishing tolerates an absent template (no version recorded) and an invalid one (the parse
+     * error is caught) — the bordereau is still produced.
+     */
+    @Test
+    @TestTransaction
+    void publishing_tolerates_an_absent_or_invalid_template() {
+        Statement statement = seed();
+
+        // No STATEMENT template for the entity: no version is recorded and the PDF still renders.
+        Statement firstPublish = service.publish(statement.getId());
+        assertNull(firstPublish.templateVersion);
+        assertEquals("%PDF",
+                new String(service.pdf(statement.getId()), 0, 4, java.nio.charset.StandardCharsets.ISO_8859_1));
+
+        // A current template with invalid JSON: re-publishing catches the parse error and still renders.
+        fr.alptis.remuneration.domain.DocumentTemplate bad = new fr.alptis.remuneration.domain.DocumentTemplate();
+        bad.entity = unep();
+        bad.documentType = fr.alptis.remuneration.domain.DocumentType.STATEMENT;
+        bad.versionNo = 99;
+        bad.content = "not-json";
+        bad.validFrom = M;
+        bad.persist();
+        Statement secondPublish = service.publish(statement.getId());
+        assertEquals(99, secondPublish.templateVersion);
+        assertEquals("%PDF",
+                new String(service.pdf(statement.getId()), 0, 4, java.nio.charset.StandardCharsets.ISO_8859_1));
+    }
+
+    /**
      * A rectificative version refers to the first and carries the next version number.
      */
     @Test
@@ -695,6 +746,7 @@ class StatementServiceTest {
     void unknown_statement() {
         assertThrows(ResourceNotFoundException.class, () -> service.render(-1L));
         assertThrows(ResourceNotFoundException.class, () -> service.publish(-1L));
+        assertThrows(ResourceNotFoundException.class, () -> service.pdf(-1L));
         assertThrows(ResourceNotFoundException.class, () -> service.rectify(-1L));
     }
 

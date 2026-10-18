@@ -262,7 +262,7 @@ public class DocumentsResource {
         requireStatementScope(statementId);
         Statement statement = statements.publish(statementId);
         return new StatementView(statement.getId(), statement.statementNumber, statement.versionNo,
-                statement.netAmount, statement.status, statement.publicationDate, statement.gedReference);
+                statement.netAmount, statement.status, statement.publicationDate, statement.gedReference, statement.templateVersion);
     }
 
     /**
@@ -279,7 +279,7 @@ public class DocumentsResource {
         requireStatementScope(statementId);
         Statement statement = statements.rectify(statementId);
         return new StatementView(statement.getId(), statement.statementNumber, statement.versionNo,
-                statement.netAmount, statement.status, statement.publicationDate, statement.gedReference);
+                statement.netAmount, statement.status, statement.publicationDate, statement.gedReference, statement.templateVersion);
     }
 
     /**
